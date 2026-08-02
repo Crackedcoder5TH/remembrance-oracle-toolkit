@@ -139,10 +139,36 @@ const INTERP = new RegExp('\\$' + '\\{([^}]+)' + '\\}', 'g');
  */
 function literalOnlyIdents(code) {
   const lits = new Set();
-  const LIT = /^\s*(?:'[^']*'|"[^"]*"|`[^`$]*`)\s*$/;
+  const LIT_ONLY = /^\s*(?:'[^']*'|"[^"]*"|`[^`$]*`)\s*$/;
+
+  // A PLACEHOLDER INDEX is not data. The postgres idiom
+  //
+  //   conditions.push(`coverage_interest = $${paramIndex++}`)
+  //
+  // renders to `coverage_interest = $1` — a bind-parameter NUMBER, the safest
+  // interpolation there is, with the actual value pushed separately onto
+  // params. The plain literal test rejects it (the template contains ${...}),
+  // so `conditions` was never provable as literal-only, so every
+  // `SELECT ... ${where}` built from it read as injection. That was 13 of this
+  // repo's 40 HIGH findings, all of them correctly parameterised queries.
+  //
+  // Recognised narrowly: the interpolation must sit immediately after a
+  // literal `$` in the template (the placeholder marker) and must be a bare
+  // counter identifier, optionally incremented. Anything else — a value, a
+  // call, a member expression — still fails and is still reported.
+  const PLACEHOLDER = /\$\$\{\s*[A-Za-z_$][\w$]*\s*(?:\+\+|--)?\s*\}/g;
+  const LIT = (t) => {
+    if (LIT_ONLY.test(t)) return true;
+    if (!/^\s*`/.test(t)) return false;              // only templates qualify
+    // Replace the whole `$${idx}` with a neutral token, NOT with '$' —
+    // LIT_ONLY forbids `$` inside a backtick template, so leaving the
+    // placeholder marker behind fails the very test this is feeding.
+    const stripped = String(t).replace(PLACEHOLDER, 'P');
+    return LIT_ONLY.test(stripped);
+  };
   // Seed: direct literal assignments and literal-only array pushes.
   for (const m of code.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g)) {
-    if (LIT.test(m[2])) lits.add(m[1]);
+    if (LIT(m[2])) lits.add(m[1]);
   }
   // The argument matcher must consume quoted strings WHOLE, because a SQL
   // fragment routinely contains a close-paren:
@@ -152,7 +178,7 @@ function literalOnlyIdents(code) {
   const PUSH = /\b([A-Za-z_$][\w$]*)\s*\.push\(\s*((?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\$]|\\.)*`|[^()])*)\)/g;
   const pushed = new Map();
   for (const m of code.matchAll(PUSH)) {
-    const ok = LIT.test(m[2]);
+    const ok = LIT(m[2]);
     if (!pushed.has(m[1])) pushed.set(m[1], true);
     if (!ok) pushed.set(m[1], false);
   }
@@ -191,6 +217,32 @@ function literalOnlyIdents(code) {
  * ?. ?? && ||, ternary, guarded return, and the assertion idioms that stand
  * in for a guard inside a test (assert.ok(x), assert(x), expect(x)…).
  */
+
+// Does the ASSIGNMENT ITSELF remove the nullability, so there is nothing left
+// to guard downstream? Three forms, all extremely common and none of which the
+// guard scan could see, because it only ever looked at the lines AFTER:
+//
+//   const list = map.get(k) ?? [];     nullish coalescing supplies a default
+//   const s    = map.get(k) || {};     truthy fallback, same effect
+//   const s    = map.get(k)!;          TS non-null assertion, usually paired
+//                                      with a .has() filter on the line above
+//
+// These accounted for the bulk of the cathedral's null-deref HIGH findings —
+// `byClient.get(m.clientId) ?? []` was reported as an unchecked dereference
+// with the default sitting on the same line.
+function assignmentNeutralisesNull(line, v) {
+  const e = String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`\\b${e}\\s*=[^=].*(?:\\?\\?|\\|\\|)\\s*[[{'"\`\\w]`).test(line)) return true;
+  if (new RegExp(`\\b${e}\\s*=[^=].*\\)\\s*!\\s*;?\\s*$`).test(line)) return true;  // TS non-null assertion
+  return false;
+}
+
+// A `.has(key)` immediately before a `.get(key)` is the idiomatic guard.
+function precededByHasCheck(lines, i) {
+  const win = lines.slice(Math.max(0, i - 3), i + 1).join('\n');
+  return /\.\s*has\s*\(/.test(win);
+}
+
 function guardsVar(text, v) {
   const e = String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(
@@ -282,8 +334,25 @@ function checkSecurity(code, lines) {
     }
 
     // exec/execSync with string interpolation — skip CREATE INDEX statements (DDL, not shell)
+    //
+    // `exec` IS NOT ALWAYS A SHELL. better-sqlite3 exposes db.exec(sql) and
+    // node-postgres pools expose .query/.exec; a DB handle calling exec runs
+    // SQL, not a command line. Matching the bare method name produced 5 of the
+    // cathedral's 40 HIGH findings, every one a `db.exec(\`CREATE TABLE ...\`)`.
+    // That is the same name-collision class already recorded for `X.exec(s)`
+    // on regexes — the earlier fix taught the checker about regex bindings but
+    // not database ones.
+    //
+    // A shell claim needs a shell receiver: a bare exec/execSync (imported
+    // from child_process) or a receiver that is not a database handle. The
+    // DDL guard is kept and widened, since schema statements are the common
+    // shape here.
+    const _execReceiver = (line.match(/([A-Za-z_$][\w$]*)\s*\.\s*exec(?:Sync|File|FileSync)?\s*\(/) || [])[1];
+    const _looksLikeDb = _execReceiver && /^(db|database|conn|connection|client|pool|sqlite|handle|tx|trx)$/i.test(_execReceiver);
+    const _isSchemaStatement = /\b(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE|SELECT|PRAGMA|BEGIN|COMMIT)\b/i.test(line);
     if ((/exec(?:Sync|File|FileSync)?\s*\(\s*`/.test(line) || /exec(?:Sync)?\s*\(\s*['"].*\$\{/.test(line)) &&
-        !/CREATE\s+(INDEX|TABLE)/i.test(line)) {
+        !/CREATE\s+(INDEX|TABLE)/i.test(line) &&
+        !(_looksLikeDb || _isSchemaStatement)) {
       findings.push({
         line: lineNum,
         bugClass: BUG_CLASSES.SECURITY,
@@ -519,11 +588,17 @@ function checkIntegration(code, lines) {
         // while the check sat on the very next line. That was 34 of the high
         // findings this repo carried as accepted debt, across 19 files —
         // every one of them already guarded.
-        let hasNullCheck = false;
+        let hasNullCheck = assignmentNeutralisesNull(line, resultVar);
+        // Only a DEREFERENCE can throw. An assignment that is never used
+        // unsafely is not a defect: `const m = median(scores);` was reported
+        // HIGH with nothing downstream touching it.
+        let isDereferenced = false;
         for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-          if (guardsVar(lines[j], resultVar)) { hasNullCheck = true; break; }
+          if (!hasNullCheck && guardsVar(lines[j], resultVar)) { hasNullCheck = true; break; }
+          const e = String(resultVar).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          if (new RegExp(`\\b${e}\\s*(?:\\.\\w|\\[)`).test(lines[j])) isDereferenced = true;
         }
-        if (!hasNullCheck) {
+        if (!hasNullCheck && isDereferenced) {
           findings.push({
             line: lineNum,
             bugClass: BUG_CLASSES.INTEGRATION,
@@ -546,7 +621,9 @@ function checkIntegration(code, lines) {
         if (new RegExp(`${resultVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.\\w+`).test(lines[j])) {
           // Check if there was a null check in between
           const between = lines.slice(i + 1, j).join('\n');
-          if (!guardsVar(between, resultVar)) {
+          if (!guardsVar(between, resultVar)
+              && !assignmentNeutralisesNull(line, resultVar)
+              && !precededByHasCheck(lines, i)) {
             findings.push({
               line: j + 1,
               bugClass: BUG_CLASSES.INTEGRATION,

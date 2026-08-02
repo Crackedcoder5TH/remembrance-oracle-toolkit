@@ -208,15 +208,38 @@ function covenantCheck(code, metadata = {}) {
   };
 
   // Contribute this seal to the LivingRemembranceEngine field.
-  // cost = 1 (a single covenant check is one work unit),
-  // coherence = passed/total (1.0 when fully sealed).
+  //
+  // WHAT REACHES THE FIELD COMES FROM THE INSTRUMENT.
+  //
+  // This contributed `principlesPassed / totalPrinciples` as `coherence`. That
+  // is a PASS RATIO, not a coherency — the Void compressor is the only thing
+  // that produces one. It was the field's largest single source at 147,574
+  // contributions, and because nearly every check seals cleanly the ratio sat
+  // at ~0.999 essentially always: a number that could not distinguish one
+  // artifact from another, pinning the field's coherence to its ceiling.
+  //
+  // The seal itself is unchanged and is still what gates commits. What changed
+  // is the input handed to the field: the compressor's reading of this same
+  // code. The pass ratio becomes the AUTHORITY WEIGHT, which is what it is
+  // genuinely good for — a fully sealed artifact speaks with full authority, a
+  // violating one speaks with less, and neither gets to invent a coherency.
+  //
+  // cachedOnly: covenantCheck runs on every commit hook and every scoring
+  // pass. A blocking ~2s compressor read here would be as bad as the one that
+  // took a 20-pattern compression pass to 39.7s. It contributes when the
+  // instrument has already read this exact content, and stays silent otherwise.
   try {
     const { contribute } = require('./field-coupling');
-    contribute({
-      cost: 1,
-      coherence: totalPrinciples > 0 ? principlesPassed / totalPrinciples : 0,
-      source: 'covenant',
-    });
+    const { coherencyOf } = require('./void-service');
+    const measured = coherencyOf(code, { cachedOnly: true });
+    if (typeof measured === 'number' && isFinite(measured)) {
+      contribute({
+        cost: 1,
+        coherence: measured,
+        resonance: totalPrinciples > 0 ? principlesPassed / totalPrinciples : 0,
+        source: 'void:compress_signal:covenant',
+      });
+    }
   } catch (_) { /* field unavailable — best-effort */ }
 
   // Cache the result (only for code-only checks)

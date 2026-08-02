@@ -67,6 +67,20 @@ operation physically lives:
     run.mjs --do audit                 # what actually feeds the field
     run.mjs --do fp --match "<substr>" # mark a META-DEBUG finding a false positive
     run.mjs --do browse <url>          # read the web through the substrate
+    run.mjs --do call <path>#<fn> [jsonArg ...]   # RUN a surfaced capability
+
+`--do call` makes the CAPABILITIES section actionable rather than
+informational. Every function the goggles list prints its own
+`<path>#<fn>` reference; passing that reference back runs it. Arguments are
+JSON, one per parameter, so objects and arrays survive intact:
+
+    goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x = 1"'
+    goggles --do call oracle/src/core/living-remembrance.js#gogglesParams
+
+It prints the signature and doc line before invoking, so you see what you are
+about to run. Naming a function that is not exported lists the ones that are.
+Constants are printed rather than called. It IS a real invocation — a function
+with side effects will have them.
 
 **Call the goggles, not the scripts underneath.** Every verb routes to a
 script that already existed; the verbs exist so nobody has to know where. If

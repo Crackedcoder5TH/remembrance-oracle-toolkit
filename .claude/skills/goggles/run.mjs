@@ -88,6 +88,11 @@ if (argv[0] === '--do') {
     // tell the goggles a META-DEBUG finding was a false positive.
     // `--match "<substring>"` for a class, or an exact fingerprint.
     fp: () => run('node', [join(toolkit, 'src/tools/goggles-fp.js'), ...rest], toolkit),
+    // RUN a capability the goggles surfaced. Every function they list prints
+    // its own `<path>#<fn>` reference; this invokes it, so seeing a capability
+    // and using it are the same surface. Args are JSON, one per parameter.
+    //   goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x=1"'
+    call: () => run('node', [join(toolkit, 'src/tools/goggles-call.js'), ...rest], toolkit),
     // READ THE WEB through the substrate: fetch a URL, compress + score it,
     // contribute the reading to the field. Browsing was the last blind spot
     // (WebFetch matches no hook, so a fetched page was never witnessed).

@@ -324,7 +324,16 @@ class LivingRemembranceEngine {
       const prev = sources[source] || { count: 0, lastCoherence: 0, lastTimestamp: 0 };
       sources[source] = {
         count: prev.count + 1,
+        // NOTE: this is the FIELD's coherence after this source last
+        // contributed — not the reading the source supplied. The two differ
+        // whenever p differs from the state it pulls toward (input p=0.1264
+        // recorded as 0.1790 in a live check). The name reads like the
+        // latter, so anyone auditing "what is this source reporting?" from
+        // the histogram is reading the field's response, not the source's
+        // input. Kept as-is because it is persisted state that consumers
+        // already parse; `lastInput` alongside it would be the clean fix.
         lastCoherence: newCoherence,
+        lastInput: (typeof p === 'number' && isFinite(p)) ? p : null,
         lastTimestamp: now,
       };
     }

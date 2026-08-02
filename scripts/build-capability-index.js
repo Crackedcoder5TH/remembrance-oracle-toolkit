@@ -74,16 +74,30 @@ function callSigOf(src, name) {
   // Collapse whitespace; destructured params keep their shape.
   const params = best[1].replace(/\s+/g, ' ').trim();
 
-  // First sentence of a JSDoc block immediately above the definition.
+  // First sentence of the JSDoc block immediately above the definition.
+  //
+  // Anchored to the LAST `/**` in the window, deliberately. A plain
+  // `/\/\*\*([\s\S]*?)\*\/\s*$/` is not anchored at its start, so when the
+  // 900-char window contained an earlier function's doc block the match ran
+  // from THAT block through to the final `*/` and the "first line" came from
+  // the wrong function — computeCoherencyScore was labelled "Score fractal
+  // alignment (0-1)", which is scoreFractalAlignment's doc. A signature that
+  // describes a different function is worse than no description at all.
   let doc = null;
   const before = src.slice(Math.max(0, at - 900), at);
-  const jd = before.match(/\/\*\*([\s\S]*?)\*\/\s*$/);
-  if (jd) {
-    const first = jd[1]
-      .split('\n')
-      .map((l) => l.replace(/^\s*\*ted?\s?/, '').replace(/^\s*\*\s?/, '').trim())
-      .filter((l) => l && !l.startsWith('@'))[0];
-    if (first) doc = first.slice(0, 120);
+  const open = before.lastIndexOf('/**');
+  if (open >= 0) {
+    const block = before.slice(open);
+    const close = block.indexOf('*/');
+    // Only whitespace may sit between the block and the definition, otherwise
+    // the comment belongs to something else.
+    if (close > 0 && block.slice(close + 2).trim() === '') {
+      const first = block.slice(3, close)
+        .split('\n')
+        .map((l) => l.replace(/^\s*\*\s?/, '').trim())
+        .filter((l) => l && !l.startsWith('@'))[0];
+      if (first) doc = first.slice(0, 120);
+    }
   }
   return { params, doc };
 }

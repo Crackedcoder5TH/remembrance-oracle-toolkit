@@ -810,6 +810,13 @@ function main() {
       // took three tries before someone read its arg parsing. The parameter
       // list (and the first line of its JSDoc) is what makes a listed
       // capability actually callable from here.
+      // ACTIONABLE, not merely informative. Knowing a function exists and what
+      // it takes still leaves the reader to work out the module path, the
+      // require form and the repo it resolves from — three more steps between
+      // seeing a capability and using it, each one a chance to get it wrong.
+      // Each entry now carries the exact reference to invoke it, and
+      // `goggles --do call <ref> [json-args]` runs it through the same one
+      // surface, so a surfaced capability is directly drivable.
       const lines = [];
       for (const m of matches) {
         const fns = idx.byPath && idx.byPath[m.name];
@@ -820,6 +827,7 @@ function main() {
           const c = sigs[fn];
           const call = c ? `${fn}(${c.params})` : `${fn}(?)`;
           lines.push(`          ${call}${c && c.doc ? `   — ${c.doc}` : ''}`);
+          lines.push(`             ↳ goggles --do call ${m.name}#${fn}`);
         }
         if (fns.length > 6) lines.push(`          … +${fns.length - 6} more`);
       }
@@ -827,6 +835,7 @@ function main() {
         console.log(`    ECOSYSTEM CAPABILITIES (callable in those neighbours · ${idx.totalFunctions} fns indexed`
           + `${idx.callableFunctions ? `, ${idx.callableFunctions} with signatures` : ''}):`);
         for (const l of lines) console.log(l);
+        console.log('       run any of them:  goggles --do call <path>#<fn> [jsonArg ...]');
       }
     }
   } catch (_) { /* index optional — regenerate with build-capability-index.js */ }

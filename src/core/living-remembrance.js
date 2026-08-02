@@ -154,6 +154,7 @@ class LivingRemembranceEngine {
           sources:          (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
           // Carried through load so layer attention survives a restart.
           layerReliability: (parsed.layerReliability && typeof parsed.layerReliability === 'object') ? parsed.layerReliability : {},
+          nodes:            (parsed.nodes && typeof parsed.nodes === 'object') ? parsed.nodes : {},
           meanIntervalMs:   typeof parsed.meanIntervalMs === 'number' ? parsed.meanIntervalMs : 0,
         };
       }
@@ -309,6 +310,13 @@ class LivingRemembranceEngine {
     }
 
     this._state = {
+      // Carry forward everything not recomputed here. This object literal
+      // used to be built from scratch, so every contribute() silently DROPPED
+      // layerReliability and nodes — the encoder's learned attention and the
+      // node registry were erased by the next contribution. Both stores are
+      // deliberately outside the equation, which is exactly why rebuilding
+      // state from the equation's own terms lost them.
+      ...this._state,
       coherence:         newCoherence,
       // ∫p accumulates the input coherence p(t) per the master equation,
       // not the post-update newCoherence.
@@ -334,6 +342,49 @@ class LivingRemembranceEngine {
   /** Read the current ecosystem state without contributing. */
   getState() {
     return { ...this._state };
+  }
+
+  /**
+   * Entangled-node registry — presence, not a reading.
+   *
+   * entangle.js used to announce a node by contributing a flat
+   * `coherence: 0.9` under source `entangle:node:<id>`, then counted those
+   * sources to get the node census. So a REGISTRY lived inside the coherency
+   * field, and every heartbeat moved the global EMA by a constant that
+   * described nothing about the node.
+   *
+   * It could not simply be deleted — the contribution WAS the census.
+   * Presence now has its own store, so the registry and the field are
+   * separate concerns and the data can flow without one distorting the other.
+   *
+   * Nodes carry a last-seen stamp so the census reflects who is actually
+   * here. A registry that only ever grows is not a census, it is a log.
+   */
+  registerNode(nodeId, ttlMs = 15 * 60 * 1000) {
+    if (!nodeId) return 0;
+    const now = Date.now();
+    const nodes = { ...(this._state.nodes || {}) };
+    nodes[String(nodeId)] = now;
+    // Drop nodes not seen within the TTL — otherwise a machine that ran once
+    // inflates the abundance divisor forever and every later node
+    // under-reports its cost.
+    for (const [id, seen] of Object.entries(nodes)) {
+      if (typeof seen !== 'number' || now - seen > ttlMs) delete nodes[id];
+    }
+    this._state = { ...this._state, nodes };
+    this._persist();
+    return Object.keys(nodes).length;
+  }
+
+  /** How many distinct nodes are currently entangled. Never below 1. */
+  nodeCount(ttlMs = 15 * 60 * 1000) {
+    const now = Date.now();
+    const nodes = this._state.nodes || {};
+    let n = 0;
+    for (const seen of Object.values(nodes)) {
+      if (typeof seen === 'number' && now - seen <= ttlMs) n++;
+    }
+    return Math.max(1, n);
   }
 
   /**
@@ -424,7 +475,7 @@ class LivingRemembranceEngine {
 
   /** Reset state — primarily for tests / fresh runs. */
   reset() {
-    this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {}, layerReliability: {} };
+    this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {}, layerReliability: {}, nodes: {} };
     this._persist();
   }
 }

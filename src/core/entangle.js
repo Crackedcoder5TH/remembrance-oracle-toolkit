@@ -43,14 +43,24 @@ function _resolveNodeId() {
   return _nodeId;
 }
 
-/** Count of distinct nodes currently entangled with the field. */
+/**
+ * Count of distinct nodes currently entangled with the field.
+ *
+ * Reads the engine's node REGISTRY. This used to count sources beginning
+ * with `entangle:node:` in the coherency field's histogram — so the census
+ * was a side effect of a flat `coherence: 0.9` heartbeat, and the registry
+ * lived inside the field it was supposed to be independent of.
+ *
+ * Two things that fixes. The heartbeat no longer moves the global EMA by a
+ * constant that describes nothing about the node. And the census is now
+ * TTL-scoped: the old count included every machine that ever ran, so a
+ * one-off node inflated the abundance divisor permanently and every later
+ * node under-reported its cost.
+ */
 function _entangledNodeCount() {
   try {
-    const state = fc.peekField();
-    if (state && state.sources) {
-      const n = Object.keys(state.sources).filter(k => k.startsWith('entangle:node:')).length;
-      if (n > 0) return n;
-    }
+    const { getEngine } = require('./living-remembrance');
+    return getEngine().nodeCount();
   } catch (_) { /* field unreachable */ }
   return 1;
 }
@@ -92,24 +102,16 @@ function engage() {
 
   // Register this node so peers can count N for abundance amortization.
   try {
-    // ⚠ LOAD-BEARING LITERAL — do not simply delete.
+    // Announce presence to the REGISTRY, not to the coherency field.
     //
-    // coherence: 0.9 is a flat constant, so this moves the global EMA while
-    // carrying no information about the node. By the rule applied to the
-    // seven other flat literals removed today it should go.
+    // This was `contribute({ coherence: 0.9, source: 'entangle:node:<id>' })`
+    // — a flat constant that moved the global EMA on every heartbeat while
+    // saying nothing about the node, and which the census then counted. The
+    // registry was riding inside the field it was meant to be independent of,
+    // so presence and measurement distorted each other in both directions.
     //
-    // It cannot go yet: _nodeCount() above counts sources starting with
-    // `entangle:node:`, so this contribution IS the node registry. Deleting
-    // it silently drops the census to zero.
-    //
-    // Same shape as the encoder-layer reliability that used to live in the
-    // sources histogram — a registry riding inside the coherency field. The
-    // fix is the same one applied there: give node presence its own store on
-    // the engine (beside layerReliability), then this contribution can be
-    // removed rather than merely tolerated. Recorded here so the next reader
-    // does not remove it and break the count, or leave it and assume it is
-    // a reading.
-    fc.contribute({ cost: _abundanceCost(), coherence: 0.9, source: `entangle:node:${nodeId}` });
+    // Registering is now presence only: it touches no equation term.
+    require('./living-remembrance').getEngine().registerNode(nodeId);
   } catch (_) { /* best-effort */ }
 
   const onWarning   = () => _sense(0.5, 'warning');
@@ -157,4 +159,8 @@ function status() {
   };
 }
 
-module.exports = { engage, disengage, status };
+// nodeId is exported so the node's identity has ONE definition. field-tool
+// needs it to register presence on read, and a second copy of
+// `hash(hostname|pid|cwd)` is exactly the kind of duplicate that drifts
+// until two parts of the system disagree about who they are.
+module.exports = { engage, disengage, status, nodeId: _resolveNodeId };

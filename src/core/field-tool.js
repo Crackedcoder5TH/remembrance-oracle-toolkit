@@ -270,6 +270,18 @@ class FieldTool {
     //    library grows via re-running the migration script after Void
     //    compresses new patterns)
     let grew = { ok: false, reason: 'disabled' };
+    // PRESENCE — a process that reads through the field IS a node. This
+    // used to be implicit: entangle's heartbeat wrote `entangle:node:*`
+    // sources that persisted in the field file, so peers() found nodes
+    // left over from previous runs whether or not anything had engaged
+    // this time. Once presence moved to its own registry that accident
+    // stopped holding, which is the honest signal that it was an accident.
+    // Registering here makes peers() true rather than incidentally true.
+    try {
+      const { nodeId } = require('./entangle');
+      require('./living-remembrance').getEngine().registerNode(nodeId());
+    } catch (_) { /* presence is best-effort — a read must never fail on it */ }
+
     if (merged.growSubstrate) {
       grew = this._growSubstrate({ content, name, language, id });
       layers.grew = grew.ok === true;
@@ -454,15 +466,20 @@ class FieldTool {
    * Returns [] if the field is unreachable.
    */
   peers() {
+    // Reads the engine's node REGISTRY. This used to scan the coherency
+    // field's sources histogram for `entangle:node:*` — presence inferred
+    // from a flat 0.9 heartbeat that also moved the global EMA. Once that
+    // heartbeat stopped being a contribution, this returned [] and the
+    // second consumer of the old scheme surfaced immediately.
+    //
+    // `lastCoherence` is gone from the shape on purpose: a node's presence
+    // never carried a coherency, and the old value was the constant, not a
+    // reading. `lastSeen` is what presence actually knows.
     const state = this._safePeek();
-    const sources = (state && state.sources) || {};
-    return Object.keys(sources)
-      .filter(s => s.startsWith('entangle:node:'))
-      .map(s => ({
-        nodeId: s.replace('entangle:node:', ''),
-        count: sources[s].count,
-        lastCoherence: sources[s].lastCoherence,
-      }));
+    const nodes = (state && state.nodes) || {};
+    return Object.entries(nodes)
+      .filter(([, seen]) => typeof seen === 'number')
+      .map(([nodeId, seen]) => ({ nodeId, lastSeen: seen }));
   }
 
   // ── internals ───────────────────────────────────────────────────

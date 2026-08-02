@@ -546,4 +546,18 @@ const TOOLS = [
   },
 ];
 
+/**
+ * The full catalog. EXPOSURE is decided by the server, not here.
+ *
+ * The MCP surface is deliberately narrowed to the goggles — see
+ * ADVERTISED in src/mcp/server.js. That filter lives there because this
+ * module's job is to DEFINE tools; deciding which are advertised is a
+ * server concern.
+ *
+ * Filtering the export here instead broke 24 test suites at once: they
+ * introspect this list to assert a tool exists, and in-process callers
+ * (oracle-llm, sqlite, providers, swarm-diagnose) resolve handlers through
+ * it. Narrowing a definition list to express a presentation choice made
+ * every consumer of the definition see the presentation.
+ */
 module.exports = { TOOLS };

@@ -49,13 +49,30 @@ describe('MCPServer', () => {
     assert.ok(res.result);
   });
 
-  it('lists tools', async () => {
+  it('advertises the goggles as the one surface', async () => {
+    // The surface is deliberately the instrument, not the organs. The goggles
+    // already routes every operation to its canonical script, so advertising
+    // 29 tools forced an agent to know which organ it wanted and where each
+    // operation lives — the knowledge the goggles exists to remove.
     server = new MCPServer(oracle);
     const res = await server.handleRequest({ id: 3, method: 'tools/list' });
     assert.ok(res.result.tools.length > 0);
     const names = res.result.tools.map(t => t.name);
-    assert.ok(names.includes('oracle_search'));
-    assert.ok(names.includes('oracle_stats'));
+    assert.ok(names.includes('goggles'), 'the instrument must be advertised');
+    assert.ok(!names.includes('oracle_search'), 'organs are retired from the surface');
+  });
+
+  it('retired tools stay DISPATCHABLE — unexposed is not deleted', async () => {
+    // Retiring changes what an agent SEES, not what still works. Real callers
+    // (oracle-llm, sqlite, providers, swarm-diagnose) invoke these handlers,
+    // and filtering the dispatch list as well as the advertised one took 27
+    // tests down at once — proof they are two different questions.
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 4, method: 'tools/call', params: { name: 'oracle_stats', arguments: {} },
+    });
+    assert.ok(res.result, 'a retired tool must still resolve when called by name');
+    assert.ok(!res.error, 'retired must not mean unknown');
   });
 
   it('tools have valid schemas', () => {
@@ -462,35 +479,19 @@ describe('MCPServer', () => {
     assert.ok(res.result.content);
   });
 
-  it('exposes the full tool catalog including the Tier-1..4 audit/lint/smell/analyze/heal tools', async () => {
-    server = new MCPServer(oracle);
-    const res = await server.handleRequest({ id: 15, method: 'tools/list' });
-    const names = res.result.tools.map(t => t.name);
-
-    // All consolidated tools (original 13 + forge + audit/lint/smell/analyze/heal)
-    assert.ok(names.includes('oracle_search'), 'missing oracle_search');
-    assert.ok(names.includes('oracle_resolve'), 'missing oracle_resolve');
-    assert.ok(names.includes('oracle_submit'), 'missing oracle_submit');
-    assert.ok(names.includes('oracle_register'), 'missing oracle_register');
-    assert.ok(names.includes('oracle_feedback'), 'missing oracle_feedback');
-    assert.ok(names.includes('oracle_stats'), 'missing oracle_stats');
-    assert.ok(names.includes('oracle_debug'), 'missing oracle_debug');
-    assert.ok(names.includes('oracle_sync'), 'missing oracle_sync');
-    assert.ok(names.includes('oracle_harvest'), 'missing oracle_harvest');
-    assert.ok(names.includes('oracle_maintain'), 'missing oracle_maintain');
-    assert.ok(names.includes('oracle_healing'), 'missing oracle_healing');
-    assert.ok(names.includes('oracle_swarm'), 'missing oracle_swarm');
-    assert.ok(names.includes('oracle_fractal'), 'missing oracle_fractal');
-    assert.ok(names.includes('oracle_pending_feedback'), 'missing oracle_pending_feedback');
-    assert.ok(names.includes('oracle_forge'), 'missing oracle_forge');
-
-    // New Tier-1..4 tools
-    assert.ok(names.includes('oracle_audit'),    'missing oracle_audit');
-    assert.ok(names.includes('oracle_lint'),     'missing oracle_lint');
-    assert.ok(names.includes('oracle_smell'),    'missing oracle_smell');
-    assert.ok(names.includes('oracle_analyze'),  'missing oracle_analyze');
-    assert.ok(names.includes('oracle_heal'),     'missing oracle_heal');
-
-    assert.ok(res.result.tools.length >= 20, `Expected at least 20 tools, got ${res.result.tools.length}`);
+  it('keeps the full tool catalog defined, even though only the goggles is advertised', () => {
+    // ALL_TOOLS is the complete catalog; TOOLS is what MCP advertises. This
+    // asserts the catalog is intact so a retirement can never quietly become
+    // a deletion, and that ORACLE_MCP_LEGACY_TOOLS can restore the old surface.
+    const { TOOLS: all } = require('../src/mcp/tools');
+    const names = all.map(t => t.name);
+    for (const n of ['oracle_search', 'oracle_resolve', 'oracle_submit', 'oracle_register',
+      'oracle_feedback', 'oracle_stats', 'oracle_debug', 'oracle_sync']) {
+      assert.ok(names.includes(n), `catalog lost ${n}`);
+    }
+    assert.ok(names.includes('goggles'), 'catalog must contain the instrument');
+    // The surface narrows in the SERVER, not in the catalog — see ADVERTISED
+    // in src/mcp/server.js. Narrowing the catalog itself broke 24 suites.
+    assert.ok(all.length > 1, 'catalog holds every definition');
   });
 });

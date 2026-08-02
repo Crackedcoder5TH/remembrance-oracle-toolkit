@@ -40,6 +40,49 @@ function buildEvalChildProcessPattern() {
   return new RegExp(_k('\\bev', 'al\\s*\\(\\s*require\\s*\\(\\s*[\'"]') + cp + '[\'"]\\s*\\)', 'i');
 }
 
+// ── Dynamic code execution — P11, code injection ────────────────────────
+//
+// The covenant caught SQL, command and XSS injection, and caught eval hidden
+// behind string concatenation (global['ev'+'al'] trips Indirection Detection),
+// but plain `eval(userInput)` sealed clean. Obfuscating it got you caught;
+// writing it openly did not. The Indirection layer shows eval was always
+// considered harmful — only the direct form was never written down.
+//
+// Scoped to a NON-LITERAL argument on purpose. `eval('1+1')` is a smell, not
+// an injection, and P11's seal is "Data must flow clean. No injection
+// attacks." A quoted literal cannot carry untrusted data; an identifier or an
+// interpolated template can, and that is precisely the injection.
+//
+// The negative lookbehind keeps `foo.eval(x)` and `myeval(x)` out — a method
+// on some object is a different claim than the global evaluator.
+function buildDynamicEvalPattern() {
+  // eval( <identifier or call> — anything not opening with a quote
+  return new RegExp('(?<![.\\w])' + _k('ev', 'al') + '\\s*\\(\\s*[A-Za-z_$]', 'i');
+}
+
+function buildDynamicEvalTemplatePattern() {
+  // eval( `... ${x} ...` ) — an interpolated template is untrusted data
+  return new RegExp('(?<![.\\w])' + _k('ev', 'al') + '\\s*\\(\\s*[`\'"][^`\'"]*\\$\\{', 'i');
+}
+
+function buildFunctionConstructorPattern() {
+  // new Function(<identifier>) — the constructor IS an evaluator
+  return new RegExp('\\bnew\\s+' + _k('Func', 'tion') + '\\s*\\(\\s*[A-Za-z_$]');
+}
+
+function buildStringTimerPattern() {
+  // setTimeout('code…') / setInterval('code…') — the string form is eval.
+  // Only the quoted form: setTimeout(fn, 100) passes a function and is safe,
+  // and a bare identifier is indistinguishable from that safe form.
+  //
+  // The alternation MUST be grouped. Written as
+  // '\\b' + 'setTimeout|setInterval' + '\\s*\\(\\s*[\'"`]' the regex parses as
+  // (\bsetTimeout) OR (setInterval\s*\(...), so every safe
+  // `setTimeout(handler, 100)` matched the bare left branch and the covenant
+  // blocked ordinary code.
+  return new RegExp('\\b(?:' + _k('set', 'Timeout|set', 'Interval') + ')\\s*\\(\\s*[\'"`]');
+}
+
 function _buildSqlConcatPattern() {
   const ops = ['SEL' + 'ECT', 'INS' + 'ERT', 'UPD' + 'ATE', 'DEL' + 'ETE', 'DR' + 'OP', 'AL' + 'TER'];
   const sqlKw = '(?:' + ops.join('|') + ')\\b';
@@ -139,6 +182,11 @@ const HARM_PATTERNS = [
   // Command concat builds shell strings via concatenation.
   { pattern: buildCmdConcatPattern(), principle: 11, reason: _k('Command ', 'injection via string concatenation'), rawOnly: true },
   { pattern: _buildInnerHtmlPattern(), principle: 11, reason: _k('Potential X', 'SS via inner', 'HTML') },
+  // Dynamic code execution — the injection family's direct form.
+  { pattern: buildDynamicEvalPattern(), principle: 11, reason: _k('Code ', 'injection via dynamic evaluation') },
+  { pattern: buildDynamicEvalTemplatePattern(), principle: 11, reason: _k('Code ', 'injection via interpolated evaluation'), rawOnly: true },
+  { pattern: buildFunctionConstructorPattern(), principle: 11, reason: _k('Code ', 'injection via the Function constructor') },
+  { pattern: buildStringTimerPattern(), principle: 11, reason: _k('Code ', 'injection via string-argument timer'), rawOnly: true },
 
   // P12: The Cornerstone
   // Post-install hooks live inside JSON/package.json values. The rule

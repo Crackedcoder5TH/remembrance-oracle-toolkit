@@ -57,7 +57,7 @@ function main() {
     // A reading that did not come off the compressor is not a coherency. It is
     // counted and named, never mixed in with the real ones.
     if (e.coherence_source !== 'void:compress_signal') { notFromCompressor++; continue; }
-    const v = e.composed_v2 || e.composed_v1;
+    const v = e.composed || e.composed_v2 || e.composed_v1;
     rows.push({
       name: k,
       coherence: e.coherence,

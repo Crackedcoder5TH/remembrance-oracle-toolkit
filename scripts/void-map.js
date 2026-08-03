@@ -41,7 +41,7 @@ function main() {
   let noVector = 0;
   for (const [k, e] of Object.entries(idx.index || {})) {
     if (target !== 'all' && !k.startsWith(target + '/')) continue;
-    const v = e && (e.composed_v2 || e.composed_v1);
+    const v = e && (e.composed || e.composed_v2 || e.composed_v1);
     if (Array.isArray(v) && v.length) entries[k] = v;
     else noVector++;
   }

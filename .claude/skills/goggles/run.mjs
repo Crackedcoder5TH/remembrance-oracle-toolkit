@@ -88,6 +88,10 @@ if (argv[0] === '--do') {
     // tell the goggles a META-DEBUG finding was a false positive.
     // `--match "<substring>"` for a class, or an exact fingerprint.
     fp: () => run('node', [join(toolkit, 'src/tools/goggles-fp.js'), ...rest], toolkit),
+    // remove index keys written under an OLDER scheme whose file the
+    // substrate already holds under the current one. Never touches genuine
+    // deletions — those are history. Dry-run unless --apply.
+    prune: () => run('node', [join(toolkit, 'scripts/prune-superseded-keys.js'), ...rest], toolkit),
     // replay the coherencies the compressor already produced into the field.
     // A data-pipeline fix does not need a recomputation — every witnessed file
     // already carries its reading. ~2s for the whole substrate.

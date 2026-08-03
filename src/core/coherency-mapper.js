@@ -593,13 +593,43 @@ function mapFromSubstrate(projectPath, opts = {}) {
   // there) but are excluded from the per-file health table — a map of
   // the repo should count the repo's files, not the substrate's history.
   const ghostBreakdown = { seededPatterns: [], walkInvisible: [], deleted: [] };
+  //   supersededDuplicate — an entry from an OLDER key scheme whose real
+  //     file is still indexed under the current one. `void/Void-Data-
+  //     Compressor/api` is namespace `void/` plus a relpath that still
+  //     carries the repo directory, with the extension stripped; the same
+  //     file is present and current as `void/api.py`. Reporting these as
+  //     "deleted since ingestion" is wrong twice over — nothing was deleted,
+  //     and the substrate did not lose the memory. 26 of this repo's 50
+  //     ghosts were this, and conflating them with real deletions is what
+  //     would make a prune destroy history.
+  ghostBreakdown.supersededDuplicate = [];
+  // Compare against ALL index entries, not only files currently on disk. A
+  // superseded key can duplicate an entry that is itself deleted —
+  // `void/Void-Data-Compressor/fusion_lattice_simulation` supersedes
+  // `void/fusion_lattice_simulation.py`, and that file is gone too. It is
+  // still a duplicate KEY, not a second deletion, and counting it twice
+  // overstates what the substrate lost.
+  const _currentRels = new Set(entries.map((x) => x.rel));
+  // The leading segment must be the REPO DIRECTORY NAME — the old scheme's
+  // actual signature. Stripping ANY leading directory matches distinct files
+  // in nested folders (`vscode-extension/README.md` vs `README.md`) and would
+  // classify real entries as disposable duplicates.
+  const _repoDir = path.basename(projectPath);
+  const _isSuperseded = (rel) => {
+    if (!rel.startsWith(_repoDir + '/')) return false;
+    const base = rel.slice(_repoDir.length + 1);
+    return ['.py', '.js', '.mjs', '.cjs', '.ts', '.tsx', '.md', '.json', '.sh', '.rs']
+      .some((ext) => _currentRels.has(base + ext)) || _currentRels.has(base);
+  };
   for (const e of entries) {
     if (walkedSet.has(e.rel)) continue;
     if (e.rel.includes(':')) ghostBreakdown.seededPatterns.push(e.rel);
     else if (fs.existsSync(path.join(projectPath, e.rel))) ghostBreakdown.walkInvisible.push(e.rel);
+    else if (_isSuperseded(e.rel)) ghostBreakdown.supersededDuplicate.push(e.rel);
     else ghostBreakdown.deleted.push(e.rel);
   }
-  const ghosts = [].concat(ghostBreakdown.seededPatterns, ghostBreakdown.walkInvisible, ghostBreakdown.deleted);
+  const ghosts = [].concat(ghostBreakdown.seededPatterns, ghostBreakdown.walkInvisible,
+    ghostBreakdown.supersededDuplicate, ghostBreakdown.deleted);
 
   // 4. In-namespace pairwise depth-flow: nearest sibling, stable-high
   //    count, duplicates. One 116-dim sweep per pair. Flags are
@@ -736,6 +766,8 @@ function mapFromSubstrate(projectPath, opts = {}) {
         seededPatternCount: ghostBreakdown.seededPatterns.length,
         walkInvisibleCount: ghostBreakdown.walkInvisible.length,
         walkInvisible: ghostBreakdown.walkInvisible.slice(0, 10),
+        supersededDuplicateCount: ghostBreakdown.supersededDuplicate.length,
+        supersededDuplicate: ghostBreakdown.supersededDuplicate.slice(0, 10),
         deletedCount: ghostBreakdown.deleted.length,
         deleted: ghostBreakdown.deleted.slice(0, 10),
       },

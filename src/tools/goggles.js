@@ -145,7 +145,13 @@ function runMap(dir, { deep = false } = {}) {
     if (gb) {
       console.log('  index-only entries: ' + gb.seededPatternCount + ' seeded patterns (never files)'
         + ' · ' + gb.walkInvisibleCount + ' on disk but outside walk rules'
+        + (gb.supersededDuplicateCount ? ' · ' + gb.supersededDuplicateCount + ' superseded duplicate keys' : '')
         + ' · ' + gb.deletedCount + ' deleted since ingestion');
+      // Superseded keys are NOISE — an older key scheme for a file the index
+      // already holds under the current one. Deletions are HISTORY. Reporting
+      // them as one number said this repo had lost 50 files when it had lost
+      // 24 and double-counted 26.
+      for (const d of (gb.supersededDuplicate || []).slice(0, 3)) console.log('    superseded: ' + d);
       for (const d of (gb.deleted || []).slice(0, 5)) console.log('    deleted: ' + d);
     } else {
       console.log('  index-only entries: ' + cov.ghostCount);

@@ -50,8 +50,10 @@ function contributeComplexity(breakdown) {
     const total = Object.values(breakdown).reduce((s, n) => s + n, 0);
     if (!total) return;
     const simplicity = ((breakdown.atomic || 0) * 1.0 + (breakdown.composite || 0) * 0.5) / total;
-    const { contribute } = require('../core/field-coupling');
-    contribute({ cost: 1, coherence: Math.max(0, Math.min(1, simplicity)), source: 'oracle:analytics:complexity' });
+    // No field contribution: `simplicity` is an atomic/composite COMPOSITION
+    // RATIO, not a coherency. Feeding it in as `coherence` averaged a measure
+    // of how decomposed the codebase is into a measure of how structured it
+    // is — two different questions with the same range.
   } catch (_) { /* field unreachable — analytics still returns its report */ }
 }
 

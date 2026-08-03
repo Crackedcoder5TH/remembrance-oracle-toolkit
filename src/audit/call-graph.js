@@ -238,6 +238,23 @@ function hasNullGuardAfter(tokens, callIdx, varName, window) {
         (tokens[i + 2]?.value === 'null' || tokens[i + 2]?.value === 'undefined')) {
       return true;
     }
+
+    // Ternary guard: `x ? x.y : z`
+    if (next?.value === '?') return true;
+    // Default via ||: `x || fallback`
+    if (next?.value === '||') return true;
+    // Assertion standing in for a guard — the test idiom:
+    //   const hsts = headers.find(...); assert.ok(hsts); hsts.value...
+    // An assertion IS the null check in a test; treating it as unguarded
+    // reported five correctly-written test cases as high-severity defects.
+    if (prev?.value === '(') {
+      const p2 = tokens[i - 2]?.value;
+      const p3 = tokens[i - 3]?.value;
+      const p4 = tokens[i - 4]?.value;
+      if (p2 === 'assert' || p2 === 'expect') return true;
+      if (p3 === 'assert' && (p2 === 'ok' || p2 === 'truthy')) return true;
+      if (p4 === 'assert' || p4 === 'expect') return true;
+    }
   }
   return false;
 }

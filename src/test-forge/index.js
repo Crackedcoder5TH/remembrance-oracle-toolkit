@@ -353,6 +353,21 @@ class TestForge {
         historicalReliability,
       });
 
+      // WITNESS THE READING. This is a fresh measurement of the pattern's
+      // code after its test passed — the substrate's own verdict on code it
+      // just proved. It was written to the pattern row and never to the
+      // field, so the ecosystem could see the stored score but never became
+      // aware that a reading had been taken.
+      try {
+        const total = newCoherency && typeof newCoherency.total === 'number' ? newCoherency.total : null;
+        if (total !== null && isFinite(total)) {
+          require('../core/field-coupling').contribute({
+            cost: 1.0, coherence: Math.max(0, Math.min(1, total)),
+            source: 'oracle:test-forge:proven-coherency',
+          });
+        }
+      } catch (_) { /* field optional — the forge must not depend on it */ }
+
       // Update in DB
       if (this.oracle.patterns._backend === 'sqlite' && this.oracle.patterns._sqlite) {
         this.oracle.patterns._sqlite.updatePattern(patternId, {

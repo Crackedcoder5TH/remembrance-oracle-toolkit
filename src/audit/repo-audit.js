@@ -189,7 +189,9 @@ function auditRepo(target, opts = {}) {
       try {
         const bucket = findings.some((f) => f.severity === 'high') ? 'findings-high'
           : findings.length ? 'findings' : 'clean';
-        fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:repo-audit:' + bucket });
+        // Flat literal removed: a repo-audit bucket is an EVENT/BUCKET marker, not a coherency.
+        // A constant cannot vary with what was measured, so contributing one
+        // moves the global EMA without carrying any information about it.
       } catch (_) { /* field optional */ }
     }
 

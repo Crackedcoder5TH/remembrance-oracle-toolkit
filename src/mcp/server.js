@@ -17,8 +17,28 @@ const { TOOLS: ORACLE_TOOLS } = require('./tools');
 const { HANDLERS: ORACLE_HANDLERS } = require('./handlers');
 const { VOID_TOOLS, VOID_HANDLERS } = require('./void-tools');
 
-// Merge: oracle_* + void_* tools share one MCP namespace
+// Merge: oracle_* + void_* tools share one MCP namespace.
+//
+// ADVERTISED and DISPATCHABLE are deliberately different sets. TOOLS is
+// what tools/list returns — the goggles, unless ORACLE_MCP_LEGACY_TOOLS=1.
+// DISPATCHABLE is every definition, so an explicit call to a retired tool
+// still resolves. Retiring means an agent stops SEEING 29 organs, not that
+// existing callers break: filtering the dispatch list too took 27 MCP tests
+// down instantly, which is the proof that these are two different questions.
 const TOOLS = [...ORACLE_TOOLS, ...VOID_TOOLS];
+const DISPATCHABLE = TOOLS;
+
+// ADVERTISED is what tools/list returns: the goggles alone. The other 29
+// are organs; the goggles already routes every one of their operations to
+// its canonical script, so advertising all of them forces an agent to know
+// which organ it wants and where each operation lives — exactly the
+// knowledge the instrument exists to remove.
+//
+// Retired means UNADVERTISED, never undispatchable: DISPATCHABLE stays the
+// full set so every existing caller keeps working. ORACLE_MCP_LEGACY_TOOLS=1
+// restores the old surface.
+const _LEGACY_SURFACE = /^(1|true|yes|on)$/i.test(String(process.env.ORACLE_MCP_LEGACY_TOOLS || ''));
+const ADVERTISED = _LEGACY_SURFACE ? TOOLS : TOOLS.filter((t) => t.name === 'goggles');
 const HANDLERS = { ...ORACLE_HANDLERS, ...VOID_HANDLERS };
 
 // ─── MCP Response Sanitizer ───
@@ -177,7 +197,7 @@ class MCPServer {
         return {
           jsonrpc: '2.0',
           id,
-          result: { tools: TOOLS },
+          result: { tools: ADVERTISED },
         };
 
       case 'tools/call':
@@ -196,7 +216,7 @@ class MCPServer {
    * Validate required parameters for a tool call against its inputSchema.
    */
   _validateParams(toolName, args) {
-    const tool = TOOLS.find(t => t.name === toolName);
+    const tool = DISPATCHABLE.find(t => t.name === toolName);
     if (!tool) return `Unknown tool: ${toolName}`;
     const required = tool.inputSchema?.required || [];
     const missing = required.filter(p => args[p] === undefined || args[p] === null);

@@ -192,7 +192,10 @@ function post(kind, payload) {
   });
   _save(store);
   const fc = _field();
-  if (fc) { try { fc.contribute({ cost: 1, coherence: 0.7, source: 'workqueue:post' }); } catch (_) { /* best-effort */ } }
+  // No field contribution: posting to a work queue is an EVENT, not a
+  // coherency reading. It used to write a flat 0.7 under the name
+  // `coherence`, so every queue post nudged the global EMA toward a number
+  // that measured nothing about the work.
   return id;
 }
 
@@ -217,7 +220,9 @@ function claim(nodeId) {
   item.claimedBy = nodeId || 'anonymous';
   item.claimedAt = now;
   _save(store);
-  if (fc) { try { fc.contribute({ cost: 1, coherence: 0.85, source: 'workqueue:claim' }); } catch (_) { /* best-effort */ } }
+  // Flat literal removed: claiming a queue item is an EVENT/BUCKET marker, not a coherency.
+  // A constant cannot vary with what was measured, so contributing one
+  // moves the global EMA without carrying any information about it.
   return { id: item.id, kind: item.kind, payload: item.payload };
 }
 

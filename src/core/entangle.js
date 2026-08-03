@@ -43,14 +43,24 @@ function _resolveNodeId() {
   return _nodeId;
 }
 
-/** Count of distinct nodes currently entangled with the field. */
+/**
+ * Count of distinct nodes currently entangled with the field.
+ *
+ * Reads the engine's node REGISTRY. This used to count sources beginning
+ * with `entangle:node:` in the coherency field's histogram — so the census
+ * was a side effect of a flat `coherence: 0.9` heartbeat, and the registry
+ * lived inside the field it was supposed to be independent of.
+ *
+ * Two things that fixes. The heartbeat no longer moves the global EMA by a
+ * constant that describes nothing about the node. And the census is now
+ * TTL-scoped: the old count included every machine that ever ran, so a
+ * one-off node inflated the abundance divisor permanently and every later
+ * node under-reported its cost.
+ */
 function _entangledNodeCount() {
   try {
-    const state = fc.peekField();
-    if (state && state.sources) {
-      const n = Object.keys(state.sources).filter(k => k.startsWith('entangle:node:')).length;
-      if (n > 0) return n;
-    }
+    const { getEngine } = require('./living-remembrance');
+    return getEngine().nodeCount();
   } catch (_) { /* field unreachable */ }
   return 1;
 }
@@ -92,7 +102,16 @@ function engage() {
 
   // Register this node so peers can count N for abundance amortization.
   try {
-    fc.contribute({ cost: _abundanceCost(), coherence: 0.9, source: `entangle:node:${nodeId}` });
+    // Announce presence to the REGISTRY, not to the coherency field.
+    //
+    // This was `contribute({ coherence: 0.9, source: 'entangle:node:<id>' })`
+    // — a flat constant that moved the global EMA on every heartbeat while
+    // saying nothing about the node, and which the census then counted. The
+    // registry was riding inside the field it was meant to be independent of,
+    // so presence and measurement distorted each other in both directions.
+    //
+    // Registering is now presence only: it touches no equation term.
+    require('./living-remembrance').getEngine().registerNode(nodeId);
   } catch (_) { /* best-effort */ }
 
   const onWarning   = () => _sense(0.5, 'warning');
@@ -140,4 +159,8 @@ function status() {
   };
 }
 
-module.exports = { engage, disengage, status };
+// nodeId is exported so the node's identity has ONE definition. field-tool
+// needs it to register presence on read, and a second copy of
+// `hash(hostname|pid|cwd)` is exactly the kind of duplicate that drifts
+// until two parts of the system disagree about who they are.
+module.exports = { engage, disengage, status, nodeId: _resolveNodeId };

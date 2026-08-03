@@ -39,6 +39,16 @@
             "statusMessage": "goggles: reading the inline command before it runs"
           }
         ]
+      },
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-web-hook.js 2>/dev/null || true",
+            "statusMessage": "goggles: reading the page through the substrate"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -65,6 +75,18 @@
             "type": "command",
             "command": "node ./scripts/session-context-load.mjs 2>/dev/null || true",
             "statusMessage": "loading prior-session substrate memory"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/precompact-digest.js 2>/dev/null || true",
+            "statusMessage": "substrate: marking what is load-bearing before compaction"
           }
         ]
       }

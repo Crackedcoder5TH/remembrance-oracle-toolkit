@@ -20,9 +20,13 @@
  *   r_eff(t)    = r₀ (1 + α [1 - p(t)]⁴)          retro-causal pull (4th-power kernel:
  *                                                  quiet near healed, roaring when drifted)
  *   δ_void(t)   = δ₀ (1 - p(t))                   void coherence donation
- *   cascade(t)  = 1 + (cascade-1)·e^(-Δt/τ) + κp  recent-load gauge — relaxes toward
- *                                                  1.0 between contributions, bumped
- *                                                  by each; a burst outpaces the decay
+ *   cascade(t)  → EMA toward min(5, mean_interval/Δt)  load RELATIVE to this field's
+ *                                                  OWN learned baseline rate. 1.0 = the
+ *                                                  usual rate, >1 = a genuine burst,
+ *                                                  and a sustained burst becomes the
+ *                                                  new baseline (correctly settling
+ *                                                  back toward 1.0). A fixed τ pinned
+ *                                                  the gauge at its cap — see contribute().
  *   entropy(t)  = cost / (coherence(t) + ε)       cost normalized by alignment —
  *                                                  THE entropy field that balances
  *                                                  cost across the ecosystem.
@@ -148,6 +152,10 @@ class LivingRemembranceEngine {
           updateCount:      typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
           timestamp:        parsed.timestamp || Date.now(),
           sources:          (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
+          // Carried through load so layer attention survives a restart.
+          layerReliability: (parsed.layerReliability && typeof parsed.layerReliability === 'object') ? parsed.layerReliability : {},
+          nodes:            (parsed.nodes && typeof parsed.nodes === 'object') ? parsed.nodes : {},
+          meanIntervalMs:   typeof parsed.meanIntervalMs === 'number' ? parsed.meanIntervalMs : 0,
         };
       }
     } catch (_e) { loaded = null; }
@@ -245,10 +253,30 @@ class LivingRemembranceEngine {
     const w = (typeof resonance === 'number' && isFinite(resonance)) ? Math.max(0, Math.min(1, resonance)) : 1;
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;
-    // Coherence cap at 0.999 — Void contract C-56. The Python LRE
-    // (living_remembrance.py) and the TS LRE (core/living-remembrance-
-    // engine.ts) both enforce this. The hub JS LRE had drifted from
-    // that invariant; one-line fix restores parity.
+    // THE LAW OF COHERENCY. A coherency reading lives in [0, 1] — always,
+    // however capable the instrument that produced it. The cap enforces the
+    // law. The Python LRE (living_remembrance.py) and the TS LRE
+    // (core/living-remembrance-engine.ts) enforce the same bound; the hub JS
+    // LRE was brought back to parity with them.
+    //
+    // The ratchet and the bound are not in tension. Coherency climbs and is
+    // never artificially stopped — that is the ratchet, and it is unbounded in
+    // the sense of never being switched off. It is NOT unbounded in magnitude:
+    // the climb happens inside [0, 1]. The one term that grows without end is
+    // coherenceIntegral below, and it does so because it is a SUM of readings
+    // rather than a reading.
+    //
+    // ⚠ This comment used to cite "Void contract C-56" as the cap's authority
+    // while C-56 demanded the opposite — no ceiling, growth past 1.0. That is
+    // why the two looked contradictory. C-56 has since been RETIRED in
+    // Void/verify_capabilities.py: its ratchet half was the law, its
+    // no-ceiling half broke the law, and satisfying it meant violating what it
+    // existed to protect. C-58 now states both quantities.
+    //
+    // Load-bearing, not bookkeeping: globalEntropy = cost/(coherence+eps), so
+    // a coherency allowed past 1 lets the field drive its own entropy toward
+    // zero by inflating the denominator — improvement reported no matter what
+    // was fed in. The bound is what keeps the field's own readings honest.
     const newCoherence = Math.max(0, Math.min(0.999, prev + (target - prev) * w));
 
     // cascadeFactor is a recent-load gauge, not a running tally. It
@@ -259,12 +287,35 @@ class LivingRemembranceEngine {
     // added, so it pinned at the 5.0 cap permanently and latched the
     // fieldPressure "hot" signal forever.
     const now = Date.now();
-    const dt  = Math.max(0, now - (this._state.timestamp || now));
-    // cascadeTau > 0 guards the division — a non-positive time constant
-    // means "instant decay", so the field fully relaxes to baseline.
-    const cascadeDecay   = cascadeTau > 0 ? Math.exp(-dt / cascadeTau) : 0;
-    const cascadeRelaxed = 1.0 + (this._state.cascadeFactor - 1.0) * cascadeDecay;
-    const cascadeFactor  = Math.min(5.0, Math.max(1.0, cascadeRelaxed + 0.05 * newCoherence));
+    const dt  = Math.max(1, now - (this._state.timestamp || now));
+
+    // cascadeFactor measures load RELATIVE TO THIS FIELD'S OWN BASELINE.
+    //
+    // It used to relax against a fixed tau of 60 s. Measured on the live
+    // field: 775,537 updates, mean inter-contribution interval 5.2 s, so
+    // exp(-dt/tau) = 0.917 per update — the relaxation barely removed
+    // anything, and during an active session (contributions milliseconds
+    // apart) the decay is 1.0 exactly. The gauge ratcheted to the 5.0 cap
+    // and stayed there, which is the same latched-hot failure the fixed
+    // relaxation was introduced to cure, arriving by volume instead of by
+    // the old monotonic rule.
+    //
+    // An absolute time constant cannot work for a field whose natural rate
+    // is unknown and changes with how the ecosystem is being used. So the
+    // field learns its own baseline interval and reports the RATIO: 1.0
+    // means "arriving at the usual rate", above 1 means a genuine burst,
+    // and a quiet period pulls it back below baseline toward 1.0.
+    const prevMean = (typeof this._state.meanIntervalMs === 'number' && this._state.meanIntervalMs > 0)
+      ? this._state.meanIntervalMs : dt;
+    // Slow EMA so the baseline is a baseline, not an echo of the last gap.
+    const meanIntervalMs = prevMean + 0.02 * (dt - prevMean);
+    const ratio        = meanIntervalMs / dt;
+    const cascadeTarget = Math.min(5.0, Math.max(1.0, ratio));
+    // cascadeTau is retained as the SMOOTHING horizon for the gauge itself,
+    // so a single fast contribution cannot spike it.
+    const smooth = cascadeTau > 0 ? Math.min(1, dt / cascadeTau) : 1;
+    const cascadeFactor = Math.min(5.0, Math.max(1.0,
+      this._state.cascadeFactor + Math.max(0.02, smooth) * (cascadeTarget - this._state.cascadeFactor)));
 
     // Per-source histogram — the field tracks who's contributing so it
     // can answer "what's wired" and "what's missing" introspectively.
@@ -273,18 +324,35 @@ class LivingRemembranceEngine {
       const prev = sources[source] || { count: 0, lastCoherence: 0, lastTimestamp: 0 };
       sources[source] = {
         count: prev.count + 1,
+        // NOTE: this is the FIELD's coherence after this source last
+        // contributed — not the reading the source supplied. The two differ
+        // whenever p differs from the state it pulls toward (input p=0.1264
+        // recorded as 0.1790 in a live check). The name reads like the
+        // latter, so anyone auditing "what is this source reporting?" from
+        // the histogram is reading the field's response, not the source's
+        // input. Kept as-is because it is persisted state that consumers
+        // already parse; `lastInput` alongside it would be the clean fix.
         lastCoherence: newCoherence,
+        lastInput: (typeof p === 'number' && isFinite(p)) ? p : null,
         lastTimestamp: now,
       };
     }
 
     this._state = {
+      // Carry forward everything not recomputed here. This object literal
+      // used to be built from scratch, so every contribute() silently DROPPED
+      // layerReliability and nodes — the encoder's learned attention and the
+      // node registry were erased by the next contribution. Both stores are
+      // deliberately outside the equation, which is exactly why rebuilding
+      // state from the equation's own terms lost them.
+      ...this._state,
       coherence:         newCoherence,
       // ∫p accumulates the input coherence p(t) per the master equation,
       // not the post-update newCoherence.
       coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost * w,
       globalEntropy:     cost / (newCoherence + epsilon),
       cascadeFactor,
+      meanIntervalMs,
       updateCount:       this._state.updateCount + 1,
       timestamp:         now,
       sources,
@@ -303,6 +371,88 @@ class LivingRemembranceEngine {
   /** Read the current ecosystem state without contributing. */
   getState() {
     return { ...this._state };
+  }
+
+  /**
+   * Entangled-node registry — presence, not a reading.
+   *
+   * entangle.js used to announce a node by contributing a flat
+   * `coherence: 0.9` under source `entangle:node:<id>`, then counted those
+   * sources to get the node census. So a REGISTRY lived inside the coherency
+   * field, and every heartbeat moved the global EMA by a constant that
+   * described nothing about the node.
+   *
+   * It could not simply be deleted — the contribution WAS the census.
+   * Presence now has its own store, so the registry and the field are
+   * separate concerns and the data can flow without one distorting the other.
+   *
+   * Nodes carry a last-seen stamp so the census reflects who is actually
+   * here. A registry that only ever grows is not a census, it is a log.
+   */
+  registerNode(nodeId, ttlMs = 15 * 60 * 1000) {
+    if (!nodeId) return 0;
+    const now = Date.now();
+    const nodes = { ...(this._state.nodes || {}) };
+    nodes[String(nodeId)] = now;
+    // Drop nodes not seen within the TTL — otherwise a machine that ran once
+    // inflates the abundance divisor forever and every later node
+    // under-reports its cost.
+    for (const [id, seen] of Object.entries(nodes)) {
+      if (typeof seen !== 'number' || now - seen > ttlMs) delete nodes[id];
+    }
+    this._state = { ...this._state, nodes };
+    this._persist();
+    return Object.keys(nodes).length;
+  }
+
+  /** How many distinct nodes are currently entangled. Never below 1. */
+  nodeCount(ttlMs = 15 * 60 * 1000) {
+    const now = Date.now();
+    const nodes = this._state.nodes || {};
+    let n = 0;
+    for (const seen of Object.values(nodes)) {
+      if (typeof seen === 'number' && now - seen <= ttlMs) n++;
+    }
+    return Math.max(1, n);
+  }
+
+  /**
+   * Per-layer encoder reliability — its OWN store, deliberately not the
+   * coherency field.
+   *
+   * field-gated-compose.js needs to remember how well each encoder layer has
+   * tracked a trusted verdict. It did this by calling
+   * contribute({ coherence: agreement, source: 'encoder:L<n>' }) and reading
+   * the value back out of the sources histogram — using the coherency field
+   * as a key-value store.
+   *
+   * An agreement score is not a coherency. Writing one through contribute()
+   * feeds it into the global EMA, the entropy term and the cascade gauge,
+   * which is precisely the substitution that put 41 wrong contributions into
+   * this field. Wiring the learning loop that way would have reintroduced it
+   * eight layers at a time.
+   *
+   * So reliability lives here, beside the field rather than inside it: it
+   * persists with the state, survives restarts, and moves no equation term.
+   */
+  getLayerReliability(layerIdx, fallback = 0.5) {
+    const m = this._state.layerReliability;
+    const v = m && m['L' + (layerIdx + 1)];
+    return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(1, v)) : fallback;
+  }
+
+  /**
+   * Record a layer's reliability. Returns the stored value.
+   * Does NOT touch coherence, globalEntropy, cascadeFactor or updateCount.
+   */
+  setLayerReliability(layerIdx, value) {
+    if (typeof value !== 'number' || !isFinite(value)) return null;
+    const v = Math.max(0, Math.min(1, value));
+    const m = { ...(this._state.layerReliability || {}) };
+    m['L' + (layerIdx + 1)] = v;
+    this._state = { ...this._state, layerReliability: m, reliabilityUpdatedAt: Date.now() };
+    this._persist();
+    return v;
   }
 
   /**
@@ -333,17 +483,28 @@ class LivingRemembranceEngine {
    * @param {{cost?:number, coherence:number}} obs
    * @returns {number} projected coherence
    */
-  peekProjection({ cost = 1.0, coherence = null } = {}) {
+  peekProjection({ cost = 1.0, coherence = null, resonance = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
     const { r0, alpha, delta0 } = this._params;
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
     const delta_void = delta0 * Math.max(0, 1 - p);
-    return Math.max(0, Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15));
+    // Must apply the SAME authority weight and the SAME prev-anchored EMA as
+    // contribute(), or the projection answers a different question than the
+    // call it claims to project. It previously returned the bare target,
+    // which equals the real result only when w === 1 — true of every caller
+    // until resonance was wired, and false the moment one passes it. A
+    // predictor that silently stops matching the thing it predicts is worse
+    // than no predictor.
+    const w = (typeof resonance === 'number' && isFinite(resonance))
+      ? Math.max(0, Math.min(1, resonance)) : 1;
+    const target = p + r_eff * 0.1 + delta_void * 0.15;
+    const prev = this._state.coherence;
+    return Math.max(0, Math.min(0.999, prev + (target - prev) * w));
   }
 
   /** Reset state — primarily for tests / fresh runs. */
   reset() {
-    this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
+    this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {}, layerReliability: {}, nodes: {} };
     this._persist();
   }
 }

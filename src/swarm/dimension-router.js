@@ -177,17 +177,9 @@ function parseAgentResponse(response) {
 
   const __retVal = { code, explanation, confidence };
   // ── LRE field-coupling (main return path; was buried in !response guard) ──
-  try {
-    const __lre_p1 = '../core/field-coupling';
-    const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
-    for (const __p of [__lre_p1, __lre_p2]) {
-      try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__retVal.confidence) || 0)), source: 'oracle:dimension-router:parseAgentResponse' });
-        break;
-      } catch (_) { /* try next */ }
-    }
-  } catch (_) { /* best-effort */ }
+  // field contribution removed: contributed confidence (via __retVal), not a coherency.
+  // Auto-wired by scripts/wire-field-couplings.js, whose NUMERIC_FIELDS
+  // list treated any numeric-looking return field as a coherence signal.
   return __retVal;
 }
 

@@ -145,7 +145,13 @@ function runMap(dir, { deep = false } = {}) {
     if (gb) {
       console.log('  index-only entries: ' + gb.seededPatternCount + ' seeded patterns (never files)'
         + ' · ' + gb.walkInvisibleCount + ' on disk but outside walk rules'
+        + (gb.supersededDuplicateCount ? ' · ' + gb.supersededDuplicateCount + ' superseded duplicate keys' : '')
         + ' · ' + gb.deletedCount + ' deleted since ingestion');
+      // Superseded keys are NOISE — an older key scheme for a file the index
+      // already holds under the current one. Deletions are HISTORY. Reporting
+      // them as one number said this repo had lost 50 files when it had lost
+      // 24 and double-counted 26.
+      for (const d of (gb.supersededDuplicate || []).slice(0, 3)) console.log('    superseded: ' + d);
       for (const d of (gb.deleted || []).slice(0, 5)) console.log('    deleted: ' + d);
     } else {
       console.log('  index-only entries: ' + cov.ghostCount);
@@ -527,6 +533,124 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
   } catch { /* stat best-effort */ }
 }
 
+/**
+ * VERSION PROVENANCE — the first thing a reader must know.
+ *
+ * Version families (void_compressor_v3/v4/v5, coherency_v1..v3,
+ * derived_covenant_v1..v7) coexist on disk with nothing marking which is
+ * live. A reader tracing behaviour lands in v3 and reports on "the
+ * compressor" while the entry point is v5 — a mistake made in this very
+ * session, twice. CANONICAL.json (scripts/build_canonical_manifest.py)
+ * records the roles; this prints them at the TOP of every read, before any
+ * number, so the reading can never be attributed to the wrong file.
+ */
+function printCanonicalStatus(absFile) {
+  let dir = path.dirname(absFile);
+  let manifest = null;
+  for (let i = 0; i < 6; i++) {
+    const p = path.join(dir, 'CANONICAL.json');
+    if (fs.existsSync(p)) {
+      try { manifest = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { /* unreadable */ }
+      break;
+    }
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  if (!manifest || !manifest.families) return;
+  const base = path.basename(absFile);
+  for (const [fam, info] of Object.entries(manifest.families)) {
+    const me = (info.members || []).find((m) => m.file === base);
+    if (!me) continue;
+    if (me.role === 'entry-point') {
+      console.log(`  ✓ CANONICAL — this is the live entry point of the "${fam}" family`);
+    } else if (me.role === 'load-bearing-internal') {
+      console.log(`  ⚠ NOT THE ENTRY POINT — "${fam}" family. This file still EXECUTES`);
+      console.log(`    (called by the live path) but the API is ${info.canonical}.`);
+      console.log(`    Behaviour you read here is real; do not report it as "the ${fam.replace(/\.[a-z]+$/, '')}".`);
+    } else {
+      console.log(`  ⛔ SUPERSEDED — "${fam}" family. Live version is ${info.canonical}.`);
+      console.log(`    Do not analyse this as current.`);
+    }
+    return;
+  }
+}
+
+/**
+ * DOC CAVEATS — surface a document's own warnings BEFORE its content.
+ *
+ * The failure this prevents, observed repeatedly: a reader opens a doc
+ * hunting one thing (a formula), extracts it, and skims past the document's
+ * own ⚠ CORRECTION saying that very thing is unconfirmed. In
+ * COMPRESSION-EQUATION.md the correction sits at line 26 and the
+ * contradicting "🟢 HOLDS" at line 133 — Spearman 0.21 vs 0.98, same metric,
+ * same file. Partial-read-plus-inference cannot catch that; a reader must
+ * see the caveats first, so they are printed before any reading.
+ *
+ * Also flags INTERNAL CONTRADICTIONS: the same named metric asserted with
+ * materially different values in one document.
+ */
+function printDocCaveats(absFile) {
+  if (!/\.(md|markdown|txt)$/i.test(absFile)) return;
+  let text;
+  try { text = fs.readFileSync(absFile, 'utf8'); } catch { return; }
+  const lines = text.split('\n');
+
+  const CAVEAT = /(⚠|🛑|\bCORRECTION\b|\bDEPRECATED\b|\bSUPERSEDED\b|\bUNCONFIRMED\b|\bdoes NOT\b|\bis NOT\b|\bno longer\b|\bstale\b|\bDO NOT\b)/;
+  const caveats = [];
+  lines.forEach((ln, i) => {
+    if (CAVEAT.test(ln) && ln.trim().length > 12) {
+      caveats.push({ line: i + 1, text: ln.replace(/^[>#\s*-]+/, '').trim().slice(0, 96) });
+    }
+  });
+
+  // same metric name, materially different asserted values
+  const METRIC = /\b(spearman|pearson|auc|ratio|coherence|coherency|correlation|r²|rho|ρ)\b[^0-9\-\n]{0,24}(-?\d+\.\d+)/gi;
+  // A line that states a THRESHOLD or a TOLERANCE ("Spearman < 0.70",
+  // "1.0 ± 0.1") is not asserting a measurement — it is declaring a bound.
+  // Counting those as claims manufactures contradictions that aren't there.
+  // A comparator only signals a bound when it sits against a NUMBER — the
+  // leading `>` of a markdown blockquote must not silence the whole line
+  // (the sharpest corrections in this ecosystem are written as blockquotes).
+  const BOUND = /[<>≤≥]\s*\d|±\s*\d|\bthreshold\b|\bbound\b|\bat least\b|\bat most\b/i;
+  const byMetric = new Map();
+  lines.forEach((ln, i) => {
+    let m;
+    if (BOUND.test(ln.replace(/^[>#\s*-]+/, ''))) return;
+    METRIC.lastIndex = 0;
+    while ((m = METRIC.exec(ln)) !== null) {
+      const key = m[1].toLowerCase();
+      const val = parseFloat(m[2]);
+      if (!Number.isFinite(val)) continue;
+      if (!byMetric.has(key)) byMetric.set(key, []);
+      byMetric.get(key).push({ val, line: i + 1 });
+    }
+  });
+  const conflicts = [];
+  for (const [key, vals] of byMetric) {
+    if (vals.length < 2) continue;
+    const lo = vals.reduce((a, b) => (a.val <= b.val ? a : b));
+    const hi = vals.reduce((a, b) => (a.val >= b.val ? a : b));
+    // Two values on the SAME line are a range, not a disagreement.
+    if (lo.line === hi.line) continue;
+    if (hi.val - lo.val >= 0.30) {
+      conflicts.push({ key, lo, hi });
+    }
+  }
+
+  if (!caveats.length && !conflicts.length) return;
+  console.log('  ── THIS DOCUMENT CARRIES ITS OWN WARNINGS (read these first) ──');
+  for (const c of caveats.slice(0, 4)) {
+    console.log(`     ⚠ L${c.line}: ${c.text}`);
+  }
+  if (caveats.length > 4) console.log(`     …and ${caveats.length - 4} more caveat line(s)`);
+  for (const c of conflicts.slice(0, 3)) {
+    console.log(`     ⛔ INTERNAL CONTRADICTION — "${c.key}" asserted as `
+      + `${c.lo.val} (L${c.lo.line}) and ${c.hi.val} (L${c.hi.line})`);
+  }
+  console.log('     Do not quote this document without reconciling the above.');
+}
+
 function bar(x, width = 22) {
   const n = Math.max(0, Math.min(width, Math.round((x || 0) * width)));
   return '█'.repeat(n) + '·'.repeat(width - n);
@@ -551,6 +675,42 @@ function consonanceVerdict(meanTopK, best) {
   if (meanTopK >= GOG.resonanceFamiliar) return ['FAMILIAR', 'broadly in keeping with the codebase'];
   if (meanTopK >= GOG.resonanceDistinct) return ['DISTINCT', 'a shape the codebase uses only loosely — worth a second look'];
   return ['OUTLIER', 'structurally novel here — either genuinely new, or drifting from the codebase'];
+}
+
+/**
+ * Is auto-ingest on for this read? Default ON — looking witnesses.
+ *
+ * Resolution order is most-specific-wins so the toggle exists at every level
+ * someone would reasonably want it: a single command, a shell or hook, or a
+ * whole repo. Returns a boolean; never throws.
+ */
+function resolveAutoIngest(absFile) {
+  const argv = process.argv.slice(2);
+  if (argv.includes('--no-ingest')) return false;
+  if (argv.includes('--ingest')) return true;
+
+  const env = process.env.GOGGLES_AUTO_INGEST;
+  if (env !== undefined && env !== '') {
+    return !/^(0|false|no|off)$/i.test(String(env).trim());
+  }
+
+  // Per-repo config: walk up from the file for .remembrance/goggles.json.
+  try {
+    let dir = path.dirname(path.resolve(absFile || process.cwd()));
+    for (let i = 0; i < 8; i++) {
+      const cfg = path.join(dir, '.remembrance', 'goggles.json');
+      if (fs.existsSync(cfg)) {
+        const j = JSON.parse(fs.readFileSync(cfg, 'utf8'));
+        if (typeof j.autoIngest === 'boolean') return j.autoIngest;
+        break;
+      }
+      const up = path.dirname(dir);
+      if (up === dir) break;
+      dir = up;
+    }
+  } catch (_) { /* unreadable config must not disable witnessing */ }
+
+  return true;   // default ON
 }
 
 function main() {
@@ -580,7 +740,23 @@ function main() {
   }
 
   const language = LANG_BY_EXT[path.extname(abs)] || 'text';
-  const r = ft.read({ content, name: file, language }, { source: 'goggles', growSubstrate: false, topK: top });
+  // AUTO-INGEST — on by default. Looking at a file WITNESSES it.
+  //
+  // This was hardcoded `growSubstrate: false`, so reading never grew the
+  // substrate: goggling a file moved updateCount by exactly 0 and every file
+  // read "drifted from substrate memory — re-harvest to re-witness". The
+  // substrate only learned when explicitly harvested, which meant the act of
+  // looking and the act of remembering were separate chores.
+  //
+  // Now the read ingests unless told otherwise. Precedence, most specific
+  // first, so a turn-off is always available at the level you need it:
+  //   --no-ingest / --ingest      per invocation
+  //   GOGGLES_AUTO_INGEST=0/1     per shell or per hook
+  //   .remembrance/goggles.json   { "autoIngest": false }  per repo
+  //   default                     ON
+  const autoIngest = resolveAutoIngest(abs);
+  const r = ft.read({ content, name: file, language },
+    { source: 'goggles', growSubstrate: autoIngest, topK: top });
   const vr = r.voidResonance || r.resonance || {};
   const meanTopK = vr.meanTopK ?? 0;
   const [tag, gloss] = consonanceVerdict(meanTopK, vr.bestMatch);
@@ -589,6 +765,20 @@ function main() {
   console.log('\n' + '═'.repeat(W));
   console.log('  GOGGLES   ' + section);
   console.log('═'.repeat(W));
+
+  // ── BRIEF, folded in ──
+  // Traps and canonical status belong to the same act as looking at a file:
+  // you are about to touch it, so what has already gone wrong here and
+  // whether this is even the live version come FIRST, before the structural
+  // read. Keeping them in a separate tool meant they were a second call, and
+  // the second call is the one that gets skipped.
+  try {
+    const brief = require('./brief');
+    brief.printTraps(abs);
+    brief.printIdentity(abs);
+  } catch (_) { /* brief optional — never break a read */ }
+  printCanonicalStatus(abs);
+  printDocCaveats(abs);
 
   // ── FOCUS ──
   console.log('  FOCUS  (the section you are editing)');
@@ -620,14 +810,38 @@ function main() {
     const idxPath = path.resolve(__dirname, '..', '..', 'ecosystem-capabilities.json');
     if (matches.length && fs.existsSync(idxPath)) {
       const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+      // Show HOW TO CALL, not just that it exists. A bare name tells you a
+      // function is there and where it lives; it does not tell you what to
+      // pass. That gap is paid in wrong invocations — `orchestrate diagnose`
+      // took three tries before someone read its arg parsing. The parameter
+      // list (and the first line of its JSDoc) is what makes a listed
+      // capability actually callable from here.
+      // ACTIONABLE, not merely informative. Knowing a function exists and what
+      // it takes still leaves the reader to work out the module path, the
+      // require form and the repo it resolves from — three more steps between
+      // seeing a capability and using it, each one a chance to get it wrong.
+      // Each entry now carries the exact reference to invoke it, and
+      // `goggles --do call <ref> [json-args]` runs it through the same one
+      // surface, so a surfaced capability is directly drivable.
       const lines = [];
       for (const m of matches) {
         const fns = idx.byPath && idx.byPath[m.name];
-        if (fns && fns.length) lines.push(`       ${m.name}  →  ${fns.slice(0, 8).join(', ')}${fns.length > 8 ? ', …' : ''}`);
+        if (!fns || !fns.length) continue;
+        lines.push(`       ${m.name}`);
+        const sigs = (idx.callSigs && idx.callSigs[m.name]) || {};
+        for (const fn of fns.slice(0, 6)) {
+          const c = sigs[fn];
+          const call = c ? `${fn}(${c.params})` : `${fn}(?)`;
+          lines.push(`          ${call}${c && c.doc ? `   — ${c.doc}` : ''}`);
+          lines.push(`             ↳ goggles --do call ${m.name}#${fn}`);
+        }
+        if (fns.length > 6) lines.push(`          … +${fns.length - 6} more`);
       }
       if (lines.length) {
-        console.log(`    ECOSYSTEM CAPABILITIES (callable in those neighbours · ${idx.totalFunctions} fns indexed):`);
+        console.log(`    ECOSYSTEM CAPABILITIES (callable in those neighbours · ${idx.totalFunctions} fns indexed`
+          + `${idx.callableFunctions ? `, ${idx.callableFunctions} with signatures` : ''}):`);
         for (const l of lines) console.log(l);
+        console.log('       run any of them:  goggles --do call <path>#<fn> [jsonArg ...]');
       }
     }
   } catch (_) { /* index optional — regenerate with build-capability-index.js */ }

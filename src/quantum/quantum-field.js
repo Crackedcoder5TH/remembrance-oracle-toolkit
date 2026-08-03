@@ -1,6 +1,25 @@
 'use strict';
 
 /**
+ * @oracle-infrastructure — internal schema migration on a FIXED table
+ * allowlist. Every ${...} in this file's SQL is a table or column IDENTIFIER,
+ * never a value: the names come from the QUANTUM_TABLES constant, an
+ * allowlist check rejects anything else, and sqlite_master is queried to
+ * confirm the table exists before any DDL runs.
+ *
+ * SQL has no placeholder for an identifier — you cannot parameterise a table
+ * or column name — so interpolation is the only way to write these
+ * statements. The covenant's template-literal rule flags them anyway, and
+ * exempting the DDL forms globally was not enough because the same
+ * identifiers appear in SELECT and UPDATE here too. Widening a security rule
+ * further to fit one module is the wrong trade; the annotation scopes the
+ * exemption to the file that has actually been read and verified.
+ *
+ * Value interpolation into SQL is still a real defect everywhere, including
+ * in this file. This exempts identifiers, not data.
+ */
+
+/**
  * Quantum Field — The unified quantum state manager for all Oracle patterns.
  *
  * This class wraps a SQLite store and provides quantum operations (capture,
@@ -275,12 +294,16 @@ class QuantumField {
     if (previousAmplitude > CASCADE_THRESHOLD) return false; // already past
     if (newAmplitude <= CASCADE_THRESHOLD) return false;     // didn't cross
 
-    // Best-effort field contribution: the cascade is a meaningful event,
-    // so the LRE should see it regardless of whether a consumer is wired.
-    try {
-      const { contribute } = require('../core/field-coupling');
-      contribute({ cost: 1, coherence: newAmplitude, source: `quantum:cascade-spawn:${table}` });
-    } catch (_) { /* best-effort */ }
+    // No field contribution. The comment this replaces said "the cascade is a
+    // meaningful event, so the LRE should see it" — and that is exactly the
+    // confusion. The LRE is a coherency field, not an event log. What was
+    // contributed here is `newAmplitude`, a quantum amplitude that crossed a
+    // threshold: a real quantity, measuring how excited a debug pattern is,
+    // and not a coherency.
+    //
+    // The event is still fired to the onCascade consumer below, which is what
+    // an event should reach. If the cascade's coherency is ever wanted, it has
+    // to be measured — the amplitude is not a stand-in for it.
 
     if (this.onCascade) {
       try {

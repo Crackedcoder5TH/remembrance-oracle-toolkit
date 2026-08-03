@@ -263,7 +263,9 @@ function _recordFalsePositive(state, fp, finding, opts = {}) {
     if (fc && typeof fc.contribute === 'function') {
       // An FP is incoherent signal — contribute it at low coherence under a source
       // the histogram keeps, so "what mistakes has it learned" is queryable.
-      fc.contribute({ cost: 1, coherence: 0.05, source: 'goggles:false-positive:' + ((finding && finding.bugClass) || 'unknown') });
+      // Flat literal removed: marking a false positive is an EVENT/BUCKET marker, not a coherency.
+      // A constant cannot vary with what was measured, so contributing one
+      // moves the global EMA without carrying any information about it.
     }
   } catch (_) { /* histogram contribution optional */ }
 }

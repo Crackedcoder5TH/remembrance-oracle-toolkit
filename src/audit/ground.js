@@ -312,6 +312,9 @@ function groundFile(filePath, knownIdentifiers, options = {}) {
     registerGroundSignal(ungrounded.length, calls.length);
   } catch { /* emergent module not available */ }
 
+  const _gr = calls.length > 0 ? groundedHits.length / calls.length : 1;
+  _contributeGrounding({ error: null, totalCalls: calls.length, ungrounded, rate: _gr });
+
   return {
     file: filePath,
     totalCalls: calls.length,
@@ -543,6 +546,24 @@ function resolveIndirections(code) {
   }
 
   return results;
+}
+
+// FIELD: grounding ratio is a quality reading — the fraction of calls that
+// resolve to something known. High for well-grounded code, low when a file
+// calls into the void. Contributed per file so the field learns the
+// ecosystem's grounding, not just its defects. Best-effort: a field failure
+// must never break an audit.
+function _contributeGrounding(res) {
+  try {
+    if (!res || res.error || !res.totalCalls) return;
+    const ratio = (typeof res.rate === 'number') ? res.rate
+      : 1 - (res.ungrounded.length / res.totalCalls);
+    require('../core/field-coupling').contribute({
+      cost: 1.0,
+      coherence: Math.max(0, Math.min(1, ratio)),
+      source: 'audit:ground:grounding-ratio',
+    });
+  } catch (_) { /* field optional */ }
 }
 
 module.exports = {

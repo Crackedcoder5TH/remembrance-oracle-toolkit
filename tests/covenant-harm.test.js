@@ -37,8 +37,12 @@ test('every harm pattern is a well-formed rule', () => {
   assert.ok(HARM_PATTERNS.length >= 20, 'catalog present');
   for (const p of HARM_PATTERNS) {
     assert.ok(p.pattern instanceof RegExp, 'pattern is a RegExp');
-    assert.ok(Number.isInteger(p.principle) && p.principle >= 2 && p.principle <= 15,
-      'principle in 2..15');
+    // 1..15, not 2..15. The lower bound used to be 2 because P1 (I AM) had no
+    // harm pattern — an accident of the catalog frozen into an assertion, so
+    // the first rule written for P1 failed a test whose job was to check
+    // well-formedness. P1, P4 and P5 are all enforced now.
+    assert.ok(Number.isInteger(p.principle) && p.principle >= 1 && p.principle <= 15,
+      'principle in 1..15');
     assert.ok(typeof p.reason === 'string' && p.reason.length > 0, 'reason present');
   }
 });

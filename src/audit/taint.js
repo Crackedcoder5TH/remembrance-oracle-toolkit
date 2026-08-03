@@ -217,8 +217,9 @@ function matchesChainPrefix(chain, pattern) {
  * @param {Set<string>} tainted - pre-computed tainted vars
  * @param {(finding) => void} emit - callback to push a finding
  */
-function findSinkCalls(fn, tainted, emit) {
+function findSinkCalls(fn, tainted, emit, regexIdents) {
   const tokens = fn.bodyTokens || [];
+  const known = regexIdents instanceof Set ? regexIdents : null;
 
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
@@ -255,7 +256,9 @@ function findSinkCalls(fn, tainted, emit) {
     // RegExp.prototype.exec (a string match), not child_process.exec, db.exec,
     // or a shell. This was the #1 false positive on real-world parsing code
     // (axios: tokensRE.exec, DATA_URL_PATTERN.exec, pattern.exec).
-    if (chain.length > 1 && looksLikeRegex(chain[chain.length - 2])) {
+    // Prefer the binding this file actually declares; fall back to the name.
+    const recv = chain[chain.length - 2];
+    if (chain.length > 1 && ((known && known.has(recv)) || looksLikeRegex(recv))) {
       i += chain.length - 1;
       continue;
     }
@@ -305,6 +308,29 @@ function looksLikeRegex(name) {
   if (!name) return false;
   return /(?:[a-z]RE|_RE|REGEXP?|PATTERN|Regexp?|Pattern|Matcher)$/.test(name)
       || /^(re|rx|regex|regexp|pattern|matcher)$/i.test(name);
+}
+
+/**
+ * Identifiers this file actually BINDS to a regex.
+ *
+ * looksLikeRegex above guesses from the name, which only catches receivers
+ * that happen to be spelled like regexes. Anything named for what it MEANS
+ * rather than what it IS — SEAL, METRIC, CAVEAT, BOUND, CORRECTION — slipped
+ * through and got reported as shell injection on a `RegExp.prototype.exec`
+ * call. Reading the binding decides it instead of inferring from spelling.
+ *
+ * Deliberately conservative: only direct `const X = /.../` and
+ * `const X = new RegExp(...)` at any scope. A regex reached through a
+ * property or returned from a call still falls back to the name heuristic.
+ */
+const REGEX_BINDING = /(?:^|[;{}\n])\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:\/(?![/*])|new\s+RegExp\b)/g;
+function collectRegexIdents(source) {
+  const set = new Set();
+  if (typeof source !== 'string') return set;
+  let m;
+  REGEX_BINDING.lastIndex = 0;
+  while ((m = REGEX_BINDING.exec(source)) !== null) set.add(m[1]);
+  return set;
 }
 
 /**
@@ -429,6 +455,7 @@ function classifyFunctionTaint(code) {
 module.exports = {
   computeTainted,
   findSinkCalls,
+  collectRegexIdents,
   readMemberChain,
   classifyFunctionTaint,
   TAINTED_CHAINS,

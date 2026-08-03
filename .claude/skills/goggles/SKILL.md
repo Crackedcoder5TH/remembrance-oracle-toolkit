@@ -45,6 +45,54 @@ From the repo you're working in:
     node .claude/skills/goggles/run.mjs <file> [...]      # 2. focused reads while working
     node .claude/skills/goggles/run.mjs --diff            # 3. changed-vs-HEAD before commit
 
+## Drive it — the goggles are the ONE surface
+
+Reading and DRIVING the substrate are the same tool. The read modes above
+SEE it; `--do <verb>` runs the substrate's operations, each routed to its
+canonical script across the ecosystem so you never need to know where the
+operation physically lives:
+
+    run.mjs --do field                 # peek the Living Remembrance field state
+    run.mjs --do drift [repo|all]      # substrate drift check (no encoding)
+    run.mjs --do harvest [repo|all]    # witness files (sanitized at the doorway)
+    run.mjs --do absorb                # hub patterns → Void (export → inbox)
+    run.mjs --do publish <json>        # publish a pattern/coin to the ledger
+    run.mjs --do coin [--publish]      # mint the git-history recovery coin
+    run.mjs --do export <drive-path>   # export the data plane to a mounted drive
+    run.mjs --do verify <snapshot>     # re-check an export's integrity
+    run.mjs --do contracts [--strict]  # the falsifiable contracts (Void truth-spine)
+    run.mjs --do orchestrate status    # coherency zones + the healing queue
+    run.mjs --do orchestrate diagnose --file <f>   # root-cause one zone
+    run.mjs --do orchestrate heal --file <f>       # heal one zone
+    run.mjs --do audit                 # what actually feeds the field
+    run.mjs --do fp --match "<substr>" # mark a META-DEBUG finding a false positive
+    run.mjs --do browse <url>          # read the web through the substrate
+    run.mjs --do call <path>#<fn> [jsonArg ...]   # RUN a surfaced capability
+
+`--do call` makes the CAPABILITIES section actionable rather than
+informational. Every function the goggles list prints its own
+`<path>#<fn>` reference; passing that reference back runs it. Arguments are
+JSON, one per parameter, so objects and arrays survive intact:
+
+    goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x = 1"'
+    goggles --do call oracle/src/core/living-remembrance.js#gogglesParams
+
+It prints the signature and doc line before invoking, so you see what you are
+about to run. Naming a function that is not exported lists the ones that are.
+Constants are printed rather than called. It IS a real invocation — a function
+with side effects will have them.
+
+**Call the goggles, not the scripts underneath.** Every verb routes to a
+script that already existed; the verbs exist so nobody has to know where. If
+you find yourself running `node scripts/…` or `python3 …` directly, that is a
+missing verb, not a reason to bypass — the bypass is what lets the one
+surface drift out of date without anyone noticing.
+
+`contracts` is deliberately NOT named `verify`: `verify` already means
+export-integrity here, and that collision is precisely why the truth-spine
+was run by hand for so long.
+
+
 `--map` is **substrate-native**: the Void already compressed every ingested
 file into vectors, so the map is a read over that existing compression —
 seconds for any repo, nothing re-encoded. Its coverage section also names the

@@ -55,6 +55,45 @@ let input; try { input = JSON.parse(raw || '{}'); } catch (_) { process.exit(0);
 const ti = input.tool_input || {};
 const fp = ti.file_path || ti.path || '';
 const content = ti.content || ti.new_string || '';
+
+// ── BRIEF GATE ── the correction arrives BEFORE the edit, or not at all.
+//
+// Every large mistake made against this codebase came from editing or calling
+// something whose contract was inferred from its name. A brief that is merely
+// AVAILABLE is a second command, and the second command is the one skipped.
+// So the first touch of a trapped file in a session is denied once, with the
+// trap as the reason. The retry succeeds immediately — the cost is one
+// round-trip, paid once per file per session, and what it buys is that the
+// correction cannot arrive after a plausible wrong number has been produced.
+//
+// Deny-once, not deny-always: a gate that keeps firing gets routed around.
+try {
+  if (fp) {
+    const brief = require('./brief');
+    const hits = brief.trapsFor(fp);
+    const high = hits.filter((h) => (h.severity || '').toLowerCase() === 'high');
+    if (high.length) {
+      const seenPath = path.join(__dirname, '..', '..', '.remembrance', 'briefed.json');
+      let seen = {};
+      try { seen = JSON.parse(fs.readFileSync(seenPath, 'utf8')); } catch (_) { seen = {}; }
+      const key = (input.session_id || 'nosession') + '::' + fp;
+      if (!seen[key]) {
+        seen[key] = Date.now();
+        try {
+          fs.mkdirSync(path.dirname(seenPath), { recursive: true });
+          fs.writeFileSync(seenPath, JSON.stringify(seen, null, 1));
+        } catch (_) { /* if we cannot record it, deny once and move on */ }
+        out('deny',
+          'BRIEF REQUIRED — this file carries recorded traps. Read them, then retry '
+          + 'the identical edit; it will go through. This is the one-time cost of not '
+          + 'inferring a contract from a name.\n\n'
+          + brief.renderTraps(high)
+          + '\n\nFull debrief: remembrance brief ' + path.basename(fp));
+      }
+    }
+  }
+} catch (_) { /* the gate must never break a write on its own account */ }
+
 if (!fp || !/\.(js|mjs|cjs|ts|tsx|py)$/.test(fp)) process.exit(0);
 if (!content || content.length < 80) process.exit(0);
 if (CANONICAL.has(path.basename(fp))) process.exit(0); // the canon may edit itself

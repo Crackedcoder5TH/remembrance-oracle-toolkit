@@ -95,10 +95,24 @@ function stamp(entry, opts = {}) {
     observed_end: opts.observedEnd || now,
     cadence,
   };
+  // UNMEASURED IS NOT ZERO.
+  //
+  // This used to fall back to `0` whenever no reading was available, which
+  // writes "perfectly incoherent" into the substrate for a file nobody
+  // measured — the strongest possible claim, made from no evidence. It also
+  // drags every mean that includes it toward 0. When there is no reading, the
+  // entry carries no `coherence` key at all, and consumers already gate on
+  // `typeof c === 'number'` (see audit/repo-audit.js:153).
+  //
+  // seriesCoherence is still the fallback for an actual numeric SERIES, which
+  // is the one input it is valid on. It is not applied to anything else.
   let coherence = opts.coherence;
-  if (!Number.isFinite(coherence)) coherence = Array.isArray(opts.series) ? seriesCoherence(opts.series) : 0;
+  if (!Number.isFinite(coherence) && Array.isArray(opts.series)) {
+    coherence = seriesCoherence(opts.series);
+  }
   entry.ledger = ledger;
-  entry.coherence = clamp01(coherence);
+  if (Number.isFinite(coherence)) entry.coherence = clamp01(coherence);
+  else delete entry.coherence;
   entry.tokens = tokenCount({ series: opts.series, content: opts.content });
   return entry;
 }

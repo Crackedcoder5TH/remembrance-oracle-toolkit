@@ -46,6 +46,62 @@ function bodyOf(src, name) {
   if (at < 0) return null;
   return src.slice(at, at + 1600); // ~structural window; enough for the encoder to read shape
 }
+// HOW DO YOU CALL IT? The index held name + path + fractal signature, so the
+// goggles could say a function EXISTS and where it lives, but not how to
+// invoke it. That gap costs real time: `orchestrate diagnose` was called three
+// different wrong ways in one session before someone read the arg parsing.
+// A name locates a function; the parameter list is what makes it callable.
+//
+// Deliberately cheap and textual — the parameter list as written, plus the
+// first line of any JSDoc directly above. No AST, no type inference: enough to
+// call the thing correctly, which is the whole job.
+function callSigOf(src, name) {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pats = [
+    new RegExp('(?:async\\s+)?function\\s+' + esc + '\\s*\\(([^)]*)\\)'),
+    new RegExp('(?:const|let|var)\\s+' + esc + '\\s*=\\s*(?:async\\s*)?\\(([^)]*)\\)\\s*=>'),
+    new RegExp('(?:const|let|var)\\s+' + esc + '\\s*=\\s*(?:async\\s+)?function\\s*\\*?\\s*\\(([^)]*)\\)'),
+    new RegExp('\\b' + esc + '\\s*[:=]\\s*(?:async\\s*)?\\(([^)]*)\\)\\s*=>'),
+    new RegExp('\\b' + esc + '\\s*\\(([^)]*)\\)\\s*\\{'),          // method shorthand
+  ];
+  let best = null, at = Infinity;
+  for (const p of pats) {
+    const m = p.exec(src);
+    if (m && m.index < at) { at = m.index; best = m; }
+  }
+  if (!best) return null;
+
+  // Collapse whitespace; destructured params keep their shape.
+  const params = best[1].replace(/\s+/g, ' ').trim();
+
+  // First sentence of the JSDoc block immediately above the definition.
+  //
+  // Anchored to the LAST `/**` in the window, deliberately. A plain
+  // `/\/\*\*([\s\S]*?)\*\/\s*$/` is not anchored at its start, so when the
+  // 900-char window contained an earlier function's doc block the match ran
+  // from THAT block through to the final `*/` and the "first line" came from
+  // the wrong function — computeCoherencyScore was labelled "Score fractal
+  // alignment (0-1)", which is scoreFractalAlignment's doc. A signature that
+  // describes a different function is worse than no description at all.
+  let doc = null;
+  const before = src.slice(Math.max(0, at - 900), at);
+  const open = before.lastIndexOf('/**');
+  if (open >= 0) {
+    const block = before.slice(open);
+    const close = block.indexOf('*/');
+    // Only whitespace may sit between the block and the definition, otherwise
+    // the comment belongs to something else.
+    if (close > 0 && block.slice(close + 2).trim() === '') {
+      const first = block.slice(3, close)
+        .split('\n')
+        .map((l) => l.replace(/^\s*\*\s?/, '').trim())
+        .filter((l) => l && !l.startsWith('@'))[0];
+      if (first) doc = first.slice(0, 120);
+    }
+  }
+  return { params, doc };
+}
+
 function sigOf(snippet) {
   if (!composedAtDepth || !snippet) return null;
   try { return Array.from(composedAtDepth(snippet, SIG_DEPTH)).map((x) => Math.round(x * 1e4) / 1e4); }
@@ -107,6 +163,8 @@ function exportsOf(src) {
 
 const byPath = {};
 const functions = [];   // [{ n: name, p: path, s: signature }] — per-function structural signatures
+const callSigs = {};    // path -> { fnName: { params, doc } } — HOW TO CALL each one
+let withSig = 0;
 let totalFunctions = 0, signed = 0;
 const repoStats = {};
 
@@ -125,6 +183,12 @@ for (const [prefix, rel] of Object.entries(REPOS)) {
     n += fns.length;
     for (const name of fns) {
       const s = sigOf(bodyOf(src, name));
+      const call = callSigOf(src, name);
+      if (call) {
+        callSigs[key] = callSigs[key] || {};
+        callSigs[key][name] = call;
+        withSig++;
+      }
       if (s) { functions.push({ n: name, p: key, s }); signed++; }
     }
   }
@@ -137,6 +201,8 @@ const out = {
   repos: repoStats,
   totalFunctions,
   signedFunctions: signed,
+  callableFunctions: withSig,
+  callSigs,
   sigDepth: SIG_DEPTH,
   paths: Object.keys(byPath).length,
   byPath,

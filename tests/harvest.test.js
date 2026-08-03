@@ -234,10 +234,11 @@ function beta() {
 
   describe('MCP oracle_harvest', () => {
     it('exposes harvest tool', async () => {
-      const { MCPServer } = require('../src/mcp/server');
-      const server = new MCPServer(oracle);
-      const tools = await server.handleRequest({ id: 1, method: 'tools/list' });
-      const harvestTool = tools.result.tools.find(t => t.name === 'oracle_harvest');
+      // tools/list advertises the goggles alone — the organs are retired from
+      // the SURFACE, not from the catalog, and stay dispatchable. Assert
+      // against the catalog, which is what "the tool exists" actually means.
+      const { TOOLS } = require('../src/mcp/tools');
+      const harvestTool = TOOLS.find(t => t.name === 'oracle_harvest');
       assert.ok(harvestTool, 'oracle_harvest tool should exist');
       assert.ok(harvestTool.inputSchema.properties.path);
     });

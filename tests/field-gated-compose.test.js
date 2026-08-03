@@ -52,10 +52,16 @@ describe('gateWeights — the attention gate', () => {
   });
 
   it('field reliability shifts attention: a trusted layer gains weight', () => {
-    const neutral = { coherence: 0.5, updateCount: 1, sources: {} };
-    const trustsL2 = { coherence: 0.5, updateCount: 1, sources: {
-      'encoder:L2': { count: 10, lastCoherence: 0.95 },
-      'encoder:L3': { count: 10, lastCoherence: 0.05 },
+    // Reliability moved OUT of the sources histogram and into its own store.
+    // It used to be written with contribute({ coherence: agreement }), i.e.
+    // an agreement score entering the coherency field under the name
+    // `coherence` — the same substitution that put 41 wrong contributions
+    // into this field. Layer attention must be able to learn without moving
+    // an equation term, so it now lives in state.layerReliability.
+    const neutral = { coherence: 0.5, updateCount: 1, sources: {}, layerReliability: {} };
+    const trustsL2 = { coherence: 0.5, updateCount: 1, sources: {}, layerReliability: {
+      L2: 0.95,
+      L3: 0.05,
     } };
     const w0 = gateWeights(A, B, { fieldState: neutral }).weights;
     const w1 = gateWeights(A, B, { fieldState: trustsL2 }).weights;

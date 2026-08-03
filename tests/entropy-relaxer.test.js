@@ -3,6 +3,25 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 
+// ISOLATE THE FIELD BEFORE ANYTHING LOADS IT.
+//
+// This suite deliberately drives the field hot (cost 50 over coherence 0.05
+// = entropy 1000) and it was doing that to the CANONICAL field. Every run
+// left production inflamed: after eight runs the live field read coherence
+// 0.120 / globalEntropy 415 against a hot threshold of 10, and the most
+// recent contributor in the whole ecosystem was `test:inflame`.
+//
+// That is not a small pollution. The field is an EMA whose last contribution
+// dominates the entropy term, so a test fixture was setting what the
+// orchestrator's backpressure believed about the real system — the swarm
+// would throttle because a test said so.
+//
+// ENTROPY_PATH must be set before field-coupling is required: the engine
+// decides `_canonical` at construction, and getEngine() is a singleton, so a
+// later assignment is too late.
+process.env.ENTROPY_PATH = require('node:path').join(
+  require('node:os').tmpdir(), `entropy-relaxer-test-${process.pid}.json`);
+
 const fc = require('../src/core/field-coupling');
 const { relaxIfHot, _resetCooldown } = require('../src/orchestrator/entropy-relaxer');
 

@@ -1,6 +1,11 @@
 'use strict';
 
 /**
+ * @oracle-pattern-definitions — this file's `bad:` entries are deliberate
+ * counterexamples of every rule, so it necessarily contains the very shapes
+ * the covenant blocks (eval on tainted input, the Function constructor, SQL
+ * concatenation). They live in string literals and are never executed.
+ *
  * `oracle audit explain <rule>` — worked examples for every rule.
  *
  * Each entry has:

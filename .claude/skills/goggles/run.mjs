@@ -101,6 +101,11 @@ if (argv[0] === '--do') {
     // and using it are the same surface. Args are JSON, one per parameter.
     //   goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x=1"'
     call: () => run('node', [join(toolkit, 'src/tools/goggles-call.js'), ...rest], toolkit),
+    // UNFOLD EVERY ENTRY AGAIN AT THE CANONICAL DECODER WIDTH. Coherency is
+    // NOT recomputed — it comes off the compressor reading the bytes and does
+    // not depend on how many lens axes the decoder separates them into.
+    //   goggles --do redecode [namespace|all] [--apply]
+    redecode: () => run('node', [join(toolkit, 'scripts/redecode-substrate.js'), ...rest], toolkit),
     // THE RAW READINGS, AS THE COMPRESSOR PRODUCED THEM. No median, no mean,
     // no range standing in for the numbers. Coherency is time-independent, so
     // nothing here is ordered by ingest time or turned into a trend.

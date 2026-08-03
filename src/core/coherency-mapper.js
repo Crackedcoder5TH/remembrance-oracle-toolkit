@@ -1036,8 +1036,32 @@ function pairwiseFlow(entries, opts = {}) {
   return out;
 }
 
+/**
+ * Pull the depth readings out of a flow, however it arrived.
+ *
+ * A flow used to be exactly four numbers, so callers destructured d1..d4.
+ * It is now one reading per ACTIVE decoder layer (eight today), and the
+ * count changes whenever a layer activates. Reading a fixed d1..d4 would
+ * silently classify on the first 116 of 232 dimensions — the same
+ * truncation that made every resonance reading half-blind.
+ *
+ * Accepts an array (the canonical form flowCosines returns) or a legacy
+ * {d1..dN} object, and returns every depth present.
+ */
+function flowValues(f) {
+  if (Array.isArray(f)) return f.filter((x) => typeof x === 'number' && isFinite(x));
+  const out = [];
+  for (let i = 1; ; i++) {
+    const v = f['d' + i];
+    if (typeof v !== 'number' || !isFinite(v)) break;
+    out.push(v);
+  }
+  return out;
+}
+
 function classifyFlow(f) {
-  const values = [f.d1, f.d2, f.d3, f.d4];
+  const values = flowValues(f);
+  if (!values.length) return 'STABLE-MID';
   const max = Math.max(...values), min = Math.min(...values);
   const range = max - min;
   if (range < 0.05) {
@@ -1057,7 +1081,11 @@ function classifyFlow(f) {
 
 function formatFlow(f) {
   if (!f) return 'no-flow';
-  return `${f.d1.toFixed(3)} → ${f.d2.toFixed(3)} → ${f.d3.toFixed(3)} → ${f.d4.toFixed(3)}  [${f.shape}]`;
+  const v = flowValues(f);
+  if (!v.length) return 'no-flow';
+  // Every active depth, not the first four. The arrow chain is the whole
+  // waveform's flow now — L1 structural through L8 dynamical.
+  return `${v.map((x) => x.toFixed(3)).join(' → ')}  [${f.shape}]`;
 }
 
 module.exports = {

@@ -101,6 +101,12 @@ if (argv[0] === '--do') {
     // and using it are the same surface. Args are JSON, one per parameter.
     //   goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x=1"'
     call: () => run('node', [join(toolkit, 'src/tools/goggles-call.js'), ...rest], toolkit),
+    // WHERE THE SUBSTRATE HAS NO MEMORY. The inverse of resonance, read from
+    // the same vectors at the same full decoder width — nothing re-decoded.
+    // `delta_void` existed as an equation TERM (delta0*(1-p), derived from the
+    // reading alone) but nothing ever measured an actual hole in the space.
+    //   goggles --do void [namespace|all] [--sample N]
+    void: () => run('node', [join(toolkit, 'scripts/void-map.js'), ...rest], toolkit),
     // READ THE WEB through the substrate: fetch a URL, compress + score it,
     // contribute the reading to the field. Browsing was the last blind spot
     // (WebFetch matches no hook, so a fetched page was never witnessed).

@@ -197,12 +197,22 @@ function runMap(dir, { deep = false } = {}) {
 // Canonical depth-flow cosine from the encoder stack (§7: one cosine).
 // Every call site sits behind a composedAtDepth guard, so decoder-stack
 // is always loadable exactly when a flow reading is possible.
+// The deepest reading in a flow — the FULL-waveform cosine. Callers used to
+// index [3], which silently meant 116-D and went wrong the moment a fifth
+// layer activated.
+function _deepest(f) {
+  return require('../core/decoder-stack').deepestFlow(f);
+}
+
 function _flowCosines(a, b) {
   return require('../core/decoder-stack').flowCosines(a, b);
 }
 
 function _flowLabel(f) {
-  try { return require('../core/coherency-mapper').classifyFlow({ d1: f[0], d2: f[1], d3: f[2], d4: f[3] }); }
+  // Pass the whole flow array — classifyFlow reads every active depth now.
+  // Naming d1..d4 here would have re-truncated to 116-D at the classifier
+  // even after flowCosines was widened to the full 232-D waveform.
+  try { return require('../core/coherency-mapper').classifyFlow(f); }
   catch { return ''; }
 }
 
@@ -533,7 +543,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
       const inFileLabel = _flowLabel(inFile);
       console.log(`    section-in-file: ${_fmtFlow(inFile)}  [${inFileLabel}]`
         + (Math.min(...inFile) >= 0.90 ? ' — the section is representative of its file'
-          : inFile[3] >= 0.90 ? ' — deep kinship, different surface (added texture, same structure)'
+          : _deepest(inFile) >= 0.90 ? ' — deep kinship, different surface (added texture, same structure)'
           : ' — the section diverges from the file it lives in'));
       // Does the section pull toward a neighbor more than toward home?
       if (entry && entry.siblings && entry.siblings.length && composedAtDepth) {
@@ -546,10 +556,11 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
               const sv = lib._composed.get((m.project || '') + '/' + s.rel);
               if (!sv) continue;
               const f = _flowCosines(sectionVec, sv);
-              if (!pull || f[3] > pull.d4) pull = { rel: s.rel, d4: f[3] };
+              const df = _deepest(f);
+              if (!pull || df > pull.d4) pull = { rel: s.rel, d4: df };
             }
-            if (pull && pull.d4 > inFile[3] + 0.02) {
-              console.log(`    section pull:   leans toward ${pull.rel} (${pull.d4.toFixed(3)}) more than its own file (${inFile[3].toFixed(3)}) — consider whether it belongs there`);
+            if (pull && pull.d4 > _deepest(inFile) + 0.02) {
+              console.log(`    section pull:   leans toward ${pull.rel} (${pull.d4.toFixed(3)}) more than its own file (${_deepest(inFile).toFixed(3)}) — consider whether it belongs there`);
             }
           }
         } catch { /* best-effort */ }

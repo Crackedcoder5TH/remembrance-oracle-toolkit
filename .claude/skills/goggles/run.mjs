@@ -101,6 +101,11 @@ if (argv[0] === '--do') {
     // and using it are the same surface. Args are JSON, one per parameter.
     //   goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x=1"'
     call: () => run('node', [join(toolkit, 'src/tools/goggles-call.js'), ...rest], toolkit),
+    // THE RAW READINGS, AS THE COMPRESSOR PRODUCED THEM. No median, no mean,
+    // no range standing in for the numbers. Coherency is time-independent, so
+    // nothing here is ordered by ingest time or turned into a trend.
+    //   goggles --do state [namespace|all] [--limit N] [--json <path>]
+    state: () => run('node', [join(toolkit, 'scripts/substrate-state.js'), ...rest], toolkit),
     // WHERE THE SUBSTRATE HAS NO MEMORY. The inverse of resonance, read from
     // the same vectors at the same full decoder width — nothing re-decoded.
     // `delta_void` existed as an equation TERM (delta0*(1-p), derived from the

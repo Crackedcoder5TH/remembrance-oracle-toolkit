@@ -131,6 +131,9 @@ class LivingRemembranceEngine {
     this._params = { ...PARAMS, ...params };
     this._healedVector = null;
     this._state = this._loadOrInit();
+    // Remember what was already accumulated when we loaded, so _persist()
+    // can tell OUR contributions apart from a concurrent writer's.
+    this._markBase(this._state);
   }
 
   _loadOrInit() {
@@ -189,17 +192,101 @@ class LivingRemembranceEngine {
     return loaded || FRESH;
   }
 
+  /**
+   * Snapshot the additive quantities as they stood at load. _persist() diffs
+   * against this to work out what THIS process contributed, so a concurrent
+   * writer's work is added to rather than overwritten.
+   */
+  _markBase(state) {
+    const counts = {};
+    for (const [k, v] of Object.entries(state.sources || {})) {
+      counts[k] = (v && typeof v.count === 'number') ? v.count : 0;
+    }
+    this._base = {
+      updateCount: state.updateCount || 0,
+      coherenceIntegral: state.coherenceIntegral || 0,
+      sourceCounts: counts,
+    };
+  }
+
   _persist() {
     try {
       const dir = path.dirname(this._persistPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+      // RECONCILE BEFORE WRITING — the field is an accumulator, not a document.
+      //
+      // This used to serialise `this._state` straight over the file. The
+      // engine loads once in the constructor and never re-reads, so any
+      // process that loaded at time T and flushed at T+n silently discarded
+      // every contribution another process had written in between. Measured:
+      // the field went from updateCount 977356 back to 975964 — BACKWARDS by
+      // 1392 — because a second process flushed an older in-memory copy over
+      // it. The same race is what made the field read bit-identical across
+      // +13,028 updates: two private copies of an accumulator taking turns
+      // clobbering each other. `--do field` reports "live field peers
+      // entangled: 2", so concurrent writers are the normal case here, not an
+      // edge case.
+      //
+      // _loadOrInit() already reconciles on READ ("load from the witness with
+      // the most history"). This applies the same discipline on WRITE.
+      //
+      // Contributions are additive events, so the merge is by DELTA: whatever
+      // this process added since it loaded is applied on top of whatever is on
+      // disk now.
+      //
+      // ONE QUANTITY CANNOT MERGE: `coherence` is an EMA scalar. There is no
+      // additive delta for it, so the most recent writer's value stands. Same
+      // for globalEntropy and cascadeFactor, which are derived from it. That
+      // is a real limitation and it is stated rather than hidden — the counts
+      // and the integral are exact, the EMA is last-writer.
+      let out = this._state;
+      if (this._base) {
+        let disk = null;
+        try {
+          if (fs.existsSync(this._persistPath)) {
+            disk = JSON.parse(fs.readFileSync(this._persistPath, 'utf8'));
+          }
+        } catch (_e) { disk = null; }
+
+        if (disk && typeof disk.updateCount === 'number'
+            && disk.updateCount > this._base.updateCount) {
+          // Someone else advanced the file since we loaded. Rebase our delta
+          // onto theirs instead of overwriting it.
+          const myUpdates = (this._state.updateCount || 0) - this._base.updateCount;
+          const myIntegral = (this._state.coherenceIntegral || 0) - this._base.coherenceIntegral;
+
+          const sources = { ...(disk.sources || {}) };
+          for (const [k, mine] of Object.entries(this._state.sources || {})) {
+            const myCount = (mine && typeof mine.count === 'number') ? mine.count : 0;
+            const myDelta = myCount - (this._base.sourceCounts[k] || 0);
+            if (myDelta <= 0) continue;         // we added nothing under this source
+            const theirs = sources[k];
+            sources[k] = {
+              ...mine,
+              count: ((theirs && typeof theirs.count === 'number') ? theirs.count : 0) + myDelta,
+            };
+          }
+
+          out = {
+            ...this._state,
+            updateCount: (disk.updateCount || 0) + Math.max(0, myUpdates),
+            coherenceIntegral: (disk.coherenceIntegral || 0) + Math.max(0, myIntegral),
+            sources,
+          };
+          this._state = out;
+        }
+      }
+
       // Atomic write: a crash mid-write must never truncate the canonical
       // ledger. Write to a per-process temp file, then rename — rename is
       // atomic on the same filesystem, so a reader always sees either the
       // old complete file or the new complete file, never a partial one.
       const tmp = `${this._persistPath}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify(this._state, null, 2));
+      fs.writeFileSync(tmp, JSON.stringify(out, null, 2));
       fs.renameSync(tmp, this._persistPath);
+      // The file now holds everything we just wrote, so that is our new base.
+      this._markBase(out);
     } catch (_e) { /* best-effort persistence; never crash a caller */ }
   }
 

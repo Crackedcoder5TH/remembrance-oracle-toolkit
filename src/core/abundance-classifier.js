@@ -49,7 +49,7 @@
  * Deterministic. Pure. No external dependencies.
  */
 
-const { compose, composedAtDepth } = require('./encoder-stack');
+const { compose, composedAtDepth } = require('./decoder-stack');
 
 const COMPOSED_DIM = 116;
 

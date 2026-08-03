@@ -22,7 +22,7 @@ import zlib from 'node:zlib';
 import readline from 'node:readline';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const ENC = require('../src/core/encoder-stack');
+const ENC = require('../src/core/decoder-stack');
 const DEPTH = ENC.maxAvailableDepth ? ENC.maxAvailableDepth() : 8;
 const SCR = '/tmp/claude-0/-home-user/f2e464dd-ac55-5fe6-83d2-bba60ba4ad4c/scratchpad';
 

@@ -75,7 +75,7 @@ for (const M of [100, 500, 2000, 8000, 30000]) {
 // PART 3 — FEED BACK: compress these results into the substrate via Void, time-stamped.
 if (process.argv.includes('--harvest')) {
   const SL = require('../src/core/substrate-ledger');
-  const { composedAtDepth } = require('../src/core/encoder-stack');
+  const { composedAtDepth } = require('../src/core/decoder-stack');
   const store = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8'));
   const index = store.index; let seq = SL.nextSequence(index); const now = new Date().toISOString(); let added = 0;
   const ser = (ys) => { const m = Math.max(...ys.map(Math.abs)) || 1; return ys.map((y) => (y / m).toFixed(5)).join(','); };

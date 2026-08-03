@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
 
 const { registerVerifyCommands, leaf, branch } = require('../src/cli/commands/verify');
 const { toFractalWaveform } = require('../src/core/fractal-waveform');
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 
 test('registerVerifyCommands wires a `verify` handler', () => {
   const handlers = {};

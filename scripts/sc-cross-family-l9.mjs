@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const ENC = require('../src/core/encoder-stack');
+const ENC = require('../src/core/decoder-stack');
 const { relationalGain } = require('../src/core/relational-waveform');
 
 const DIR = process.env.SC_DATA_DIR || '/tmp/claude-0/-home-user/f2e464dd-ac55-5fe6-83d2-bba60ba4ad4c/scratchpad';

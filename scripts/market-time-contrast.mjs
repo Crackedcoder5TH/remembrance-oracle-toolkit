@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 const require = createRequire(import.meta.url);
-const { composedAtDepth, currentDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth, currentDepth } = require('../src/core/decoder-stack');
 const { signature } = require('../src/market/temporal-signature');
 
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';

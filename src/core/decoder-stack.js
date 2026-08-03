@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * encoder-stack.js — registry + depth-aware composer for the
+ * decoder-stack.js — registry + depth-aware composer for the
  * fractal-by-stacking encoder layers.
  *
  * Per the architectural principle: the encoder isn't a fixed

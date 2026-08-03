@@ -541,7 +541,7 @@ function namespaceFromIndexNames(rels, indexNames) {
 // Canonical depth-flow cosine — ONE implementation, in the encoder
 // stack (ECOSYSTEM §7: one encoder, one cosine; consumers route to
 // canonical instead of mirroring the math).
-const { flowCosines: _flowCosines } = require('./encoder-stack');
+const { flowCosines: _flowCosines } = require('./decoder-stack');
 
 /**
  * Build the macro coherency map from the substrate's existing vectors.

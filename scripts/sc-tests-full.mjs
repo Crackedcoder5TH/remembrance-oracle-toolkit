@@ -101,7 +101,7 @@ results['sc-research/lsco-dome-curve'] = dome.map((d) => d[1]);
 if (!process.argv.includes('--no-harvest')) {
   const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
   const SL = require('../src/core/substrate-ledger');
-  const { composedAtDepth } = require('../src/core/encoder-stack');
+  const { composedAtDepth } = require('../src/core/decoder-stack');
   const store = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8'));
   const index = store.index; let seq = SL.nextSequence(index); const now = new Date().toISOString(); let added = 0;
   const ser = (ys) => { const m = Math.max(...ys.map(Math.abs)) || 1; return ys.map((y) => (y / m).toFixed(5)).join(','); };

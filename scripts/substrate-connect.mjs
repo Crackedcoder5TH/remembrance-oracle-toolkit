@@ -10,7 +10,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(new URL('.', import.meta.url).pathname + '../');
 const W = require('./src/core/whitening');
-const E = require('./src/core/encoder-stack');
+const E = require('./src/core/decoder-stack');
 
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
 const idx = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8')).index;

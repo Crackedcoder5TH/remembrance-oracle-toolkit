@@ -9,7 +9,7 @@ const {
   classifyAlignment,
   inspectAlignmentMarkers,
 } = require('../src/core/abundance-classifier');
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 
 // ── Synthetic series with known geometry ─────────────────────────
 

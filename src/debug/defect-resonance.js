@@ -54,7 +54,7 @@ const MAX_BLOCK_LINES = 48;          // split larger blocks
 let _encode;
 function encoder() {
   if (_encode !== undefined) return _encode;
-  try { _encode = require('../core/encoder-stack').composedAtDepth; }
+  try { _encode = require('../core/decoder-stack').composedAtDepth; }
   catch (_) { _encode = null; }
   return _encode;
 }

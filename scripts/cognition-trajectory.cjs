@@ -5,7 +5,7 @@
 // window at each file write.
 const fs = require('fs');
 const oraclePath = '/home/user/remembrance-oracle-toolkit/src';
-const { compose } = require(oraclePath + '/core/encoder-stack.js');
+const { compose } = require(oraclePath + '/core/decoder-stack.js');
 const { classifyAlignment, inspectAlignmentMarkers } = require(oraclePath + '/core/abundance-classifier.js');
 const { inspectNumericalWaveform } = require(oraclePath + '/core/numerical-waveform.js');
 const { inspectSpectralWaveform } = require(oraclePath + '/core/spectral-waveform.js');

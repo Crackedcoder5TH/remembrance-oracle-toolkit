@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const ENC = require('../src/core/encoder-stack');
+const ENC = require('../src/core/decoder-stack');
 const { toRelationalWaveform, relationalGain, communityQ } = require('../src/core/relational-waveform');
 
 function mul(a){let s=a>>>0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 const SL = require('../src/core/substrate-ledger');
 
 const receiptPath = process.argv[2] || path.join('.remembrance', 'moat-metric.json');

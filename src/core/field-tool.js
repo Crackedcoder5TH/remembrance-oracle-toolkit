@@ -59,7 +59,7 @@ try { entangle = require('./entangle'); } catch (_) { /* optional */ }
 // anchor (see Void's to_fractal_waveform.py / verify_fractal_parity.py).
 // The 256-D byte encoder was deprecated for noise — it could not
 // discriminate code from prose. The canonical read is the 116-D
-// composed stack (encoder-stack below); this L1 vector is its depth-1.
+// composed stack (decoder-stack below); this L1 vector is its depth-1.
 const { toFractalWaveform } = require('./fractal-waveform');
 
 // Encoder stack for depth-aware composed encoding (L1+L2+L3+L4 = 116-D)
@@ -67,7 +67,7 @@ const { toFractalWaveform } = require('./fractal-waveform');
 // vector, enabling flow-aware scoring against the substrate.
 let _encoderStack = null;
 try {
-  _encoderStack = require('./encoder-stack');
+  _encoderStack = require('./decoder-stack');
 } catch (_) { /* stack unreachable — read falls back to L1 only */ }
 
 // New-layer meta-awareness. The encoder layers are pure functions (L1-L7

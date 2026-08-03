@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { composed, LAYER_DIM } = require('../src/compose');
 
 // The package's composed() must be byte-identical to the oracle
-// substrate's encoder-stack — the standalone telescope is the SAME
+// substrate's decoder-stack — the standalone telescope is the SAME
 // telescope. If the oracle isn't a sibling (published package alone),
 // the parity assertion is skipped but the self-consistency checks run.
 test('composed produces the full 8-layer 232-D signature', () => {
@@ -23,9 +23,9 @@ test('depth clamps to [1,8]', () => {
   assert.equal(composed('abc def ghi', 9).length, 8 * LAYER_DIM);
 });
 
-test('byte-identical to the oracle encoder-stack when present', () => {
+test('byte-identical to the oracle decoder-stack when present', () => {
   let composedAtDepth;
-  try { ({ composedAtDepth } = require('../../../src/core/encoder-stack')); }
+  try { ({ composedAtDepth } = require('../../../src/core/decoder-stack')); }
   catch (_) { return; } // published-standalone: no oracle sibling, skip
   const samples = [
     'function f(x){return x+1;}',

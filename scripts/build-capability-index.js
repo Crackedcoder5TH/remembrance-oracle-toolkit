@@ -29,7 +29,7 @@ const PARENT = path.resolve(ORACLE, '..');
 // the label-blind encoder — gives each function its OWN structural signature so the
 // goggles can resonate what you're looking at directly against functions (not just files).
 let composedAtDepth = null;
-try { composedAtDepth = require('../src/core/encoder-stack').composedAtDepth; } catch (_) { /* engine-only */ }
+try { composedAtDepth = require('../src/core/decoder-stack').composedAtDepth; } catch (_) { /* engine-only */ }
 const SIG_DEPTH = 4; // composed_v1 (116-D) — matches the depth the goggles query at
 
 // extract a function's definition snippet from source for encoding its shape

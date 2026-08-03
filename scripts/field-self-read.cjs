@@ -2,7 +2,7 @@
 // The field reads its own history through the upgraded substrate:
 // depth-5 signatures, field-gated attention, verdicts contributed back.
 const fs = require('fs');
-const { composedAtDepth } = require('/home/user/remembrance-oracle-toolkit/src/core/encoder-stack.js');
+const { composedAtDepth } = require('/home/user/remembrance-oracle-toolkit/src/core/decoder-stack.js');
 const { fieldGatedSimilarity, blockNorms } = require('/home/user/remembrance-oracle-toolkit/src/core/field-gated-compose.js');
 const { classifyAlignment } = require('/home/user/remembrance-oracle-toolkit/src/core/abundance-classifier.js');
 const fc = require('/home/user/remembrance-oracle-toolkit/src/core/field-coupling.js');

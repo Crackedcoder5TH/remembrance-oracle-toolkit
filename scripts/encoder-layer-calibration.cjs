@@ -35,7 +35,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 const { toContentProjection } = require('../src/core/content-projection');
 
 const ROOT = '/home/user';

@@ -15,7 +15,7 @@
  * (any text input scored ~0.9 against any text-derived library, the
  * encoder's known noise floor). The canonical encoder is the composed
  * fractal stack: 116-D = L1-structural + L2-lexical + L3-numerical +
- * L4-spectral (4 × 29-D depths; see encoder-stack.js). The 29-D L1
+ * L4-spectral (4 × 29-D depths; see decoder-stack.js). The 29-D L1
  * fractal is the base layer and the JS↔Python parity anchor (contract
  * C-71, verified against to_fractal_waveform.py). The index
  * (pattern_index_fractal.json) stores BOTH per pattern: `fractal`

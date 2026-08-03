@@ -41,7 +41,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { toFractalWaveform } = require('../src/core/fractal-waveform');
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 const SL = require('../src/core/substrate-ledger');
 const {
   DEFAULT_EXTENSIONS, DEFAULT_SKIP_DIRS,

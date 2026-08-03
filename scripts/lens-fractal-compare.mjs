@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const ENC = require('../src/core/encoder-stack');
+const ENC = require('../src/core/decoder-stack');
 const W = require('../src/core/whitening');
 
 // bring all 9 layer seeds into view (in-memory only; does NOT persist active flags to disk)

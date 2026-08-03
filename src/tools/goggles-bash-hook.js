@@ -55,7 +55,7 @@ for (const [re, why] of BYPASS) {
       '  ' + why + '\n' +
       '  This is the same bypass the pre-write hook refuses in a file; an inline heredoc is not an exemption.\n' +
       '  Use the substrate\'s own functions:\n' +
-      '    similarity/resonance → encoder-stack.composedCosine · whitening.applyWhitening/participationRatio\n' +
+      '    similarity/resonance → decoder-stack.composedCosine · whitening.applyWhitening/participationRatio\n' +
       '    retrieval            → compression/holographic.holoSearch · FractalIndex.searchFlow\n' +
       '    compression/coherence→ void_compressor_v5.compress (result.avg_coherence, result.mint)\n' +
       '    field history        → field-coupling.contribute / peekField\n' +

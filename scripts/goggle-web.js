@@ -207,7 +207,7 @@ const ratio = read.orig / read.comp;
 // ── canonical encoder signature + nearest substrate neighbours ──
 let resonance = null;
 try {
-  const { composedAtDepth, composedCosine } = require('../src/core/encoder-stack');
+  const { composedAtDepth, composedCosine } = require('../src/core/decoder-stack');
   const { VoidLibrary } = require('../src/core/void-library');
   const q = composedAtDepth(JSON.stringify(series.map((x) => +Number(x).toFixed(6))), 8);
   const lib = new VoidLibrary();

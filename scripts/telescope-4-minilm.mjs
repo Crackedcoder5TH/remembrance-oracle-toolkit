@@ -4,7 +4,7 @@ import path from 'path';
 import zlib from 'zlib';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const { compose } = require('/home/user/remembrance-oracle-toolkit/src/core/encoder-stack.js');
+const { compose } = require('/home/user/remembrance-oracle-toolkit/src/core/decoder-stack.js');
 
 env.cacheDir = './model-cache';
 

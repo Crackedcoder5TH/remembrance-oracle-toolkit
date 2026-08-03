@@ -45,7 +45,7 @@ function outContext(text) {
 // allowlist the guardian denies edits to the very files it routes everyone
 // to — the encoder stack could never be maintained with the hook active.
 const CANONICAL = new Set([
-  'encoder-stack.js', 'coherency-mapper.js', 'fractal-waveform.js',
+  'decoder-stack.js', 'coherency-mapper.js', 'fractal-waveform.js',
   'code-to-waveform.js', 'fractal_encoder.py', 'whitening.js',
   'void-seal.js',
 ]);
@@ -125,7 +125,7 @@ if (findings.length) {
     'GOGGLES — SUBSTRATE BYPASS refused before writing ' + path.basename(fp) + '\n' +
     '  ' + (first.reality || first.message || 'hand-rolled substrate primitive') + '\n' +
     '  Use the substrate\'s own functions instead:\n' +
-    '    similarity/resonance → encoder-stack.composedCosine · whitening.applyWhitening\n' +
+    '    similarity/resonance → decoder-stack.composedCosine · whitening.applyWhitening\n' +
     '    retrieval            → compression/holographic.holoSearch · FractalIndex.searchFlow\n' +
     '    compression/coherence→ void_compressor_v5.compress (result.avg_coherence, result.mint)\n' +
     '  Measuring beside the substrate is not a measurement of it. Rewrite through it, then write.');
@@ -134,7 +134,7 @@ if (findings.length) {
 // ── 2. THE OVERLAY — what the substrate says about what you are about to write ──
 let overlay = '';
 try {
-  const es = require(path.join(ROOT, 'src', 'core', 'encoder-stack'));
+  const es = require(path.join(ROOT, 'src', 'core', 'decoder-stack'));
   const idxPath = path.join(ROOT, 'ecosystem-capabilities.json');
   if (es.composedAtDepth && es.composedCosine && fs.existsSync(idxPath)) {
     const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));

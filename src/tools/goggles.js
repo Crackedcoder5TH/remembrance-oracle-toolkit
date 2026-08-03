@@ -195,10 +195,10 @@ function runMap(dir, { deep = false } = {}) {
 }
 
 // Canonical depth-flow cosine from the encoder stack (§7: one cosine).
-// Every call site sits behind a composedAtDepth guard, so encoder-stack
+// Every call site sits behind a composedAtDepth guard, so decoder-stack
 // is always loadable exactly when a flow reading is possible.
 function _flowCosines(a, b) {
-  return require('../core/encoder-stack').flowCosines(a, b);
+  return require('../core/decoder-stack').flowCosines(a, b);
 }
 
 function _flowLabel(f) {
@@ -490,7 +490,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
   // ── Live depth-flow readings: the working copy vs the substrate's
   //    memory, and (when goggling --lines) the section vs its home. ──
   let composedAtDepth = null;
-  try { composedAtDepth = require('../core/encoder-stack').composedAtDepth; } catch { /* engine-only install */ }
+  try { composedAtDepth = require('../core/decoder-stack').composedAtDepth; } catch { /* engine-only install */ }
   if (composedAtDepth && fullText) {
     const liveFileVec = composedAtDepth(fullText, 4);
 
@@ -884,7 +884,7 @@ function main() {
   // THIS content wherever they live. Built by scripts/build-capability-index.js.
   try {
     let cad = null, ccos = null;
-    try { const es = require('../core/encoder-stack'); cad = es.composedAtDepth; ccos = es.composedCosine; } catch (_) { /* engine-only install */ }
+    try { const es = require('../core/decoder-stack'); cad = es.composedAtDepth; ccos = es.composedCosine; } catch (_) { /* engine-only install */ }
     const idxPath = path.resolve(__dirname, '..', '..', 'ecosystem-capabilities.json');
     if (cad && ccos && content && fs.existsSync(idxPath)) {
       const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));

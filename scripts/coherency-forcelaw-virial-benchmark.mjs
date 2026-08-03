@@ -25,7 +25,7 @@
 //       Harmonic (U∝r², n=2) ⇒ ⟨T⟩/⟨U_harm⟩ ≈ 1. We MEASURE it, not assume it.
 import { createRequire } from 'node:module';
 const require = createRequire(new URL(".", import.meta.url).pathname + "../");
-const E = require('./src/core/encoder-stack');
+const E = require('./src/core/decoder-stack');
 
 // ---------- (1) TWO-BODY FORCE LAW (exact spherical geometry) ----------
 // U(θ) = -cos θ ; F(θ) = -dU/dθ measured by central difference (no analytic shortcut).

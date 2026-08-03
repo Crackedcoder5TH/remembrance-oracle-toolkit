@@ -36,7 +36,7 @@
  * Output: 29-D Float64Array, values bounded in [0, 1].
  * Deterministic. Pure. Only stdlib (node:zlib) — no dependencies.
  *
- * Registered in encoder-stack.js with active:false — reachable via
+ * Registered in decoder-stack.js with active:false — reachable via
  * composedAtDepth(input, 5) for experiments, but NOT part of the
  * default 116-D composition until it proves itself and the 116-D
  * consumers (Void parity, field-tool round-trip, classifier DIM map)

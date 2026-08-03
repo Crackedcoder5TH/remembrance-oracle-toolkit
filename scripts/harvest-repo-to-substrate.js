@@ -69,7 +69,20 @@ const NS_TO_REPO = {
 };
 const REPO_TO_NS = Object.fromEntries(Object.entries(NS_TO_REPO).map(([ns, r]) => [r, ns]));
 
-function resolveTarget(arg) {
+function resolveTarget(arg, explicitNs) {
+  // An explicit namespace lets ANY directory be witnessed — used for
+  // reference corpora that are not ecosystem repos: a language's own
+  // standard library or type definitions, written by that language's
+  // maintainers. Those describe how working code is SUPPOSED to be
+  // structured, which is what the substrate should learn a language from,
+  // rather than from whatever application code happens to be at hand.
+  //
+  //   harvest /usr/lib/python3.11 --as lang-python
+  if (explicitNs) {
+    const dir = path.resolve(arg);
+    if (!fs.existsSync(dir)) return null;
+    return { ns: explicitNs, dir };
+  }
   if (NS_TO_REPO[arg]) return { ns: arg, dir: path.join(HOME, NS_TO_REPO[arg]) };
   const base = path.basename(arg.replace(/\/+$/, ''));
   if (REPO_TO_NS[base]) return { ns: REPO_TO_NS[base], dir: path.join(HOME, base) };
@@ -289,15 +302,18 @@ function main() {
   const doRestamp = args.includes('--restamp');
   const maxIdx = args.indexOf('--max');
   const maxDrift = maxIdx >= 0 ? (parseInt(args[maxIdx + 1], 10) || 0) : 0;
-  const targetArg = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--max');
+  const asIdx = args.indexOf('--as');
+  const explicitNs = asIdx >= 0 ? args[asIdx + 1] : null;
+  const targetArg = args.find((a, i) => !a.startsWith('--')
+    && args[i - 1] !== '--max' && args[i - 1] !== '--as');
   if (!targetArg) {
-    console.error('usage: harvest-repo-to-substrate.js <repo-name-or-path|all> [--dry|--check [--max N]|--restamp]');
+    console.error('usage: harvest-repo-to-substrate.js <repo-name-or-path|all> [--dry|--check [--max N]|--restamp] [--as <namespace>]');
     process.exit(2);
   }
 
-  const targets = targetArg === 'all'
+  const targets = (targetArg === 'all' && !explicitNs)
     ? Object.keys(NS_TO_REPO).map((ns) => ({ ns, dir: path.join(HOME, NS_TO_REPO[ns]) }))
-    : [resolveTarget(targetArg)].filter(Boolean);
+    : [resolveTarget(targetArg, explicitNs)].filter(Boolean);
   if (!targets.length) { console.error('unknown repo: ' + targetArg); process.exit(1); }
 
   let idx;

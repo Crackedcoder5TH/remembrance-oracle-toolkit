@@ -408,6 +408,15 @@ function main() {
         // something that is not one.
         const _coh = voidCoherenceOf(content);
         SL.stamp(entry, { sequence: seq++, now, content, coherence: _coh });
+        // LABEL THE PROVENANCE. The value came off the compressor, but only
+        // the restamp path was recording that, so 661 freshly-harvested
+        // entries carried a real reading with coherence_source unset — you
+        // could not tell from the entry where its number came from. Under a
+        // rule that says coherency comes from one place, an unlabelled
+        // reading is indistinguishable from a substituted one.
+        if (typeof _coh === 'number' && isFinite(_coh)) {
+          entry.coherence_source = 'void:compress_signal';
+        }
         // Collect for the field — but only real readings. If the compressor is
         // unreachable, `voidCoherenceOf` returns null and this file enters the
         // substrate with NO coherency rather than a fabricated one. A reading

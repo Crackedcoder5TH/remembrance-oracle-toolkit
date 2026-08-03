@@ -369,24 +369,52 @@ function loadReadings(root) {
   try { return JSON.parse(fs.readFileSync(readingsPath(root), 'utf8')); } catch (_) { return {}; }
 }
 
+// Readings taken before coherency was rewired onto the Void compressor are
+// NOT comparable to readings taken after. Before the rewiring the number was
+// computeCoherencyScore — a structural-validity score that sits near 1.0 on
+// healthy code; after, it is the compressor reading the file's bytes, which
+// runs an order of magnitude lower on the same file.
+//
+// Subtracting one from the other produces a phantom collapse. Measured on
+// scripts/harvest-repo-to-substrate.js: Δ reported -0.758 ("this edit
+// weakened the structure") when the file had not weakened at all — the
+// compressor reads the PRE-EDIT version at 0.1373 and the post-edit version
+// at 0.1380, a slight RISE. The stored 0.896 was simply a different quantity.
+//
+// Every file's first goggle after the rewiring would have shown that phantom
+// drop, which is exactly the kind of false signal that gets acted on. Readings
+// now carry their source; a delta across a source boundary is reported as not
+// comparable instead of as a regression.
+const COHERENCE_SOURCE = 'void:compress_signal';
+
 function printAndRecordDelta(root, rel, current) {
   const all = loadReadings(root);
   const prev = all[rel];
   if (prev) {
-    const dc = current.coherence - prev.coherence;
-    const dr = current.resonance - prev.resonance;
-    const df = (current.findingsHigh ?? 0) - (prev.findingsHigh ?? 0);
     const agoMin = Math.max(0, Math.round((Date.now() - prev.at) / 60000));
     const fmt = (d) => `${d >= 0 ? '+' : ''}${d.toFixed(3)}`;
+    const dr = current.resonance - prev.resonance;
+    const df = (current.findingsHigh ?? 0) - (prev.findingsHigh ?? 0);
     console.log('\n  Δ SINCE LAST READ  (' + agoMin + 'm ago — what your edits did)');
-    console.log(`    coherence ${fmt(dc)} · resonance ${fmt(dr)}`
-      + (df !== 0 ? ` · high findings ${prev.findingsHigh ?? 0}→${current.findingsHigh ?? 0}` : '')
-      + (Math.abs(dc) < 0.005 && Math.abs(dr) < 0.005 && df === 0 ? ' — shape held steady' :
-         dc < -0.05 ? ' — ⚠ this edit weakened the structure' :
-         df < 0 ? ' — defects fixed, the field learned from it' :
-         df > 0 ? ' — ⚠ new high finding(s) since last read' : ''));
+
+    // An older reading with no recorded source predates the rewiring.
+    if (prev.coherenceSource !== COHERENCE_SOURCE) {
+      console.log(`    coherence   not comparable — the previous reading (${prev.coherence.toFixed(3)}) predates`);
+      console.log('                the rewiring onto the Void compressor and measured a different');
+      console.log(`                quantity. This read: ${current.coherence.toFixed(3)}. The next read will compare.`);
+      console.log(`    resonance ${fmt(dr)}`
+        + (df !== 0 ? ` · high findings ${prev.findingsHigh ?? 0}→${current.findingsHigh ?? 0}` : ''));
+    } else {
+      const dc = current.coherence - prev.coherence;
+      console.log(`    coherence ${fmt(dc)} · resonance ${fmt(dr)}`
+        + (df !== 0 ? ` · high findings ${prev.findingsHigh ?? 0}→${current.findingsHigh ?? 0}` : '')
+        + (Math.abs(dc) < 0.005 && Math.abs(dr) < 0.005 && df === 0 ? ' — shape held steady' :
+           dc < -0.05 ? ' — ⚠ this edit weakened the structure' :
+           df < 0 ? ' — defects fixed, the field learned from it' :
+           df > 0 ? ' — ⚠ new high finding(s) since last read' : ''));
+    }
   }
-  all[rel] = { ...current, at: Date.now() };
+  all[rel] = { ...current, coherenceSource: COHERENCE_SOURCE, at: Date.now() };
   try {
     fs.mkdirSync(path.dirname(readingsPath(root)), { recursive: true });
     fs.writeFileSync(readingsPath(root), JSON.stringify(all));

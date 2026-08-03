@@ -344,6 +344,40 @@ function main() {
   const arose = [];
   const _ingestCoherencies = [];
 
+  // CHECKPOINTING — so a large corpus can actually be ingested.
+  //
+  // The index used to be written once, after the whole walk. That is fine for
+  // a repo (hundreds of files, seconds) and impossible for a language.
+  // Measured on the Go standard library: 6,249 files at ~1.86s per compressor
+  // read is 194 minutes in a single unbroken run, with nothing on disk until
+  // the very end. Any interruption — a reclaimed container, a timeout, Ctrl-C
+  // — threw away every reading and left the substrate at zero.
+  //
+  // The loop already skips files the index holds (`if (index[key]) skipped++`),
+  // so a harvest is naturally RESUMABLE — it just never persisted often enough
+  // to resume FROM. Writing periodically closes that gap: re-running the same
+  // command picks up where the last one stopped, and a long ingest becomes a
+  // series of short ones.
+  //
+  // Same atomic write as the final one (temp file + rename), so a reader
+  // always sees a complete index, never a half-written one.
+  const CHECKPOINT_EVERY = Number(process.env.HARVEST_CHECKPOINT_EVERY || 200);
+  let sinceCheckpoint = 0;
+  let checkpoints = 0;
+  const checkpoint = () => {
+    if (dry) return;
+    try {
+      if (idx.total_patterns != null) idx.total_patterns = Object.keys(index).length;
+      const tmp = INDEX_PATH + '.ckpt.tmp';
+      fs.writeFileSync(tmp, JSON.stringify(idx));
+      fs.renameSync(tmp, INDEX_PATH);
+      checkpoints++;
+      console.log(`  … checkpoint ${checkpoints}: ${added} witnessed, ${Object.keys(index).length} entries on disk`);
+    } catch (e) {
+      console.error(`  checkpoint failed (continuing): ${e.message}`);
+    }
+  };
+
   for (const { ns, dir } of targets) {
     if (!fs.existsSync(dir)) { console.error('  skip (missing): ' + dir); continue; }
     const files = walk(dir);
@@ -442,12 +476,17 @@ function main() {
       }
       if (best && bestScore >= 0.90) arose.push({ from: key, to: best, score: bestScore });
       composedAll.push([key, composed_v1]);        // future files can match this one
+
+      // Persist periodically so an interrupted long ingest keeps what it has
+      // already read, and re-running resumes instead of restarting.
+      if (++sinceCheckpoint >= CHECKPOINT_EVERY) { sinceCheckpoint = 0; checkpoint(); }
     }
   }
 
   console.log(`harvest ${dry ? '(dry run) ' : ''}complete:`);
   console.log(`  +${added} files witnessed · ${skipped} already indexed`
     + (floored ? ` · ${floored} below floor (<${MIN_CHARS} chars, no waveform)` : ''));
+  if (checkpoints) console.log(`  ${checkpoints} checkpoint(s) written during the walk — an interrupted run keeps its readings`);
   console.log(`  substrate: ${beforeTotal} → ${beforeTotal + (dry ? 0 : added)} entries`);
 
   if (!dry) {

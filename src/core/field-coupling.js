@@ -551,7 +551,14 @@ function recordMetaObservation({ scores, source, sessionId } = {}) {
     };
   }
 
-  const result = contribute({ source: label, coherence: stats.mean, cost: stats.n });
+  // NO AVERAGING. This used to contribute stats.mean — one fabricated number
+  // standing in for N readings. Each cleaned reading goes in as itself, at
+  // cost 1. `stats` is still returned for the caller to read the trajectory's
+  // shape; it just no longer becomes the field's input.
+  let result = null;
+  for (const c of cleaned) {
+    result = contribute({ source: label, coherence: c, cost: 1 });
+  }
   return {
     recorded: true,
     source: label,
@@ -985,7 +992,7 @@ function fieldDirection(windowN = 5) {
  * @param {string} opts.repoDir absolute path to the git repo
  * @param {string} opts.filePath path to the file relative to repoDir
  * @param {number} [opts.maxVersions=12] cap on history depth
- * @returns {object} { recorded, meanAdjacent, arc, versions, source }
+ * @returns {object} { recorded, adjacent, arc, versions, source }
  */
 function recordTemporalSnapshot({ repoDir, filePath, maxVersions = 12 } = {}) {
   if (!repoDir || !filePath) return { recorded: false, reason: 'repoDir and filePath required' };
@@ -1024,17 +1031,19 @@ function recordTemporalSnapshot({ repoDir, filePath, maxVersions = 12 } = {}) {
   for (let i = 0; i < versions.length - 1; i++) {
     adj.push(fractalCoherencyOf(versions[i].content, versions[i + 1].content));
   }
-  const meanAdjacent = adj.reduce((s, x) => s + x, 0) / adj.length;
+  // NO AVERAGING. Each adjacent-version reading goes in as itself. The mean
+  // used to be the contribution; it is now only a returned descriptor of the
+  // series, never the field's input.
   const arc = fractalCoherencyOf(versions[0].content, versions[versions.length - 1].content);
   const repoName = path.basename(repoDir);
   const cleanFile = filePath.replace(/[^a-zA-Z0-9_\-.]/g, '_');
   const adjSource = 'temporal:' + repoName + ':' + cleanFile + ':adjacent';
   const arcSource = 'temporal:' + repoName + ':' + cleanFile + ':arc';
-  contribute({ source: adjSource, coherence: meanAdjacent, cost: 1 });
+  for (const a of adj) contribute({ source: adjSource, coherence: a, cost: 1 });
   contribute({ source: arcSource, coherence: arc, cost: 1 });
   return {
     recorded: true,
-    meanAdjacent,
+    adjacent: adj,
     arc,
     versions: versions.length,
     span: { from: versions[0].date, to: versions[versions.length - 1].date },

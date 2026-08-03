@@ -240,12 +240,19 @@ function restamp(targets, idx, index) {
       if (done % 250 === 0) console.log(`    …${done} re-read`);
     }
   }
-  const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
   console.log(`restamp: ${done} entries re-read through the compressor`);
   if (gone) console.log(`  ${gone} indexed file(s) no longer on disk — left as-is`);
   if (floored) console.log(`  ${floored} below floor — left as-is`);
   if (unread) console.log(`  ${unread} unread (service down) — left as-is, NOT zeroed`);
-  if (before.length) console.log(`  mean coherence  ${mean(before).toFixed(4)} → ${mean(after).toFixed(4)}`);
+  // No mean printed. This used to report "mean coherence X → Y" over the
+  // restamped entries. Averaging coherency is not this pipeline's call to
+  // make — the readings are stored per entry and are read as a distribution
+  // by whoever is doing the reading. Range only, which is two actual
+  // readings rather than a number no file has.
+  if (before.length) {
+    console.log(`  readings before  ${Math.min(...before).toFixed(4)} … ${Math.max(...before).toFixed(4)}  (n=${before.length})`);
+    console.log(`  readings after   ${Math.min(...after).toFixed(4)} … ${Math.max(...after).toFixed(4)}  (n=${after.length})`);
+  }
   if (done) {
     idx.ingestion_log = idx.ingestion_log || [];
     idx.ingestion_log.push({
@@ -452,55 +459,51 @@ function main() {
     fs.renameSync(tmp, INDEX_PATH);
     console.log(`  written → ${INDEX_PATH}`);
 
-    // WITNESS THE INGEST. One aggregate reading, not one per file.
+    // WITNESS THE INGEST. Every reading the compressor produced, as itself.
     //
-    // Every harvested file carries a real structural coherency, measured
-    // above from its fractal waveform. None of it reached the field: a
-    // 52-file harvest moved updateCount by 0, so the ecosystem's
-    // highest-volume data path was invisible to the field meant to witness
-    // it.
+    // Every harvested file carries a coherency the Void compressor measured
+    // from that file's bytes. None of it reached the field: a 52-file harvest
+    // moved updateCount by 0, so the ecosystem's highest-volume data path was
+    // invisible to the field meant to witness it.
     //
-    // ONE contribution, deliberately. Contributing per file would put 52
-    // readings in at once and let ingestion dominate the EMA by sheer
-    // count — the exact failure reflection-scorers had with its six
-    // dimensions. So: a single observation, "I ingested N files whose mean
-    // structural coherency was X", with cost N because that is what the
-    // work actually cost.
+    // NO AVERAGING. This used to contribute one number: the mean of the N
+    // readings, at cost N. That mean never came out of the compressor. It was
+    // a value this script computed, and the compressor is the only thing in
+    // this ecosystem that produces a coherency — so feeding a mean fed the
+    // field a number that was not a coherency reading at all, N times over,
+    // with the real readings discarded.
     //
-    // SOURCE NOTE — this is the Void compressor's reading, taken off each
-    // file's bytes, using the same quantisation goggle-web.js uses so ingest
-    // and live reads are the same measurement.
+    // The rationale for it was that N-at-once would let ingestion dominate the
+    // EMA by count. That is an argument about field dynamics, and the fix for
+    // field dynamics is not to substitute a fabricated number for the measured
+    // ones. `--do replay` already feeds per-file readings at cost 1 each; this
+    // now matches it exactly, so ingestion and replay put the same thing into
+    // the field by the same route.
     //
-    // The compressor is the ONLY producer of coherency in this ecosystem.
-    // avg_coherence is not "a kind of" coherency to be reconciled with others;
-    // it is the number. How the instrument computes it internally is the
-    // instrument's business — quoting its internals as though they DEFINED
-    // coherency is a category error, and an earlier version of this note made
-    // it. Everything downstream transforms this number to see where coherency
-    // is, how it behaves and how it flows; nothing downstream produces one.
+    // SOURCE NOTE — the compressor's reading, taken off each file's bytes,
+    // using the same quantisation goggle-web.js uses, so ingest and live reads
+    // are the same measurement. Everything downstream transforms this number
+    // to see where coherency is, how it behaves and how it flows; nothing
+    // downstream produces one.
     //
-    // An even earlier version claimed the ingest reading and the goggles'
-    // 0.72–0.89 were "two coherencies on different scales" awaiting
-    // calibration. There were never two. The ingest reading was
-    // seriesCoherence over the 29-slot fractal FEATURE VECTOR, correlating
-    // r = -0.025 with the compressor on the same files — not a rival scale, a
-    // number that was not coherency at all.
-    //
-    // computeCoherencyScore is likewise NOT a coherency: it scores structural
-    // validity (syntax, completeness, consistency, AST) and reads r = -0.313
-    // against the compressor. Tagged `harvest:ingest-coherency` so the true
-    // reading stays identifiable in the histogram.
+    // computeCoherencyScore is NOT a coherency: it scores structural validity
+    // (syntax, completeness, consistency, AST) and reads r = -0.313 against
+    // the compressor. seriesCoherence over the 29-slot fractal FEATURE VECTOR
+    // is likewise not one: r = -0.025 against the compressor on the same
+    // files. Neither is a rival scale; both are different measurements.
     if (_ingestCoherencies.length) {
       try {
-        const mean = _ingestCoherencies.reduce((a, b) => a + b, 0) / _ingestCoherencies.length;
-        if (isFinite(mean)) {
-          require('../src/core/field-coupling').contribute({
-            cost: _ingestCoherencies.length,
-            coherence: Math.max(0, Math.min(1, mean)),
-            source: 'harvest:ingest-coherency',
+        const fc = require('../src/core/field-coupling');
+        let fed = 0;
+        for (const c of _ingestCoherencies) {
+          fc.contribute({
+            cost: 1,
+            coherence: Math.max(0, Math.min(1, c)),
+            source: 'void:compress_signal:harvest',
           });
-          console.log(`  field: witnessed ${_ingestCoherencies.length} ingest coherencies, mean ${mean.toFixed(4)}`);
+          fed++;
         }
+        console.log(`  field: witnessed ${fed} compressor readings (one contribution each, no aggregate)`);
       } catch (_) { /* field optional — harvest must never fail on it */ }
     }
   }

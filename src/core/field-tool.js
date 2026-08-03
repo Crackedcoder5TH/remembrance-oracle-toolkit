@@ -654,22 +654,39 @@ class FieldTool {
     }
   }
 
+  // Summarise a batch WITHOUT averaging coherency.
+  //
+  // This used to return meanCoherence. A mean of N compressor readings is not
+  // a reading — no file measured it and the compressor never emitted it — so
+  // reporting it as the batch's coherency invented a number. The batch is
+  // summarised as a distribution instead: median (an actual file's reading),
+  // min and max (likewise actual readings), and the coverage counts.
+  //
+  // Unmeasured files are excluded, never folded in as 0. `r.coherence || 0`
+  // used to do that, so one unreachable instrument read as a collapse in
+  // coherency when it was a collapse in coverage. measuredCount is the
+  // honest denominator.
   _summarize(results) {
     if (!results.length) {
-      return { n: 0, meanCoherence: null, measuredCount: 0, grewCount: 0, scoredCount: 0 };
+      return {
+        n: 0, medianCoherence: null, minCoherence: null, maxCoherence: null,
+        measuredCount: 0, grewCount: 0, scoredCount: 0,
+      };
     }
     const n = results.length;
-    // Average only what was actually read. `r.coherence || 0` folded every
-    // unmeasured file in as a 0, so one unreachable instrument dragged the
-    // mean toward zero and the scan reported a collapse in coherency that was
-    // really a collapse in coverage. Unmeasured is excluded and counted.
     const measured = results.map(r => r.coherence).filter(c => typeof c === 'number' && isFinite(c));
-    const meanCoherence = measured.length
-      ? measured.reduce((s, c) => s + c, 0) / measured.length
-      : null;
+    const sorted = [...measured].sort((a, b) => a - b);
     const grewCount = results.filter(r => r.layers && r.layers.grew).length;
     const scoredCount = results.filter(r => r.layers && r.layers.scored).length;
-    return { n, meanCoherence, measuredCount: measured.length, grewCount, scoredCount };
+    return {
+      n,
+      medianCoherence: sorted.length ? sorted[Math.floor(sorted.length / 2)] : null,
+      minCoherence: sorted.length ? sorted[0] : null,
+      maxCoherence: sorted.length ? sorted[sorted.length - 1] : null,
+      measuredCount: measured.length,
+      grewCount,
+      scoredCount,
+    };
   }
 }
 

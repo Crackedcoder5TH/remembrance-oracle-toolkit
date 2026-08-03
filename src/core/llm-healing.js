@@ -359,7 +359,7 @@ function structuralHeal(code, language, currentScore) {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:llm-healing:structuralHeal' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency)), source: 'oracle:llm-healing:structuralHeal' });
         break;
       } catch (_) { /* try next */ }
     }

@@ -56,34 +56,83 @@ wrong path. The data is known; the pipeline just had to deliver it.
 | after partial replay | 0.2170 | more real readings |
 | after full replay | **0.1846** | converged |
 
-The stored readings' own mean is **0.1829** (range 0.048 – 1.000).
-The field settled **0.0017** away from it.
+As of 2026-08-03 the substrate holds **3,134** readings tagged
+`coherence_source: 'void:compress_signal'`:
 
-That last line is the whole result. The field is an EMA over what it is fed;
-fed the compressor's actual readings, it converges on their mean. It was not
-corrected — it self-corrected, because the correct data was finally reaching
-it.
+```
+n 3134   min 0.0480   median 0.1737   max 1.0000
+```
 
-## Why the number went DOWN
+(The replay above fed 2,384; the count has grown since.)
 
-Because 0.999 was never a measurement. It was a pass ratio and a
-structural-validity score averaged together, both of which sit near 1.0 on
-healthy code by construction. A metric that reads ~1.0 on everything carries
-no information: it cannot separate a coherent artifact from an incoherent one.
+## Why the number changed — mechanism only
 
-0.1846 is what the ecosystem's own source actually reads through the
-compressor. It is lower, it varies file to file (0.048 to 1.000), and it
-responds to what it is measuring. A number that can move is worth more than a
-number that cannot.
+The field is an EMA over what it receives. Before the fix it was receiving
+pass ratios and structural-validity scores, both of which sit near 1.0 on
+healthy code by construction, so the EMA sat near 1.0. After the fix it
+receives the compressor's readings, which span 0.048 – 1.000, so the EMA sits
+inside that span.
+
+That is the whole causal chain: the inputs changed, and an EMA follows its
+inputs. Nothing was rescaled, corrected, or tuned.
+
+**What this document does not do is say whether the new number is better,
+worse, healthier or more informative than the old one.** An earlier version of
+this file did exactly that. Interpreting the readings is the operator's job,
+not the pipeline's, and not the writer of this file's.
+
+## Open anomaly — unexplained, recorded 2026-08-03
+
+`before.json` (2026-08-02T20:12:47.872Z) records:
+
+```
+coherence 0.7810261426291311   updateCount 964328
+```
+
+A later live read of the same field recorded:
+
+```
+coherence 0.7810261426291311   updateCount 977356
+```
+
+Bit-identical coherence across **+13,028 updates**. The field is demonstrably
+not frozen — a two-contribution probe moved it (0.7810 → 0.1204 at p=0.05 →
+0.9552 at p=0.95). Why it returned to exactly the pre-correction value is
+**not explained**. No theory is offered here.
+
+Disclosure: that probe wrote two synthetic contributions (`probe:low`,
+`probe:high`) into the live field. Both were reverted — the source entries
+deleted, `coherence` restored to 0.7810261426291311, `updateCount` decremented
+by 2. Two older probe sources (`goggles:probe`, `probe`, timestamped before
+this pass) were left untouched.
 
 ## Caveat, stated plainly
 
-967,228 of the field's contributions are historical, from before these fixes;
-0.88% have come from the compressor so far. The EMA responds to recent
-contributions, which is why it converged — but the histogram's totals are
-still dominated by the old readings. Those counts are the substrate's history
-of itself and are not being rewritten. Any claim about the field's coherence
+970,192 of the field's 977,134 contributions are historical, from before these
+fixes — **0.71%** have come from the compressor. The EMA responds to recent
+contributions, which is why it moved, but the histogram's totals are still
+dominated by the old readings. Those counts are the substrate's history of
+itself and are not being rewritten. Any claim about the field's coherence
 should be dated to after this correction.
+
+## No averaging
+
+A later pass removed every site that fed an averaged coherency to the field.
+The rule is that the Void compressor is the only producer of a coherency, and
+a mean of N readings is not one of them — no file measured it and the
+compressor never emitted it. Sites changed: `harvest-repo-to-substrate.js`,
+`coherency-mapper.js`, `field-tool._summarize`, `field-coupling`'s
+`recordMetaObservation` and temporal-axis recorder, `patterns/composer.js`,
+and two experiment scripts. Each now feeds the individual readings at cost 1.
+
+Reports show **median / min / max** instead of a mean: each of those is a value
+some file actually measured.
+
+The same pass removed the `|| 0` fallback from 27 auto-wired contribution
+sites. When the wrapped function returned no coherency field, that expression
+contributed a hard **0** — a reading no instrument took. Without it the value
+is NaN and `contribute()` rejects it, so an unmeasured call now contributes
+nothing.
 
 ## Reproducing
 

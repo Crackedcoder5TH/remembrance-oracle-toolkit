@@ -166,8 +166,11 @@ function auditRepo(target, opts = {}) {
         checkerFilesTotal: _walkSources(dir).length,
       },
       structure: {
-        meanCoherence: +(map.meanCoherence || 0).toFixed(3),
+        // Distribution, not an average — see coherency-mapper._median.
         medianCoherence: cohs.length ? +cohs[Math.floor(cohs.length / 2)].toFixed(3) : null,
+        minCoherence: cohs.length ? +cohs[0].toFixed(3) : null,
+        maxCoherence: cohs.length ? +cohs[cohs.length - 1].toFixed(3) : null,
+        scoredCount: cohs.length,
         weakest,
         perCategory: map.perCategory,
         duplicatePairs: (map.buckets && map.buckets.D_duplicate_pairs || []).length,
@@ -208,7 +211,7 @@ function formatReport(r) {
   const lines = [];
   lines.push('═══ REMEMBRANCE AUDIT — ' + r.target + ' ═══');
   lines.push(`  files mapped: ${r.audited.files} · checker files: ${r.audited.checkerFiles}/${r.audited.checkerFilesTotal} · ${(r.durationMs / 1000).toFixed(1)}s`);
-  lines.push(`  structure: mean ${r.structure.meanCoherence} · median ${r.structure.medianCoherence} · duplicates ${r.structure.duplicatePairs} · orphans ${r.structure.orphans}`);
+  lines.push(`  structure: median ${r.structure.medianCoherence} · min ${r.structure.minCoherence} · max ${r.structure.maxCoherence} · n ${r.structure.scoredCount} · duplicates ${r.structure.duplicatePairs} · orphans ${r.structure.orphans}`);
   if (r.structure.weakest.length) {
     lines.push('  weakest structure:');
     for (const w of r.structure.weakest) lines.push(`    ${w.coherence.toFixed(3)}  ${w.file}`);

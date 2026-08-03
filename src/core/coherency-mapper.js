@@ -210,6 +210,15 @@ function _walk(dir, opts) {
  *   contributionsCount: number,
  * }}
  */
+// Median of a set of readings. Deliberately NOT a mean: the median is a
+// value some file in the set actually measured, so it is still a reading the
+// compressor produced. A mean is a number no file has.
+function _median(values) {
+  if (!values || !values.length) return null;
+  const s = [...values].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)];
+}
+
 function mapProjectCoherency(projectPath, opts = {}) {
   const categorize = opts.categorize || DEFAULT_CATEGORIZER;
   const topK = opts.topK || 10;
@@ -440,13 +449,19 @@ function mapProjectCoherency(projectPath, opts = {}) {
   function ctr(coh, src) {
     try { fc.contribute({ cost: 1.0, coherence: coh, source: src }); contributionsCount++; } catch {}
   }
-  // Mean over SCORED files only — TRUNCATED files carry coherence:null
-  // and must not enter the average as zeros.
+  // NO AVERAGING. This used to reduce every scored file to one mean and
+  // contribute that single number as the repo's structural coherency. The
+  // mean is not a reading — no file has it, and the compressor never emitted
+  // it. Each scored file carries a coherency the compressor measured off its
+  // bytes; those go in as themselves, at cost 1 each, the same way `--do
+  // replay` and harvest feed the field.
+  //
+  // TRUNCATED files carry coherence:null and are skipped — withheld is not
+  // zero.
   const scored = results.filter(r => typeof r.coherence === 'number');
-  const meanCoherence = scored.length
-    ? scored.reduce((s, r) => s + r.coherence, 0) / scored.length
-    : 0;
-  ctr(meanCoherence, 'coherency-map:' + namespace + ':structural');
+  for (const r of scored) {
+    ctr(r.coherence, 'void:compress_signal:map:' + namespace);
+  }
   ctr(1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2), 'coherency-map:' + namespace + ':non-duplication');
   // Orphan-rate meta-signal — same rule as the residual and dimensional
   // couplings: a completed wiring measurement is a COHERENT event (the
@@ -463,7 +478,14 @@ function mapProjectCoherency(projectPath, opts = {}) {
     timestamp: new Date().toISOString(),
     durationMs: Date.now() - t0,
     filesAudited: results.length,
-    meanCoherence,
+    // Distribution, not an average. `medianCoherence` is an actual file's
+    // reading — some file in this repo really measured that. A mean is a
+    // number no file has and the compressor never produced, so it is not
+    // reported here at all.
+    medianCoherence: _median(scored.map(r => r.coherence)),
+    minCoherence: scored.length ? Math.min(...scored.map(r => r.coherence)) : null,
+    maxCoherence: scored.length ? Math.max(...scored.map(r => r.coherence)) : null,
+    scoredCount: scored.length,
     substrateSize: results[0] && results[0].topCousin ? '~46k+ (per FieldTool)' : 'unknown',
     // Compact per-file readings — the macro lens (goggles MACRO section)
     // ranks a focused file against these to place it in the whole map.
@@ -753,7 +775,12 @@ function mapFromSubstrate(projectPath, opts = {}) {
     timestamp: new Date().toISOString(),
     durationMs: Date.now() - t0,
     filesAudited: results.length,
-    meanCoherence: null,
+    // Substrate mode reads structure, not intrinsic coherency — the readings
+    // are a live-read job (--deep / FOCUS), so the distribution is empty here.
+    medianCoherence: null,
+    minCoherence: null,
+    maxCoherence: null,
+    scoredCount: 0,
     substrateSize: composed.size,
     coverage: {
       walkedFiles: walked.length,

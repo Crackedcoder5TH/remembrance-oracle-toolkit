@@ -239,7 +239,12 @@ class PatternComposer {
       for (const __p of [__lre_p1, __lre_p2]) {
         try {
           const { contribute: __contribute } = require(__p);
-          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, (__retVal.patterns || []).reduce((s, p, _, a) => s + (Number(p.coherency) || 0) / a.length, 0) || 0)), source: 'oracle:composer:compose' });
+          // NO AVERAGING. This used to reduce the composed patterns to one
+          // mean coherency. Each pattern's own reading goes in as itself;
+          // patterns without one contribute nothing rather than a zero.
+          for (const __p2 of (__retVal.patterns || [])) {
+            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__p2.coherency))), source: 'oracle:composer:compose' });
+          }
           break;
         } catch (_) { /* try next */ }
       }

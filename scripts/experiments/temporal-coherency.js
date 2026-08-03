@@ -77,7 +77,10 @@ for (const repo of repos) {
   // itself. Recording it as 0.5+delta would inject a low-coherence signal
   // that has nothing to do with the underlying field. Skip it; log it
   // separately as analysis output instead.
-  contribute({ source: 'temporal:' + repo + ':adjacent', coherence: meanAdj, cost: 1 });
+  //
+  // NO AVERAGING: each adjacent-step reading goes in as itself. meanAdj used
+  // to be the contribution; it is now only printed, never fed.
+  for (const a of adj) contribute({ source: 'temporal:' + repo + ':adjacent', coherence: a, cost: 1 });
   contribute({ source: 'temporal:' + repo + ':arc', coherence: arc, cost: 1 });
 
   summary.push({ repo, versions: versions.length, meanAdj, arc, convergence });

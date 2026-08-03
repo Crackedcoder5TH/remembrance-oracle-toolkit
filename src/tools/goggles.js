@@ -168,8 +168,11 @@ function runMap(dir, { deep = false } = {}) {
     const truncScored = truncFiles.filter((f) => typeof f.coherence === 'number').length;
     const truncWithheld = truncFiles.length - truncScored;
     console.log('\nREPO COHERENCE DISTRIBUTION:');
-    console.log('  mean ' + (m.meanCoherence ?? 0).toFixed(3) + ' · median ' + median.toFixed(3)
-      + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3));
+    // No mean. Every number on this line is a reading some file in this repo
+    // actually measured; a mean would be a number none of them has.
+    console.log('  median ' + median.toFixed(3)
+      + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3)
+      + ' · n ' + cohs.length);
     if (truncFiles.length) {
       console.log('  ' + truncFiles.length + ' file(s) over the encode cap (TRUNCATED): '
         + truncScored + ' scored from full text · '
@@ -430,7 +433,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
     const below = cohs.filter((c) => c <= fileCoherence).length;
     const pct = Math.round((below / cohs.length) * 100);
     const stance = fileCoherence >= median ? 'at/above repo median' : 'below repo median';
-    console.log(`    repo coherence  ${bar(m.meanCoherence ?? median)} mean ${(m.meanCoherence ?? 0).toFixed(3)} · median ${median.toFixed(3)}`);
+    console.log(`    repo coherence  ${bar(median)} median ${median.toFixed(3)} · min ${cohs[0].toFixed(3)} · max ${cohs[cohs.length - 1].toFixed(3)}`);
     console.log(`    this section    ${fileCoherence.toFixed(3)} → p${pct} of the repo (${stance})`);
   }
 

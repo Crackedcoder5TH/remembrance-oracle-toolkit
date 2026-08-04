@@ -541,7 +541,9 @@ function namespaceFromIndexNames(rels, indexNames) {
 // Canonical depth-flow cosine — ONE implementation, in the encoder
 // stack (ECOSYSTEM §7: one encoder, one cosine; consumers route to
 // canonical instead of mirroring the math).
-const { flowCosines: _flowCosines } = require('./decoder-stack');
+const {
+  flowCosines: _flowCosines, deepestFlow: _deepestFlow, flowCheckpoints,
+} = require('./decoder-stack');
 
 /**
  * Build the macro coherency map from the substrate's existing vectors.
@@ -717,11 +719,16 @@ function mapFromSubstrate(projectPath, opts = {}) {
     // Stage 2: depth-flow confirmation over composed vectors.
     const candidate = composed.get(bestName);
     if (cv && candidate) {
-      const [d1, d2, d3, d4] = _flowCosines(cv, candidate);
-      const minDepth = Math.min(d1, d2, d3, d4);
+      // Every active depth, not the first four. Destructuring d1..d4 read
+      // 116 of 232 dims, so L5-redundancy · L6-content · L7-dimensional ·
+      // L8-dynamical never reached the bridge test — and those are exactly
+      // the layers that separate look-alikes.
+      const flow = _flowCosines(cv, candidate);
+      const minDepth = Math.min(...flow);
+      const deep = _deepestFlow(flow);
       if (minDepth < bridgeAt) continue; // L1 saturation, not a bridge
-      bridges.push({ from: r.rel, to: bestName, score: d4, minDepth });
-      r.topExternal = { name: bestName, score: d4 };
+      bridges.push({ from: r.rel, to: bestName, score: deep, minDepth });
+      r.topExternal = { name: bestName, score: deep };
     } else {
       // No composed vector to confirm with — report but mark unconfirmed.
       bridges.push({ from: r.rel, to: bestName, score: bestScore, unconfirmed: true });
@@ -977,18 +984,27 @@ function _cosineLen(a, b, len) {
  */
 function coherencyFlow(a, b) {
   if (!a || !b) return null;
-  const d1 = _cosineLen(a.l1 || a.fractal, b.l1 || b.fractal, 29);
   const composedA = a.composed || a.composed_v1;
   const composedB = b.composed || b.composed_v1;
-  let d2 = 0, d3 = 0, d4 = 0;
+  // Route to the canonical sweep instead of re-deriving checkpoints here.
+  // This body carried its own `CHECK`-equivalent — 29/58/87/Math.min(116, …)
+  // — written when four layers existed, so it stayed at 116-D after
+  // flowCosines was widened to every active layer. One decoder, one cosine.
   if (composedA && composedB) {
-    d2 = _cosineLen(composedA, composedB, Math.min(58, composedA.length));
-    d3 = _cosineLen(composedA, composedB, Math.min(87, composedA.length));
-    d4 = _cosineLen(composedA, composedB, Math.min(116, composedA.length));
-  } else {
-    d2 = d3 = d4 = d1;
+    const flow = _flowCosines(composedA, composedB);
+    const out = { flow, shape: classifyFlow(flow) };
+    flow.forEach((v, i) => { out['d' + (i + 1)] = v; });
+    out.deepest = _deepestFlow(flow);
+    return out;
   }
-  return { d1, d2, d3, d4, shape: classifyFlow({ d1, d2, d3, d4 }) };
+  // No composed vectors — the L1 reading is all there is, repeated across
+  // the checkpoints so the shape is visible rather than silently short.
+  const d1 = _cosineLen(a.l1 || a.fractal, b.l1 || b.fractal, 29);
+  const flow = flowCheckpoints().map(() => d1);
+  const out = { flow, shape: classifyFlow(flow) };
+  flow.forEach((v, i) => { out['d' + (i + 1)] = v; });
+  out.deepest = d1;
+  return out;
 }
 
 /**
@@ -1016,17 +1032,23 @@ function pairwiseFlow(entries, opts = {}) {
     const siblings = []; // kept sorted desc by d4, capped at 5
     for (let j = 0; j < n; j++) {
       if (j === i) continue;
-      const [d1, d2, d3, d4] = _flowCosines(entries[i].vec, entries[j].vec);
-      const shape = classifyFlow({ d1, d2, d3, d4 });
+      // The whole flow, at every active depth. `d4` is kept as the key name
+      // because goggles.js reads it, but it now carries the DEEPEST reading
+      // (232-D today), not the 116-D fourth checkpoint. Duplicate detection
+      // in particular was running on the half that cannot tell look-alikes
+      // apart, which is the half that decides whether two files are the same.
+      const flow = _flowCosines(entries[i].vec, entries[j].vec);
+      const shape = classifyFlow(flow);
+      const deep = _deepestFlow(flow);
       if (shape === 'STABLE-HIGH') {
         stableHigh++;
-        const minDepth = Math.min(d1, d2, d3, d4);
+        const minDepth = Math.min(...flow);
         if (minDepth >= duplicateAt) {
-          duplicates.push({ name: entries[j].rel, score: d4, minDepth, shape });
+          duplicates.push({ name: entries[j].rel, score: deep, minDepth, shape });
         }
       }
-      if (siblings.length < 5 || d4 > siblings[siblings.length - 1].d4) {
-        siblings.push({ rel: entries[j].rel, d4, shape });
+      if (siblings.length < 5 || deep > siblings[siblings.length - 1].d4) {
+        siblings.push({ rel: entries[j].rel, d4: deep, shape });
         siblings.sort((a, b) => b.d4 - a.d4);
         if (siblings.length > 5) siblings.pop();
       }

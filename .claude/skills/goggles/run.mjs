@@ -101,6 +101,10 @@ if (argv[0] === '--do') {
     // and using it are the same surface. Args are JSON, one per parameter.
     //   goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x=1"'
     call: () => run('node', [join(toolkit, 'src/tools/goggles-call.js'), ...rest], toolkit),
+    // LET RESONANCE FIND THE STRUCTURE. Patterns correlated directly, with no
+    // grouping by stem or label — grouping before measuring is itself a filter.
+    //   goggles --do cluster [--sample N]
+    cluster: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'resonance-cluster.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
     // THE RESONANCE FIELD, read on the COMPRESSED patterns — domain waveform
     // signatures cross-correlated, with coherence_index and the anomalies that
     // stick out. This is the instrument's own resonance; nothing decoded, no

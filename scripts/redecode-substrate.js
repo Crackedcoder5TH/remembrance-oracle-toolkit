@@ -45,6 +45,39 @@ function sourcePathOf(key, entry) {
   return path.join(entry.ingested_from, rel);
 }
 
+// THE CANONICAL VECTORS THAT ALREADY EXIST.
+//
+// The Void repo holds composed_v5_index.json — depth 8, 232-D, 42,738 entries
+// already unfolded at the canonical width. Its own note is the point: "The
+// compressed patterns ARE the source; the encoder only determines how they are
+// read."
+//
+// A first version of this script looked only for a source FILE on disk and
+// counted 44,906 entries as unreachable because their artifact was not in any
+// repo. That was the wrong place to look. Most of those are crawled patterns
+// whose source is the waveform itself, and their canonical vectors were
+// already computed and sitting in this file. Re-deriving them would be the
+// third computation of the same unfolding — exactly what the substrate exists
+// to prevent.
+//
+// So: take what is already decoded FIRST, and only unfold from source for what
+// genuinely has none.
+const V5_PATH = process.env.COMPOSED_V5_PATH
+  || path.join(process.env.HARVEST_HOME || '/home/user',
+    'Void-Data-Compressor', 'composed_v5_index.json');
+
+function loadCanonicalIndex(width) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(V5_PATH, 'utf8'));
+    if (!raw || !raw.index) return null;
+    if (raw.dims && raw.dims !== width) {
+      console.log(`  (composed_v5_index is ${raw.dims}-D, canonical is ${width}-D — not used)`);
+      return null;
+    }
+    return raw.index;
+  } catch (_) { return null; }
+}
+
 function main() {
   const argv = process.argv.slice(2);
   const apply = argv.includes('--apply');
@@ -61,7 +94,11 @@ function main() {
   console.log(`REDECODE — canonical depth ${depth} (${width}-D)`);
   console.log(`  scope: ${target}${apply ? '' : '   [DRY RUN — nothing written]'}\n`);
 
+  const canonical = loadCanonicalIndex(width);
+  if (canonical) console.log(`  already-decoded canonical vectors available: ${Object.keys(canonical).length}\n`);
+
   let already = 0, done = 0, gone = 0, tooSmall = 0, failed = 0, sinceCkpt = 0, ckpts = 0;
+  let fromStore = 0;
   const keys = Object.keys(index);
 
   const checkpoint = () => {
@@ -82,6 +119,21 @@ function main() {
 
     const cur = entry.composed_v2 || entry.composed_v1;
     if (Array.isArray(cur) && cur.length >= width) { already++; continue; }
+
+    // Already unfolded at canonical width somewhere else in the ecosystem —
+    // take it rather than computing it again.
+    const stored = canonical && canonical[key];
+    if (Array.isArray(stored) && stored.length >= width) {
+      if (apply) {
+        entry.composed = stored;
+        entry.composed_width = stored.length;
+        entry.decoded_depth = depth;
+        entry.composed_from = 'composed_v5_index';
+      }
+      fromStore++; done++;
+      if (++sinceCkpt >= CHECKPOINT_EVERY) { sinceCkpt = 0; checkpoint(); }
+      continue;
+    }
 
     const src = sourcePathOf(key, entry);
     if (!src || !fs.existsSync(src)) { gone++; continue; }
@@ -104,12 +156,15 @@ function main() {
       entry.composed = vec;
       entry.composed_width = vec.length;
       entry.decoded_depth = depth;
+      entry.composed_from = 'decoder';
     }
     done++;
     if (++sinceCkpt >= CHECKPOINT_EVERY) { sinceCkpt = 0; checkpoint(); }
   }
 
-  console.log(`\n  re-decoded:        ${done}`);
+  console.log(`\n  canonical now:     ${done}`);
+  if (fromStore) console.log(`    from store:      ${fromStore}  (already decoded — not recomputed)`);
+  if (done - fromStore) console.log(`    unfolded fresh:  ${done - fromStore}`);
   console.log(`  already canonical: ${already}`);
   if (gone) console.log(`  source gone:       ${gone}  (entry kept, still at its old width)`);
   if (tooSmall) console.log(`  below floor:       ${tooSmall}`);

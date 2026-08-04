@@ -88,14 +88,29 @@ function main() {
   }
 
   if (r.voids.length) {
-    console.log('\n  DEEPEST VOIDS (the substrate holds these but holds nothing like them):');
-    for (const v of r.voids.slice(0, 15)) {
-      console.log(`    depth ${v.depth.toFixed(3)}  best ${v.best.toFixed(3)}  ${v.name}`);
-      console.log(`                          nearest → ${v.nearest}`);
+    console.log('\n  VOIDS BY LENS DEPTH — one lens at a time, void attached to each width:');
+    for (const v of r.voids.slice(0, 8)) {
+      console.log(`\n    ${v.name}   [stored ${v.width}-D${v.truncated ? ', TRUNCATED vs ' + v.canonicalWidth + '-D' : ''}]`);
+      for (const p of v.profile) {
+        if (p.best == null) { console.log(`      ${p.layer.padEnd(22)} ${String(p.width).padStart(3)}-D   no reading`); continue; }
+        console.log(`      ${p.layer.padEnd(22)} ${String(p.width).padStart(3)}-D   best ${p.best.toFixed(4)}  depth ${p.depth.toFixed(4)}${p.isVoid ? '   ← VOID' : ''}`);
+      }
     }
-    if (r.voids.length > 15) console.log(`    … +${r.voids.length - 15} more`);
+    if (r.voids.length > 8) console.log(`\n    … +${r.voids.length - 8} more`);
   } else {
-    console.log('\n  no voids at this floor in the probed sample.');
+    console.log(`\n  no reading fell below the floor (${consonanceFloor().toFixed(3)}) in the probed sample.`);
+  }
+
+  // THE RAW PER-LENS READINGS. Printed whether or not anything crossed the
+  // floor — the readings are the data; "0 voids" is a statistic about them.
+  console.log('\n  RAW PER-LENS READINGS (best match at each cumulative decoder width):');
+  for (const pr of (r.profiles || []).slice(0, 6)) {
+    console.log(`\n    ${pr.name}   [stored ${pr.width}-D]`);
+    for (const p of pr.profile) {
+      if (p.best == null) { console.log(`      ${p.layer.padEnd(22)} ${String(p.width).padStart(3)}-D   no reading`); continue; }
+      console.log(`      ${p.layer.padEnd(22)} ${String(p.width).padStart(3)}-D   ${p.best}${p.isVoid ? '   ← below floor' : ''}`);
+    }
+    console.log(`      deepest nearest → ${pr.nearest}`);
   }
 
   console.log('\n  A void is where replenishment has somewhere to go: a pattern placed here is');

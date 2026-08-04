@@ -53,7 +53,7 @@
  * comparison could not see into. See docs/full-depth-readings.md.
  */
 
-const { flowCosines, deepestFlow, flowCheckpoints } = require('./decoder-stack');
+const { flowCosines, deepestFlow, flowCheckpoints, activeLayers } = require('./decoder-stack');
 
 // A query is CONSONANT with the substrate above this; below it, the gap
 // between what was asked and what the substrate could answer is the void.
@@ -134,6 +134,48 @@ function voidAt(resonance, opts = {}) {
 }
 
 /**
+ * The void at EVERY lens depth, one lens at a time.
+ *
+ * The decoder is a stack: L1 structural alone is 29-D, +L2 lexical is 58-D,
+ * +L3 numerical 87-D, and so on to 232-D with all eight. A single void depth
+ * at the full width collapses that into one number and throws away the thing
+ * worth seeing — WHERE in the stack the substrate stops having memory.
+ *
+ * flowCosines already sweeps every cumulative boundary in one pass, so this
+ * costs nothing beyond the comparison already being made. Each lens depth gets
+ * its own void reading, entangled with the width it was taken at and the layer
+ * that width corresponds to.
+ *
+ * Reading the profile: a void that appears at L1 and closes by L4 means the
+ * surface structure is unfamiliar but the deeper character is known. A void
+ * that opens only at L6-L8 means the opposite — it looks like things the
+ * substrate holds, and is unlike them in redundancy, content or dynamics.
+ * Those are different kinds of new, and one number cannot tell them apart.
+ *
+ * @param {number[]} flow — cosines per checkpoint, from flowCosines
+ * @param {object} [opts] — floor override
+ * @returns {Array<{layer, width, best, depth, isVoid}>}
+ */
+function voidProfile(flow, opts = {}) {
+  const floor = typeof opts.floor === 'number' ? opts.floor : consonanceFloor();
+  const checkpoints = flowCheckpoints();
+  const layers = activeLayers();
+  const out = [];
+  for (let i = 0; i < checkpoints.length; i++) {
+    const best = (typeof flow[i] === 'number' && isFinite(flow[i])) ? flow[i] : null;
+    out.push({
+      layer: layers[i] ? layers[i].id : `L${i + 1}`,
+      width: checkpoints[i],
+      best,
+      // null best is not depth 0 — it is a lens that produced no reading.
+      depth: best == null ? null : Math.max(0, floor - best),
+      isVoid: best == null ? null : best < floor,
+    });
+  }
+  return out;
+}
+
+/**
  * Where the substrate is empty, read from the vectors it already holds.
  *
  * For each sampled entry, the strongest resonance to ANY other entry is its
@@ -169,24 +211,54 @@ function substrateVoids(entries, opts = {}) {
   for (let i = 0; i < total && probes.length < sample; i += step) probes.push(names[i]);
 
   const voids = [];
+  const allProfiles = [];
   const byNamespace = {};
   for (const q of probes) {
     const qv = entries[q];
     if (!qv || !qv.length) continue;
-    let best = -1, nearest = null;
+    // Best match AT EVERY LENS DEPTH. The nearest neighbour at L1 is often not
+    // the nearest at L8 — surface-similar and deep-similar are different
+    // relations — so each width keeps its own best rather than inheriting the
+    // full-width winner's score.
+    const cps = flowCheckpoints();
+    const bestPer = new Array(cps.length).fill(-1);
+    const nearestPer = new Array(cps.length).fill(null);
     for (const other of names) {
       if (other === q) continue;
       const ov = entries[other];
       if (!ov || !ov.length) continue;
-      const s = deepestFlow(flowCosines(qv, ov));
-      if (s > best) { best = s; nearest = other; }
+      const f = flowCosines(qv, ov);
+      for (let i = 0; i < cps.length; i++) {
+        if (typeof f[i] === 'number' && f[i] > bestPer[i]) { bestPer[i] = f[i]; nearestPer[i] = other; }
+      }
     }
+    const profile = voidProfile(bestPer, { floor }).map((p, i) => ({ ...p, nearest: nearestPer[i] }));
+    const best = bestPer[bestPer.length - 1];
+    const nearest = nearestPer[nearestPer.length - 1];
+    // The width this entry's own vector carries — the reading can never be
+    // deeper than the narrower side of the comparison.
+    const qWidth = qv.length;
     const ns = q.split('/')[0];
     byNamespace[ns] = byNamespace[ns] || { probed: 0, inVoid: 0, rate: 0 };
     byNamespace[ns].probed++;
-    if (best < floor) {
+    // Count a void at ANY lens depth, not only the deepest — a hole that
+    // opens at L1 and closes by L4 is still a hole the substrate had.
+    // EVERY probe's per-lens readings are kept, not only the ones that dip
+    // below the floor. A count of voids is a statistic; the readings are the
+    // data. Reporting only flagged entries hid the fact that the floor may
+    // never fire at all.
+    allProfiles.push({ name: q, width: qWidth, best, nearest, profile });
+    const anyVoid = profile.some((p) => p.isVoid === true);
+    if (anyVoid) {
       byNamespace[ns].inVoid++;
-      voids.push({ name: q, best, nearest, depth: Math.max(0, floor - best) });
+      voids.push({
+        name: q, best, nearest,
+        depth: Math.max(0, floor - best),
+        width: qWidth,
+        canonicalWidth: cps[cps.length - 1],
+        truncated: qWidth < cps[cps.length - 1],
+        profile,
+      });
     }
   }
   for (const ns of Object.keys(byNamespace)) {
@@ -199,6 +271,7 @@ function substrateVoids(entries, opts = {}) {
     probed: probes.length,
     total,
     sampled: probes.length < total,
+    profiles: allProfiles,
     voids,
     byNamespace,
     width,
@@ -206,4 +279,4 @@ function substrateVoids(entries, opts = {}) {
   };
 }
 
-module.exports = { voidAt, substrateVoids, consonanceFloor };
+module.exports = { voidAt, voidProfile, substrateVoids, consonanceFloor };

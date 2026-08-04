@@ -20,9 +20,13 @@ const path = require('node:path');
 const { substrateVoids, consonanceFloor } = require('../src/core/void-replenishment');
 const { flowCheckpoints } = require('../src/core/decoder-stack');
 
+// ONE STORE. Prefer the merged substrate; fall back to the old split index
+// only if the merge has not been run. Reading a slice is what made every
+// earlier reading of this data wrong.
+const VOID_DIR = path.join(process.env.HARVEST_HOME || '/home/user', 'Void-Data-Compressor');
+const MERGED_PATH = process.env.SUBSTRATE_MERGED || path.join(VOID_DIR, 'substrate.json');
 const INDEX_PATH = process.env.SUBSTRATE_PATH
-  || path.join(process.env.HARVEST_HOME || '/home/user',
-    'Void-Data-Compressor', 'pattern_index_fractal.json');
+  || (fs.existsSync(MERGED_PATH) ? MERGED_PATH : path.join(VOID_DIR, 'pattern_index_fractal.json'));
 
 function main() {
   const argv = process.argv.slice(2);
@@ -39,7 +43,7 @@ function main() {
   // than folded in as empty space.
   const entries = {};
   let noVector = 0;
-  for (const [k, e] of Object.entries(idx.index || {})) {
+  for (const [k, e] of Object.entries(idx.entries || idx.index || {})) {
     if (target !== 'all' && !k.startsWith(target + '/')) continue;
     const v = e && (e.composed || e.composed_v2 || e.composed_v1);
     if (Array.isArray(v) && v.length) entries[k] = v;

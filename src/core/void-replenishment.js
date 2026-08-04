@@ -88,24 +88,47 @@ function consonanceFloor() {
  */
 function voidAt(resonance, opts = {}) {
   const floor = typeof opts.floor === 'number' ? opts.floor : consonanceFloor();
-  const width = flowCheckpoints().slice(-1)[0];
+  const canonicalWidth = flowCheckpoints().slice(-1)[0];
   if (!resonance || !resonance.bestMatch) {
     // No resonance at all is not void depth 0 and it is not void depth 1 —
     // it is an unread region. Saying "maximum void" here would invent a
     // measurement, the same way a fabricated 0 invents a coherency.
-    return { depth: 0, best: null, nearest: null, isVoid: false, width, measured: false };
+    return {
+      depth: 0, best: null, nearest: null, isVoid: false,
+      width: null, canonicalWidth, truncated: null, measured: false,
+    };
   }
   const best = typeof resonance.bestMatch.score === 'number'
     ? resonance.bestMatch.score
     : deepestFlow([resonance.bestMatch.d1, resonance.bestMatch.d2,
       resonance.bestMatch.d3, resonance.bestMatch.d4].filter((x) => typeof x === 'number'));
-  const depth = Math.max(0, floor - best);
+
+  // THE DEPTH IS ENTANGLED WITH THE WIDTH IT WAS MEASURED AT.
+  //
+  // A comparison spans only as many dimensions as the NARROWER side carries.
+  // With entries at 116-D, 145-D and 232-D in the same store, a depth of 0.0
+  // measured against 116-D memory and a depth of 0.0 measured at full
+  // canonical width are different claims: the first means "the four deepest
+  // layers were never consulted", the second means "they were, and found
+  // memory". Stored flat, that distinction is unrecoverable — and this
+  // ecosystem has already produced false findings from exactly that ambiguity.
+  //
+  // So the width rides with the reading, always, and `truncated` says plainly
+  // whether the deepest layers participated.
+  const width = typeof opts.width === 'number' && isFinite(opts.width)
+    ? opts.width
+    : (typeof resonance.bestMatch.width === 'number' ? resonance.bestMatch.width : null);
+
   return {
-    depth,
+    depth: Math.max(0, floor - best),
     best,
     nearest: resonance.bestMatch.name || null,
     isVoid: best < floor,
+    // The width this depth was actually read at, and the width it would take
+    // to read it fully. Never assume they are equal.
     width,
+    canonicalWidth,
+    truncated: width == null ? null : width < canonicalWidth,
     measured: true,
   };
 }

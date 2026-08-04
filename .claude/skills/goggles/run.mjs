@@ -101,6 +101,10 @@ if (argv[0] === '--do') {
     // and using it are the same surface. Args are JSON, one per parameter.
     //   goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x=1"'
     call: () => run('node', [join(toolkit, 'src/tools/goggles-call.js'), ...rest], toolkit),
+    // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
+    // measures nothing: no reading is recomputed and no time dimension added.
+    //   goggles --do merge [--apply]
+    merge: () => run('node', [join(toolkit, 'scripts/merge-substrate.js'), ...rest], toolkit),
     // UNFOLD EVERY ENTRY AGAIN AT THE CANONICAL DECODER WIDTH. Coherency is
     // NOT recomputed — it comes off the compressor reading the bytes and does
     // not depend on how many lens axes the decoder separates them into.

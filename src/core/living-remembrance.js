@@ -322,12 +322,36 @@ class LivingRemembranceEngine {
    * @param {string} [obs.source]  — caller name for the audit trail
    * @returns {object} new state snapshot
    */
-  contribute({ cost = 1.0, coherence = null, source = null, resonance = null } = {}) {
+  contribute({ cost = 1.0, coherence = null, source = null, resonance = null, void: voidTerm = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
     const { r0, alpha, delta0, cascadeTau, epsilon } = this._params;
 
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
-    const delta_void = delta0 * Math.max(0, 1 - p);
+
+    // ── THE VOID TERM ──────────────────────────────────────────────────────
+    //
+    // This was `delta0 * Math.max(0, 1 - p)`: derived entirely from the
+    // reading coming in, never consulting the field. It asserted "this reading
+    // is far from 1" and called that a void. Those are different claims — a
+    // well-remembered pattern with a low coherency got a large delta_void, and
+    // a genuinely novel shape the field had never seen got whatever its
+    // coherency happened to be.
+    //
+    // The field measures the real thing and always did. ResonanceDetector
+    // cross-correlates domain waveform signatures in the COMPRESSED space and
+    // marks a domain VOID when nothing resonates with it above
+    // RESONANCE_THRESHOLD. That is the void: the field has no memory there.
+    // Reachable as `goggles --do void`.
+    //
+    // `void` may be passed by a caller that already read the field — the
+    // measurement, entangled to the pattern. When absent, the term falls back
+    // to the reading-derived form, LABELLED, so a fallback is never mistaken
+    // for a measurement.
+    const voidMeasured = (typeof voidTerm === 'number' && isFinite(voidTerm));
+    const delta_void = voidMeasured
+      ? Math.max(0, voidTerm)
+      : delta0 * Math.max(0, 1 - p);
+    const void_source = voidMeasured ? 'field:resonance' : 'derived:1-p';
 
     // RESONANCE-WEIGHTED AUTHORITY: a contribution moves the field only in
     // proportion to how much it resonates with the accumulated substrate.
@@ -450,6 +474,9 @@ class LivingRemembranceEngine {
       ...this._state,
       r_eff,
       delta_void,
+      // Provenance of the void term: a field measurement, or the
+      // reading-derived fallback. Without this the two are indistinguishable.
+      void_source,
       p,
       source: source || null,
     };

@@ -33,6 +33,43 @@ const VOID_ROOT = process.env.VOID_ROOT
   || path.resolve(__dirname, '..', '..', '..', 'Void-Data-Compressor');
 
 const CACHE = new Map();               // sha1(content) → number | null
+
+// The provenance of the most recent reading — which patterns the compressor
+// blended to reconstruct the content, and whether that blend was the content
+// itself. Set by every uncached read.
+let LAST_READING = null;
+
+// A blend is a self-match when a single pattern reconstructs the content
+// essentially alone: alpha (or beta) carries the whole weight and the residual
+// is negligible. That is the signature of "this IS the pattern", as distinct
+// from "this is shaped like these two patterns".
+function _isSelfMatch(blend) {
+  if (!blend) return false;
+  const one = (b) => {
+    const a = Number(b.alpha), bb = Number(b.beta), res = Number(b.residual);
+    if (!isFinite(a) || !isFinite(bb)) return false;
+    const dominant = Math.max(Math.abs(a), Math.abs(bb));
+    const other = Math.min(Math.abs(a), Math.abs(bb));
+    // One pattern carries the chunk alone and nothing meaningful is left over:
+    // the signature of "this IS the pattern", not "this is shaped like it".
+    return dominant >= 0.999 && other <= 0.01
+      && (!isFinite(res) || Math.abs(res) <= 1e-6);
+  };
+  // Chunked reads report one blend per chunk. A read is self-matched when
+  // EVERY chunk reconstructs from a single pattern alone — one such chunk is
+  // ordinary, all of them means the library already holds this artifact.
+  if (Array.isArray(blend)) return blend.length > 0 && blend.every(one);
+  return one(blend);
+}
+
+/** The distinct pattern names a reading blended from. */
+function _blendNames(blend) {
+  if (!blend) return [];
+  const arr = Array.isArray(blend) ? blend : [blend];
+  const names = new Set();
+  for (const b of arr) { if (b.name1) names.add(b.name1); if (b.name2) names.add(b.name2); }
+  return [...names];
+}
 const CACHE_MAX = 5000;
 
 let _startAttempted = false;
@@ -147,12 +184,48 @@ function coherencyOf(content, opts = {}) {
   }
 
   let value = null;
+  let blend = null;
   try {
     const r = JSON.parse(raw);
     if (typeof r.avg_coherence === 'number' && isFinite(r.avg_coherence)) {
       value = r.avg_coherence;
     }
+    // Chunked path reports per-chunk blends; single-shot path reports one.
+    blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null) || null;
   } catch (_) { /* unparseable → no reading */ }
+
+  // ── SELF-MATCH: the reading that measures library membership ──────────────
+  //
+  // avg_coherence is the coherence of the two-pattern blend that reconstructs
+  // the content. When the content is ALREADY IN THE LIBRARY, the blend that
+  // reconstructs it is itself, and the reading goes to ~1.0 for a reason that
+  // has nothing to do with the artifact's shape.
+  //
+  // Measured: site/escape-html-standalone.js read 0.9999916893505959 while
+  // every other one of 3,734 substrate readings topped out at 0.6238 — a
+  // seeded pattern named `escape-html-standalone` sits in the library
+  // byte-identical to it. Control: site/escape-html.js has a seeded twin that
+  // is NOT byte-identical and reads 0.480. Same size, same domain, same
+  // author. The difference is membership, not coherency.
+  //
+  // Anything the substrate has ingested verbatim would read ~1.0 forever
+  // after, so the more the substrate grows the more inflated it becomes — the
+  // failure mode gets worse with use.
+  //
+  // A self-match is NOT silently corrected to some other number: inventing a
+  // replacement would be the same sin. It is DETECTED and reported, and the
+  // caller decides. `coherencyOf` keeps returning the reading; `readingOf`
+  // returns the reading with its provenance so a caller can refuse it.
+  const selfMatched = _isSelfMatch(blend);
+  LAST_READING = {
+    coherence: value,
+    blend,
+    selfMatched,
+    matchedPatterns: _blendNames(blend),
+    // A reading that came from matching the content against itself describes
+    // the library, not the content.
+    measures: selfMatched ? 'library-membership' : 'artifact-shape',
+  };
 
   if (CACHE.size >= CACHE_MAX) CACHE.clear();
   CACHE.set(key, value);
@@ -166,4 +239,16 @@ function _reset() {
   _unavailable = false;
 }
 
-module.exports = { coherencyOf, ensureUp, isUp, _reset };
+/**
+ * The reading WITH its provenance: what the compressor matched, and whether
+ * that match was the content itself. Reflects the most recent uncached read.
+ *
+ * @returns {{coherence, blend, selfMatched, measures}|null}
+ */
+function readingOf(content, opts = {}) {
+  const c = coherencyOf(content, opts);
+  if (LAST_READING && LAST_READING.coherence === c) return LAST_READING;
+  return { coherence: c, blend: null, selfMatched: null, measures: null };
+}
+
+module.exports = { coherencyOf, readingOf, ensureUp, isUp, _reset };

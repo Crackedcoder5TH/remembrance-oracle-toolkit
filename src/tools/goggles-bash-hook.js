@@ -71,7 +71,7 @@ if ((SURFACE_REQUIRE.test(cmd) && SURFACE_CALL.test(cmd)) || SURFACE_PY.test(cmd
     '  and inline callers hand-build the inputs — which is how a fabricated array got\n' +
     '  reported as a verification.\n' +
     '  Use:  goggles --do call <repo>/<path>#<fn> [jsonArg …]\n' +
-    '    e.g. goggles --do call oracle/src/core/void-replenishment.js#voidProfile \'[0.99,0.95]\'\n' +
+    '    e.g. goggles --do call oracle/src/core/decoder-stack.js#flowCheckpoints\n' +
     '  Naming a function that is not exported lists the ones that are.\n' +
     '  If no verb or export reaches what you need, that is a MISSING VERB to report — not a bypass.');
 }

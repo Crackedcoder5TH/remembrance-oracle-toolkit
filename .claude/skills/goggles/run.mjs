@@ -101,6 +101,12 @@ if (argv[0] === '--do') {
     // and using it are the same surface. Args are JSON, one per parameter.
     //   goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x=1"'
     call: () => run('node', [join(toolkit, 'src/tools/goggles-call.js'), ...rest], toolkit),
+    // THE RESONANCE FIELD, read on the COMPRESSED patterns — domain waveform
+    // signatures cross-correlated, with coherence_index and the anomalies that
+    // stick out. This is the instrument's own resonance; nothing decoded, no
+    // nearest-neighbour scan over composed vectors.
+    //   goggles --do resonance [--top N] [--domain <d>]
+    resonance: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'resonance-report.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
     // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
     // measures nothing: no reading is recomputed and no time dimension added.
     //   goggles --do merge [--apply]
@@ -120,7 +126,7 @@ if (argv[0] === '--do') {
     // `delta_void` existed as an equation TERM (delta0*(1-p), derived from the
     // reading alone) but nothing ever measured an actual hole in the space.
     //   goggles --do void [namespace|all] [--sample N]
-    void: () => run('node', [join(toolkit, 'scripts/void-map.js'), ...rest], toolkit),
+    void: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'void-field.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
     // READ THE WEB through the substrate: fetch a URL, compress + score it,
     // contribute the reading to the field. Browsing was the last blind spot
     // (WebFetch matches no hook, so a fetched page was never witnessed).

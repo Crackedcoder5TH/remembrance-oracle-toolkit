@@ -41,13 +41,58 @@ const crypto = require('node:crypto');
 const ROOT = process.env.GOGGLES_LEARNING_ROOT || path.join(__dirname, '..', '..');
 const LIB_PATH = path.join(ROOT, '.remembrance', 'defect-signatures.json');
 
-const ENCODE_DEPTH = 5;              // full 145-D composed signature
-// Calibrated 2026-07: max clean-block min-depth measured 0.887 across
-// 264 blocks of real ecosystem code; close defect variants read
-// 0.946-0.948. 0.91 leaves margin on both sides. Distant variants
-// (measured: a restructured rust sql-concat at 0.647) are out of a
-// single seed's reach — recall grows via teach(), not via threshold.
-const DEFAULT_THRESHOLD = 0.91;      // min-depth flow floor for a finding
+// The signature width is the CANONICAL depth, asked for rather than
+// written down. It was the literal 5 (145-D) — correct when five layers
+// existed, stale from the moment L6-content, L7-dimensional and
+// L8-dynamical activated. The channel that is supposed to teach itself
+// was signing and matching on 145 of 232 dimensions, blind to exactly
+// the layers that separate one shape from a shape that merely looks
+// like it.
+// DEFECT_RESONANCE_DEPTH overrides the width. It exists for one caller —
+// scripts/calibrate-defect-resonance.js, which has to read the channel at
+// several widths to find where (if anywhere) it separates defects from
+// working code. Nothing in normal operation sets it; the canonical depth
+// is the answer everywhere else.
+function encodeDepth() {
+  const forced = parseInt(process.env.DEFECT_RESONANCE_DEPTH || '', 10);
+  if (Number.isFinite(forced) && forced > 0) return forced;
+  try { return require('../core/decoder-stack').currentDepth(); }
+  catch (_) { return 5; }
+}
+
+// Recalibrated 2026-08 by scripts/calibrate-defect-resonance.js, run at
+// the canonical width over 1,510 blocks of real ecosystem source.
+//
+// THE HONEST RESULT: the two distributions do not separate. Working code
+// reads HIGHER than genuine defect variants do —
+//
+//     max clean   0.9486   src/core/fractal-index.js:52 (_compose, a
+//                          correctly-bounded double loop, read as
+//                          "off-by-one-length")
+//     min defect  0.7703   an off-by-one rewritten far enough from the seed
+//
+// — an inverted gap of -0.178. There is no threshold that avoids both
+// false positives and misses, at ANY depth: the calibration was swept at
+// 4, 5, 6, 7 and 8 and returned the same edges every time, because
+// min(...flow) lands on the 29/58/87-D checkpoints in 95% of readings.
+// Widening the encoder does not widen this gate.
+//
+// At the previous 0.91 the channel was firing HIGH on live core code:
+// fractal-index.js:52, blockchain-ingest.js:77 and feedback.js:60 all
+// tripped it, the last two on template strings containing no SQL at all.
+//
+// So the number is set by the module's own stated policy — miss subtle
+// variants rather than spray false positives, and close recall through
+// teach(), not through the threshold. 0.955 sits 0.0064 above the
+// measured clean edge.
+//
+// PUBLISHED RECALL COST: 2 of 7 close variants still caught. The five
+// missed are eval-of-input (js) 0.8783, sql-by-concat (js) 0.8938,
+// off-by-one-length (js) 0.7703, swallowed-error (js) 0.9401 and
+// swallowed-error (py) 0.9319. This channel is a WIDE NET WITH A HIGH
+// BAR, not a detector — the AST checkers remain the precision path on
+// JS/TS, and this one earns its keep only where no parser reaches.
+const DEFAULT_THRESHOLD = 0.955;     // min-depth flow floor for a finding
 const MIN_BLOCK_CHARS = 40;          // blocks smaller than this aren't read
 const MAX_BLOCK_LINES = 48;          // split larger blocks
 
@@ -138,8 +183,16 @@ function _sigId(label, code) {
 function ensureLibrary() {
   const enc = encoder();
   if (!enc) return null;
+  const depth = encodeDepth();
   let lib = _load();
-  if (lib && Array.isArray(lib.signatures) && lib.signatures.length) return lib;
+  if (lib && Array.isArray(lib.signatures) && lib.signatures.length) {
+    // A stored library encoded at a different depth is not a degraded
+    // version of this one — it is vectors in a different frame. Re-encode
+    // rather than compare across widths, which flowCosines would do
+    // silently by repeating the shorter vector's last checkpoint.
+    if (lib.depth !== depth) return _reencode(lib, enc, depth);
+    return lib;
+  }
 
   // Blank-oracle inheritance: before seeding from scratch, try to pull
   // the collected remembrance from the chain. A fresh host (or one whose
@@ -155,7 +208,7 @@ function ensureLibrary() {
     }
   } catch (_) { /* no chain reachable — seed locally */ }
 
-  lib = { version: 1, signatures: [] };
+  lib = { version: 2, depth, signatures: [] };
   for (const s of SEEDS) {
     try {
       lib.signatures.push({
@@ -165,7 +218,8 @@ function ensureLibrary() {
         language: s.language,
         languageBound: s.languageBound === true,
         excerpt: s.code.slice(0, 200),
-        vec: Array.from(enc(s.code, ENCODE_DEPTH)),
+        code: s.code,
+        vec: Array.from(enc(s.code, depth)),
         taughtBy: 'seed',
         hits: 0,
         resolved: 0,
@@ -174,6 +228,42 @@ function ensureLibrary() {
   }
   _save(lib);
   return lib;
+}
+
+/**
+ * Re-encode every signature at `depth`, preserving what was TAUGHT.
+ *
+ * A depth change must not cost the library its learned shapes — that is
+ * the whole asset. Signatures carry their full `code` from version 2 on,
+ * so they re-encode exactly. Version-1 entries only kept a 200-char
+ * `excerpt`; those re-encode from the excerpt and are marked
+ * `reencodedFrom: 'excerpt'` so a partial shape is visible rather than
+ * passing as whole. Hits and resolutions carry over untouched — the
+ * amplitude a signature earned is not a function of the frame.
+ */
+function _reencode(lib, enc, depth) {
+  // Seeded shapes have an authoritative source right here in SEEDS —
+  // matched by the same id the seeding path computes — so they re-encode
+  // from the real thing rather than from a 200-char excerpt of it.
+  const seedById = new Map(SEEDS.map((s) => [_sigId(s.label, s.code), s.code]));
+  const out = { version: 2, depth, signatures: [] };
+  for (const s of lib.signatures || []) {
+    const full = (typeof s.code === 'string' && s.code.length) ? s.code : seedById.get(s.id);
+    const src = full || s.excerpt;
+    if (!src) continue;
+    try {
+      out.signatures.push(Object.assign({}, s, {
+        code: full || undefined,
+        vec: Array.from(enc(src, depth)),
+        // Only a TAUGHT signature from a version-1 library can land here:
+        // its full block was never stored, so its shape is reconstructed
+        // from the first 200 chars. Visible rather than passing as whole.
+        reencodedFrom: full ? undefined : 'excerpt',
+      }));
+    } catch (_) { /* a signature the encoder now rejects is dropped, not kept stale */ }
+  }
+  _save(out);
+  return out;
 }
 
 /**
@@ -198,7 +288,8 @@ function teach({ label, bugClass, language, code }) {
       bugClass: bugClass || 'unknown',
       language: language || 'unknown',
       excerpt: code.slice(0, 200),
-      vec: Array.from(enc(code, ENCODE_DEPTH)),
+      code,
+      vec: Array.from(enc(code, encodeDepth())),
       taughtBy: 'ast-finding',
       hits: 0,
       resolved: 0,
@@ -210,22 +301,13 @@ function teach({ label, bugClass, language, code }) {
 
 // ── Detection ───────────────────────────────────────────────────────
 
-// Depth-flow cosines at the five composed checkpoints (29/58/87/116/145).
+// Depth-flow cosines — the CANONICAL sweep, not a local copy. This was a
+// private `_flow` with `CHECK = [29,58,87,116,145]` and `Math.min(145, …)`
+// baked in, which is the same shape of drift decoder-stack was written to
+// end: one decoder, one cosine (ECOSYSTEM §7). A copy cannot follow the
+// stack when a layer activates, and this one didn't.
 function _flow(a, b) {
-  const CHECK = [29, 58, 87, 116, 145];
-  const out = [];
-  let dot = 0, na = 0, nb = 0, c = 0;
-  const n = Math.min(145, a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    const x = a[i] || 0, y = b[i] || 0;
-    dot += x * y; na += x * x; nb += y * y;
-    if (i + 1 === CHECK[c]) {
-      out.push((na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0);
-      c++;
-    }
-  }
-  while (out.length < CHECK.length) out.push(out.length ? out[out.length - 1] : 0);
-  return out;
+  return require('../core/decoder-stack').flowCosines(a, b);
 }
 
 /**
@@ -283,7 +365,7 @@ function scan(source, opts = {}) {
     // indentation/line histograms enough to drop a true match below
     // the gate (measured: an eval variant read 0.946 trimmed, missed
     // untrimmed).
-    try { vec = enc(b.text.replace(/^\s*\n+|\n+\s*$/g, ''), ENCODE_DEPTH); } catch (_) { continue; }
+    try { vec = enc(b.text.replace(/^\s*\n+|\n+\s*$/g, ''), encodeDepth()); } catch (_) { continue; }
     let best = null;
     for (const sig of lib.signatures) {
       // A language-bound signature only speaks about its own language. See the
@@ -294,10 +376,18 @@ function scan(source, opts = {}) {
       const flow = _flow(vec, sig.vec);
       const minDepth = Math.min(...flow);
       if (minDepth >= threshold && (!best || minDepth > best.minDepth)) {
-        best = { sig, minDepth, d5: flow[flow.length - 1] };
+        best = { sig, minDepth, flow, argmin: flow.indexOf(minDepth), d5: flow[flow.length - 1] };
       }
     }
-    if (best) {
+    if (best && opts.dryRun) {
+      // Calibration path: report what the block read without counting it
+      // as a hit. Sweeping a threshold over real code would otherwise
+      // inflate every signature's amplitude with measurements, and
+      // amplitude is what the learning loop decays and reinforces on.
+      findings.push({ minDepth: best.minDepth, label: best.sig.label,
+        line: b.startLine, flow: best.flow, argmin: best.argmin,
+        via: 'resonance:dry' });
+    } else if (best) {
       best.sig.hits = (best.sig.hits || 0) + 1;
       dirty = true;
       findings.push({
@@ -315,9 +405,12 @@ function scan(source, opts = {}) {
       });
     }
   }
-  if (dirty) _save(lib);
+  if (dirty && !opts.dryRun) _save(lib);
 
   // Every scan is a field observation: clean = coherent, findings = not.
+  // A dry run is a measurement OF the instrument, not an observation
+  // through it, so it stays out of the field.
+  if (opts.dryRun) return { findings, scannedBlocks: blocks.length, librarySize: lib.signatures.length };
   try {
     const fc = require('../core/field-coupling');
     fc.contribute({

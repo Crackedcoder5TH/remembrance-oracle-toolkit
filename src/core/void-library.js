@@ -43,6 +43,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { FractalIndex } = require('./fractal-index');
+// One decoder, one cosine (ECOSYSTEM §7). This module used to compute its
+// own checkpoints; tests/one-cosine-guard.test.js now fails CI if any
+// module outside decoder-stack does.
+const {
+  flowCosines: _flowCosines,
+  deepestFlow: _deepestFlow,
+  flowCheckpoints: _flowCheckpoints,
+} = require('./decoder-stack');
 
 const DEFAULT_VOID_ROOT = process.env.VOID_ROOT
   || '/home/user/Void-Data-Compressor';
@@ -169,22 +177,31 @@ class VoidLibrary {
       if (filter && !filter(name)) continue;
       const d1 = _cosine29(inputL1, l1Vec);
       if (!Number.isFinite(d1)) continue;
-      let d2 = d1, d3 = d1, d4 = d1;
       const cVec = composed ? composed.get(name) : null;
+      let flow;
       if (cVec && inputComposed && inputComposed.length > 29) {
         composedHits++;
-        const lenA = Math.min(inputComposed.length, cVec.length);
-        if (lenA >= 58) d2 = _cosineN(inputComposed, cVec, 58);
-        if (lenA >= 87) d3 = _cosineN(inputComposed, cVec, 87);
-        // d4 = cosine at the DEEPEST shared whole-block depth (29-D blocks) —
-        // 116 when either side is legacy composed_v1, up to 203 when both carry
-        // the full 7-layer stack (L5-L7 fold in automatically post re-encode).
-        if (lenA >= 116) d4 = _cosineN(inputComposed, cVec, Math.floor(lenA / 29) * 29);
+        // The canonical sweep, not four checkpoints computed here. This
+        // block used to call _cosineN at a written-down 58 and 87 with a
+        // "deepest shared" d4, under a comment that said "up to 203 …
+        // full 7-layer stack" — written at seven layers, stale at eight.
+        // flowCosines reads at every ACTIVE boundary and, for a pair where
+        // one side is narrower, repeats its deepest available checkpoint —
+        // which is the same deepest-shared semantic, without the number.
+        flow = _flowCosines(inputComposed, cVec);
       } else {
         composedMisses++;
+        flow = _flowCheckpoints().map(() => d1);
       }
-      const shape = _classifyFlow({ d1, d2, d3, d4 });
-      scored.push({ name, d1, d2, d3, d4, shape, score: d4 });
+      const shape = _classifyFlow(flow);
+      const deep = _deepestFlow(flow);
+      // Published keys stay d1..d4 — goggles-hook and the topMatches
+      // consumers read them — but d4 now carries the DEEPEST reading
+      // rather than the fourth checkpoint.
+      scored.push({
+        name, d1: flow[0], d2: flow[1], d3: flow[2], d4: deep,
+        flow, shape, score: deep,
+      });
     }
     if (scored.length === 0) {
       return { bestMatch: null, meanTopK: 0, topMatches: [], librarySize: m.size, composedCoverage: 0 };
@@ -330,7 +347,13 @@ function _cosineN(a, b, n) {
 // standalone (so a fresh consumer can read flow without pulling in
 // the mapper).
 function _classifyFlow(f) {
-  const values = [f.d1, f.d2, f.d3, f.d4];
+  // Accepts the canonical flow array (one reading per active layer) or
+  // the legacy {d1..d4} object that fractal-index.searchFlow publishes by
+  // design. Naming a fixed four here would re-truncate whatever the
+  // caller went to the trouble of measuring.
+  const values = Array.isArray(f)
+    ? f.filter((x) => typeof x === 'number' && isFinite(x))
+    : [f.d1, f.d2, f.d3, f.d4];
   const max = Math.max(...values), min = Math.min(...values);
   const range = max - min;
   if (range < 0.05) {

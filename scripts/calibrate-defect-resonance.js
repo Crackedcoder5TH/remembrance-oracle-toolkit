@@ -191,4 +191,9 @@ function main() {
   console.log('\n  Set DEFAULT_THRESHOLD to the midpoint and record both edges beside it.');
 }
 
-main();
+if (require.main === module) main();
+
+// The variant set is the shared ground truth for calibration experiments —
+// resonance-two-class.js re-reads these same rewrites so its comparison is
+// against the exact blocks this calibration measured, not a re-typing.
+module.exports = { VARIANTS };

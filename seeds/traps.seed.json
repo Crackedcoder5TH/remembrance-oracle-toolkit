@@ -321,6 +321,42 @@
    "truth": "`.remembrance/` is gitignored in full (.gitignore:2). Everything the system has learned \u2014 traps.json, defect-signatures.json, goggles-learning.json \u2014 lives only on the host that learned it. On a fresh container it is gone, and the loop restarts from seeds. defect-resonance already anticipates this and tries goggles-memory.restore() from the chain before seeding; traps.json had no such path and no tracked source at all.",
    "tell": "You just added knowledge to a path under .remembrance/ and did not add it anywhere tracked.",
    "correct": "Add the durable copy to seeds/traps.seed.json, which IS tracked, and let the local store merge on top."
+  },
+  {
+   "match": [
+    "separation",
+    "no separation",
+    "threshold",
+    "AUC",
+    "one-class",
+    "two-class",
+    "margin",
+    "calibrate",
+    "gap"
+   ],
+   "severity": "high",
+   "wrong": "Declaring 'no separation' from a one-class absolute threshold when the comparative question was available.",
+   "truth": "The previous calibration asked 'how strongly does this resonate with a defect shape' and gated on an absolute floor \u2014 and working code answered ~0.95 because code resembles code. Asked comparatively (margin = defect resonance - working-code resonance, both classes through the channel's own scan), the same eval set gives a usable rule the absolute floor never could: margin>0 catches 5 of 7 buggy variants at 11/307 (3.6%) clean false positives, where the 0.955 floor caught 2 of 7. The 'inverted gap' was an edge statement about two extreme blocks; ranking across the full distributions was informative all along (AUC ~0.98 both ways). The conclusion 'the channel cannot tell these apart' was itself drawn from one number.",
+   "tell": "Your verdict cites only max-clean and min-defect. Or you scored similarity to one class without asking what the alternatives were.",
+   "correct": "Run scripts/resonance-two-class.js. Report all three layers: ranking (AUC), the margin decision rule, and the style-controlled pairs (bug vs its own fixed twin) \u2014 the pairs are the honest ceiling: 2 of 7 at today's 9-seed library, with a one-character off-by-one invisible at block granularity (delta -0.0001). Sparse defect library means a twin's nearest 'defect' is often an unrelated shape \u2014 the fix is ingestion of more working AND buggy shapes, not threshold arithmetic."
+  },
+  {
+   "match": [
+    "specimen",
+    "seed",
+    "SEEDS",
+    "fixture",
+    "covenant",
+    "harm pattern",
+    "oracle-pattern-definitions",
+    "oracle-infrastructure",
+    "COVENANT BROKEN"
+   ],
+   "severity": "medium",
+   "wrong": "Rewriting a defect SPECIMEN to get past the covenant's harm scanner.",
+   "truth": "A file that defines bad patterns must be allowed to contain them. The covenant flagged execSync('ls ' + dir) inside a template literal in validate-defect-seeds.js \u2014 accurate about the text, wrong about the file, because nothing executes a fixture. The established route is the @oracle-pattern-definitions annotation, carried by covenant-harm.js, covenant-deep-security.js and reflection-scorers.js for exactly this. It is not a bypass: covenant.js:81-83 only honours it when the CALLER passes {trusted:true}, so submitted code cannot self-declare. The covenant scanner even splits its own require('child'+'_process') to avoid self-matching.",
+   "tell": "You are about to obfuscate a string, split a literal, or soften a specimen so a gate stops complaining. That edits the evidence to fit the instrument.",
+   "correct": "Declare the file for what it is with @oracle-pattern-definitions and say why in the header. If a specimen is ever EXECUTED rather than encoded, the annotation is a lie \u2014 delete the specimen instead."
   }
  ]
 }

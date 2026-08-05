@@ -141,6 +141,79 @@ const SEEDS = [
     label: 'swallowed-error', bugClass: 'error-handling', language: 'python',
     code: `def save(data):\n    try:\n        db.write(data)\n    except Exception:\n        pass\n    return True`,
   },
+  // ── Common defect shapes, added 2026-08 ────────────────────────────
+  // Each was validated by scripts/validate-defect-seeds.js: it must fire on
+  // its own shape AND stay silent on the clean ODD-half of the ecosystem
+  // corpus (the EVEN half is where working-code refs are taught, so nothing
+  // is judged against its own source). A candidate that fired on clean code
+  // was dropped, not softened — the shape channel's whole worth is that a
+  // hit means something. Universal concepts carry per-language variants so
+  // cross-language transfer stays on; a shape whose MEANING is one
+  // language's construct is languageBound, like unwrap-chain below.
+  {
+    label: 'command-injection', bugClass: 'security', language: 'javascript',
+    code: `function ping(req, res) {\n  const host = req.query.host;\n  const out = child_process.execSync('ping -c 1 ' + host);\n  res.send(out.toString());\n}`,
+  },
+  {
+    label: 'command-injection', bugClass: 'security', language: 'python',
+    code: `def ping(request):\n    host = request.args.get("host")\n    out = os.system("ping -c 1 " + host)\n    return str(out)`,
+  },
+  {
+    label: 'path-traversal', bugClass: 'security', language: 'javascript',
+    code: `function serve(req, res) {\n  const name = req.query.file;\n  const body = fs.readFileSync(baseDir + '/' + name);\n  res.send(body);\n}`,
+  },
+  {
+    label: 'path-traversal', bugClass: 'security', language: 'python',
+    code: `def serve(request):\n    name = request.args.get("file")\n    with open(base_dir + "/" + name) as f:\n        return f.read()`,
+  },
+  {
+    label: 'insecure-deserialization', bugClass: 'security', language: 'python',
+    code: `def load(request):\n    raw = request.get_data()\n    obj = pickle.loads(raw)\n    return handle(obj)`,
+  },
+  // REJECTED by validate-defect-seeds.js, kept here as a record so nobody
+  // re-adds them from intuition:
+  //
+  //   unchecked-parse-deref (js)   — recognised its own shape at 0.981 but
+  //     fired on src/core/seal-registry.js:30 at 0.968. "Parse then reach
+  //     two levels in" is the shape of most config readers, working or not.
+  //   assignment-in-condition (js) — self 0.925, fired on FOUR clean blocks
+  //     (auto-tagger.js:36 and :91, preflight.js:105). A single `=` vs `==`
+  //     is one character; at block granularity the surrounding form
+  //     dominates and the typo is invisible.
+  //
+  // Both are real bug classes. Neither is separable BY SHAPE at this
+  // granularity, and the AST checkers already catch them precisely on
+  // JS/TS. Softening the threshold to admit them would have bought their
+  // recall with everyone else's precision.
+  {
+    label: 'race-check-then-act', bugClass: 'concurrency', language: 'javascript',
+    code: `async function get(key) {\n  if (!cache[key]) {\n    cache[key] = await loadFromDb(key);\n  }\n  return cache[key];\n}`,
+  },
+  {
+    // languageBound: the mutable default argument is a Python-EVALUATION
+    // semantic (the default list is created once at def time and shared
+    // across calls). The FORM — a parameter with a literal default, mutated
+    // in the body — is ordinary everywhere else, so this must not speak
+    // outside Python.
+    label: 'mutable-default-arg', bugClass: 'logic', language: 'python', languageBound: true,
+    code: `def collect(item, acc=[]):\n    acc.append(item)\n    return acc`,
+  },
+  {
+    // languageBound: bare \`except:\` swallowing BaseException (including
+    // KeyboardInterrupt/SystemExit) is a Python construct. swallowed-error
+    // above already carries the universal "catch and drop" concept; this is
+    // the sharper Python-only shape.
+    label: 'bare-except-broad', bugClass: 'error-handling', language: 'python', languageBound: true,
+    code: `def run(step):\n    try:\n        return step()\n    except:\n        return None`,
+  },
+  {
+    // languageBound: reading a file with no \`with\`/close is a leak whose
+    // FIX is Python's context manager. The bare open/read/return form is
+    // idiomatic in languages with GC-closed handles, so it is not a defect
+    // everywhere.
+    label: 'unclosed-file', bugClass: 'resource', language: 'python', languageBound: true,
+    code: `def read_all(path):\n    f = open(path)\n    data = f.read()\n    return data`,
+  },
   {
     // languageBound: `.unwrap()` panicking on None/Err is a Rust CONSTRUCT,
     // not a universal concept. Its FORM — a short chain of method calls whose
@@ -423,4 +496,10 @@ function scan(source, opts = {}) {
   return { findings, scannedBlocks: blocks.length, librarySize: lib.signatures.length };
 }
 
-module.exports = { scan, teach, ensureLibrary, SEEDS, DEFAULT_THRESHOLD, LIB_PATH };
+module.exports = {
+  scan, teach, ensureLibrary, SEEDS, DEFAULT_THRESHOLD, LIB_PATH,
+  // The channel's own block splitter, exported so experiments teach and
+  // evaluate on the SAME units scan() reads — a different splitter would
+  // silently measure different objects.
+  blocksOf: _blocks,
+};

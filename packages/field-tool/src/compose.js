@@ -7,7 +7,7 @@
  * lens. composed(text) → 203-D signature (L1 structural + L2 lexical +
  * L3 numerical + L4 spectral + L5 redundancy + L6 content-projection +
  * L7 dimensional/2D), byte-identical to the oracle substrate's
- * encoder-stack. The parity gate (test/) proves it.
+ * decoder-stack. The parity gate (test/) proves it.
  *
  * Zero dependencies beyond node:zlib (stdlib, used by L5/L6/L7).
  * Deterministic.

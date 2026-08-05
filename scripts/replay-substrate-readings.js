@@ -42,13 +42,17 @@ for(const [key,e] of entries){
 }
 const ms=Date.now()-t0;
 const after=snap('AFTER feed');
-const vals=entries.map(([k,v])=>v.coherence);
-const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+// NO AVERAGING. The record used to carry readingsMean. A mean of N compressor
+// readings is not a reading — no file measured it — so the distribution is
+// recorded as median/min/max, all of which are values some file actually has.
+const vals=entries.map(([k,v])=>v.coherence).sort((a,b)=>a-b);
+const median=vals.length?vals[Math.floor(vals.length/2)]:null;
 fs.writeFileSync(require('path').resolve(__dirname,'..','docs','field-correction','feed.json'),
   JSON.stringify({before,after,fedCount:entries.length,durationMs:ms,
-    readingsMean:+mean.toFixed(4),readingsMin:+Math.min(...vals).toFixed(4),readingsMax:+Math.max(...vals).toFixed(4)},null,1));
+    readingsMedian:median==null?null:+median.toFixed(4),
+    readingsMin:+vals[0].toFixed(4),readingsMax:+vals[vals.length-1].toFixed(4)},null,1));
 console.log('fed',entries.length,'readings in',ms+'ms');
 console.log('coherence   ',before.coherence.toFixed(4),'->',after.coherence.toFixed(4));
 console.log('updates     ',before.updateCount,'->',after.updateCount);
 console.log('%compressor ',before.pctFromCompressor+'%','->',after.pctFromCompressor+'%');
-console.log('readings mean',mean.toFixed(4));
+console.log('readings    median',median.toFixed(4),' min',vals[0].toFixed(4),' max',vals[vals.length-1].toFixed(4));

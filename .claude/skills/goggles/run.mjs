@@ -101,6 +101,36 @@ if (argv[0] === '--do') {
     // and using it are the same surface. Args are JSON, one per parameter.
     //   goggles --do call oracle/src/core/covenant.js#covenantCheck '"const x=1"'
     call: () => run('node', [join(toolkit, 'src/tools/goggles-call.js'), ...rest], toolkit),
+    // LET RESONANCE FIND THE STRUCTURE. Patterns correlated directly, with no
+    // grouping by stem or label — grouping before measuring is itself a filter.
+    //   goggles --do cluster [--sample N]
+    cluster: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'resonance-cluster.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE RESONANCE FIELD, read on the COMPRESSED patterns — domain waveform
+    // signatures cross-correlated, with coherence_index and the anomalies that
+    // stick out. This is the instrument's own resonance; nothing decoded, no
+    // nearest-neighbour scan over composed vectors.
+    //   goggles --do resonance [--top N] [--domain <d>]
+    resonance: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'resonance-report.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
+    // measures nothing: no reading is recomputed and no time dimension added.
+    //   goggles --do merge [--apply]
+    merge: () => run('node', [join(toolkit, 'scripts/merge-substrate.js'), ...rest], toolkit),
+    // UNFOLD EVERY ENTRY AGAIN AT THE CANONICAL DECODER WIDTH. Coherency is
+    // NOT recomputed — it comes off the compressor reading the bytes and does
+    // not depend on how many lens axes the decoder separates them into.
+    //   goggles --do redecode [namespace|all] [--apply]
+    redecode: () => run('node', [join(toolkit, 'scripts/redecode-substrate.js'), ...rest], toolkit),
+    // THE RAW READINGS, AS THE COMPRESSOR PRODUCED THEM. No median, no mean,
+    // no range standing in for the numbers. Coherency is time-independent, so
+    // nothing here is ordered by ingest time or turned into a trend.
+    //   goggles --do state [namespace|all] [--limit N] [--json <path>]
+    state: () => run('node', [join(toolkit, 'scripts/substrate-state.js'), ...rest], toolkit),
+    // WHERE THE SUBSTRATE HAS NO MEMORY. The inverse of resonance, read from
+    // the same vectors at the same full decoder width — nothing re-decoded.
+    // `delta_void` existed as an equation TERM (delta0*(1-p), derived from the
+    // reading alone) but nothing ever measured an actual hole in the space.
+    //   goggles --do void [namespace|all] [--sample N]
+    void: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'void-field.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
     // READ THE WEB through the substrate: fetch a URL, compress + score it,
     // contribute the reading to the field. Browsing was the last blind spot
     // (WebFetch matches no hook, so a fetched page was never witnessed).

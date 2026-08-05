@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * encoder-stack.js — registry + depth-aware composer for the
+ * decoder-stack.js — registry + depth-aware composer for the
  * fractal-by-stacking encoder layers.
  *
  * Per the architectural principle: the encoder isn't a fixed
@@ -238,22 +238,68 @@ function composedCosineOf(textA, textB, depth) {
 }
 
 /**
- * Depth-flow cosines d1..d4 between two composed signatures in ONE
- * 116-dim sweep: partial cosines at the four v1 depth checkpoints
- * (29/58/87/116 — the cumulative dims of the first four layers).
- * This is the canonical flow reading — the mapper's pairwise pass,
- * the goggles' drift lens, and every other depth-flow consumer call
- * THIS, not a local copy (one encoder, one cosine — ECOSYSTEM §7).
- * Vectors shorter than a checkpoint reuse the deepest reading available.
+ * Cumulative dimension boundary of every ACTIVE layer — the depth
+ * checkpoints. Derived from the layer set itself, never hardcoded, so
+ * activating a layer widens every reading in the ecosystem with no edit.
  *
- * @returns {[number, number, number, number]} cosines at d1..d4
+ * With L1..L8 active: [29, 58, 87, 116, 145, 174, 203, 232].
+ *
+ * @returns {number[]}
+ */
+function flowCheckpoints() {
+  const out = [];
+  let sum = 0;
+  for (const L of activeLayers()) { sum += L.dims; out.push(sum); }
+  return out.length ? out : [29];
+}
+
+/**
+ * Depth-flow cosines across the FULL canonical waveform: partial cosines
+ * at every active layer's cumulative boundary, in one sweep.
+ *
+ * This is the canonical flow reading — the mapper's pairwise pass, the
+ * goggles' drift lens, and every other depth-flow consumer calls THIS, not
+ * a local copy (one decoder, one cosine — ECOSYSTEM §7).
+ *
+ * WHY THIS CHANGED — it used to read only 116 of 232 dimensions.
+ *
+ * The body was `CHECK = [29, 58, 87, 116]` with `n = Math.min(116, …)`, a
+ * hard cap written when four layers existed. Four more were built and
+ * activated since — L5-redundancy, L6-content-projection, L7-dimensional,
+ * L8-dynamical — and the cap was never lifted, so every resonance reading in
+ * the ecosystem discarded half the decoder's output. The layers ran, emitted
+ * their 29 dims each, and were truncated at the comparison. currentDepth()
+ * reported 8 and Void's pattern store held 232-D vectors (C-02), while the
+ * function that compares them stopped at 116.
+ *
+ * WHAT IT CHANGES — honestly, including the costs:
+ *
+ *  1. Every flow reading now spans all 232 dims. Numbers move. A pair whose
+ *     surface structure matched but whose redundancy or content-projection
+ *     differs will read LOWER than before, and that is the point: the layers
+ *     that separate look-alikes were the ones being cut.
+ *  2. The return array is now 8 long, not 4. Consumers that indexed [3] as
+ *     "the deepest" must use the LAST element. `deepestFlow()` is exported
+ *     for exactly that, so no caller hardcodes an index again.
+ *  3. Stored readings taken before this change are not comparable to
+ *     readings after it — they measured a different width. Same boundary
+ *     problem as the coherency rewiring; treat pre-change flow numbers as a
+ *     different quantity rather than differencing across it.
+ *  4. Cost is ~2x per comparison: the sweep touches 232 dims instead of 116.
+ *
+ * Vectors shorter than a checkpoint reuse the deepest reading available, so
+ * a 116-D legacy entry still returns a full-length array — its later
+ * checkpoints simply repeat, which is visible rather than silent.
+ *
+ * @returns {number[]} cosines at each active depth, length = active layers
  */
 function flowCosines(a, b) {
-  const CHECK = [29, 58, 87, 116];
-  const out = [0, 0, 0, 0];
+  const CHECK = flowCheckpoints();
+  const width = CHECK[CHECK.length - 1];
+  const out = new Array(CHECK.length).fill(0);
   let dot = 0, na = 0, nb = 0, c = 0;
-  const n = Math.min(116, a.length, b.length);
-  for (let i = 0; i < n; i++) {
+  const n = Math.min(width, a.length, b.length);
+  for (let i = 0; i < n && c < CHECK.length; i++) {
     const x = a[i] || 0, y = b[i] || 0;
     dot += x * y; na += x * x; nb += y * y;
     if (i + 1 === CHECK[c]) {
@@ -261,8 +307,23 @@ function flowCosines(a, b) {
       c++;
     }
   }
-  for (; c < 4; c++) out[c] = c > 0 ? out[c - 1] : 0;
+  for (; c < CHECK.length; c++) out[c] = c > 0 ? out[c - 1] : 0;
   return out;
+}
+
+/**
+ * The deepest reading in a flow — the full-waveform cosine.
+ *
+ * Callers used to write `f[3]`, which silently meant "116-D" and became
+ * wrong the moment a fifth layer activated. Ask for the deepest instead of
+ * counting.
+ *
+ * @param {number[]} flow
+ * @returns {number}
+ */
+function deepestFlow(flow) {
+  if (!Array.isArray(flow) || !flow.length) return 0;
+  return flow[flow.length - 1];
 }
 
 module.exports = {
@@ -277,4 +338,6 @@ module.exports = {
   composedCosine,
   composedCosineOf,
   flowCosines,
+  flowCheckpoints,
+  deepestFlow,
 };

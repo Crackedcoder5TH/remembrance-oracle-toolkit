@@ -74,7 +74,7 @@ function encoderEngine() {
   const kids = [];
   try { kids.push(leaf('L1 fractal = 29-D', require('../../core/fractal-waveform').toFractalWaveform(SAMPLE).length === 29)); }
   catch (e) { kids.push(leaf('L1 fractal = 29-D', false, e.message)); }
-  try { kids.push(leaf('composed depth-4 = 116-D', require('../../core/encoder-stack').composedAtDepth(SAMPLE, 4).length === 116)); }
+  try { kids.push(leaf('composed depth-4 = 116-D', require('../../core/decoder-stack').composedAtDepth(SAMPLE, 4).length === 116)); }
   catch (e) { kids.push(leaf('composed depth-4 = 116-D', false, e.message)); }
   return branch('encoder', kids);
 }

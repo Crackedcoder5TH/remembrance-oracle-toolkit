@@ -26,7 +26,7 @@ const fs = require('node:fs');
 const {
   composedAtDepth, composedCosine, currentDepth, maxAvailableDepth, activateNextLayer,
   activeLayers,
-} = require('./encoder-stack');
+} = require('./decoder-stack');
 
 const DEFAULT_PROBE_COUNT = 200;
 const DEFAULT_COLLISION_THRESHOLD = 0.99;

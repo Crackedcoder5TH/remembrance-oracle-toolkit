@@ -4,7 +4,7 @@ const {
   blockCount, blockNorms, blockCosines, fieldStamp,
   gateWeights, fieldGatedSimilarity, FALLBACK,
 } = require('../src/core/field-gated-compose');
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 
 const CODE = 'function retry(fn, n) { for (let i = 0; i < n; i++) { try { return fn(); } catch (e) {} } }';
 const SERIES = JSON.stringify(Array.from({ length: 120 }, (_, i) => +(50 + 20 * Math.sin(i / 3)).toFixed(3)));

@@ -11,7 +11,7 @@ const assert = require('node:assert/strict');
 
 const { registerOnboardCommands } = require('../src/cli/commands/onboard');
 const { toFractalWaveform } = require('../src/core/fractal-waveform');
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 const voidLib = require('../src/core/void-library');
 
 const SAMPLE = 'function add(a, b){ return a + b; }';

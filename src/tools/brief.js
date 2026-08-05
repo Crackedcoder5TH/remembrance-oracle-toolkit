@@ -62,9 +62,32 @@ function readJSON(p) {
  * to type, and the person who needs it most is the one opening the file
  * cold. So the file's own contents are part of the haystack.
  */
+/**
+ * Every trap, tracked seed first, local learning merged on top.
+ *
+ * The learned store lives at .remembrance/traps.json, and `.remembrance/`
+ * is gitignored in full — so on a fresh host every recorded trap was
+ * gone and the loop restarted from nothing. The lessons that catch the
+ * expensive mistakes were the least durable thing in the repo.
+ *
+ * seeds/traps.seed.json is the tracked floor. The local store still
+ * wins where both carry the same trap, so a host that has learned more
+ * keeps it; it just no longer starts from zero.
+ */
+function allTraps() {
+  const seed = readJSON(path.join(ROOT, 'seeds', 'traps.seed.json'));
+  const local = readJSON(path.join(ROOT, '.remembrance', 'traps.json'));
+  const byKey = new Map();
+  for (const db of [seed, local]) {
+    if (!db || !Array.isArray(db.traps)) continue;
+    for (const t of db.traps) byKey.set(String(t.wrong || '').slice(0, 120), t);
+  }
+  return [...byKey.values()];
+}
+
 function trapsFor(target) {
-  const db = readJSON(path.join(ROOT, '.remembrance', 'traps.json'));
-  if (!db || !Array.isArray(db.traps)) return [];
+  const db = { traps: allTraps() };
+  if (!db.traps.length) return [];
   let hay = String(target || '').toLowerCase();
   // Any path-like token in the target contributes its body, capped so a huge
   // file cannot slow the brief down. Best-effort: unreadable → path only.
@@ -172,8 +195,17 @@ function printLive() {
     health = execFileSync('curl', ['-s', '--noproxy', '127.0.0.1', '--max-time', '2',
       'http://127.0.0.1:8765/health'], { encoding: 'utf8' });
   } catch { /* down */ }
+  // `health.includes('ok')` is not a guarantee of valid JSON — a truncated
+  // body, or anything else on port 8765 answering with the substring, throws
+  // here and takes the whole brief with it. That matters more than the
+  // severity suggests: brief is what PRINTS the traps, so a crash on a
+  // malformed health probe silently removes the warnings it exists to
+  // deliver. Same try/catch shape readJSON above already uses.
+  let h = null;
   if (health && health.includes('ok')) {
-    const h = JSON.parse(health);
+    try { h = JSON.parse(health); } catch { h = null; }
+  }
+  if (h && typeof h.library_size === 'number') {
     console.log(`  ✓ compressor service UP — ${h.library_size.toLocaleString()} patterns, `
       + `uptime ${h.uptime_s}s   (reads ~1.5s)`);
   } else {

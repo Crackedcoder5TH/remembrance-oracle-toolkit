@@ -19,7 +19,7 @@
 //   3) NULL: shuffle-surrogate destroys the quantum temporal structure -> looks like noise.
 import { createRequire } from 'node:module';
 const require = createRequire(new URL(".", import.meta.url).pathname + "../");
-const E = require('./src/core/encoder-stack');
+const E = require('./src/core/decoder-stack');
 const L8 = require('./src/core/dynamical-waveform');
 
 // ---------- minimal complex 4x4 linear algebra ----------

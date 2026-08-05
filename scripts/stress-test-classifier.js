@@ -18,7 +18,7 @@
  */
 
 const { classifyAlignment, classifySignature } = require('../src/core/abundance-classifier');
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 
 const results = [];
 let failures = 0;

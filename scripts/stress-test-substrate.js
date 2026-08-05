@@ -32,7 +32,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { RemembranceOracle } = require('../src/api/oracle');
-const { compose, composedCosine } = require('../src/core/encoder-stack');
+const { compose, composedCosine } = require('../src/core/decoder-stack');
 
 // ── CLI args ─────────────────────────────────────────────────────
 const args = process.argv.slice(2);

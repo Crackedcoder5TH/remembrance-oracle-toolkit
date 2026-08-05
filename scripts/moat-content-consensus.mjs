@@ -17,7 +17,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 const { cosineSimilarity } = require('../src/compression/holographic');   // native cosine — not reimplemented
 const { toFractalWaveform } = require('../src/core/fractal-waveform');     // native fractal instrument
 

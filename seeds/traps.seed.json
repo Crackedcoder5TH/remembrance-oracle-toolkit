@@ -1,0 +1,326 @@
+{
+ "_README": "Recorded misreads. Each entry is a mistake that was actually made against this codebase, with the truth that corrects it. `brief` prints the matching traps BEFORE anything else, so the correction arrives before the call rather than after the wrong result. Append when a misread is found; never delete \u2014 a trap that stops firing is a trap someone will re-enter.",
+ "traps": [
+  {
+   "match": [
+    "void_compressor",
+    "AdaptiveVoidCompressor",
+    "compress(",
+    "compress_signal",
+    "void"
+   ],
+   "severity": "high",
+   "wrong": "Calling compress() with text (source code, HTML, transcripts) and reading the result as a Void compression ratio.",
+   "truth": "compress() does np.frombuffer(data, uint8) and matches the input against 78,853 pattern WAVEFORMS. Its docstring says 'whole-SIGNAL recursive'. Text read as a waveform is high-frequency noise, every fractal candidate loses, and the zlib fallback wins \u2014 so the number you get measures the fallback, not the substrate.",
+   "tell": "_auto_method comes back 'void_symbolic' or 'raw_zlib' on every input. On real signal the fractal path wins: v4_chunked won 520/520 NAB and substrate windows.",
+   "correct": "Numeric series \u2192 POST /compress_signal on compressor_service.py, which quantises the way goggle-web.js does. Never /compress, which utf-8 encodes and hands over the ASCII of a waveform."
+  },
+  {
+   "match": [
+    "compressor_service",
+    "service",
+    "8765"
+   ],
+   "severity": "high",
+   "wrong": "Assuming a cold in-process AdaptiveVoidCompressor is the way to call the compressor, and concluding it is unusably slow (~114 s).",
+   "truth": "compressor_service.py holds the library warm. A read is ~1.5 s against ~114 s cold \u2014 75x. It also loads the substrate-fractal Rust index (45,547 patterns in 0.5 s) when the wheel is built.",
+   "tell": "A per-call cost measured in tens of seconds means the library is being reloaded per call.",
+   "correct": "Start it once: python3 compressor_service.py --host 127.0.0.1 --port 8765. Build the wheel with maturin if substrate_fractal will not import."
+  },
+  {
+   "match": [
+    "field",
+    "contribute",
+    "coherence",
+    "coherency",
+    "field-coupling"
+   ],
+   "severity": "high",
+   "wrong": "Treating any number in contribute({coherence}) as a coherency reading.",
+   "truth": "wire-field-couplings.js auto-wired 67 sites from a name-shape list; 41 contributed confidence, matchScore, density, a running total or a zlib savings ratio. The [0,1] clamp made each type-correct so nothing failed. Removed 2026-08-01; the wirer is disabled.",
+   "tell": "A contribution whose expression names something other than coherency, or resolves to a local that was assigned from one.",
+   "correct": "node scripts/audit-field-contributions.js before trusting the field. A coherency must originate from the Void compressor."
+  },
+  {
+   "match": [
+    "void-bridge",
+    "substrateCoherence",
+    "_substrateCoherenceScore"
+   ],
+   "severity": "high",
+   "wrong": "Reading void-bridge.js's substrateCoherence as a Void compressor measurement because of the file and field names.",
+   "truth": "It computes a JS byte-frequency Shannon entropy and inverts it. It never calls the compressor \u2014 its own comment says '(In full implementation, this calls the Python compressor)'.",
+   "tell": "The name says Void; the body has no HTTP call, no subprocess, no import of the compressor.",
+   "correct": "Use compressor_service /compress_signal avg_coherence for a real reading."
+  },
+  {
+   "match": [
+    "goggle-web",
+    "--fast",
+    "browse",
+    "web"
+   ],
+   "severity": "medium",
+   "wrong": "Assuming a page read at --fast speed went through the Void compressor.",
+   "truth": "--fast substituted zlib and reported coherency null, then contributed resonance.meanTop5 or a literal 0.5 to the field under the name coherency. Removed 2026-08-01; the reader now refuses rather than falling back.",
+   "tell": "method 'fast(zlib)' in a reading, or coherency null.",
+   "correct": "Readings now carry via:'void:compress_signal'. Anything without it did not pass through the compressor."
+  },
+  {
+   "match": [
+    "CANONICAL",
+    "version",
+    "v3",
+    "v4",
+    "v5",
+    "entry point"
+   ],
+   "severity": "medium",
+   "wrong": "Reading whichever version file you opened first and describing it as current.",
+   "truth": "CANONICAL.json names the entry point per family. void_compressor v5 is canonical; v3/v4 are load-bearing-internal \u2014 they still execute under v5, so they are neither dead nor current. compressor_service.py was itself instantiating v4 while v5 was canonical.",
+   "tell": "Describing an API from a file whose role you did not check.",
+   "correct": "python3 scripts/build_canonical_manifest.py, or read CANONICAL.json, before quoting any versioned API."
+  },
+  {
+   "match": [
+    "benchmark",
+    "baseline",
+    "gzip",
+    "compression ratio"
+   ],
+   "severity": "medium",
+   "wrong": "Benchmarking against gzip alone and reporting a win.",
+   "truth": "gzip is DEFLATE with a 32 KB window from 1992. The field is xz -9e, zstd -19, brotli -q 11, bzip2 -9, PPMd, and zstd with a trained dictionary. On signal Void beats 5 of 6; on text it ties gzip and loses to everything.",
+   "tell": "A comparison table with one baseline in it.",
+   "correct": "scripts/benchmark_signal.py for waveforms, scripts/benchmark_baselines.py for text. Train any dictionary on a disjoint half \u2014 training on the scored bytes inflated results 1.7x-2.1x."
+  },
+  {
+   "match": [
+    "regex",
+    "exec",
+    "taint",
+    "security",
+    "shell injection"
+   ],
+   "severity": "low",
+   "wrong": "Flagging X.exec(s) as shell injection because the method is named exec.",
+   "truth": "looksLikeRegex decided by NAME suffix (_RE, PATTERN, Matcher), so regexes named for meaning \u2014 SEAL, METRIC, CAVEAT \u2014 were reported as injection. Fixed by reading the actual binding.",
+   "tell": "A security finding on a file with no child_process import.",
+   "correct": "collectRegexIdents in src/audit/taint.js reads which identifiers are bound to a regex."
+  },
+  {
+   "match": [
+    "delta",
+    "diff",
+    "uint8",
+    "quantise",
+    "quantize"
+   ],
+   "severity": "low",
+   "wrong": "First-differencing uint8 samples into int8, or prepending a[0].",
+   "truth": "uint8 steps span -255..255 and int8 holds -128..127, so large steps are destroyed. prepend=a[:1] zeroes the first difference and loses a[0]. Both produced a lossy 'baseline' that was the SMALLEST number in the table and would have been crowned had round-trips not been verified.",
+   "tell": "A compression result that does not decode back to the input.",
+   "correct": "Modular uint8 arithmetic, prepend 0, and verify the round-trip on every row."
+  },
+  {
+   "match": [
+    "normalis",
+    "normaliz",
+    "window",
+    "goggle-web",
+    "512"
+   ],
+   "severity": "medium",
+   "wrong": "Reading a low compression ratio on signal as a weakness of the compressor.",
+   "truth": "goggle-web.js min-max normalises EACH 512-window independently to the full 0-255 range, pushing every window toward maximum entropy at 8 bits. Much of the smoothness the fractal matcher needs is destroyed before the compressor sees it. Global normalisation is untested.",
+   "tell": "Every ratio across every method sitting near 1.0-1.6x.",
+   "correct": "State the quantisation with any ratio taken through this path."
+  },
+  {
+   "match": [
+    "seriesCoherence",
+    "fractal",
+    "toFractalWaveform",
+    "composed_v1",
+    "composed_v2",
+    "29-D",
+    "feature vector",
+    "ingest coherency"
+   ],
+   "severity": "high",
+   "wrong": "Applying a SERIES statistic (seriesCoherence, autocorrelation, trend fit, FFT, smoothing) to a fractal/composed vector because it is an array of numbers.",
+   "truth": "The 29-D fractal vector is not a waveform. Its slots are NAMED HETEROGENEOUS FEATURES in the order fractal-waveform.js lists them: charge, valence, mass, spin, phase, reactivity, electronegativity, group, period, safety, alignment, intention, depth_l0..l4, keywords, identifiers, strings, numbers, operators, branches, loops, functions, returns, errors, comments, structurality. Slot 7 (group) is the constant 11 for every input. Adjacent slots are unrelated quantities, so lag-1 autocorrelation and a trend fit over slot index measure the encoder authoring order, not the artifact. composed_v1/v2 are concatenations of such vectors and are worse.",
+   "tell": "The reading is near-constant across wildly different files (0.139-0.190 for api.py, securityScanner, isEmpty, buggy, computeSpin), and permuting the slot order \u2014 the same relabeling for every file \u2014 moves it by more than its entire spread across files. Measured: r(reading, slot-permuted reading) = 0.036; r(reading, compressor-on-the-same-file-bytes) = -0.025.",
+   "correct": "Take coherency off the Void compressor reading the artifact BYTES: POST /compress_signal with Array.from(Buffer.from(content)) and use avg_coherence. seriesCoherence is valid and accurate on a genuine time series \u2014 against synthetic controls it tracks the compressor within ~0.1 from pure sine 1.000 down to white noise 0.152 \u2014 so the function is not the bug; pointing it at a feature vector is."
+  },
+  {
+   "match": [
+    "HARM_PATTERNS",
+    "covenant-harm",
+    "stripNonExecutableContent",
+    "covenantCheck",
+    "harm pattern",
+    "strippedCode"
+   ],
+   "severity": "medium",
+   "wrong": "Assuming a harm pattern that runs on strippedCode can never match text inside a string literal, and writing a short generic pattern on that assumption.",
+   "truth": "stripNonExecutableContent does not reliably remove string BODIES. On src/audit/explain.js it collapsed delimiters and commas but left the content: a literal array of example lines came through as \"''function run(req) {''  eval(req.body.code);''}''\". Long/specific patterns (SQL keywords plus concatenation) survive this because the surviving prose rarely contains them; short generic shapes like eval(<ident>) or new Function(<ident>) match example code and documentation immediately.",
+   "tell": "A new harm pattern fires on audit/explain, docs, test fixtures or the rule-description files rather than on real code \u2014 the classic covenant-mismatch shape where comments describing a rule trigger the rule they describe.",
+   "correct": "Scan the whole src tree before trusting a new pattern (covenantCheck over every file, count what newly blocks). Files that legitimately contain counterexamples carry @oracle-pattern-definitions and must be checked with {trusted:true} for the exemption to apply. Prefer patterns anchored on something prose will not contain, and do not rely on the stripper alone."
+  },
+  {
+   "match": [
+    "defect-resonance",
+    "resonance:",
+    "shape channel",
+    "META-DEBUG",
+    "taught by seed",
+    "languageBound",
+    "unwrap-chain"
+   ],
+   "severity": "medium",
+   "wrong": "Reading a shape-channel resonance finding as a defect claim without checking whether the signature that matched was taught in the same language as the file.",
+   "truth": "defect-resonance transfers defect shapes across languages BY DESIGN. But a seed whose meaning is a language CONSTRUCT does not transfer. unwrap-chain-panic describes Rust .unwrap() panicking; its form is a short chain of method calls with unchecked results, which is most of JavaScript. It matched express lib/response.js and lib/application.js at min-depth 0.926-0.936 and reported HIGH three times, every one a false positive. eval-of-input and sql-by-concat carry per-language variants precisely because those concepts are universal.",
+   "tell": "A HIGH finding whose message ends in \"taught by seed, LANG\" where LANG is not the language of the file being scanned.",
+   "correct": "Language-bound seeds carry languageBound:true and are skipped on a language mismatch (src/debug/defect-resonance.js). Verified both ways: the same Rust source fires unwrap-chain-panic scanned as rust, silent scanned as javascript. When adding a seed, ask whether it names a concept every language has, or a construct one language has."
+  },
+  {
+   "match": [
+    "composedAtDepth",
+    "cosine(",
+    "flowCosines",
+    "composedCosine",
+    "toFractalWaveform",
+    "coherencyOf",
+    "node -e",
+    "pattern_index_fractal"
+   ],
+   "severity": "high",
+   "wrong": "Verifying a claim about the instrument by writing your own computation over its parts \u2014 a scratch cosine, a hand-rolled vector extractor, a direct read of pattern_index_fractal.json, a numpy brute force over FractalRetroSearch.",
+   "truth": "The pipeline IS the measuring apparatus, not the thing being measured. A reading carries entanglement + substrate + field coupling + depth flow + covenant; strip any of them and the number is a different quantity, not a degraded version of the same one. Measured instances: seriesCoherence on the 29-D feature vector read 0.19-0.23 where the compressor read 0.186 on the same files \u2014 right magnitude, r = -0.025, unrelated quantity. A hand-rolled cosine over composedAtDepth produced a \"noise outscores signal\" claim that had to be retracted; the same question asked through --do call produced the real defect (flowCosines caps at 116, so L5-L8 never reach any reading).",
+   "tell": "You are about to report a number you computed yourself as though it described the instrument. Or: the fast path took 2s where --do call would take 60s. Or: you are describing your own method in the report \u2014 \"I computed cosine over ...\" \u2014 which is the bypass admitting itself.",
+   "correct": "Ask the instrument. goggles --do call <path>#<fn> runs any exported function with JSON args; --do contracts, --do field, --do drift, --do audit cover the rest. If no verb reaches what you need, that is a MISSING VERB to report, not a licence to bypass. The absence of a route is itself a finding."
+  },
+  {
+   "match": [
+    "flowCosines",
+    "coherencyFlow",
+    "pairwiseFlow",
+    "d1, d2, d3, d4",
+    "[d1,d2,d3,d4]",
+    "depth flow",
+    "flowValues",
+    "deepestFlow"
+   ],
+   "severity": "high",
+   "wrong": "Destructuring a depth-flow into d1..d4, or indexing [3] as \"the deepest\".",
+   "truth": "flowCosines returns ONE reading PER ACTIVE LAYER \u2014 eight today, checkpoints [29,58,87,116,145,174,203,232] \u2014 and the count changes whenever a layer activates. Four names silently mean 116 of 232 dimensions, discarding L5-redundancy, L6-content, L7-dimensional and L8-dynamical: exactly the layers that separate look-alikes. Measured when coherency-mapper.js was still doing it: fixing the three sites moved Void duplicate pairs 35->30 (format-echo 9->4) and orphans 36->43, hub orphans 77->91, on identical substrate state.",
+   "tell": "A literal 116, a CHECK array ending at 116, `const [d1,d2,d3,d4] =`, or classifyFlow({d1,d2,d3,d4}). Also: a private _flow/_cosine helper in any module that is not decoder-stack.",
+   "correct": "Call decoder-stack.flowCosines and keep the array. deepestFlow(flow) for the deepest, Math.min(...flow) for the floor, classifyFlow(flow) for the shape \u2014 all handle any length. Never name the elements."
+  },
+  {
+   "match": [
+    "DEFAULT_THRESHOLD",
+    "threshold",
+    "calibrat",
+    "ENCODE_DEPTH",
+    "defect-resonance",
+    "min-depth",
+    "floor"
+   ],
+   "severity": "high",
+   "wrong": "Keeping a calibrated threshold after changing the width it was calibrated at, or setting one at the midpoint of a gap without checking the gap is positive.",
+   "truth": "A min-depth floor is only meaningful at the width it was measured at \u2014 adding checkpoints can only lower a minimum. And the gap can be INVERTED: measured on defect-resonance at the canonical width over 1,510 blocks of real ecosystem source, max clean read 0.9486 (_compose in fractal-index.js, a correctly-bounded loop) while a genuine off-by-one variant read 0.7703. Gap -0.178. Swept at depths 4,5,6,7,8: identical edges every time, because min(...flow) lands on the 29/58/87-D checkpoints in 95% of readings. At the old 0.91 the channel fired HIGH on three live core files, two of them template strings containing no SQL.",
+   "tell": "You are about to publish a threshold without printing max-clean and min-defect beside it. Or the recommendation is a midpoint and you never checked the sign of the gap.",
+   "correct": "Run scripts/calibrate-defect-resonance.js. It measures both edges through the channel's own scan() in dryRun and refuses to suggest a midpoint when the gap is inverted. When they overlap, follow the module's stated policy \u2014 prefer misses \u2014 set the floor above the clean edge, and PUBLISH the recall cost."
+  },
+  {
+   "match": [
+    "domains",
+    "domain",
+    "label",
+    "pattern_uri_index",
+    "label_all_patterns",
+    "coh://",
+    "source_stems",
+    "taxonomy",
+    "mislabel"
+   ],
+   "severity": "high",
+   "wrong": "Reading the `domain` string on a pattern as a subject label, and calling a mismatch a labelling defect.",
+   "truth": "label_all_patterns.py assigns it by `corr = W @ D.T; argmax(|corr|)` against the resonance detector's domain matrix \u2014 a grouping by STRUCTURE, with a human-readable string attached afterwards so people can talk about it. The instrument never reads it back; it is not an input to anything. A cryptocurrency series carrying the string `physics` is reporting waveform shape, not a bookkeeping error. A whole 'the labels are unreliable' finding was committed against this and had to be retracted (Void d47ea54 -> dba6a8e).",
+   "tell": "You are about to describe a stored string as right or wrong, or to 'fix the labels'. Ask instead what produced it \u2014 if the answer is an argmax over correlations, the category does not apply.",
+   "correct": "Treat the strings as read-out only. To ask what actually groups with what, use `goggles --do cluster`, which correlates patterns directly with no grouping."
+  },
+  {
+   "match": [
+    "median",
+    "mean",
+    "average",
+    "avg",
+    "aggregate",
+    "summary",
+    "p50",
+    "distribution"
+   ],
+   "severity": "high",
+   "wrong": "Reporting a median, mean or range as though it were the reading.",
+   "truth": "Coherency is produced once by the compressor per artifact and is time-independent. An aggregate over a sample is a different quantity, and it silently changes what was measured: a median once reported here described 7% of the substrate and was presented as the whole. Nine averaging sites were removed for this reason; the two that survive (DomainSignature.mean_waveform, and coherence_index = mean|off-diagonal| at resonance_detector.py:1140) average WAVEFORMS and CORRELATIONS, not coherency readings \u2014 say which when quoting them.",
+   "tell": "Your sentence contains 'median', 'average', 'roughly' or 'typically' where a number belongs.",
+   "correct": "`goggles --do state` returns the raw readings as the compressor produced them, unaggregated. Quote those, and say how many of the total they are."
+  },
+  {
+   "match": [
+    "lift",
+    "chance",
+    "baseline",
+    "control",
+    "significance",
+    "x lift",
+    "over chance",
+    "nearest neighbour",
+    "nearest neighbor"
+   ],
+   "severity": "high",
+   "wrong": "Scoring a result against a label, name or string that the same pipeline wrote.",
+   "truth": "Circularity reads exactly like signal. A 3.09x 'lift over chance' was reported here from nearest-neighbour agreement on `domains` \u2014 a field that resonance itself had populated by argmax correlation. The number was real arithmetic on a question that could not have answered otherwise, and it had to be retracted (Void dba6a8e: 'should not be cited').",
+   "tell": "Before reporting a lift, trace who wrote the column you scored against. If the instrument wrote it, the test is measuring the instrument agreeing with itself.",
+   "correct": "Score against something the pipeline never touched, or state plainly that the comparison is internal consistency, not validation."
+  },
+  {
+   "match": [
+    "composed",
+    "composed_v1",
+    "composed_v2",
+    "composed_v5",
+    "redecode",
+    "re-decode",
+    "no-op",
+    "unchanged",
+    "index",
+    "ceiling"
+   ],
+   "severity": "medium",
+   "wrong": "Concluding a rebuild was a no-op, or that a store has a ceiling, from whichever index file you opened.",
+   "truth": "Both were reported here and both were wrong. `--do redecode` wrote a `composed` field while void-map and substrate-state still read `composed_v2 || composed_v1`, so a completed re-decode read as no change. Separately '8,871 is the ceiling' and '44,906 entries unreachable' were both stated while 42,712 canonical vectors already sat in composed_v5_index.json.",
+   "tell": "You are about to report that nothing changed, or that a limit exists, based on one file and one field name.",
+   "correct": "Check which field the WRITER wrote and which the READER reads \u2014 they drift apart independently. Counts come from `goggles --do state`, not from whichever index you opened first."
+  },
+  {
+   "match": [
+    "traps.json",
+    ".remembrance",
+    "goggles-learning",
+    "defect-signatures",
+    "learned",
+    "gitignore",
+    "lessons"
+   ],
+   "severity": "medium",
+   "wrong": "Writing a lesson into .remembrance/ and treating it as kept.",
+   "truth": "`.remembrance/` is gitignored in full (.gitignore:2). Everything the system has learned \u2014 traps.json, defect-signatures.json, goggles-learning.json \u2014 lives only on the host that learned it. On a fresh container it is gone, and the loop restarts from seeds. defect-resonance already anticipates this and tries goggles-memory.restore() from the chain before seeding; traps.json had no such path and no tracked source at all.",
+   "tell": "You just added knowledge to a path under .remembrance/ and did not add it anywhere tracked.",
+   "correct": "Add the durable copy to seeds/traps.seed.json, which IS tracked, and let the local store merge on top."
+  }
+ ]
+}

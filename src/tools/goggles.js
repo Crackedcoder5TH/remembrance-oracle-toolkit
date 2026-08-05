@@ -168,8 +168,11 @@ function runMap(dir, { deep = false } = {}) {
     const truncScored = truncFiles.filter((f) => typeof f.coherence === 'number').length;
     const truncWithheld = truncFiles.length - truncScored;
     console.log('\nREPO COHERENCE DISTRIBUTION:');
-    console.log('  mean ' + (m.meanCoherence ?? 0).toFixed(3) + ' · median ' + median.toFixed(3)
-      + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3));
+    // No mean. Every number on this line is a reading some file in this repo
+    // actually measured; a mean would be a number none of them has.
+    console.log('  median ' + median.toFixed(3)
+      + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3)
+      + ' · n ' + cohs.length);
     if (truncFiles.length) {
       console.log('  ' + truncFiles.length + ' file(s) over the encode cap (TRUNCATED): '
         + truncScored + ' scored from full text · '
@@ -192,14 +195,24 @@ function runMap(dir, { deep = false } = {}) {
 }
 
 // Canonical depth-flow cosine from the encoder stack (§7: one cosine).
-// Every call site sits behind a composedAtDepth guard, so encoder-stack
+// Every call site sits behind a composedAtDepth guard, so decoder-stack
 // is always loadable exactly when a flow reading is possible.
+// The deepest reading in a flow — the FULL-waveform cosine. Callers used to
+// index [3], which silently meant 116-D and went wrong the moment a fifth
+// layer activated.
+function _deepest(f) {
+  return require('../core/decoder-stack').deepestFlow(f);
+}
+
 function _flowCosines(a, b) {
-  return require('../core/encoder-stack').flowCosines(a, b);
+  return require('../core/decoder-stack').flowCosines(a, b);
 }
 
 function _flowLabel(f) {
-  try { return require('../core/coherency-mapper').classifyFlow({ d1: f[0], d2: f[1], d3: f[2], d4: f[3] }); }
+  // Pass the whole flow array — classifyFlow reads every active depth now.
+  // Naming d1..d4 here would have re-truncated to 116-D at the classifier
+  // even after flowCosines was widened to the full 232-D waveform.
+  try { return require('../core/coherency-mapper').classifyFlow(f); }
   catch { return ''; }
 }
 
@@ -366,24 +379,52 @@ function loadReadings(root) {
   try { return JSON.parse(fs.readFileSync(readingsPath(root), 'utf8')); } catch (_) { return {}; }
 }
 
+// Readings taken before coherency was rewired onto the Void compressor are
+// NOT comparable to readings taken after. Before the rewiring the number was
+// computeCoherencyScore — a structural-validity score that sits near 1.0 on
+// healthy code; after, it is the compressor reading the file's bytes, which
+// runs an order of magnitude lower on the same file.
+//
+// Subtracting one from the other produces a phantom collapse. Measured on
+// scripts/harvest-repo-to-substrate.js: Δ reported -0.758 ("this edit
+// weakened the structure") when the file had not weakened at all — the
+// compressor reads the PRE-EDIT version at 0.1373 and the post-edit version
+// at 0.1380, a slight RISE. The stored 0.896 was simply a different quantity.
+//
+// Every file's first goggle after the rewiring would have shown that phantom
+// drop, which is exactly the kind of false signal that gets acted on. Readings
+// now carry their source; a delta across a source boundary is reported as not
+// comparable instead of as a regression.
+const COHERENCE_SOURCE = 'void:compress_signal';
+
 function printAndRecordDelta(root, rel, current) {
   const all = loadReadings(root);
   const prev = all[rel];
   if (prev) {
-    const dc = current.coherence - prev.coherence;
-    const dr = current.resonance - prev.resonance;
-    const df = (current.findingsHigh ?? 0) - (prev.findingsHigh ?? 0);
     const agoMin = Math.max(0, Math.round((Date.now() - prev.at) / 60000));
     const fmt = (d) => `${d >= 0 ? '+' : ''}${d.toFixed(3)}`;
+    const dr = current.resonance - prev.resonance;
+    const df = (current.findingsHigh ?? 0) - (prev.findingsHigh ?? 0);
     console.log('\n  Δ SINCE LAST READ  (' + agoMin + 'm ago — what your edits did)');
-    console.log(`    coherence ${fmt(dc)} · resonance ${fmt(dr)}`
-      + (df !== 0 ? ` · high findings ${prev.findingsHigh ?? 0}→${current.findingsHigh ?? 0}` : '')
-      + (Math.abs(dc) < 0.005 && Math.abs(dr) < 0.005 && df === 0 ? ' — shape held steady' :
-         dc < -0.05 ? ' — ⚠ this edit weakened the structure' :
-         df < 0 ? ' — defects fixed, the field learned from it' :
-         df > 0 ? ' — ⚠ new high finding(s) since last read' : ''));
+
+    // An older reading with no recorded source predates the rewiring.
+    if (prev.coherenceSource !== COHERENCE_SOURCE) {
+      console.log(`    coherence   not comparable — the previous reading (${prev.coherence.toFixed(3)}) predates`);
+      console.log('                the rewiring onto the Void compressor and measured a different');
+      console.log(`                quantity. This read: ${current.coherence.toFixed(3)}. The next read will compare.`);
+      console.log(`    resonance ${fmt(dr)}`
+        + (df !== 0 ? ` · high findings ${prev.findingsHigh ?? 0}→${current.findingsHigh ?? 0}` : ''));
+    } else {
+      const dc = current.coherence - prev.coherence;
+      console.log(`    coherence ${fmt(dc)} · resonance ${fmt(dr)}`
+        + (df !== 0 ? ` · high findings ${prev.findingsHigh ?? 0}→${current.findingsHigh ?? 0}` : '')
+        + (Math.abs(dc) < 0.005 && Math.abs(dr) < 0.005 && df === 0 ? ' — shape held steady' :
+           dc < -0.05 ? ' — ⚠ this edit weakened the structure' :
+           df < 0 ? ' — defects fixed, the field learned from it' :
+           df > 0 ? ' — ⚠ new high finding(s) since last read' : ''));
+    }
   }
-  all[rel] = { ...current, at: Date.now() };
+  all[rel] = { ...current, coherenceSource: COHERENCE_SOURCE, at: Date.now() };
   try {
     fs.mkdirSync(path.dirname(readingsPath(root)), { recursive: true });
     fs.writeFileSync(readingsPath(root), JSON.stringify(all));
@@ -430,7 +471,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
     const below = cohs.filter((c) => c <= fileCoherence).length;
     const pct = Math.round((below / cohs.length) * 100);
     const stance = fileCoherence >= median ? 'at/above repo median' : 'below repo median';
-    console.log(`    repo coherence  ${bar(m.meanCoherence ?? median)} mean ${(m.meanCoherence ?? 0).toFixed(3)} · median ${median.toFixed(3)}`);
+    console.log(`    repo coherence  ${bar(median)} median ${median.toFixed(3)} · min ${cohs[0].toFixed(3)} · max ${cohs[cohs.length - 1].toFixed(3)}`);
     console.log(`    this section    ${fileCoherence.toFixed(3)} → p${pct} of the repo (${stance})`);
   }
 
@@ -459,7 +500,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
   // ── Live depth-flow readings: the working copy vs the substrate's
   //    memory, and (when goggling --lines) the section vs its home. ──
   let composedAtDepth = null;
-  try { composedAtDepth = require('../core/encoder-stack').composedAtDepth; } catch { /* engine-only install */ }
+  try { composedAtDepth = require('../core/decoder-stack').composedAtDepth; } catch { /* engine-only install */ }
   if (composedAtDepth && fullText) {
     const liveFileVec = composedAtDepth(fullText, 4);
 
@@ -502,7 +543,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
       const inFileLabel = _flowLabel(inFile);
       console.log(`    section-in-file: ${_fmtFlow(inFile)}  [${inFileLabel}]`
         + (Math.min(...inFile) >= 0.90 ? ' — the section is representative of its file'
-          : inFile[3] >= 0.90 ? ' — deep kinship, different surface (added texture, same structure)'
+          : _deepest(inFile) >= 0.90 ? ' — deep kinship, different surface (added texture, same structure)'
           : ' — the section diverges from the file it lives in'));
       // Does the section pull toward a neighbor more than toward home?
       if (entry && entry.siblings && entry.siblings.length && composedAtDepth) {
@@ -515,10 +556,11 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
               const sv = lib._composed.get((m.project || '') + '/' + s.rel);
               if (!sv) continue;
               const f = _flowCosines(sectionVec, sv);
-              if (!pull || f[3] > pull.d4) pull = { rel: s.rel, d4: f[3] };
+              const df = _deepest(f);
+              if (!pull || df > pull.d4) pull = { rel: s.rel, d4: df };
             }
-            if (pull && pull.d4 > inFile[3] + 0.02) {
-              console.log(`    section pull:   leans toward ${pull.rel} (${pull.d4.toFixed(3)}) more than its own file (${inFile[3].toFixed(3)}) — consider whether it belongs there`);
+            if (pull && pull.d4 > _deepest(inFile) + 0.02) {
+              console.log(`    section pull:   leans toward ${pull.rel} (${pull.d4.toFixed(3)}) more than its own file (${_deepest(inFile).toFixed(3)}) — consider whether it belongs there`);
             }
           }
         } catch { /* best-effort */ }
@@ -853,7 +895,7 @@ function main() {
   // THIS content wherever they live. Built by scripts/build-capability-index.js.
   try {
     let cad = null, ccos = null;
-    try { const es = require('../core/encoder-stack'); cad = es.composedAtDepth; ccos = es.composedCosine; } catch (_) { /* engine-only install */ }
+    try { const es = require('../core/decoder-stack'); cad = es.composedAtDepth; ccos = es.composedCosine; } catch (_) { /* engine-only install */ }
     const idxPath = path.resolve(__dirname, '..', '..', 'ecosystem-capabilities.json');
     if (cad && ccos && content && fs.existsSync(idxPath)) {
       const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));

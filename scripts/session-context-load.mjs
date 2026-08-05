@@ -55,8 +55,8 @@ if (learn && learn.falsePositives) { const n = Object.keys(learn.falsePositives)
 // 4) live SUBSTRATE state
 const map = readJSON('.remembrance/goggles-map.json');
 const dens = readJSON('.remembrance/substrate-density.json');
-let depth = null; try { depth = (await import(R('src/core/encoder-stack.js'))).default?.currentDepth?.(); } catch {}
-try { if (depth == null) { const es = await import('node:module').then(m => m.createRequire(R('package.json'))('./src/core/encoder-stack')); depth = es.currentDepth?.(); } } catch {}
+let depth = null; try { depth = (await import(R('src/core/decoder-stack.js'))).default?.currentDepth?.(); } catch {}
+try { if (depth == null) { const es = await import('node:module').then(m => m.createRequire(R('package.json'))('./src/core/decoder-stack')); depth = es.currentDepth?.(); } } catch {}
 say('\nLive substrate state:');
 if (map) say(`  · ${map.substrateSize ?? '?'} patterns · ${map.filesAudited ?? '?'} files mapped · map built ${map.timestamp ? Math.round((Date.now() - Date.parse(map.timestamp)) / 3.6e6) + 'h ago' : '?'}`);
 if (dens) say(`  · substrate density: effectiveDim ${dens.effectiveDim ?? '?'} / dim ${dens.dim ?? '?'} · factor ${dens.factor ?? '?'} (the retro fuel)`);
@@ -76,7 +76,7 @@ say('  · GITHUB: MCP tools (mcp__github__*) over the crackedcoder5th repos — 
 say('\nNative verbs (route through these — reimplementing them is a substrate bypass the goggles flag):');
 say('  · RETRIEVE (nearest patterns): holoSearch (src/compression/holographic — sub-linear page addressing)');
 say('              or FractalIndex.searchFlow (src/core/fractal-index — lean O(N), ~5ms/10k). NOT a hand cosine scan.');
-say('  · COMPRESS / ENCODE: composedAtDepth(input, depth) (src/core/encoder-stack) — the 8-layer lens');
+say('  · COMPRESS / ENCODE: composedAtDepth(input, depth) (src/core/decoder-stack) — the 8-layer lens');
 say('  · RESONATE (does structure recur): whitening.applyWhitening (src/core/whitening, the capacity dial) + cosine');
 say('  · CLUSTER: clusterPatterns (src/patterns/clustering) · pages: createPage (src/compression/holographic)');
 say('  · COHERENCY FIELD: field-coupling.contribute / peekProjection (src/core/field-coupling)');

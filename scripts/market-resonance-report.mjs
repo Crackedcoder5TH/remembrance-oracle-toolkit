@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 const require = createRequire(import.meta.url);
-const { composedAtDepth, currentDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth, currentDepth } = require('../src/core/decoder-stack');
 const W = require('../src/core/whitening');
 const { crawlMany } = require('../src/market/market-crawler');
 const { detectAll } = require('../src/market/candlestick');

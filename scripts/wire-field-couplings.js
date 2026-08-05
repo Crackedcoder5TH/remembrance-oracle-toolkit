@@ -152,6 +152,18 @@ function buildContributeBlock(filePath, fnName, fileBase, field, indent) {
   const joinArg = requirePath.startsWith('./') ? requirePath.slice(2) : requirePath;
   const moduleLabel = path.basename(filePath, '.js');
   const source = `oracle:${moduleLabel}:${fnName}`;
+  // TWO RULES the emitted snippet must keep:
+  //
+  //  1. NO FABRICATED ZERO. This used to emit `Number(__retVal.<field>) || 0`.
+  //     When the return value had no such field, every call contributed a hard
+  //     0 to the field — a coherency no instrument ever measured, at 27 call
+  //     sites. Without the `|| 0` the expression is NaN, and contribute()
+  //     already rejects non-finite values, so an unmeasured call now
+  //     contributes nothing. Nothing is the honest answer; zero is a lie.
+  //
+  //  2. NO AVERAGING. The snippet feeds ONE reading per call. If a function
+  //     returns several readings, wire a loop over them — never their mean.
+  //     A mean is a number none of the readings has.
   return [
     `${indent}// ── LRE field-coupling (wired by scripts/wire-field-couplings.js) ──`,
     `${indent}try {`,
@@ -160,7 +172,7 @@ function buildContributeBlock(filePath, fnName, fileBase, field, indent) {
     `${indent}  for (const __p of __lre_enginePaths) {`,
     `${indent}    try {`,
     `${indent}      const { contribute: __contribute } = require(__p);`,
-    `${indent}      __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__retVal.${field}) || 0)), source: '${source}' });`,
+    `${indent}      __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__retVal.${field}))), source: '${source}' });`,
     `${indent}      break;`,
     `${indent}    } catch (_) { /* try next */ }`,
     `${indent}  }`,

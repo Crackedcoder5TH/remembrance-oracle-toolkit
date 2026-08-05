@@ -48,6 +48,34 @@ const BYPASS = [
   [/scipy\.spatial\.distance\.cosine|pdist|squareform/, 'scipy distance standing in for substrate resonance'],
   [/PCA\s*\(|TruncatedSVD\s*\(/, 'sklearn decomposition standing in for whitening/participationRatio'],
 ];
+// ── the ONE-SURFACE bypass ───────────────────────────────────────────────
+// The list above guards the substrate's MATH. This guards the substrate's
+// SURFACE. Requiring an ecosystem module inline and calling its functions is
+// running the instrument beside the goggles rather than through them — the
+// reading is real, but nothing that reads it knows it happened, and the
+// caller invents the inputs by hand. `goggles --do call <path>#<fn> [json…]`
+// exists precisely for this and takes JSON arguments.
+//
+// Recorded because it kept happening: voidProfile was invoked through `node -e`
+// with a hand-made flow array and the output reported as a verification.
+const SURFACE_REQUIRE = /require\s*\(\s*['"`][^'"`]*(?:src\/core\/|src\/tools\/|src\/audit\/|\.\.\/core\/|\.\/src\/)[^'"`]*['"`]\s*\)/;
+const SURFACE_CALL = /\.\s*[a-zA-Z_$][\w$]*\s*\(/;
+// The Python side of the same seam: Void's own modules imported inline and
+// called directly, rather than through the goggles.
+const SURFACE_PY = /\b(?:import|from)\s+(fractal_decoder|void_compressor(?:_v\d)?|coherency_v\d|living_remembrance|rag_query|compressor_service|resonance_detector)\b/;
+if ((SURFACE_REQUIRE.test(cmd) && SURFACE_CALL.test(cmd)) || SURFACE_PY.test(cmd)) {
+  out('deny',
+    'GOGGLES — ONE-SURFACE BYPASS refused in an inline command\n' +
+    '  This requires an ecosystem module and calls it directly, outside the goggles.\n' +
+    '  The reading may be correct, but nothing that reads the substrate knows it was taken,\n' +
+    '  and inline callers hand-build the inputs — which is how a fabricated array got\n' +
+    '  reported as a verification.\n' +
+    '  Use:  goggles --do call <repo>/<path>#<fn> [jsonArg …]\n' +
+    '    e.g. goggles --do call oracle/src/core/decoder-stack.js#flowCheckpoints\n' +
+    '  Naming a function that is not exported lists the ones that are.\n' +
+    '  If no verb or export reaches what you need, that is a MISSING VERB to report — not a bypass.');
+}
+
 for (const [re, why] of BYPASS) {
   if (re.test(cmd)) {
     out('deny',
@@ -55,7 +83,7 @@ for (const [re, why] of BYPASS) {
       '  ' + why + '\n' +
       '  This is the same bypass the pre-write hook refuses in a file; an inline heredoc is not an exemption.\n' +
       '  Use the substrate\'s own functions:\n' +
-      '    similarity/resonance → encoder-stack.composedCosine · whitening.applyWhitening/participationRatio\n' +
+      '    similarity/resonance → decoder-stack.composedCosine · whitening.applyWhitening/participationRatio\n' +
       '    retrieval            → compression/holographic.holoSearch · FractalIndex.searchFlow\n' +
       '    compression/coherence→ void_compressor_v5.compress (result.avg_coherence, result.mint)\n' +
       '    field history        → field-coupling.contribute / peekField\n' +

@@ -58,7 +58,7 @@ for (const [name, docs] of Object.entries(families)) {
   const mean = cs.reduce((s, x) => s + x, 0) / cs.length;
   const min = Math.min(...cs);
   const max = Math.max(...cs);
-  results[name] = { mean, min, max, n: cs.length };
+  results[name] = { mean, min, max, n: cs.length, readings: cs };
   console.log('  ' + name.padEnd(13) + ' n=' + cs.length + '   mean=' + mean.toFixed(3) +
               '   min=' + min.toFixed(3) + '   max=' + max.toFixed(3));
 }
@@ -112,7 +112,11 @@ if (distantFromAll) {
 try {
   const { contribute } = require('../../src/core/field-coupling.js');
   for (const [name, r] of Object.entries(results)) {
-    contribute({ source: 'experiment:fifth-family:vs:' + name.toLowerCase(), coherence: r.mean, cost: r.n });
+    // NO AVERAGING: the per-doc readings go in as themselves. r.mean is an
+    // analysis descriptor printed above, not a reading the field may receive.
+    for (const c of r.readings) {
+      contribute({ source: 'experiment:fifth-family:vs:' + name.toLowerCase(), coherence: c, cost: 1 });
+    }
   }
   console.log('\n  [field] contributed 5 observations under experiment:fifth-family:*');
 } catch (e) {

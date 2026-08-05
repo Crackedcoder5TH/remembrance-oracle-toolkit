@@ -15,7 +15,7 @@
  * same representation space as every other series the substrate has witnessed.
  */
 
-const { composedAtDepth, currentDepth } = require('../core/encoder-stack');
+const { composedAtDepth, currentDepth } = require('../core/decoder-stack');
 const { detectAll } = require('./candlestick');
 
 // scale to peak magnitude, 5-dp, comma-join — the encoder's canonical series form

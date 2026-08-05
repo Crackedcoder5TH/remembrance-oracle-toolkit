@@ -26,7 +26,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const ENC = require('../src/core/encoder-stack');
+const ENC = require('../src/core/decoder-stack');
 const W = require('../src/core/whitening');
 const DEPTH = ENC.maxAvailableDepth ? ENC.maxAvailableDepth() : 4;
 

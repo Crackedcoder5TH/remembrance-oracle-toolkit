@@ -51,9 +51,9 @@ const CLAIMS = {
       get: () => require('../../core/fractal-waveform').toFractalWaveform(SAMPLE).length,
     },
     {
-      id: 'composed depth-4 — encoder-stack.composedAtDepth(_, 4)',
+      id: 'composed depth-4 — decoder-stack.composedAtDepth(_, 4)',
       expect: 116,
-      get: () => require('../../core/encoder-stack').composedAtDepth(SAMPLE, 4).length,
+      get: () => require('../../core/decoder-stack').composedAtDepth(SAMPLE, 4).length,
     },
   ],
 };

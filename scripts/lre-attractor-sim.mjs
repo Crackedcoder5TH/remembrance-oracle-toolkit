@@ -12,7 +12,7 @@
 // one — so we can read the tipping point instead of a single forced climb.
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { composedAtDepth } = require('../src/core/encoder-stack');
+const { composedAtDepth } = require('../src/core/decoder-stack');
 const ALPHA = (() => { try { return require('../src/core/living-remembrance').getEngine().params().alpha; } catch { return 15; } })();
 
 const D = 232;

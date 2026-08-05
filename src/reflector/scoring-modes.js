@@ -149,7 +149,7 @@ function shouldAutoCreatePR(report, config) {
     for (const __p of [__lre_p1, __lre_p2]) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:scoring-modes:shouldAutoCreatePR' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence)), source: 'oracle:scoring-modes:shouldAutoCreatePR' });
         break;
       } catch (_) { /* try next */ }
     }

@@ -210,6 +210,15 @@ function _walk(dir, opts) {
  *   contributionsCount: number,
  * }}
  */
+// Median of a set of readings. Deliberately NOT a mean: the median is a
+// value some file in the set actually measured, so it is still a reading the
+// compressor produced. A mean is a number no file has.
+function _median(values) {
+  if (!values || !values.length) return null;
+  const s = [...values].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)];
+}
+
 function mapProjectCoherency(projectPath, opts = {}) {
   const categorize = opts.categorize || DEFAULT_CATEGORIZER;
   const topK = opts.topK || 10;
@@ -440,13 +449,19 @@ function mapProjectCoherency(projectPath, opts = {}) {
   function ctr(coh, src) {
     try { fc.contribute({ cost: 1.0, coherence: coh, source: src }); contributionsCount++; } catch {}
   }
-  // Mean over SCORED files only — TRUNCATED files carry coherence:null
-  // and must not enter the average as zeros.
+  // NO AVERAGING. This used to reduce every scored file to one mean and
+  // contribute that single number as the repo's structural coherency. The
+  // mean is not a reading — no file has it, and the compressor never emitted
+  // it. Each scored file carries a coherency the compressor measured off its
+  // bytes; those go in as themselves, at cost 1 each, the same way `--do
+  // replay` and harvest feed the field.
+  //
+  // TRUNCATED files carry coherence:null and are skipped — withheld is not
+  // zero.
   const scored = results.filter(r => typeof r.coherence === 'number');
-  const meanCoherence = scored.length
-    ? scored.reduce((s, r) => s + r.coherence, 0) / scored.length
-    : 0;
-  ctr(meanCoherence, 'coherency-map:' + namespace + ':structural');
+  for (const r of scored) {
+    ctr(r.coherence, 'void:compress_signal:map:' + namespace);
+  }
   ctr(1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2), 'coherency-map:' + namespace + ':non-duplication');
   // Orphan-rate meta-signal — same rule as the residual and dimensional
   // couplings: a completed wiring measurement is a COHERENT event (the
@@ -463,7 +478,14 @@ function mapProjectCoherency(projectPath, opts = {}) {
     timestamp: new Date().toISOString(),
     durationMs: Date.now() - t0,
     filesAudited: results.length,
-    meanCoherence,
+    // Distribution, not an average. `medianCoherence` is an actual file's
+    // reading — some file in this repo really measured that. A mean is a
+    // number no file has and the compressor never produced, so it is not
+    // reported here at all.
+    medianCoherence: _median(scored.map(r => r.coherence)),
+    minCoherence: scored.length ? Math.min(...scored.map(r => r.coherence)) : null,
+    maxCoherence: scored.length ? Math.max(...scored.map(r => r.coherence)) : null,
+    scoredCount: scored.length,
     substrateSize: results[0] && results[0].topCousin ? '~46k+ (per FieldTool)' : 'unknown',
     // Compact per-file readings — the macro lens (goggles MACRO section)
     // ranks a focused file against these to place it in the whole map.
@@ -519,7 +541,9 @@ function namespaceFromIndexNames(rels, indexNames) {
 // Canonical depth-flow cosine — ONE implementation, in the encoder
 // stack (ECOSYSTEM §7: one encoder, one cosine; consumers route to
 // canonical instead of mirroring the math).
-const { flowCosines: _flowCosines } = require('./encoder-stack');
+const {
+  flowCosines: _flowCosines, deepestFlow: _deepestFlow, flowCheckpoints,
+} = require('./decoder-stack');
 
 /**
  * Build the macro coherency map from the substrate's existing vectors.
@@ -695,11 +719,16 @@ function mapFromSubstrate(projectPath, opts = {}) {
     // Stage 2: depth-flow confirmation over composed vectors.
     const candidate = composed.get(bestName);
     if (cv && candidate) {
-      const [d1, d2, d3, d4] = _flowCosines(cv, candidate);
-      const minDepth = Math.min(d1, d2, d3, d4);
+      // Every active depth, not the first four. Destructuring d1..d4 read
+      // 116 of 232 dims, so L5-redundancy · L6-content · L7-dimensional ·
+      // L8-dynamical never reached the bridge test — and those are exactly
+      // the layers that separate look-alikes.
+      const flow = _flowCosines(cv, candidate);
+      const minDepth = Math.min(...flow);
+      const deep = _deepestFlow(flow);
       if (minDepth < bridgeAt) continue; // L1 saturation, not a bridge
-      bridges.push({ from: r.rel, to: bestName, score: d4, minDepth });
-      r.topExternal = { name: bestName, score: d4 };
+      bridges.push({ from: r.rel, to: bestName, score: deep, minDepth });
+      r.topExternal = { name: bestName, score: deep };
     } else {
       // No composed vector to confirm with — report but mark unconfirmed.
       bridges.push({ from: r.rel, to: bestName, score: bestScore, unconfirmed: true });
@@ -753,7 +782,12 @@ function mapFromSubstrate(projectPath, opts = {}) {
     timestamp: new Date().toISOString(),
     durationMs: Date.now() - t0,
     filesAudited: results.length,
-    meanCoherence: null,
+    // Substrate mode reads structure, not intrinsic coherency — the readings
+    // are a live-read job (--deep / FOCUS), so the distribution is empty here.
+    medianCoherence: null,
+    minCoherence: null,
+    maxCoherence: null,
+    scoredCount: 0,
     substrateSize: composed.size,
     coverage: {
       walkedFiles: walked.length,
@@ -950,18 +984,27 @@ function _cosineLen(a, b, len) {
  */
 function coherencyFlow(a, b) {
   if (!a || !b) return null;
-  const d1 = _cosineLen(a.l1 || a.fractal, b.l1 || b.fractal, 29);
   const composedA = a.composed || a.composed_v1;
   const composedB = b.composed || b.composed_v1;
-  let d2 = 0, d3 = 0, d4 = 0;
+  // Route to the canonical sweep instead of re-deriving checkpoints here.
+  // This body carried its own `CHECK`-equivalent — 29/58/87/Math.min(116, …)
+  // — written when four layers existed, so it stayed at 116-D after
+  // flowCosines was widened to every active layer. One decoder, one cosine.
   if (composedA && composedB) {
-    d2 = _cosineLen(composedA, composedB, Math.min(58, composedA.length));
-    d3 = _cosineLen(composedA, composedB, Math.min(87, composedA.length));
-    d4 = _cosineLen(composedA, composedB, Math.min(116, composedA.length));
-  } else {
-    d2 = d3 = d4 = d1;
+    const flow = _flowCosines(composedA, composedB);
+    const out = { flow, shape: classifyFlow(flow) };
+    flow.forEach((v, i) => { out['d' + (i + 1)] = v; });
+    out.deepest = _deepestFlow(flow);
+    return out;
   }
-  return { d1, d2, d3, d4, shape: classifyFlow({ d1, d2, d3, d4 }) };
+  // No composed vectors — the L1 reading is all there is, repeated across
+  // the checkpoints so the shape is visible rather than silently short.
+  const d1 = _cosineLen(a.l1 || a.fractal, b.l1 || b.fractal, 29);
+  const flow = flowCheckpoints().map(() => d1);
+  const out = { flow, shape: classifyFlow(flow) };
+  flow.forEach((v, i) => { out['d' + (i + 1)] = v; });
+  out.deepest = d1;
+  return out;
 }
 
 /**
@@ -989,17 +1032,23 @@ function pairwiseFlow(entries, opts = {}) {
     const siblings = []; // kept sorted desc by d4, capped at 5
     for (let j = 0; j < n; j++) {
       if (j === i) continue;
-      const [d1, d2, d3, d4] = _flowCosines(entries[i].vec, entries[j].vec);
-      const shape = classifyFlow({ d1, d2, d3, d4 });
+      // The whole flow, at every active depth. `d4` is kept as the key name
+      // because goggles.js reads it, but it now carries the DEEPEST reading
+      // (232-D today), not the 116-D fourth checkpoint. Duplicate detection
+      // in particular was running on the half that cannot tell look-alikes
+      // apart, which is the half that decides whether two files are the same.
+      const flow = _flowCosines(entries[i].vec, entries[j].vec);
+      const shape = classifyFlow(flow);
+      const deep = _deepestFlow(flow);
       if (shape === 'STABLE-HIGH') {
         stableHigh++;
-        const minDepth = Math.min(d1, d2, d3, d4);
+        const minDepth = Math.min(...flow);
         if (minDepth >= duplicateAt) {
-          duplicates.push({ name: entries[j].rel, score: d4, minDepth, shape });
+          duplicates.push({ name: entries[j].rel, score: deep, minDepth, shape });
         }
       }
-      if (siblings.length < 5 || d4 > siblings[siblings.length - 1].d4) {
-        siblings.push({ rel: entries[j].rel, d4, shape });
+      if (siblings.length < 5 || deep > siblings[siblings.length - 1].d4) {
+        siblings.push({ rel: entries[j].rel, d4: deep, shape });
         siblings.sort((a, b) => b.d4 - a.d4);
         if (siblings.length > 5) siblings.pop();
       }
@@ -1009,8 +1058,32 @@ function pairwiseFlow(entries, opts = {}) {
   return out;
 }
 
+/**
+ * Pull the depth readings out of a flow, however it arrived.
+ *
+ * A flow used to be exactly four numbers, so callers destructured d1..d4.
+ * It is now one reading per ACTIVE decoder layer (eight today), and the
+ * count changes whenever a layer activates. Reading a fixed d1..d4 would
+ * silently classify on the first 116 of 232 dimensions — the same
+ * truncation that made every resonance reading half-blind.
+ *
+ * Accepts an array (the canonical form flowCosines returns) or a legacy
+ * {d1..dN} object, and returns every depth present.
+ */
+function flowValues(f) {
+  if (Array.isArray(f)) return f.filter((x) => typeof x === 'number' && isFinite(x));
+  const out = [];
+  for (let i = 1; ; i++) {
+    const v = f['d' + i];
+    if (typeof v !== 'number' || !isFinite(v)) break;
+    out.push(v);
+  }
+  return out;
+}
+
 function classifyFlow(f) {
-  const values = [f.d1, f.d2, f.d3, f.d4];
+  const values = flowValues(f);
+  if (!values.length) return 'STABLE-MID';
   const max = Math.max(...values), min = Math.min(...values);
   const range = max - min;
   if (range < 0.05) {
@@ -1030,7 +1103,11 @@ function classifyFlow(f) {
 
 function formatFlow(f) {
   if (!f) return 'no-flow';
-  return `${f.d1.toFixed(3)} → ${f.d2.toFixed(3)} → ${f.d3.toFixed(3)} → ${f.d4.toFixed(3)}  [${f.shape}]`;
+  const v = flowValues(f);
+  if (!v.length) return 'no-flow';
+  // Every active depth, not the first four. The arrow chain is the whole
+  // waveform's flow now — L1 structural through L8 dynamical.
+  return `${v.map((x) => x.toFixed(3)).join(' → ')}  [${f.shape}]`;
 }
 
 module.exports = {

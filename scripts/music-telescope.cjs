@@ -23,7 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { composedAtDepth } = require(path.join(__dirname, '..', 'src', 'core', 'encoder-stack.js'));
+const { composedAtDepth } = require(path.join(__dirname, '..', 'src', 'core', 'decoder-stack.js'));
 const { inspectSpectralWaveform } = require(path.join(__dirname, '..', 'src', 'core', 'spectral-waveform.js'));
 const { FractalIndex } = require(path.join(__dirname, '..', 'packages', 'field-tool', 'src', 'fractal-index.js'));
 

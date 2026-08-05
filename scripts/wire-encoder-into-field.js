@@ -24,7 +24,7 @@ const VOID = '/home/user/Void-Data-Compressor';
 const FRACTAL_INDEX = path.join(VOID, 'pattern_index_fractal.json');
 
 const fc = require(path.join(ORACLE, 'src/core/field-coupling'));
-const stack = require(path.join(ORACLE, 'src/core/encoder-stack'));
+const stack = require(path.join(ORACLE, 'src/core/decoder-stack'));
 
 function contribute(coherence, source, cost = 1.0) {
   try {
@@ -196,7 +196,7 @@ if (discriminations.length > 0) {
 }
 
 // ── 7. Encoder configuration meta ───────────────────────────────
-console.log('Wiring encoder-stack meta...');
+console.log('Wiring decoder-stack meta...');
 const totalDims = layers.reduce((s, L) => s + L.dims, 0);
 contribute(totalDims / 116, 'encoder:total-dims-normalized');
 contribute(Math.min(1, idx.patterns_translated / 100000), 'substrate:patterns-translated-normalized');

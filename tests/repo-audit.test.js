@@ -39,7 +39,16 @@ test('auditRepo on a local path: map + checker findings + confidentiality', () =
     assert.equal(div.line, 2);
     assert.ok(div.fix, 'finding carries a fix suggestion');
     assert.match(r.confidentiality, /did not grow the substrate/);
-    assert.ok(Number.isFinite(r.structure.meanCoherence));
+    // Distribution, not an average — the audit reports median/min/max, every
+    // one of which is a reading some file in the target actually measured.
+    // meanCoherence was removed: no file has it and the compressor never
+    // produced it.
+    assert.equal(r.structure.meanCoherence, undefined, 'no mean is reported');
+    assert.ok(Number.isFinite(r.structure.medianCoherence));
+    assert.ok(Number.isFinite(r.structure.minCoherence));
+    assert.ok(Number.isFinite(r.structure.maxCoherence));
+    assert.ok(r.structure.minCoherence <= r.structure.medianCoherence);
+    assert.ok(r.structure.medianCoherence <= r.structure.maxCoherence);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

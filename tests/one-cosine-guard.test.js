@@ -46,19 +46,19 @@ const CANONICAL = path.join('src', 'core', 'decoder-stack.js');
 // written down instead of asked for.
 const BOUNDARIES = [58, 87, 116, 145, 174, 203, 232];
 
-function stripComments(src) {
+function _stripComments(src) {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
 
-function walk(dir, out = []) {
+function _walk(dir, out = []) {
   let entries;
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
   for (const e of entries) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) {
-      if (e.name !== 'node_modules' && e.name !== '.git') walk(p, out);
+      if (e.name !== 'node_modules' && e.name !== '.git') _walk(p, out);
     } else if (/\.(js|cjs|mjs)$/.test(e.name)) {
       out.push(p);
     }
@@ -66,15 +66,15 @@ function walk(dir, out = []) {
   return out;
 }
 
-function offenders() {
-  const files = walk(path.join(ROOT, 'src'));
+function _offenders() {
+  const files = _walk(path.join(ROOT, 'src'));
   const hits = [];
   for (const abs of files) {
     const rel = path.relative(ROOT, abs);
     if (rel === CANONICAL) continue;
     if (rel === path.join('src', 'core', 'fractal-index.js')) continue; // real-depth contract, see header
     let src;
-    try { src = stripComments(fs.readFileSync(abs, 'utf8')); } catch { continue; }
+    try { src = _stripComments(fs.readFileSync(abs, 'utf8')); } catch { continue; }
 
     // A written-down checkpoint ladder.
     if (/\[\s*29\s*,\s*58\s*,\s*87\b/.test(src)) {
@@ -98,7 +98,7 @@ function offenders() {
 }
 
 test('one decoder, one cosine — no module carries its own depth-flow', () => {
-  const hits = offenders();
+  const hits = _offenders();
   assert.deepStrictEqual(
     hits, [],
     'ECOSYSTEM §7 violation — these compute or truncate a depth-flow locally '
@@ -119,7 +119,7 @@ test('the guard actually detects the defect it was written for', () => {
     const d = _cosineLen(x, y, Math.min(116, x.length));
     const CHECK = [29, 58, 87, 116, 145];
   `;
-  const src = stripComments(regression);
+  const src = _stripComments(regression);
   assert.ok(/const\s*\[\s*d1\s*,\s*d2\s*,\s*d3\s*,\s*d4\s*\]/.test(src), 'destructure matcher is live');
   assert.ok(/classifyFlow\(\s*\{\s*d1\s*,\s*d2\s*,\s*d3\s*,\s*d4\s*\}/.test(src), 'classifyFlow matcher is live');
   assert.ok(/Math\.min\(\s*116\s*,/.test(src), 'width-cap matcher is live');
@@ -132,7 +132,7 @@ test('comments describing the mistake do not trip the guard', () => {
     // and callers wrote const [d1, d2, d3, d4] = flowCosines(a, b)
     const flow = flowCosines(a, b);
   `;
-  const src = stripComments(prose);
+  const src = _stripComments(prose);
   assert.ok(!/\[\s*29\s*,\s*58\s*,\s*87\b/.test(src));
   assert.ok(!/Math\.min\(\s*116\s*,/.test(src));
   assert.ok(!/const\s*\[\s*d1\s*,\s*d2\s*,\s*d3\s*,\s*d4\s*\]/.test(src));

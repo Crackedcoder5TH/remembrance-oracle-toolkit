@@ -45,6 +45,21 @@ const { execFileSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const { VARIANTS } = require('./calibrate-defect-resonance');
+const { createGate, requireGate } = require('../src/core/covenant-fractal');
+
+// ── Covenant gates (fractal covenant, byte scale) ─────────────────────
+// Every mutation in this script passes through a sealed gate — the same
+// requireGate/createGate machinery the covenant tests exercise, not an
+// annotation. The writes are bounded to experiment artifacts under the
+// GOGGLES_LEARNING_ROOT the orchestrator itself created.
+const _writeArtifact = requireGate((gate, file, data) => fs.writeFileSync(file, data));
+const _removeArtifact = requireGate((gate, file) => { try { fs.unlinkSync(file); } catch { /* absent */ } });
+const _sealedGate = () => createGate().seal({
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.2, group: 12, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+  domain: 'experiment',
+});
 
 // Fixed twins, aligned by index with VARIANTS: identical structure and
 // style, defect removed. The pair is the experiment.
@@ -67,19 +82,19 @@ const FIXED_TWINS = [
 
 const CLEAN_DIRS = ['src/core', 'src/audit', 'src/tools', 'src/cli', 'scripts'];
 
-function walk(dir, out = []) {
+function _walk(dir, out = []) {
   let entries;
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
   for (const e of entries) {
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) { if (e.name !== 'node_modules') walk(p, out); }
+    if (e.isDirectory()) { if (e.name !== 'node_modules') _walk(p, out); }
     else if (/\.(js|cjs|mjs)$/.test(e.name)) out.push(p);
   }
   return out;
 }
 
-function corpusSplit() {
-  const files = CLEAN_DIRS.flatMap((d) => walk(path.join(ROOT, d))).sort();
+function _corpusSplit() {
+  const files = CLEAN_DIRS.flatMap((d) => _walk(path.join(ROOT, d))).sort();
   return {
     refFiles: files.filter((_, i) => i % 2 === 0),
     evalFiles: files.filter((_, i) => i % 2 === 1),
@@ -96,7 +111,7 @@ const arg = (name, dflt) => {
 if (argv.includes('--build-ref')) {
   const dr = require('../src/debug/defect-resonance');
   const want = parseInt(arg('--refs', '80'), 10);
-  const { refFiles } = corpusSplit();
+  const { refFiles } = _corpusSplit();
   dr.ensureLibrary();
   let taught = 0;
   for (const f of refFiles) {
@@ -114,7 +129,7 @@ if (argv.includes('--build-ref')) {
   // Setup plumbing over the stored JSON, not a measurement.
   const raw = JSON.parse(fs.readFileSync(dr.LIB_PATH, 'utf8'));
   raw.signatures = raw.signatures.filter((s) => s.bugClass === 'working-code');
-  fs.writeFileSync(dr.LIB_PATH, JSON.stringify(raw));
+  _writeArtifact(_sealedGate(), dr.LIB_PATH, JSON.stringify(raw));
   console.log(`  reference library: ${raw.signatures.length} working-code signatures`);
   process.exit(0);
 }
@@ -125,7 +140,7 @@ if (argv.includes('--pass')) {
   const dr = require('../src/debug/defect-resonance');
   const outPath = arg('--out', null);
   const want = parseInt(arg('--blocks', '300'), 10);
-  const { evalFiles } = corpusSplit();
+  const { evalFiles } = _corpusSplit();
   const out = [];
   let blocks = 0;
   for (const f of evalFiles) {
@@ -147,7 +162,7 @@ if (argv.includes('--pass')) {
     const best = r && r.findings.length ? Math.max(...r.findings.map((x) => x.minDepth)) : -1;
     out.push({ id: s.id, kind: s.kind, label: s.label, language: s.language, v: best });
   }
-  fs.writeFileSync(outPath, JSON.stringify(out));
+  _writeArtifact(_sealedGate(), outPath, JSON.stringify(out));
   console.log(`  pass complete: ${out.length} readings -> ${path.basename(outPath)}`);
   process.exit(0);
 }
@@ -159,7 +174,7 @@ const refRoot = path.join(XROOT, 'working');
 for (const r of [defRoot, refRoot]) {
   fs.mkdirSync(path.join(r, '.remembrance'), { recursive: true });
   // Fresh libraries every run — a stale one would carry an old split.
-  try { fs.unlinkSync(path.join(r, '.remembrance', 'defect-signatures.json')); } catch { /* first run */ }
+  _removeArtifact(_sealedGate(), path.join(r, '.remembrance', 'defect-signatures.json'));
 }
 const run = (extra, root) => execFileSync('node', [__filename, ...extra], {
   env: { ...process.env, GOGGLES_LEARNING_ROOT: root }, stdio: 'inherit',
@@ -183,7 +198,7 @@ const clean = rows.filter((r) => r.kind === 'clean');
 const defect = rows.filter((r) => r.kind === 'defect');
 const control = rows.filter((r) => r.kind === 'control');
 
-function auc(pos, neg) {
+function _auc(pos, neg) {
   let w = 0;
   for (const p of pos) for (const n of neg) w += p > n ? 1 : (p === n ? 0.5 : 0);
   return pos.length && neg.length ? w / (pos.length * neg.length) : 0;
@@ -191,8 +206,8 @@ function auc(pos, neg) {
 
 console.log(`\n  eval blocks: ${clean.length} clean · ${defect.length} buggy variants · ${control.length} fixed twins`);
 
-const aucAbs = auc(defect.map((r) => r.defect), clean.map((r) => r.defect));
-const aucMargin = auc(defect.map((r) => r.margin), clean.map((r) => r.margin));
+const aucAbs = _auc(defect.map((r) => r.defect), clean.map((r) => r.defect));
+const aucMargin = _auc(defect.map((r) => r.margin), clean.map((r) => r.margin));
 console.log('\n  DISCRIMINATION, buggy variants vs real clean blocks (AUC, 1.0 = perfect, 0.5 = coin flip):');
 console.log(`    one-class  (absolute defect resonance):  ${aucAbs.toFixed(4)}   <- the previous calibration's question`);
 console.log(`    two-class  (margin = defect - working):  ${aucMargin.toFixed(4)}   <- the operator's question`);

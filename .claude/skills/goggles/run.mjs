@@ -131,6 +131,24 @@ if (argv[0] === '--do') {
     // reading alone) but nothing ever measured an actual hole in the space.
     //   goggles --do void [namespace|all] [--sample N]
     void: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'void-field.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE FRONT-DOOR DEMO — the whole thesis in three reads. A source file
+    // and a prose document land in the SAME coordinate frame with their
+    // nearest resonances across the substrate, and the living field reacts
+    // to each read (the FIELD section). Cross-domain resonance in one space
+    // is the claim; watching it happen is the argument.
+    //   goggles --do demo
+    demo: () => {
+      const say = (t) => console.log('\n\u2550\u2550 ' + t + '\n');
+      say('DEMO 1/3 \u2014 a SOURCE FILE read by the instrument (structure, resonance, live field)');
+      run('node', [engine, join(toolkit, 'src/core/decoder-stack.js')], toolkit);
+      say('DEMO 2/3 \u2014 a PROSE DOCUMENT through the SAME instrument, same coordinates');
+      run('node', [engine, join(toolkit, 'MANIFESTO.md')], toolkit);
+      say('DEMO 3/3 \u2014 the living field right now');
+      run('node', ['-e', "console.log(JSON.stringify((()=>{const f=require('./src/core/field-coupling').peekField();return {coherence:f.coherence,globalEntropy:f.globalEntropy,cascadeFactor:f.cascadeFactor,coherenceIntegral:f.coherenceIntegral,updateCount:f.updateCount};})(),null,1))"], toolkit);
+      console.log('\nSame instrument, same 232-D frame, code and prose alike \u2014 and the field');
+      console.log('reacted to every read. Full cross-domain field: goggles --do resonance');
+      return 0;
+    },
     // THE EXEMPTION SURFACE, ratcheted. The covenant's relief-valve
     // annotations exempt files from the fractal scanners; this verb reads the
     // census against the tracked baseline (list-based — swaps can't hide).

@@ -195,8 +195,17 @@ function printLive() {
     health = execFileSync('curl', ['-s', '--noproxy', '127.0.0.1', '--max-time', '2',
       'http://127.0.0.1:8765/health'], { encoding: 'utf8' });
   } catch { /* down */ }
+  // `health.includes('ok')` is not a guarantee of valid JSON — a truncated
+  // body, or anything else on port 8765 answering with the substring, throws
+  // here and takes the whole brief with it. That matters more than the
+  // severity suggests: brief is what PRINTS the traps, so a crash on a
+  // malformed health probe silently removes the warnings it exists to
+  // deliver. Same try/catch shape readJSON above already uses.
+  let h = null;
   if (health && health.includes('ok')) {
-    const h = JSON.parse(health);
+    try { h = JSON.parse(health); } catch { h = null; }
+  }
+  if (h && typeof h.library_size === 'number') {
     console.log(`  ✓ compressor service UP — ${h.library_size.toLocaleString()} patterns, `
       + `uptime ${h.uptime_s}s   (reads ~1.5s)`);
   } else {

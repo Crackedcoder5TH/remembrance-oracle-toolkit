@@ -23,6 +23,12 @@
 let _engineRef = null;
 let _engineLoadAttempted = false;
 let _localUpdateCount = 0;
+// The most recent LRE contribution reading, cached so a caller that just
+// contributed (e.g. the goggles reading a file) can surface the void term
+// the field computed for it — delta_void + its provenance — without
+// recomputing anything. null until the first contribution this process.
+let _lastReading = null;
+function lastReading() { return _lastReading; }
 
 // Rolling baseline of recent contribution coherence values. Used by
 // validateContribution() to self-calibrate the variance-signature
@@ -273,6 +279,7 @@ function contribute(obs) {
   // therefore near-powerless against the field.
   const resonance = (typeof obs.resonance === 'number' && isFinite(obs.resonance)) ? Math.max(0, Math.min(1, obs.resonance)) : null;
   const result = engine.contribute({ cost, coherence: clamped, source: obs.source || null, resonance });
+  _lastReading = result;   // the void term (delta_void, void_source), r_eff and p, read off the field
   _localUpdateCount += 1;
   _pushRecent(clamped);
 
@@ -1054,6 +1061,7 @@ function recordTemporalSnapshot({ repoDir, filePath, maxVersions = 12 } = {}) {
 
 module.exports = {
   contribute,
+  lastReading,
   markFieldServer,
   peekField,
   fieldPressure,

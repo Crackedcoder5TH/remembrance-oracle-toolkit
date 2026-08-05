@@ -137,19 +137,10 @@ function reflectorScanDirectory(rootDir, options = {}) {
   const exts = new Set(options.extensions || ['.js', '.mjs', '.cjs', '.ts', '.jsx', '.tsx']);
   const ignoreDirs = new Set(options.ignoreDirs || ['node_modules', '.git', 'dist', 'build', 'coverage', '.remembrance']);
 
-  const files = [];
-  function walk(dir) {
-    let entries;
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
-    catch { return; }
-    for (const entry of entries) {
-      if (ignoreDirs.has(entry.name)) continue;
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.isFile() && exts.has(path.extname(entry.name))) files.push(full);
-    }
-  }
-  walk(rootDir);
+  // Canonical walker (ECOSYSTEM §7). skipHidden off: the old walk only
+  // pruned by ignoreDirs, so dot-directories outside that set were scanned.
+  const { walkFiles } = require('../core/walk-files');
+  const files = walkFiles(rootDir, { skipDirs: ignoreDirs, extensions: [...exts], skipHidden: false });
 
   return analyzeFiles(files, options);
 }

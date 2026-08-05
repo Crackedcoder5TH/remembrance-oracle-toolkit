@@ -55,48 +55,43 @@ function harvestFunctions(baseDir, options = {}) {
   const results = [];
   const seen = new Set();
 
-  function walk(dir) {
-    if (!fs.existsSync(dir)) return;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (results.length >= maxFiles) return; // Cap total files to prevent unbounded growth
-      if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
-      if (entry.isSymbolicLink()) continue; // Skip symlinks to prevent traversal/loops
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(fullPath);
-      } else if (entry.isFile()) {
-        const lang = detectLanguage(fullPath);
-        if (!lang) continue;
-        if (langFilter && lang !== langFilter) continue;
-        if (seen.has(fullPath)) continue;
-        seen.add(fullPath);
-
-        try {
-          const stat = fs.statSync(fullPath);
-          if (stat.size > maxFileSize || stat.size < 10) continue;
-
-          const code = fs.readFileSync(fullPath, 'utf-8');
-          const functions = extractFunctionNames(code, lang);
-
-          if (functions.length >= minFunctions) {
-            results.push({
-              file: path.relative(baseDir, fullPath),
-              language: lang,
-              code,
-              functions,
-              size: stat.size,
-            });
-          }
-        } catch (e) {
-          // Skip unreadable files
-          if (process.env.ORACLE_DEBUG) console.warn('skipping unreadable file:', e.message);
+  // Canonical walker (ECOSYSTEM §7), exact pre-order. The cap applies to
+  // FILTERED results — files that pass language/size/function checks — so it
+  // lives in onFile, which stops the walk the moment results is full, exactly
+  // where the old recursion returned. Symlink behaviour is unchanged: the
+  // walker only descends real directories and emits real files, so links
+  // are skipped without being followed.
+  const { walkFiles } = require('../core/walk-files');
+  if (!fs.existsSync(baseDir)) return results;
+  walkFiles(baseDir, {
+    skipDirs: SKIP_DIRS,
+    onFile: (fullPath) => {
+      const lang = detectLanguage(fullPath);
+      if (!lang) return;
+      if (langFilter && lang !== langFilter) return;
+      if (seen.has(fullPath)) return;
+      seen.add(fullPath);
+      try {
+        const stat = fs.statSync(fullPath);
+        if (stat.size > maxFileSize || stat.size < 10) return;
+        const code = fs.readFileSync(fullPath, 'utf-8');
+        const functions = extractFunctionNames(code, lang);
+        if (functions.length >= minFunctions) {
+          results.push({
+            file: path.relative(baseDir, fullPath),
+            language: lang,
+            code,
+            functions,
+            size: stat.size,
+          });
         }
+      } catch (e) {
+        // Skip unreadable files
+        if (process.env.ORACLE_DEBUG) console.warn('skipping unreadable file:', e.message);
       }
-    }
-  }
-
-  walk(baseDir);
+      if (results.length >= maxFiles) return false; // cap reached — stop the walk
+    },
+  });
   return results;
 }
 

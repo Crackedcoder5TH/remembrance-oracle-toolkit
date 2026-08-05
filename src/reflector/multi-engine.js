@@ -43,6 +43,10 @@ function scanDirectory(rootDir, config = {}) {
   const opts = { ...DEFAULT_CONFIG, ...config };
   const files = [];
 
+  // NOT migrated to the canonical walker, deliberately: this walk uses
+  // statSync, which FOLLOWS symlinks — a linked file is analyzed here where
+  // walkFiles (dirent-based) would skip it. Same reason fractal-index keeps
+  // its own depth logic: different contract, documented rather than forced.
   function walk(dir) {
     if (files.length >= opts.maxFilesPerRun) return;
 

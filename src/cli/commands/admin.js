@@ -1337,19 +1337,11 @@ ${c.bold('Related commands:')}
       const { CoherencyDirector } = require('../../orchestrator/coherency-director');
       const fs = require('fs');
       const d = new CoherencyDirector();
-      const files = [];
-      (function walk(dir) {
-        try {
-          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-            if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-            const p = path.join(dir, entry.name);
-            if (entry.isDirectory()) walk(p);
-            else if (entry.name.endsWith('.js')) {
-              try { files.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); } catch {}
-            }
-          }
-        } catch {}
-      })('src');
+      // Canonical walker (ECOSYSTEM §7) — pre-order preserved for the slice(0, 50) sample.
+      const { walkFiles } = require('../../core/walk-files');
+      const files = walkFiles('src', { skipDirs: new Set(['node_modules']), extensions: ['.js'] })
+        .map((p) => { try { return { id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }; } catch { return null; } })
+          .filter(Boolean);
       d.scan(files.slice(0, 50));
       d.measureWithOracle();
       globalCoherency = d.field.globalCoherency;
@@ -1501,17 +1493,11 @@ ${c.bold('Related commands:')}
       const path = require('path');
       const scanDir = 'src';
       if (fs.existsSync(scanDir)) {
-        const files = [];
-        (function walk(dir) {
-          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-            if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-            const p = path.join(dir, entry.name);
-            if (entry.isDirectory()) walk(p);
-            else if (entry.name.endsWith('.js')) {
-              try { files.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); } catch {}
-            }
-          }
-        })(scanDir);
+        // Canonical walker (ECOSYSTEM §7) — pre-order preserved for the slice(0, 50) sample.
+        const { walkFiles } = require('../../core/walk-files');
+        const files = walkFiles(scanDir, { skipDirs: new Set(['node_modules']), extensions: ['.js'] })
+          .map((p) => { try { return { id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }; } catch { return null; } })
+          .filter(Boolean);
         d.scan(files.slice(0, 50)); // sample for speed
         d.measureWithOracle();
         globalCoherency = d.field.globalCoherency;
@@ -1618,24 +1604,13 @@ ${c.bold('Related commands:')}
     const { CoherencyDirector } = require('../../orchestrator/coherency-director');
     const director = new CoherencyDirector();
 
-    // Scan src/ files as zones
-    const srcFiles = [];
-    function walk(dir) {
-      try {
-        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-          if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-          const p = path.join(dir, entry.name);
-          if (entry.isDirectory()) walk(p);
-          else if (entry.name.endsWith('.js')) {
-            try {
-              srcFiles.push({ id: path.relative(process.cwd(), p), code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' });
-            } catch { /* skip unreadable */ }
-          }
-        }
-      } catch { /* skip inaccessible dirs */ }
-    }
+    // Scan src/ files as zones — canonical walker (ECOSYSTEM §7), pre-order.
+    const { walkFiles } = require('../../core/walk-files');
     const scanDir = args.dir || 'src';
-    if (fs.existsSync(scanDir)) walk(scanDir);
+    const srcFiles = !fs.existsSync(scanDir) ? []
+      : walkFiles(scanDir, { skipDirs: new Set(['node_modules']), extensions: ['.js'] })
+        .map((p) => { try { return { id: path.relative(process.cwd(), p), code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }; } catch { return null; } })
+        .filter(Boolean);
 
     director.scan(srcFiles);
 

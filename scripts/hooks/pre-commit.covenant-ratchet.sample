@@ -42,4 +42,12 @@ if ! node scripts/exemption-ratchet.js; then
   echo "[covenant] which feeds each new file's stored Void reading to the field."
   exit 1
 fi
+echo "[covenant] enforcing size ratchet..."
+if ! node scripts/size-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — a module crossed the size cap or a monolith grew."
+  echo "[covenant] split it (house pattern: walk-files.js, mapper decomposition),"
+  echo "[covenant] or release shrunk modules: node scripts/size-ratchet.js --save-baseline"
+  exit 1
+fi
 echo "[covenant] ✓ pass"

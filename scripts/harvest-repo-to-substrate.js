@@ -91,18 +91,11 @@ function resolveTarget(arg, explicitNs) {
 }
 
 function walk(dir) {
-  const out = [];
-  const stack = [dir];
-  while (stack.length) {
-    const cur = stack.pop();
-    let entries;
-    try { entries = fs.readdirSync(cur, { withFileTypes: true }); } catch { continue; }
-    for (const e of entries) {
-      const full = path.join(cur, e.name);
-      if (e.isDirectory()) { if (!DEFAULT_SKIP_DIRS.has(e.name)) stack.push(full); }
-      else if (e.isFile() && DEFAULT_EXTENSIONS.includes(path.extname(e.name).toLowerCase())) out.push(full);
-    }
-  }
+  // Canonical walker (ECOSYSTEM §7). The old local stack visited siblings in
+  // reverse; canonical pre-order changes only the INGESTION ORDER of a
+  // harvest (ledger sequence numbering), never the witnessed set.
+  const { walkFiles } = require('../src/core/walk-files');
+  const out = walkFiles(dir, { skipDirs: DEFAULT_SKIP_DIRS, extensions: DEFAULT_EXTENSIONS, skipHidden: false });
   return out;
 }
 

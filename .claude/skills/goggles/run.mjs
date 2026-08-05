@@ -149,6 +149,10 @@ if (argv[0] === '--do') {
       console.log('reacted to every read. Full cross-domain field: goggles --do resonance');
       return 0;
     },
+    // THE SIZE SURFACE, ratcheted. 70 grandfathered monoliths (>500 lines);
+    // the list only shrinks — no new monolith, no grandfathered growth.
+    //   goggles --do size [--json | --save-baseline]
+    size: () => run('node', [join(toolkit, 'scripts/size-ratchet.js'), ...rest], toolkit),
     // THE EXEMPTION SURFACE, ratcheted. The covenant's relief-valve
     // annotations exempt files from the fractal scanners; this verb reads the
     // census against the tracked baseline (list-based — swaps can't hide).

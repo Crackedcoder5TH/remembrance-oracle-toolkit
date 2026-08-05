@@ -48,24 +48,32 @@ function walkFiles(dir, opts = {}) {
   const maxFiles = Number.isFinite(opts.maxFiles) ? opts.maxFiles : Infinity;
   const onFile = typeof opts.onFile === 'function' ? opts.onFile : null;
 
+  // Exact PRE-ORDER traversal — byte-identical to the recursive walkers this
+  // module replaced: each directory's entries in readdir order, descending
+  // into a subdirectory the moment it is met. An earlier version used a
+  // plain LIFO stack, which visits siblings in reverse; the SET was right
+  // but the ORDER wasn't, and callers that sample the head of the walk
+  // (`.slice(0, 50)`) would have silently sampled different files.
   const out = [];
-  const stack = [dir];
+  const stack = [{ dir, i: -1, entries: null }];
   while (stack.length) {
     if (out.length >= maxFiles) break;
-    const cur = stack.pop();
-    let entries;
-    try { entries = fs.readdirSync(cur, { withFileTypes: true }); } catch { continue; }
-    for (const e of entries) {
-      if (skipHidden && e.name.startsWith('.')) continue;
-      const full = path.join(cur, e.name);
-      if (e.isDirectory()) {
-        if (!skip.has(e.name)) stack.push(full);
-      } else if (e.isFile()) {
-        if (exts && !exts.includes(path.extname(e.name).toLowerCase())) continue;
-        out.push(full);
-        if (onFile && onFile(full) === false) return out;
-        if (out.length >= maxFiles) break;
-      }
+    const top = stack[stack.length - 1];
+    if (top.entries === null) {
+      try { top.entries = fs.readdirSync(top.dir, { withFileTypes: true }); }
+      catch { stack.pop(); continue; }
+    }
+    top.i++;
+    if (top.i >= top.entries.length) { stack.pop(); continue; }
+    const e = top.entries[top.i];
+    if (skipHidden && e.name.startsWith('.')) continue;
+    const full = path.join(top.dir, e.name);
+    if (e.isDirectory()) {
+      if (!skip.has(e.name)) stack.push({ dir: full, i: -1, entries: null });
+    } else if (e.isFile()) {
+      if (exts && !exts.includes(path.extname(e.name).toLowerCase())) continue;
+      out.push(full);
+      if (onFile && onFile(full) === false) return out;
     }
   }
   return out;

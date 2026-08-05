@@ -33,4 +33,13 @@ if ! node scripts/covenant-ratchet.js; then
   echo "[covenant] or bypass once with COVENANT_SKIP=1 git commit ..."
   exit 1
 fi
+echo "[covenant] enforcing exemption ratchet..."
+if ! node scripts/exemption-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — exemption surface grew."
+  echo "[covenant] a new @oracle-* exemption needs an explicit"
+  echo "[covenant]   node scripts/exemption-ratchet.js --save-baseline"
+  echo "[covenant] which feeds each new file's stored Void reading to the field."
+  exit 1
+fi
 echo "[covenant] ✓ pass"

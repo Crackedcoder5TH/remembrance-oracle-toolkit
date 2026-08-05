@@ -131,6 +131,13 @@ if (argv[0] === '--do') {
     // reading alone) but nothing ever measured an actual hole in the space.
     //   goggles --do void [namespace|all] [--sample N]
     void: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'void-field.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE EXEMPTION SURFACE, ratcheted. The covenant's relief-valve
+    // annotations exempt files from the fractal scanners; this verb reads the
+    // census against the tracked baseline (list-based — swaps can't hide).
+    // `--save-baseline` accepts growth and feeds each new file's STORED Void
+    // reading into the field: the entropy cost of widening the surface.
+    //   goggles --do exemptions [--json | --save-baseline]
+    exemptions: () => run('node', [join(toolkit, 'scripts/exemption-ratchet.js'), ...rest], toolkit),
     // READ THE WEB through the substrate: fetch a URL, compress + score it,
     // contribute the reading to the field. Browsing was the last blind spot
     // (WebFetch matches no hook, so a fetched page was never witnessed).

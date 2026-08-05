@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
  * Batch Atomizer — scans a module for exported functions and appends
@@ -165,3 +166,11 @@ if (require.main === module) {
   const results = batchAtomizeFiles(files, { dryRun: !write });
   console.log(JSON.stringify(results, null, 2));
 }
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+scanForUnatomized.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+generateAtomicBlock.atomicProperties = { charge: 1, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+batchAtomize.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+batchAtomizeFiles.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Circuit Breaker — Prevents cascading failures by failing fast
  * when an operation exceeds a failure threshold.

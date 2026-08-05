@@ -168,3 +168,11 @@ module.exports = {
   crossScore,
   computePeerScores,
 };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+scoreWithCoherency.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+buildPeerReviewPrompts.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+crossScore.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 8, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+computePeerScores.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

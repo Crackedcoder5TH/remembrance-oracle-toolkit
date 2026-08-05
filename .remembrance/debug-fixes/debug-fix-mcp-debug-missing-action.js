@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 13 Fix: Missing Action Parameter Crashes MCP Debug Handler
  * (PATTERN ASSUMPTION MISMATCH)

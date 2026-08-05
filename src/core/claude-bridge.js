@@ -421,3 +421,10 @@ function convertName(name, targetLanguage) {
 
 
 module.exports = { ClaudeBridge, findClaudeCLI, extractCodeBlock, convertName };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+findClaudeCLI.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+extractCodeBlock.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+convertName.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

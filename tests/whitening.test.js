@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // ZCA whitening: the numerical core (symmetric eigensolver) + the property
 // that whitening raises a low-rank cloud's effective dimensionality.
 const { test } = require('node:test');

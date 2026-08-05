@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Tests for app/lib/admin-session.ts and app/lib/client-auth.ts.
  *

@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 /**
  * run-anchor-ritual — perform the anchor compression + mathematical
  * ascension rituals on a text and register the result as a JSON

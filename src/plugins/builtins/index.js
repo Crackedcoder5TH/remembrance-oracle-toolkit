@@ -49,3 +49,10 @@ function listBuiltins() {
 }
 
 module.exports = { BUILTIN_PLUGINS, loadBuiltinPlugin, loadAllBuiltins, listBuiltins };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+loadBuiltinPlugin.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+loadAllBuiltins.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+listBuiltins.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

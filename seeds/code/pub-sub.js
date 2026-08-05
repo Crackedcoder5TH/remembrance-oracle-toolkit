@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Pub/Sub — Simple typed event bus / message broker.
  * Supports: subscribe, publish, once, wildcard topics, unsubscribe.

@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 // Canonical-name resolution pattern for case-mismatched REST paths.
 // GitHub returns 404 (not 301) on sub-paths like /repos/X/y/pulls when the
 // repo casing is off, but redirects on the bare /repos/X/y endpoint. On 404,

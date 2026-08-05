@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 /**
  * Hover Provider — show pattern info when hovering over function names.
  */

@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 /**
  * Tests for src/quality/planner.js — stage 1 of the anti-hallucination

@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Tests for oracle health check, candidate dedup, orphan cleanup,
  * entry pruning, audit rotation, vacuum, and candidate cap.

@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 /**
  * Diagnostics Provider — bridges IDEBridge diagnostics to VS Code diagnostic API.
  */

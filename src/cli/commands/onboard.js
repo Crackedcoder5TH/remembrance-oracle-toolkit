@@ -149,3 +149,8 @@ function registerOnboardCommands(handlers, _context) {
 }
 
 module.exports = { registerOnboardCommands };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+registerOnboardCommands.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 3, period: 4, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };

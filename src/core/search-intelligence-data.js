@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — embeds example/template code as string DATA; the covenant's line scanner matches those in-string 'function' declarations as elements, but they have no runtime binding — the file's payload is pattern definitions, not live substrate functions
 /**
  * Search Intelligence — Data Constants.
  *

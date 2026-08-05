@@ -509,3 +509,20 @@ module.exports = {
   // Exposed for tests
   _tryConfidentLevel: tryConfidentLevel,
 };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+levelIndex.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+heal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+tryConfidentLevel.atomicProperties = { charge: 0, valence: 3, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 13, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+trySerfLevel.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+tryLlmLevel.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+buildLlmResult.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+trySwarmLevel.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 9, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+buildSwarmResult.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+tryGenerateLevel.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+filterTargetable.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+buildLlmPrompt.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+extractCodeBlock.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+replaceEnclosingFunction.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

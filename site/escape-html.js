@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 /**
  * Escape HTML special characters to prevent XSS.
  * @param {string} str - Raw string

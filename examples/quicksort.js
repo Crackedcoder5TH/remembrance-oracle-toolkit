@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 function quickSort(arr) {
   if (arr.length <= 1) return arr;
   const pivot = arr[Math.floor(arr.length / 2)];

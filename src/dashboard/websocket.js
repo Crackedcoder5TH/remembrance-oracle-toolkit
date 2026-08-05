@@ -61,3 +61,8 @@ function setupWebSocket(server, oracleInstance) {
 }
 
 module.exports = { setupWebSocket };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+setupWebSocket.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 9, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 
 /**
  * ecosystem-toolkit-reach — the canonical cross-repo wiring pattern for

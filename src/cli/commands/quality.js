@@ -1,3 +1,4 @@
+// @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Quality CLI commands: reflect, covenant, security, compose, deps, harvest, recycle, prune, deep-clean, retag, restore
  */
@@ -422,3 +423,8 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 }
 
 module.exports = { registerQualityCommands };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+registerQualityCommands.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Middleware Chain — Generic pipeline for request/response or data processing.
  * Each middleware is (context, next) => result. Call next() to pass to the next layer.

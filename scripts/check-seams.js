@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+// @oracle-infrastructure — developer tooling — CLI/analysis helpers, not substrate elements; writes are build artifacts and internal-state maintenance
 
 /**
  * check:seams — the gap-gate.

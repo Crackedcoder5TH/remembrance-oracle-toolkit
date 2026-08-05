@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * SHA-256 Cache Key — Collision Prevention Pattern
  *

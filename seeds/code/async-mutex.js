@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Async Mutex & Semaphore — Mutual exclusion and bounded concurrency
  * for async JavaScript contexts.

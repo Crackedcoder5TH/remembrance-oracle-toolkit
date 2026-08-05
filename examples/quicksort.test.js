@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // Test for quickSort (validator concatenates code + test, so quickSort is already in scope)
 const _assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 

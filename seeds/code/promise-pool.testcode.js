@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 // Test: promise-pool — inline assertions, no require
 const pool1 = createPromisePool(2);
 if (typeof pool1.run !== 'function') throw new Error('run missing');

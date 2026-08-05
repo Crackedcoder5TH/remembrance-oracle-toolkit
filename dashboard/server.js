@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 
 /**
  * Remembrance Dashboard Server

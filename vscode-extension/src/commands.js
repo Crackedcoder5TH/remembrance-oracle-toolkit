@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 /**
  * Command Handler — implements all Oracle commands for the VS Code command palette.
  */

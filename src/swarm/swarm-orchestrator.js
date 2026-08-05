@@ -445,3 +445,9 @@ formatSwarmResult.atomicProperties = {
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
   domain: 'generation',
 };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+buildResult.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+getDefaultCoherencyFn.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

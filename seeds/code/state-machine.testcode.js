@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 // Test: state-machine — inline assertions, no require
 const sm1 = createStateMachine({
   initial: 'green',

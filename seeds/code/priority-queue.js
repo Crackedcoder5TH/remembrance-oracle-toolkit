@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Priority Queue — Binary heap implementation.
  * Default: min-heap (smallest priority first).

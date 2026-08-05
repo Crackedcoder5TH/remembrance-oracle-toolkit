@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @oracle-infrastructure — developer tooling — CLI/analysis helpers, not substrate elements; writes are build artifacts and internal-state maintenance
 /**
  * Ecosystem Diagnostic — run the oracle's audit + void coherency across every
  * remembrance repo, then scan for wiring gaps between them.

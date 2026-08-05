@@ -1,3 +1,4 @@
+// @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Offline-First Sync Queue
  *
@@ -263,3 +264,8 @@ function withOfflineQueue(syncFn, queue, operationType) {
 }
 
 module.exports = { SyncQueue, withOfflineQueue, MAX_RETRIES, BASE_DELAY_MS };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+withOfflineQueue.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 8, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

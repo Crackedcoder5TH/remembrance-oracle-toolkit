@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Tests for shared validation functions.
  * Covers: validateEmail, validatePhone, normalizePhone, validateName, validateState, validateDob

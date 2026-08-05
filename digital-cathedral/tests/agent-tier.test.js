@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Tests for app/lib/valor/agent-tier.ts — derives an authenticated agent's
  * tier from their submission history per the Remembrance Agent Access Spec.

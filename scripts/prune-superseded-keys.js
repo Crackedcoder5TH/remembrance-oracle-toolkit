@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+// @oracle-infrastructure — developer tooling — CLI/analysis helpers, not substrate elements; writes are build artifacts and internal-state maintenance
 
 /**
  * prune-superseded-keys — remove index entries written under an OLDER key

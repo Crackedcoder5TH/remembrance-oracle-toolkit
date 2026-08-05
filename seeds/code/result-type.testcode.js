@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 // Test: result-type — inline assertions, no require
 const ok1 = Ok(42);
 if (!ok1.ok) throw new Error('Ok should be ok');

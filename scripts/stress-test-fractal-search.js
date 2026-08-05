@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+// @oracle-infrastructure — developer tooling — CLI/analysis helpers, not substrate elements; writes are build artifacts and internal-state maintenance
 
 /**
  * stress-test-fractal-search.js — head-to-head benchmark of the

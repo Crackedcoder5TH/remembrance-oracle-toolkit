@@ -1,3 +1,4 @@
+// @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Git Hook Integration — Pre-commit covenant check and post-commit auto-submit.
  *
@@ -781,3 +782,14 @@ module.exports = {
   postCommitScript,
   HOOK_MARKER,
 };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+findGitHooksDir.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+preCommitScript.atomicProperties = { charge: -1, valence: 8, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 9, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "malevolent", domain: "utility" };
+postCommitScript.atomicProperties = { charge: 1, valence: 8, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 9, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
+prePushScript.atomicProperties = { charge: -1, valence: 6, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 3, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+installHooks.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 0, group: 6, period: 4, harmPotential: "moderate", alignment: "neutral", intention: "neutral", domain: "utility" };
+uninstallHooks.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+runPreCommitCheck.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

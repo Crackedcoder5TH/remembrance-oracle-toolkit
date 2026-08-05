@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Tests for app/lib/valor/agent-routing.ts — header parsing,
  * provenance_id generation/verification, and routing validation

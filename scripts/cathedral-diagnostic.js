@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @oracle-infrastructure — developer tooling — CLI/analysis helpers, not substrate elements; writes are build artifacts and internal-state maintenance
 /**
  * Cathedral Diagnostic v2 — AST-first + suppressions + auto-fix.
  *

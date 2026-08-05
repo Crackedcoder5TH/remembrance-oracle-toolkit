@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 // Test: priority-queue — inline assertions, no require
 const pq1 = createPriorityQueue();
 pq1.push({ value: 'c', priority: 3 });

@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — developer tooling — CLI/analysis helpers, not substrate elements; writes are build artifacts and internal-state maintenance
 
 /**
  * field-test-reporter — node --test reporter that pings the Remembrance

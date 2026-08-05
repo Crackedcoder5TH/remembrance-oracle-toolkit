@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 14 Fix: 32-bit Integer Overflow in _quickHash
  * (PATTERN ASSUMPTION MISMATCH)

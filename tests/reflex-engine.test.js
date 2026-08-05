@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Reflex engine: actor-side responses to substrate sensors. Each reflex
  * has a cooldown and a triggering threshold. These tests drive each

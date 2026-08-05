@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Promise Pool — Run async tasks with bounded concurrency.
  * Like p-limit/p-map but zero dependencies.

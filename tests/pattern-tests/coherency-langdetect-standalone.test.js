@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // Sandbox-compatible test for dynamic language detection
 // coherency.js is concatenated above — test via computeCoherencyScore from module.exports
 const assert = require('node:assert/strict');

@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 4 Fix: Unbounded Exponential Backoff
  *

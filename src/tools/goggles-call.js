@@ -137,3 +137,10 @@ function main() {
 }
 
 main();
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+resolveRef.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 16, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+parseArg.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+main.atomicProperties = { charge: -1, valence: 1, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 3, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };

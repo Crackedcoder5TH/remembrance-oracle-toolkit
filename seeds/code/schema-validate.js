@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Schema Validate — Lightweight runtime type/struct validator.
  * No dependencies, supports nested objects, arrays, optional fields, custom validators.

@@ -166,3 +166,8 @@ function createOracleContext(oracle) {
 }
 
 module.exports = { createOracleContext };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+createOracleContext.atomicProperties = { charge: -1, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 10, period: 4, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };

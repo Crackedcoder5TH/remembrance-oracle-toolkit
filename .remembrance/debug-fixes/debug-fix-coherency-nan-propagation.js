@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 11 Fix: NaN Propagation in Coherency Scoring
  * (PATTERN ASSUMPTION MISMATCH)

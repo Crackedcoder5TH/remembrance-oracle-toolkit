@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 6 Fix: Array.sort() Mutates In-Place During Comparison
  * (PATTERN ASSUMPTION MISMATCH)

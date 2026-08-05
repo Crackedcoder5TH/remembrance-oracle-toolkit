@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 1 Fix: Cache Invalidation by Count Only (Separation from Wholeness)
  *

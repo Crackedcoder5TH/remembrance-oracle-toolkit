@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const assert = require('assert');
 const { detectLogicInconsistency } = require('../src/patterns/audit-patterns/logic-inconsistency-check');
 

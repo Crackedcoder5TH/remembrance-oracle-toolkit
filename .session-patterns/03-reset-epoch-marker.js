@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 // Epoch marker pattern: after resetSession(), disk-fallback entries older
 // than _resetAt are ignored. Preserves cross-process enforcement (other
 // processes never call resetSession) while honoring local reset semantics.

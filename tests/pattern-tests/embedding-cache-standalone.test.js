@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // Sandbox-compatible test for SHA-256 cache key pattern
 // The embedding-engine code is concatenated above, so cacheKey() is available via module.exports
 const assert = require('node:assert/strict');

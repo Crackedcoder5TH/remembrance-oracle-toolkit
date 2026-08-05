@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 /**
  * Anchor Compression Ritual — drive the living field toward stable overlap
  * with a caller-provided signature, then anchor the resulting state.

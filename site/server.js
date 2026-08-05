@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 /**
  * Minimal static file server for the Remembrance Oracle site.
  * Zero dependencies — uses only Node.js built-ins.

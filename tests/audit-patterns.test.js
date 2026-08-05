@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Tests for audit bug-detection patterns.
  * These patterns are registered with the oracle to catch common bugs.

@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 function escapeHtml(str) {
   if (typeof str !== 'string') return '';
   return str

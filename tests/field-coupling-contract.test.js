@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // Regression contract for the auto-wire pipeline.
 //
 // This is part of the test suite because the field-coupling invariants

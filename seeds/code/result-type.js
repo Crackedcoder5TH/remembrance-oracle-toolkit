@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Result Type — Monadic error handling without exceptions.
  * Inspired by Rust's Result<T, E> and Haskell's Either.

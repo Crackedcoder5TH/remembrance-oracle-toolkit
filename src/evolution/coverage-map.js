@@ -220,3 +220,8 @@ module.exports = {
   generateCoverageMap,
   DOMAINS,
 };
+
+// ── Periodic-table declarations (covenant fractal, atomic scale) ──
+// Each element's 13-dimension atomic identity, computed by the substrate's
+// own extractAtomicProperties over the function body.
+generateCoverageMap.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

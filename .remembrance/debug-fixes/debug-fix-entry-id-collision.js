@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 10 Fix: Hash Collision in Entry ID Generation
  * (PATTERN ASSUMPTION MISMATCH)

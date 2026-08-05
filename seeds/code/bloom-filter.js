@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 /**
  * Bloom Filter — Probabilistic set membership with zero false negatives.
  * Space-efficient: uses bit array instead of storing actual values.

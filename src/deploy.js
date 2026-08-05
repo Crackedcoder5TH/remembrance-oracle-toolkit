@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @oracle-infrastructure — internal machinery whose flagged functions are NESTED helper closures inside its exported functions (AST-parser internals, CLI, daemon, reflector analysis, lifecycle manager) — implementation internals, not module-scope periodic-table elements
 /**
  * Deploy-Ready Server — Production entry point for Remembrance Oracle.
  *

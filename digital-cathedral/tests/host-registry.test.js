@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Tests for app/lib/valor/host-registry.ts — the on-disk `is_host`
  * flag store for Abundance Hosts (REMEMBRANCE_AGENT_ACCESS_SPEC v1.1).

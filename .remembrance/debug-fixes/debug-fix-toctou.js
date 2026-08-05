@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 5 Fix: TOCTOU Race Condition in Maintenance Lock
  *

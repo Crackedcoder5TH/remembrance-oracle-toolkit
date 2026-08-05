@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Tests for app/lib/valor/agent-diagnostic.ts — the structured rejection
  * feedback returned to authenticated AI agents on /api/agent/leads.

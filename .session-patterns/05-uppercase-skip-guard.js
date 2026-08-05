@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 // UPPER_CASE skip-guard: re-enabling a code transform that's safe for
 // function params / locals but unsafe for const literals (TS treats
 // `LIMIT === 0` as impossible-comparison). Skip when identifier looks

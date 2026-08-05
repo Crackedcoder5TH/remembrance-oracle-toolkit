@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 // Test: circuit-breaker — inline assertions, no require
 const cb1 = createCircuitBreaker({ threshold: 3, cooldownMs: 50 });
 

@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 12 Fix: Silent Null on Network Error in _fetchJson
  * (PATTERN ASSUMPTION MISMATCH)

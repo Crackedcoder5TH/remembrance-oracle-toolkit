@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 7 Fix: Maintenance Lock Not Released on Uncaught Error
  * (PATTERN ASSUMPTION MISMATCH)

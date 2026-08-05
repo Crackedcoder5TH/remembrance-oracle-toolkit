@@ -45,7 +45,7 @@ const { execFileSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
 const VOID = process.env.VOID_ROOT || path.resolve(ROOT, '..', 'Void-Data-Compressor');
 
-function readJSON(p) {
+function _readJSON(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
 }
 
@@ -74,9 +74,9 @@ function readJSON(p) {
  * wins where both carry the same trap, so a host that has learned more
  * keeps it; it just no longer starts from zero.
  */
-function allTraps() {
-  const seed = readJSON(path.join(ROOT, 'seeds', 'traps.seed.json'));
-  const local = readJSON(path.join(ROOT, '.remembrance', 'traps.json'));
+function _allTraps() {
+  const seed = _readJSON(path.join(ROOT, 'seeds', 'traps.seed.json'));
+  const local = _readJSON(path.join(ROOT, '.remembrance', 'traps.json'));
   const byKey = new Map();
   for (const db of [seed, local]) {
     if (!db || !Array.isArray(db.traps)) continue;
@@ -86,7 +86,7 @@ function allTraps() {
 }
 
 function trapsFor(target) {
-  const db = { traps: allTraps() };
+  const db = { traps: _allTraps() };
   if (!db.traps.length) return [];
   let hay = String(target || '').toLowerCase();
   // Any path-like token in the target contributes its body, capped so a huge
@@ -129,7 +129,7 @@ function printTraps(target) {
 // ── IDENTITY ───────────────────────────────────────────────────────────
 function printIdentity(file) {
   console.log('\n── IDENTITY ──');
-  const man = readJSON(path.join(VOID, 'CANONICAL.json'));
+  const man = _readJSON(path.join(VOID, 'CANONICAL.json'));
   const base = path.basename(file || '');
   let found = false;
   if (man && man.families) {
@@ -188,7 +188,7 @@ function printContract(file) {
 }
 
 // ── LIVE STATE ─────────────────────────────────────────────────────────
-function printLive() {
+function _printLive() {
   console.log('\n── LIVE STATE ──');
   let health = null;
   try {
@@ -200,7 +200,7 @@ function printLive() {
   // here and takes the whole brief with it. That matters more than the
   // severity suggests: brief is what PRINTS the traps, so a crash on a
   // malformed health probe silently removes the warnings it exists to
-  // deliver. Same try/catch shape readJSON above already uses.
+  // deliver. Same try/catch shape _readJSON above already uses.
   let h = null;
   if (health && health.includes('ok')) {
     try { h = JSON.parse(health); } catch { h = null; }
@@ -234,7 +234,7 @@ function printLive() {
 }
 
 // ── CAVEATS ────────────────────────────────────────────────────────────
-function printCaveats(file) {
+function _printCaveats(file) {
   if (!file || !/\.(md|markdown|txt)$/i.test(file)) return;
   try {
     const out = execFileSync('node', [path.join(ROOT, 'src', 'tools', 'goggles.js'), file],
@@ -248,7 +248,7 @@ function printCaveats(file) {
 }
 
 // ── resolve a target to a file, if one exists ──────────────────────────
-function resolveFile(target) {
+function _resolveFile(target) {
   if (fs.existsSync(target)) return path.resolve(target);
   for (const base of [ROOT, VOID]) {
     const p = path.join(base, target);
@@ -277,7 +277,7 @@ function resolveFile(target) {
   return null;
 }
 
-function main() {
+function _main() {
   const target = process.argv[2];
   if (!target) {
     console.error('usage: brief <file|symbol|topic>\n\n'
@@ -287,7 +287,7 @@ function main() {
       + '  document carries about itself.');
     process.exit(2);
   }
-  const file = resolveFile(target);
+  const file = _resolveFile(target);
   console.log('═'.repeat(64));
   console.log(`  BRIEF   ${target}`);
   if (file) console.log(`          ${path.relative(process.cwd(), file)}`);
@@ -296,8 +296,8 @@ function main() {
   const n = printTraps(target + ' ' + (file || ''));
   printIdentity(file);
   printContract(file);
-  printCaveats(file);
-  printLive();
+  _printCaveats(file);
+  _printLive();
 
   console.log('');
   if (n) console.log(`  ${n} trap(s) matched. They are recorded because they already happened.`);
@@ -305,4 +305,39 @@ function main() {
 }
 
 if (require.main === module) main();
+// ── Periodic table declarations (covenant fractal, atomic scale) ──────
+// The exported surface is elements; underscore helpers are internal. The
+// brief's whole job is pre-call guidance, so every element is inert,
+// harmless and healing-aligned — a tool that only reads and warns.
+printTraps.atomicProperties = {
+  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.4, group: 13, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'guidance',
+};
+printIdentity.atomicProperties = {
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.3, group: 13, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+  domain: 'guidance',
+};
+printContract.atomicProperties = {
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.3, group: 13, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+  domain: 'guidance',
+};
+trapsFor.atomicProperties = {
+  charge: -1, valence: 2, mass: 'light', spin: 'odd', phase: 'liquid',
+  reactivity: 'stable', electronegativity: 0.5, group: 15, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'guidance',
+};
+renderTraps.atomicProperties = {
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.2, group: 13, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+  domain: 'guidance',
+};
+
 module.exports = { printTraps, printIdentity, printContract, trapsFor, renderTraps };

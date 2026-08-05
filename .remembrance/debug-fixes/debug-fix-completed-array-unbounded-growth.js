@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 16 Fix: Unbounded Memory Growth in Completed Tasks Array
  * (PATTERN ASSUMPTION MISMATCH)

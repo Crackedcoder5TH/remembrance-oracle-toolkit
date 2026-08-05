@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 9 Fix: Unprotected JSON.parse in Audit Log Reader
  * (PATTERN ASSUMPTION MISMATCH)

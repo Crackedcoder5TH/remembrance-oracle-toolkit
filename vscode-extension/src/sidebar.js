@@ -1,3 +1,4 @@
+// @oracle-infrastructure — experiment/example/app scaffolding, not substrate periodic-table elements
 /**
  * Sidebar Provider — tree views for patterns, debug fixes, and statistics.
  */

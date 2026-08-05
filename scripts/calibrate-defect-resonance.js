@@ -81,16 +81,10 @@ const VARIANTS = [
     `def flush(queue):\n    try:\n        queue.drain()\n    except Exception:\n        pass\n    return queue.size` },
 ];
 
-function walk(dir, out = []) {
-  let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
-  for (const e of entries) {
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) { if (e.name !== 'node_modules') walk(p, out); }
-    else if (/\.(js|cjs|mjs)$/.test(e.name)) out.push(p);
-  }
-  return out;
-}
+// Canonical walker (ECOSYSTEM §7). Skips node_modules only, keeps JS —
+// preserving this script's original behaviour.
+const { walkFiles } = require('../src/core/walk-files');
+const walk = (dir) => walkFiles(dir, { skipDirs: new Set(['node_modules']), extensions: ['.js', '.cjs', '.mjs'], skipHidden: false });
 
 function main() {
   const argv = process.argv.slice(2);

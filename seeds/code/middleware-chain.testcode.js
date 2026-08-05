@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 // Test: middleware-chain — inline assertions, no require
 
 // Length tracking (sync)

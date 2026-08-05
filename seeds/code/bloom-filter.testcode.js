@@ -1,3 +1,4 @@
+// @oracle-pattern-definitions — seed/fixture code held for reference and matching, not live substrate elements
 // Test: bloom-filter — inline assertions, no require
 const bf1 = createBloomFilter(1000, 5);
 bf1.add('hello');

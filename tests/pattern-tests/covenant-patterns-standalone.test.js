@@ -1,3 +1,4 @@
+// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // Sandbox-compatible test — functions from code file are already in scope via concatenation
 const assert = require('node:assert/strict');
 

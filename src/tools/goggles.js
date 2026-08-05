@@ -934,6 +934,33 @@ function main() {
     console.log(`    live field peers entangled: ${peers.length}`);
   }
 
+  // ── FIELD ──  the living field's reactive state, read AFTER this file's
+  // read contributed to it. The void term (delta_void + its provenance) is
+  // taken straight off the LRE's own contribution reading — not recomputed —
+  // and the entropy/cascade/∫p are the field's live response to the data
+  // just witnessed. This is the resonance-signature/void term the operator
+  // asked to surface actively.
+  try {
+    const fc = require('../core/field-coupling');
+    const state = fc.peekField ? fc.peekField() : null;
+    const last = fc.lastReading ? fc.lastReading() : null;
+    if (state) {
+      console.log('\n  FIELD  (the living field, live — reacts to what was just read)');
+      console.log(`    p (backdrop)     ${(state.coherence ?? 0).toFixed(4)}   0 = noise · 1 = unity`);
+      console.log(`    globalEntropy    ${(state.globalEntropy ?? 0).toFixed(4)}   cost / (coherence + ε) — the balancing field`);
+      console.log(`    cascadeFactor    ${(state.cascadeFactor ?? 0).toFixed(4)}   1 = baseline rate · >1 = a burst`);
+      console.log(`    ∫p (integral)    ${Math.round(state.coherenceIntegral ?? 0)}   total aligned order, no ceiling`);
+      if (last && typeof last.delta_void === 'number') {
+        const iso = last.void_source === 'field:resonance';
+        console.log(`    void term        ${last.delta_void.toFixed(4)}   [${last.void_source}]${iso ? '' : '  (no field measurement — derived from 1−p)'}`);
+        if (typeof last.r_eff === 'number') {
+          console.log(`    r_eff (retro)    ${last.r_eff.toFixed(4)}   pull toward the healed attractor`);
+        }
+      }
+      console.log(`    updates          ${state.updateCount ?? 0}`);
+    }
+  } catch (_) { /* field optional — never block a read */ }
+
   // ── MACRO ──  (zoomed out: this section inside the whole-codebase map)
   printMacro(abs, r.coherence, sectionText, fullText);
 

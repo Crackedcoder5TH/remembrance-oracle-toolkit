@@ -1,3 +1,4 @@
+// @oracle-infrastructure — generated debug-fix snapshot, not hand-authored substrate
 /**
  * Meta-Pattern 8 Fix: Template Literal Code Injection in Sandbox
  * (PATTERN ASSUMPTION MISMATCH)

@@ -28,6 +28,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const fc = require('./field-coupling');
 const ft = require('./field-tool');
+const { walkFiles } = require('./walk-files');
 
 const DEFAULT_EXTENSIONS = [
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
@@ -155,27 +156,16 @@ function detectSubstrateNamespace(files, projectPath, opts = {}) {
   return null;
 }
 
+// Routes to the canonical walker (ECOSYSTEM §7: one implementation). This
+// module's mapper walks with its own DEFAULT_SKIP_DIRS/DEFAULT_EXTENSIONS,
+// and does NOT skip hidden entries — a project's .github/ etc. are real
+// files it must map — so skipHidden is off to preserve prior behaviour.
 function _walk(dir, opts) {
-  const out = [];
-  const stack = [dir];
-  const skip = opts.skipDirs || DEFAULT_SKIP_DIRS;
-  const exts = opts.extensions || DEFAULT_EXTENSIONS;
-  while (stack.length) {
-    const cur = stack.pop();
-    let entries;
-    try { entries = fs.readdirSync(cur, { withFileTypes: true }); } catch { continue; }
-    for (const e of entries) {
-      const full = path.join(cur, e.name);
-      if (e.isDirectory()) {
-        if (skip.has(e.name)) continue;
-        stack.push(full);
-      } else if (e.isFile()) {
-        const ext = path.extname(e.name).toLowerCase();
-        if (exts.includes(ext)) out.push(full);
-      }
-    }
-  }
-  return out;
+  return walkFiles(dir, {
+    skipDirs: opts.skipDirs || DEFAULT_SKIP_DIRS,
+    extensions: opts.extensions || DEFAULT_EXTENSIONS,
+    skipHidden: false,
+  });
 }
 
 /**

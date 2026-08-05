@@ -53,19 +53,10 @@ function _stripComments(src) {
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
 
-function _walk(dir, out = []) {
-  let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
-  for (const e of entries) {
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) {
-      if (e.name !== 'node_modules' && e.name !== '.git') _walk(p, out);
-    } else if (/\.(js|cjs|mjs)$/.test(e.name)) {
-      out.push(p);
-    }
-  }
-  return out;
-}
+// Canonical walker (ECOSYSTEM §7) — this guard exists to enforce "one
+// implementation"; it should not carry its own copy of a common util either.
+const { walkFiles } = require('../src/core/walk-files');
+const _walk = (dir) => walkFiles(dir, { skipDirs: new Set(['node_modules', '.git']), extensions: ['.js', '.cjs', '.mjs'], skipHidden: false });
 
 function _offenders() {
   const files = _walk(path.join(ROOT, 'src'));

@@ -98,15 +98,7 @@ function record(vec, depth) {
   ledger.h.update(Buffer.from(Float64Array.from(vec).buffer));
 }
 
-function sealReads(via) {
-  const digest = ledger.h.copy().digest('hex');
-  const body = JSON.stringify({ reads: ledger.reads, digest,
-                                depths: Array.from(ledger.depths).sort((a, b) => a - b) });
-  const seal = mint(body, via);
-  return { body, seal, line: sealLine(seal), reads: ledger.reads, digest };
-}
-
-module.exports = { mint, verify, sealLine, sha256, stateId, record, sealReads, ledger };
+module.exports = { mint, verify, sealLine, sha256, stateId, record,  ledger };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
@@ -119,4 +111,3 @@ mint.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", pha
 verify.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 3, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 sealLine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 record.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-sealReads.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

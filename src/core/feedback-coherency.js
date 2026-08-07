@@ -242,36 +242,4 @@ function coherencyFeedback(code, coherencyScore, threshold = 0.6) {
   return feedback;
 }
 
-/**
- * Reflection-specific feedback using the hybrid dimension advisors.
- * Returns actionable advice for each underperforming dimension.
- */
-function reflectionFeedback(code, observeResult) {
-  if (!observeResult) return [];
-
-  const feedback = [];
-  const { dimensions, composite, zone } = observeResult;
-
-  if (zone === 'accept') return [];
-
-  feedback.push(`Reflection coherency ${composite.toFixed(3)} — zone: ${zone}.`);
-
-  if (zone === 'veto') {
-    feedback.push('Code is below veto threshold (< 0.75) — must be rerun or healed.');
-  } else {
-    feedback.push('Code is in review zone (0.75–0.84) — consider a second-pass healing.');
-  }
-
-  for (const [dim, score] of Object.entries(dimensions)) {
-    const advisor = REFLECTION_ADVICE[dim];
-    if (advisor && score < advisor.threshold) {
-      feedback.push(`  ${dim}: ${score.toFixed(3)}`);
-      const issues = advisor.diagnose(code, score);
-      for (const issue of issues) feedback.push(`    - ${issue}`);
-    }
-  }
-
-  return feedback;
-}
-
-module.exports = { COHERENCY_ADVICE, REFLECTION_ADVICE, coherencyFeedback, reflectionFeedback };
+module.exports = { COHERENCY_ADVICE, REFLECTION_ADVICE, coherencyFeedback };

@@ -603,14 +603,6 @@ function sandboxRust(code, testCode, options = {}) {
 let _customRunnerRegistry = null;
 
 /**
- * Set the custom runner registry for plugin-provided language runners.
- * Called by the oracle when a PluginManager with runners is available.
- */
-function setRunnerRegistry(registry) {
-  _customRunnerRegistry = registry;
-}
-
-/**
  * Find the project root by walking up from cwd looking for package.json.
  * Cached after first lookup.
  */
@@ -690,7 +682,7 @@ module.exports = {
   sandboxRust,
   createSandboxDir,
   cleanupSandboxDir,
-  setRunnerRegistry,
+
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
@@ -706,5 +698,4 @@ isTsxAvailable.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin:
 sandboxTypeScript.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 sandboxGo.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 sandboxRust.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-setRunnerRegistry.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 sandboxExecute.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

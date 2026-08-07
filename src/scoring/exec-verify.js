@@ -227,78 +227,13 @@ function detectPrimaryFn(code, lang) {
   return null;
 }
 
-/**
- * Cross-verification — runs each candidate's self-test against the OTHER
- * candidates' code. A wrong solution that passes its own (also-wrong) test
- * still fails the correct candidates' tests, so peer agreement is
- * INDEPENDENT verification, not self-report. Naming differences are bridged
- * by aliasing each peer's expected symbol to the target's primary function.
- *
- * The "6th signal" that closes the same-source-test gap: a hallucinator that
- * writes both code and a passing test can fool exec_verify alone, but cannot
- * fool the test written by an independent generator. Requires >=2 candidates
- * with code; abstains otherwise (returns an empty Map).
- *
- * @param {{agent:string, code:string, testCode?:string}[]} candidates
- * @param {object} [opts] - { language, timeoutMs }
- * @returns {Promise<Map<string, {passed:number, total:number, signal:number}>>}
- */
-async function crossVerify(candidates, opts = {}) {
-  const result = new Map();
-  if (!Array.isArray(candidates)) return result;
-  const lang = RUNTIME[(opts.language || '').toLowerCase()];
-  if (!lang) return result;
-  const timeoutMs = Math.max(500, Math.min(30000, opts.timeoutMs || 5000));
-
-  const cand = candidates
-    .filter((o) => o && typeof o.code === 'string' && o.code.trim())
-    .map((o) => ({
-      agent: o.agent || 'anon',
-      code: o.code,
-      fn: detectPrimaryFn(o.code, lang),
-      test: (o.testCode || '').trim(),
-    }));
-  if (cand.length < 2) return result;
-
-  for (const target of cand) {
-    if (!target.fn) continue;
-    const harm = _harmScreen(target.code);
-    if (harm !== '') continue;
-
-    const peers = cand.filter((p) => p.agent !== target.agent && p.test && p.fn);
-    if (peers.length === 0) continue;
-
-    let passed = 0, total = 0;
-    for (const peer of peers) {
-      const alias = peer.fn === target.fn ? '' :
-        (lang === 'py' ? `${peer.fn} = ${target.fn}` : `const ${peer.fn} = ${target.fn};`);
-      const body = [target.code, alias, peer.test].filter(Boolean).join(_sep(lang));
-      let dir;
-      try {
-        dir = fs.mkdtempSync(path.join(os.tmpdir(), 'field-xtest-'));
-        const r = await _runBody(lang, body, true, dir, timeoutMs);
-        if (r.status === 'skipped') continue;
-        total++;
-        if (r.status === 'pass') passed++;
-      } catch (_e) {
-        // a single bad pair shouldn't sink the target
-      } finally {
-        if (dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e2) { /* best-effort */ } }
-      }
-    }
-    if (total > 0) result.set(target.agent, { passed, total, signal: passed / total });
-  }
-  return result;
-}
-
 /** Test-only: reset cached harm patterns. */
 function _resetCache() { _harmPatterns = undefined; }
 
-module.exports = { verifyExecution, crossVerify, detectPrimaryFn, _resetCache };
+module.exports = { verifyExecution, detectPrimaryFn, _resetCache };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 verifyExecution.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 detectPrimaryFn.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-crossVerify.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

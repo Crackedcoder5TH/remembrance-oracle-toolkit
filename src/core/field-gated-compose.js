@@ -249,50 +249,6 @@ function fieldGatedSimilarity(a, b, opts = {}) {
   };
 }
 
-/**
- * The return path — what makes the gate LEARN. After a verdict where
- * an external reference exists (NCD from the convergence harness, a
- * covenant acceptance, a human confirmation), contribute each layer's
- * agreement with the reference into the field, tagged `encoder:L<n>`.
- * The next gateWeights() call reads the updated reliabilities.
- *
- * agreement_l = 1 − |cos_l − reference|  (how close the layer's own
- * reading was to the trusted verdict), EMA-softened by emaAlpha
- * against the previous stored value so attention drifts, never lurches.
- *
- * @param {number[]|Float64Array} layerCosines  per-block cosines
- * @param {number} referenceScore               trusted verdict in [0,1]
- * @returns {number} layers contributed (0 when the field is detached)
- */
-function contributeLayerAgreement(layerCosines, referenceScore, opts = {}) {
-  const p = opts.params || _engineParams();
-  const state = _peekField();
-  if (!layerCosines || typeof referenceScore !== 'number') return 0;
-  const alpha = p.emaAlpha ?? FALLBACK.emaAlpha;
-  const neutral = p.neutralReliability ?? FALLBACK.neutralReliability;
-  let contributed = 0;
-  for (let l = 0; l < layerCosines.length; l++) {
-    const agreement = Math.max(0, Math.min(1, 1 - Math.abs(layerCosines[l] - referenceScore)));
-    const prev = _layerReliability(state, l, neutral);
-    const eased = prev + alpha * (agreement - prev);
-    // Store as a reliability, not as a coherency contribution. See
-    // _layerReliability above for why this is not _contribute().
-    let stored = null;
-    try {
-      const eng = require('./living-remembrance').getEngine();
-      stored = eng.setLayerReliability(l, eased);
-      // Keep the snapshot fresh so the EMA within this loop compounds
-      // correctly rather than re-reading a stale `prev` for every layer.
-      if (state) {
-        state.layerReliability = state.layerReliability || {};
-        state.layerReliability['L' + (l + 1)] = eased;
-      }
-    } catch (_) { /* detached field — nothing to learn into */ }
-    if (stored !== null) contributed++;
-  }
-  return contributed;
-}
-
 module.exports = {
   LAYER_DIM,
   FALLBACK,
@@ -302,7 +258,6 @@ module.exports = {
   fieldStamp,
   gateWeights,
   fieldGatedSimilarity,
-  contributeLayerAgreement,
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
@@ -314,4 +269,3 @@ blockCosines.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "
 fieldStamp.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 gateWeights.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 fieldGatedSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-contributeLayerAgreement.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

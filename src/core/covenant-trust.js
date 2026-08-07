@@ -75,14 +75,6 @@ function addTrustedSource(expr) {
   return false;
 }
 
-/** Read-only snapshot of the current registry. */
-function trustedSources() {
-  return {
-    base: [..._BASE_TRUSTED],
-    operator: [..._OPERATOR_TRUSTED],
-  };
-}
-
 // ─── Role-annotated files ────────────────────────────────────────────────
 
 /** Does this file's header declare itself a pattern-definition file?
@@ -95,14 +87,6 @@ function isPatternDefinitionFile(code) {
   // marker mentioned in a comment further down the file.
   const header = code.split('\n').slice(0, 40).join('\n');
   return /@oracle-pattern-definitions\b/.test(header);
-}
-
-/** Does this file's header declare itself part of the scanner infrastructure?
- * Same logic, broader bypass — used for the security scanner itself. */
-function isInfrastructureFile(code) {
-  if (typeof code !== 'string') return false;
-  const header = code.split('\n').slice(0, 40).join('\n');
-  return /@oracle-infrastructure\b/.test(header);
 }
 
 // ─── Learning hook ───────────────────────────────────────────────────────
@@ -597,32 +581,21 @@ function maybeAbsorbBatch(patterns, opts = {}) {
   return { batch: batchInfo, perPattern };
 }
 
-/** Is this pattern name in the covenant's recognized-pattern registry? */
-function isRecognizedPattern(name) {
-  return typeof name === 'string' && _RECOGNIZED_PATTERNS.has(name);
-}
-
-/** Read-only snapshot of the recognized-pattern registry. */
-function recognizedPatterns() {
-  return [..._RECOGNIZED_PATTERNS.values()];
-}
-
 /** Test-only: drop the in-memory registry. Does NOT touch the growth log. */
 function _resetGrowth() { _RECOGNIZED_PATTERNS.clear(); }
 
 module.exports = {
   isTrustedSource,
   addTrustedSource,
-  trustedSources,
+
   isPatternDefinitionFile,
-  isInfrastructureFile,
+
   recordFalsePositive,
   // Field-validated growth:
   maybeAbsorbPattern,
   maybeAbsorbBatch,
   consensusHistogram,
   _resetConsensusHistory,
-  isRecognizedPattern,
-  recognizedPatterns,
+
   _resetGrowth,
 };

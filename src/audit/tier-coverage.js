@@ -347,24 +347,8 @@ function buildSuggestion(manifest, touched, missing) {
   ].join('\n');
 }
 
-/**
- * Convenience: run the check across multiple files and aggregate.
- * Useful for the audit CLI and the stop hook.
- */
-function checkFiles(files, options = {}) {
-  const results = [];
-  let totalFindings = 0;
-  for (const file of files || []) {
-    const r = checkFile(file, options);
-    results.push({ file, ...r });
-    totalFindings += r.findings.length;
-  }
-  return { files: results, totalFindings };
-}
-
 module.exports = {
   checkFile,
-  checkFiles,
   loadArchitectureManifest,
   findManifestForFile,
   extractCalledIdentifiers,
@@ -374,12 +358,6 @@ module.exports = {
 
 // ── Atomic self-description (batch-generated) ────────────────────
 checkFile.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
-checkFiles.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',

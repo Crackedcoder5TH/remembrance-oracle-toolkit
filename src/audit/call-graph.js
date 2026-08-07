@@ -259,65 +259,10 @@ function hasNullGuardAfter(tokens, callIdx, varName, window) {
   return false;
 }
 
-/**
- * Given two call graphs (before/after), diff the function signatures and
- * return cascade findings where a caller no longer matches the new shape.
- */
-function diffCallGraphs(before, after) {
-  const findings = [];
-  for (const [name, afterDefs] of after.defs.entries()) {
-    const beforeDefs = before.defs.get(name);
-    if (!beforeDefs) continue; // new function, no cascade
-    const b = beforeDefs[0];
-    const a = afterDefs[0];
-
-    // Arity change
-    if (a.arity !== b.arity) {
-      const callers = after.calls.get(name) || [];
-      for (const c of callers) {
-        if (c.args.length !== a.arity) {
-          findings.push({
-            file: c.file,
-            line: c.line,
-            column: c.column,
-            bugClass: 'integration',
-            ruleId: 'integration/arity-mismatch',
-            assumption: `${name}() takes ${c.args.length} arguments`,
-            reality: `${name}() signature changed — now takes ${a.arity} arguments (was ${b.arity})`,
-            severity: 'high',
-            suggestion: `Update the call site to match the new signature`,
-            code: `${name}(...${c.args.length} args...)`,
-          });
-        }
-      }
-    }
-
-    // Async transition
-    if (a.async !== b.async) {
-      const callers = after.calls.get(name) || [];
-      for (const c of callers) {
-        findings.push({
-          file: c.file,
-          line: c.line,
-          column: c.column,
-          bugClass: 'integration',
-          ruleId: 'integration/async-transition',
-          assumption: `${name}() ${b.async ? 'was async' : 'was sync'}`,
-          reality: `${name}() is now ${a.async ? 'async' : 'sync'} — caller needs to ${a.async ? 'await' : 'stop awaiting'}`,
-          severity: 'high',
-          suggestion: a.async ? `Add await: const x = await ${name}(...)` : `Remove await: const x = ${name}(...)`,
-          code: `${name}(...)`,
-        });
-      }
-    }
-  }
-  return findings;
-}
-
 module.exports = {
   buildCallGraph,
   findNullDerefCascades,
-  diffCallGraphs,
+
   hasNullGuardAfter,
 };
 
@@ -331,12 +276,6 @@ buildCallGraph.atomicProperties = {
 findNullDerefCascades.atomicProperties = {
   charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 3, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
-diffCallGraphs.atomicProperties = {
-  charge: 1, valence: 0, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'low', electronegativity: 0, group: 3, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
   domain: 'quality',
 };

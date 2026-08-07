@@ -161,17 +161,6 @@ function activateNextLayer() {
   return { id: next.id, dims: next.dims, seed: next.seed };
 }
 
-/**
- * Register a new layer encoder. Called when a residual analysis
- * surfaces a missing dimension and a new encoder is designed.
- */
-function registerLayer({ id, dims, encode, seed, active = false }) {
-  if (_registry.find(l => l.id === id)) {
-    throw new Error('encoder layer already registered: ' + id);
-  }
-  _registry.push({ id, dims, encode, seed, active });
-}
-
 // ── Composer ────────────────────────────────────────────────────
 
 /**
@@ -332,7 +321,6 @@ module.exports = {
   maxAvailableDepth,
   activeLayers,
   activateNextLayer,
-  registerLayer,
   composedAtDepth,
   compose,
   composedCosine,
@@ -349,7 +337,6 @@ currentDepth.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "e
 maxAvailableDepth.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 activeLayers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 activateNextLayer.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 12, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-registerLayer.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 composedAtDepth.atomicProperties = { charge: 1, valence: 1, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 compose.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 composedCosine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

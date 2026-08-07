@@ -293,58 +293,6 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
   return result;
 }
 
-/**
- * Add negotiation endpoints to the CloudSyncServer.
- * Call this after creating the server to enable peer negotiation.
- */
-function addNegotiationEndpoints(server) {
-  const origHandler = server._handleRequest.bind(server);
-
-  server._handleRequest = async function(req, res) {
-    const url = new (require('url').URL)(req.url, `http://localhost:${server.port}`);
-    const pathStr = url.pathname;
-
-    // Negotiate: manifest exchange
-    if (pathStr === '/api/negotiate/manifest' && req.method === 'POST') {
-      const user = server._authenticate(req);
-      if (!user) return server._json(res, 401, { error: 'Unauthorized' });
-
-      const body = await server._readBody(req);
-      const localManifest = generateManifest(server.oracle);
-      return server._json(res, 200, { manifest: localManifest });
-    }
-
-    // Negotiate: pattern request
-    if (pathStr === '/api/negotiate/request' && req.method === 'POST') {
-      const user = server._authenticate(req);
-      if (!user) return server._json(res, 401, { error: 'Unauthorized' });
-
-      const body = await server._readBody(req);
-      const ids = body.patternIds || [];
-      const patterns = [];
-      for (const id of ids.slice(0, 50)) { // Max 50 per request
-        const p = server.oracle.patterns ? server.oracle.patterns.get(id) : null;
-        if (p) {
-          patterns.push({
-            id: p.id,
-            name: p.name,
-            code: p.code,
-            testCode: p.testCode,
-            language: p.language,
-            tags: p.tags,
-            description: p.description,
-            coherency: p.coherencyScore?.total ?? 0,
-          });
-        }
-      }
-      return server._json(res, 200, { patterns });
-    }
-
-    // Fall through to original handler
-    return origHandler(req, res);
-  };
-}
-
 // ─── Helpers ───
 
 function _quickHash(str) {
@@ -434,154 +382,11 @@ function resolveConflict(candidates, strategy = CONFLICT_STRATEGIES.HIGHEST_COHE
   return { remote: sorted[0].remote, pattern: sorted[0].pattern, reason: strategy };
 }
 
-/**
- * Negotiate simultaneously with multiple remote oracles.
- * Resolves conflicts when the same pattern name exists on 3+ remotes.
- *
- * @param {object} oracle — Local RemembranceOracle instance
- * @param {Array} remotes — Array of { url, token, name }
- * @param {object} options — { strategy, pullUnique, pullSuperior, minCoherency }
- * @returns {Promise<object>} Multi-negotiation result
- */
-async function negotiateMulti(oracle, remotes, options = {}) {
-  const {
-    strategy = CONFLICT_STRATEGIES.HIGHEST_COHERENCY,
-    pullSuperior = true,
-    pullUnique = true,
-    minCoherency = 0.7,
-  } = options;
-
-  const result = {
-    timestamp: new Date().toISOString(),
-    remotes: remotes.map(r => r.name || r.url),
-    strategy,
-    manifests: {},
-    conflicts: [],
-    resolved: [],
-    pulled: 0,
-    skipped: 0,
-    errors: [],
-  };
-
-  // Step 1: Gather manifests from all remotes in parallel
-  const localManifest = generateManifest(oracle);
-  const manifestPromises = remotes.map(async (remote) => {
-    try {
-      const response = await _fetchJson(`${remote.url}/api/negotiate/manifest`, {
-        method: 'POST',
-        token: remote.token,
-        body: { manifest: localManifest },
-      });
-      return { remote: remote.name || remote.url, manifest: response?.manifest || [] };
-    } catch (err) {
-      result.errors.push(`${remote.name || remote.url}: ${err.message}`);
-      return { remote: remote.name || remote.url, manifest: [] };
-    }
-  });
-
-  const manifestResults = await Promise.all(manifestPromises);
-  for (const m of manifestResults) {
-    result.manifests[m.remote] = m.manifest.length;
-  }
-
-  // Step 2: Build a unified view — group by pattern name across all remotes
-  const byName = new Map(); // name → [{ remote, pattern }]
-  for (const { remote, manifest } of manifestResults) {
-    for (const pattern of manifest) {
-      const key = pattern.name;
-      if (!byName.has(key)) byName.set(key, []);
-      byName.get(key).push({ remote, pattern });
-    }
-  }
-
-  // Step 3: Identify conflicts (same name on 2+ remotes)
-  const localByName = new Map(localManifest.map(p => [p.name, p]));
-  const toPull = []; // { remote, patternId }
-
-  for (const [name, candidates] of byName) {
-    const localPattern = localByName.get(name);
-
-    if (candidates.length > 1) {
-      // Conflict: multiple remotes have this pattern
-      const winner = resolveConflict(candidates, strategy);
-      result.conflicts.push({
-        name,
-        candidates: candidates.map(c => ({ remote: c.remote, coherency: c.pattern.coherency })),
-        winner: { remote: winner.remote, coherency: winner.pattern.coherency, reason: winner.reason },
-      });
-
-      // Pull winner if it's better than local
-      if (pullSuperior && localPattern) {
-        if (winner.pattern.coherency > localPattern.coherency + 0.02 && winner.pattern.coherency >= minCoherency) {
-          toPull.push({ remote: winner.remote, patternId: winner.pattern.id });
-          result.resolved.push({ name, action: 'upgrade', from: winner.remote });
-        }
-      } else if (pullUnique && !localPattern && winner.pattern.coherency >= minCoherency) {
-        toPull.push({ remote: winner.remote, patternId: winner.pattern.id });
-        result.resolved.push({ name, action: 'pull-unique', from: winner.remote });
-      }
-    } else if (candidates.length === 1) {
-      // No conflict — single remote has this pattern
-      const c = candidates[0];
-      if (pullSuperior && localPattern && c.pattern.coherency > localPattern.coherency + 0.02 && c.pattern.coherency >= minCoherency) {
-        toPull.push({ remote: c.remote, patternId: c.pattern.id });
-      } else if (pullUnique && !localPattern && c.pattern.coherency >= minCoherency && c.pattern.hasTests) {
-        toPull.push({ remote: c.remote, patternId: c.pattern.id });
-      }
-    }
-  }
-
-  // Step 4: Pull resolved patterns from the winning remotes
-  const pullByRemote = new Map(); // remote → [patternId]
-  for (const { remote, patternId } of toPull) {
-    if (!pullByRemote.has(remote)) pullByRemote.set(remote, []);
-    pullByRemote.get(remote).push(patternId);
-  }
-
-  for (const [remoteName, patternIds] of pullByRemote) {
-    const remote = remotes.find(r => (r.name || r.url) === remoteName);
-    if (!remote) continue;
-
-    try {
-      const offered = await _fetchJson(`${remote.url}/api/negotiate/request`, {
-        method: 'POST',
-        token: remote.token,
-        body: { patternIds },
-      });
-
-      if (offered && Array.isArray(offered.patterns)) {
-        for (const p of offered.patterns) {
-          try {
-            const submitResult = oracle.submit(p.code, {
-              language: p.language,
-              name: p.name,
-              tags: p.tags || [],
-              description: p.description,
-              testCode: p.testCode,
-            });
-            if (submitResult.stored) result.pulled++;
-            else result.skipped++;
-          } catch (e) {
-            if (process.env.ORACLE_DEBUG) console.warn('[negotiation:init] silent failure:', e?.message || e);
-            result.skipped++;
-          }
-        }
-      }
-    } catch (err) {
-      result.errors.push(`Pull from ${remoteName}: ${err.message}`);
-    }
-  }
-
-  return result;
-}
-
 module.exports = {
   negotiate,
-  negotiateMulti,
   generateManifest,
   compareManifests,
   resolveConflict,
-  addNegotiationEndpoints,
   CONFLICT_STRATEGIES,
 };
 
@@ -591,6 +396,4 @@ module.exports = {
 generateManifest.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 compareManifests.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 negotiate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-addNegotiationEndpoints.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 resolveConflict.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 14, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
-negotiateMulti.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

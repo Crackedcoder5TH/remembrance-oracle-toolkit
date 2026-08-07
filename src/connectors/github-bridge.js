@@ -116,62 +116,11 @@ function formatAsComment(result) {
   return lines.join('\n');
 }
 
-/**
- * Generate the GitHub Actions workflow YAML for handling AI dispatch events.
- */
-function generateDispatchWorkflow() {
-  return `name: Oracle AI Bridge
-
-on:
-  repository_dispatch:
-    types: [oracle-command]
-  issues:
-    types: [opened]
-
-permissions:
-  contents: write
-  issues: write
-
-jobs:
-  handle-dispatch:
-    name: Handle AI Command (dispatch)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Process command
-        run: |
-          echo '\${{ toJson(github.event.client_payload) }}' | node src/connectors/github-handler.js
-        env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-
-  handle-issue:
-    name: Handle AI Command (issue)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'oracle-command')
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Process issue command
-        run: node src/connectors/github-handler.js
-        env:
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-          ISSUE_BODY: \${{ github.event.issue.body }}
-          ISSUE_NUMBER: \${{ github.event.issue.number }}
-          REPO: \${{ github.repository }}
-`;
-}
-
 module.exports = {
   parseIssueCommand,
   parseNaturalLanguage,
   formatAsComment,
-  generateDispatchWorkflow,
+
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
@@ -180,4 +129,3 @@ module.exports = {
 parseIssueCommand.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 parseNaturalLanguage.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 formatAsComment.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
-generateDispatchWorkflow.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };

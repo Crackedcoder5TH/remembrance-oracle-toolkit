@@ -113,35 +113,12 @@ function withOperationalTracking(source, expectedMs, asyncFn) {
   };
 }
 
-/**
- * Synchronous variant for code paths that can't be async. Wraps a regular
- * function the same way.
- */
-function withOperationalTrackingSync(source, expectedMs, fn) {
-  if (typeof fn !== 'function') {
-    throw new TypeError('withOperationalTrackingSync: fn must be a function');
-  }
-  return function trackedOpSync(...args) {
-    const start = Date.now();
-    let ok = true;
-    try {
-      return fn.apply(this, args);
-    } catch (e) {
-      ok = false;
-      throw e;
-    } finally {
-      const durationMs = Date.now() - start;
-      recordOperation({ source, durationMs, expectedMs, ok });
-    }
-  };
-}
-
 module.exports = {
   latencyCoherence,
   operationCoherence,
   recordOperation,
   withOperationalTracking,
-  withOperationalTrackingSync,
+
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
@@ -151,4 +128,3 @@ latencyCoherence.atomicProperties = { charge: 0, valence: 0, mass: "light", spin
 operationCoherence.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 recordOperation.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 withOperationalTracking.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-withOperationalTrackingSync.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

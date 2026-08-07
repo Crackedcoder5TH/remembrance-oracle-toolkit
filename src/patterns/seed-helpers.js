@@ -236,36 +236,6 @@ function seedProductionLibrary4(oracle, options) {
   return { registered: registered, skipped: skipped, failed: failed, total: seeds.length };
 }
 
-/**
- * Seed the curated starter pack — the best cross-language patterns
- * for immediate value. This is the recommended first seed for new users.
- */
-function seedCuratedLibrary(oracle, options = {}) {
-  const seeds = getCuratedSeeds();
-  const existing = oracle.patterns.getAll();
-  const existingNames = new Set(existing.map(p => p.name));
-
-  let registered = 0, skipped = 0, failed = 0;
-
-  for (const seed of seeds) {
-    if (existingNames.has(seed.name)) {
-      skipped++;
-      continue;
-    }
-
-    const result = oracle.registerPattern(seed);
-    if (result.registered) {
-      registered++;
-      if (options.verbose) console.log(`  [OK] ${seed.name} (${seed.language})`);
-    } else {
-      failed++;
-      if (options.verbose) console.log(`  [FAIL] ${seed.name}: ${result.reason}`);
-    }
-  }
-
-  return { registered, skipped, failed, total: seeds.length };
-}
-
 module.exports = {
   // Data accessors
   getSeeds,
@@ -284,7 +254,6 @@ module.exports = {
   seedExtendedLibrary,
   seedProductionLibrary3,
   seedProductionLibrary4,
-  seedCuratedLibrary,
 };
 
 // ─── Backward-compatible named exports (must come AFTER module.exports assignment) ───
@@ -315,4 +284,3 @@ seedNativeLibrary.atomicProperties = { charge: 0, valence: 0, mass: "light", spi
 seedExtendedLibrary.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 seedProductionLibrary3.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 seedProductionLibrary4.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-seedCuratedLibrary.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

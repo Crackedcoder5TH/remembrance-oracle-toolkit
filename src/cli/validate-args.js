@@ -65,22 +65,9 @@ function parseMinCoherency(args, defaultValue = 0.5) {
   return validateCoherency(args['min-coherency'], 'min-coherency', defaultValue);
 }
 
-function parseLanguage(args, defaultValue) {
-  return args.language || defaultValue;
-}
-
-function jsonOrPrint(jsonOut, result, printFn) {
-  if (jsonOut()) {
-    console.log(JSON.stringify(result));
-    return true;
-  }
-  if (printFn) printFn(result);
-  return false;
-}
-
 module.exports = {
   validatePositiveInt, validatePort, validateCoherency, validateId,
-  parseDryRun, parseTags, parseLimit, parseMinCoherency, parseLanguage, jsonOrPrint,
+  parseDryRun, parseTags, parseLimit, parseMinCoherency,  
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
@@ -94,5 +81,3 @@ parseDryRun.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "ev
 parseTags.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 parseLimit.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 parseMinCoherency.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
-parseLanguage.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-jsonOrPrint.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

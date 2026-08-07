@@ -34,13 +34,14 @@ function formatMap(m) {
   {
     const dp = m.buckets.D_duplicate_pairs;
     const series = dp.filter(p => p.versionSeries).length;
-    const organic = dp.filter(p => !p.versionSeries);
+    const linked = dp.filter(p => p.resolvedSymlink).length;
+    const organic = dp.filter(p => !p.versionSeries && !p.resolvedSymlink);
     const fmtEcho = organic.filter(p => p.payloadIdentical === false).length;
     const trueDup = organic.filter(p => p.payloadIdentical === true).length;
     const unverified = organic.length - fmtEcho - trueDup;
     lines.push('  D  duplicate pairs       : ' + dp.length
-      + (series || fmtEcho || trueDup
-        ? `  (${series} version-series · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
+      + (series || linked || fmtEcho || trueDup
+        ? `  (${series} version-series · ${linked} symlink-resolved · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
         : ''));
   }
   lines.push('  E  other orphans         : ' + m.buckets.E_other_orphans.length);

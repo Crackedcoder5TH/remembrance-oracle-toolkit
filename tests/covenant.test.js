@@ -383,3 +383,45 @@ describe('Covenant via consolidated MCP oracle_maintain tool', () => {
     assert.ok(result.violations.length > 0);
   });
 });
+
+describe('tokenizer-backed stripping — the law reads code the way the engine does', () => {
+  const { stripComments, stripNonExecutableContent } = require('../src/core/covenant-principles');
+
+  it('a comment DEMONSTRATING a violation no longer flags (catch #6 class)', () => {
+    const code = [
+      '// example of the bug: db.exec(`SELECT * FROM t WHERE id = ${id}`)',
+      'function fine(a) { return a + 1; }',
+    ].join('\n');
+    const r = covenantCheck(code, { description: 'demo-in-comment' });
+    assert.equal(r.sealed, true, 'a demonstration in a comment is not an instance');
+  });
+
+  it('a REAL template-literal SQL interpolation still flags', () => {
+    const code = 'function q(db, id) { return db.exec(`SELECT * FROM t WHERE id = ${id}`); }';
+    const r = covenantCheck(code, { description: 'real-sql-interp' });
+    assert.equal(r.sealed, false, 'the actual violation must still be caught');
+  });
+
+  it('a regex literal with quotes does not blind the scanner to later violations', () => {
+    const code = [
+      "const QUOTE_RE = /['\"]/;",
+      'function bad(userInput) { return eval(userInput); }',
+    ].join('\n');
+    const r = covenantCheck(code, { description: 'regex-then-eval' });
+    assert.equal(r.sealed, false, 'the eval after a regex literal must still be visible');
+  });
+
+  it('stripComments preserves // inside string URLs', () => {
+    const code = "const u = 'http://example.com/x'; // note";
+    const out = stripComments(code);
+    assert.ok(out.includes('http://example.com/x'), 'string contents untouched');
+    assert.ok(!out.includes('note'), 'comment gone');
+  });
+
+  it('stripNonExecutableContent keeps interpolation markers, blanks static text', () => {
+    const code = 'const s = `hello ${name} world`;';
+    const out = stripNonExecutableContent(code);
+    assert.ok(out.includes('${name}'), 'interpolation preserved');
+    assert.ok(!out.includes('hello'), 'static template text blanked');
+  });
+});

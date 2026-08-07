@@ -54,6 +54,16 @@ const COVENANT_PRINCIPLES = [
 // it documents. See the covenant-mismatch regression in
 // tests/covenant.test.js.
 function stripComments(code) {
+  const toks = _tokensOf(code);
+  if (!toks) return _stripCommentsLegacy(code);
+  const chars = code.split('');
+  for (const t of toks) {
+    if (t.type === 'comment') _blankSpan(chars, t.start, t.end);
+  }
+  return chars.join('');
+}
+
+function _stripCommentsLegacy(code) {
   let out = '';
   let i = 0;
   const n = code.length;
@@ -100,15 +110,71 @@ function stripComments(code) {
   return out;
 }
 
+// ── Tokenizer-backed stripping (2026-08-08 upgrade, operator-approved) ──
+// The regex/hand-tokenizer strips above and below are BLIND to regex
+// literals: a quote or backtick inside /['\"]/ opened a phantom string and
+// everything after scanned wrong — a comment demonstrating a vulnerability
+// could flag (catch #6), a URL's // could vanish mid-string. The audit
+// parser's tokenizer does true regex-vs-division disambiguation, so the
+// covenant now reads code the way the engine does. Spans are BLANKED, not
+// deleted — line numbers survive for findings. The legacy implementations
+// remain as the fallback when tokenize throws (non-JS submissions keep
+// their historical behavior exactly).
+function _tokensOf(code) {
+  try { return require('../audit/parser').tokenize(code); }
+  catch (_) { return null; }
+}
+function _blankSpan(chars, start, end) {
+  for (let i = start; i <= end && i < chars.length; i++) {
+    if (chars[i] !== '\n') chars[i] = ' ';
+  }
+}
+// Collapse a template token to its ${expr} pieces, interpolation FIRST —
+// the documented contract downstream rules depend on (innerHTML/SQL rules
+// expect `${` right after `=`). Padded with spaces and trailing newlines
+// so total length and the line count after the token are preserved.
+function _collapseTemplate(chars, tok) {
+  const start = tok.start;
+  const end = Math.min(tok.end, chars.length - 1);
+  const raw = chars.slice(start, end + 1).join('');
+  const pieces = [];
+  let i = 0;
+  while (i < raw.length) {
+    if (raw[i] === '$' && raw[i + 1] === '{') {
+      let j = i + 1, depth = 0;
+      for (; j < raw.length; j++) {
+        if (raw[j] === '{') depth++;
+        else if (raw[j] === '}') { depth--; if (depth === 0) { j++; break; } }
+      }
+      pieces.push(raw.slice(i, j));
+      i = j;
+    } else i++;
+  }
+  const core = pieces.length ? pieces.join('') : '``';
+  const nl = (raw.match(/\n/g) || []).length - (core.match(/\n/g) || []).length;
+  const pad = Math.max(0, raw.length - core.length - Math.max(0, nl));
+  const repl = core + ' '.repeat(pad) + '\n'.repeat(Math.max(0, nl));
+  for (let k = 0; k <= end - start; k++) chars[start + k] = repl[k] !== undefined ? repl[k] : ' ';
+}
+
 function stripNonExecutableContent(code) {
+  const toks = _tokensOf(code);
+  if (!toks) return _stripNonExecutableLegacy(code);
+  const chars = code.split('');
+  for (const t of toks) {
+    if (t.type === 'comment') _blankSpan(chars, t.start, t.end);
+    else if (t.type === 'string') _blankSpan(chars, t.start + 1, t.end - 1);
+    else if (t.type === 'template') _collapseTemplate(chars, t);
+    // regex literals stay — they are executable content
+  }
+  return chars.join('');
+}
+
+function _stripNonExecutableLegacy(code) {
   let stripped = code;
   stripped = stripped.replace(/\/\/.*$/gm, '');
   stripped = stripped.replace(/\/\*[\s\S]*?\*\//g, '');
   // Template literals: strip static body, preserve interpolation markers.
-  // Put the interpolation FIRST so downstream regexes that expect
-  // `${` right after a `=` (like innerHTML, SQL) still see it. If no
-  // interpolations, fall back to empty template quotes to preserve
-  // position for regexes that count syntactic structure.
   stripped = stripped.replace(/`(?:[^`\\]|\\.)*`/g, (match) => {
     const pieces = [];
     match.replace(/\$\{([^}]*)\}/g, (_, expr) => { pieces.push('${' + expr + '}'); });

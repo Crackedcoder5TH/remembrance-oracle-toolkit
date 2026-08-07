@@ -64,6 +64,14 @@
    "caught": "Commit BLOCKED: a monolith grew. The gate that was built three days earlier caught the commit that was recording all the other catches.",
    "resolution": "The prose shrank back under the cap — every constraint statement kept, the wordiness dropped. The cap did not move. living-remembrance 707 -> 699, field-coupling 1158 -> 1150.",
    "receipt": "b0ea80d"
+  },
+  {
+   "date": "2026-08-07",
+   "gate": "oracle search-enforcement (pre-commit)",
+   "doing": "Committing the field-guided-execution doctrine — the very document that codifies executing through the one surface — without a fresh oracle search in the 10-minute window.",
+   "caught": "Commit BLOCKED: search the oracle first. The reflex the system enforces on every writer was enforced on the writer of its doctrine.",
+   "resolution": "Searched, then committed. --no-verify exists and was not used; the bypass is never the path.",
+   "receipt": "git log — the doctrine commit"
   }
  ]
 }

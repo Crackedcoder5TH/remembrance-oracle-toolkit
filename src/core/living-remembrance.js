@@ -157,6 +157,9 @@ class LivingRemembranceEngine {
           sources:          (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
           // Carried through load so layer attention survives a restart.
           layerReliability: (parsed.layerReliability && typeof parsed.layerReliability === 'object') ? parsed.layerReliability : {},
+          // The pruning ledger survives restarts — a pruning whose record
+          // evaporates on reload would be a silent edit after all.
+          sourcesPruned: Array.isArray(parsed.sourcesPruned) ? parsed.sourcesPruned : [],
           nodes:            (parsed.nodes && typeof parsed.nodes === 'object') ? parsed.nodes : {},
           meanIntervalMs:   typeof parsed.meanIntervalMs === 'number' ? parsed.meanIntervalMs : 0,
         };
@@ -620,6 +623,41 @@ class LivingRemembranceEngine {
   reset() {
     this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {}, layerReliability: {}, nodes: {} };
     this._persist();
+  }
+
+  /**
+   * Remove named source keys from the histogram — the ONLY lawful
+   * histogram mutation besides reset(). Exact keys, mandatory reason;
+   * every scalar term (coherence, integral, entropy, cascade,
+   * updateCount) is untouched — history stays. Each pruning is itself
+   * recorded in `state.sourcesPruned`: never a silent edit.
+   * @returns {{pruned: object[], missing: string[]}}
+   */
+  pruneSources(keys, reason) {
+    if (!Array.isArray(keys) || keys.length === 0) {
+      throw new Error('pruneSources requires a non-empty array of exact source keys');
+    }
+    if (typeof reason !== 'string' || !reason.trim()) {
+      throw new Error('pruneSources requires a reason — a pruning with no reason is a silent edit');
+    }
+    const pruned = [];
+    const missing = [];
+    this._state.sourcesPruned = this._state.sourcesPruned || [];
+    for (const key of keys) {
+      if (typeof key !== 'string' || !this._state.sources[key]) { missing.push(key); continue; }
+      const entry = this._state.sources[key];
+      this._state.sourcesPruned.push({
+        key,
+        count: entry.count,
+        lastCoherence: entry.lastCoherence,
+        reason: reason.trim(),
+        prunedAt: Date.now(),
+      });
+      delete this._state.sources[key];
+      pruned.push({ key, count: entry.count, lastCoherence: entry.lastCoherence });
+    }
+    if (pruned.length) this._persist();
+    return { pruned, missing };
   }
 }
 

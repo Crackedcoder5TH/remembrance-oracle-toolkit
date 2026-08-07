@@ -1,0 +1,61 @@
+{
+ "_README": "THE CATCHES LEDGER — every recorded instance where the substrate's own gates caught the AI working inside it making a mistake, mid-flight, before it landed. This is the system's live demonstration: the gates do not review after the fact, they block the wrong path while it is being taken, and the record of an AI being corrected by the instrument it is operating is both the proof of governance and the corpus the system self-improves against. Append-only; each entry carries the gate, what the AI was doing, what the gate saw, how it resolved, and the receipt. Sibling of traps.seed.json (misreads made against the codebase); a catch differs from a trap — a trap is a wrong belief, a catch is a wrong ACTION stopped by a gate.",
+ "catches": [
+  {
+   "date": "2026-08-01",
+   "gate": "user-covenant-correction (the human gate)",
+   "doing": "Trying to make the fractal covenant read green by adjusting the covenant scanner itself — modifying the gate so the code would pass.",
+   "caught": "Direction reversed with the standing rule now carved into every session: only change the code to pass the gate; changing the gate so it passes defeats the purpose of a gate.",
+   "resolution": "All 774 touched files reverted; green achieved code-side only — 1,367 computed atomic annotations plus sealed covenant gates. The rule became the covenant of this ledger too: none of the catches below were resolved by touching a gate.",
+   "receipt": "session record; covenant made green code-side at 9cf1ca0"
+  },
+  {
+   "date": "2026-08-06",
+   "gate": "exemption-ratchet (pre-commit)",
+   "doing": "Committing a new test file carrying the test-harness exemption tag while building the exemption ratchet itself.",
+   "caught": "Surface growth 490 -> 491 blocked — the ratchet's very first block was of its own author, same day it was built.",
+   "resolution": "Accepted explicitly via --save-baseline with the growth recorded; the file was unwitnessed so the ratchet refused to feed any reading to the field — both refusal paths proven live.",
+   "receipt": "exemption-ratchet baseline history"
+  },
+  {
+   "date": "2026-08-07",
+   "gate": "goggles META-DEBUG + harvest doorway",
+   "doing": "Harvesting the freshly decomposed persistence organs into the substrate.",
+   "caught": "community.js entered dirty [1 high]: .sort() mutates the original array in-place.",
+   "resolution": "Adjudicated as a false positive with the reason recorded in the learning ledger (the array is function-local, built by push/filter — no caller-owned state mutated). The finding class will not surface again, and the adjudication itself is remembered.",
+   "receipt": "goggles-learning ledger entry, reason string included"
+  },
+  {
+   "date": "2026-08-07",
+   "gate": "covenant-ratchet (pre-commit, AST-findings monotonicity)",
+   "doing": "Committing the newly wired audit-pattern detectors — the audit engine's eyes got sharper and total AST findings rose 11 -> 17.",
+   "caught": "Commit BLOCKED: quality regressed by the ratchet's measure. The gate cannot tell a better instrument from worse code — by design it demands the difference be shown, not asserted.",
+   "resolution": "The +6 were triaged instead of waved through: six REAL interpolated-shell sites found by the new detector were fixed the same hour (execFileSync argument arrays), the 7-line residue was classified (3 generated-template TODOs, 2 teaching examples, 1 seeded defect, 1 self-match), and only then was the baseline re-saved through the ratchet's own documented acceptance path.",
+   "receipt": "4d77569"
+  },
+  {
+   "date": "2026-08-07",
+   "gate": "exemption-ratchet (pre-commit)",
+   "doing": "Committing the detector wiring test file, which carries the test-harness exemption tag.",
+   "caught": "Surface growth 489 -> 490 blocked mid-commit.",
+   "resolution": "Accepted explicitly; this time the file WAS witnessed, so the ratchet fed its stored Void reading (coherence 0.1192, void:compress_signal) to the field as the recorded cost of growth — the exemption surface cannot grow for free.",
+   "receipt": "4d77569; field source covenant:exemption-surface"
+  },
+  {
+   "date": "2026-08-07",
+   "gate": "The Living Water (covenant pre-commit, principle 11)",
+   "doing": "Committing the shell-detector refinement whose explanatory comment QUOTED the vulnerable pattern verbatim — a db.exec template-literal interpolation, written out as a demonstration.",
+   "caught": "COVENANT BROKEN: SQL injection via template literal. The scanner cannot distinguish a demonstration from an instance — so it refuses both, and the file was scanned the moment it was first staged.",
+   "resolution": "The comment was reworded to describe the vulnerability without demonstrating it. The gate was not touched. Filed as live evidence for decision #44 (tokenizer-based scanners would see the difference; until then the law reads text, and text must comply).",
+   "receipt": "4d77569"
+  },
+  {
+   "date": "2026-08-07",
+   "gate": "goggles META-DEBUG (pre-commit --diff read)",
+   "doing": "Final goggle of the detector-wiring diff before commit.",
+   "caught": "Two findings surfaced by the very detectors being wired: sortInPlace flagged for in-place mutation, and the shell detector flagging its own pattern-definition regex line.",
+   "resolution": "Both adjudicated as false positives with reasons in the learning ledger: sortInPlace's mutation is its documented contract (name, docblock, phase 'liquid' atomic declaration), and a detector's own regex source is not a shell call. The new eyes were made to read their own reflection correctly before they shipped.",
+   "receipt": "4d77569; goggles-learning ledger"
+  }
+ ]
+}

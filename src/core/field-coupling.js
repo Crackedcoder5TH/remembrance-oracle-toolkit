@@ -22,9 +22,8 @@
 
 let _engineRef = null;
 let _engineLoadAttempted = false;
-// True while an explicitly-injected engine is active (tests, scratch
-// fields). An injected field is ISOLATED by definition: its observations
-// must not echo into shared memory (field-memory) or the live-field HTTP
+// True while an injected engine is active (tests, scratch fields). An
+// injected field is ISOLATED: no field-memory echo, no live-field HTTP
 // bridge — only the canonical singleton participates in those.
 let _engineInjected = false;
 let _localUpdateCount = 0;
@@ -190,20 +189,29 @@ function _loadEngine() {
 }
 
 /**
- * Inject an engine for every field verb in this module — the isolation
- * lever tests use to kill order-dependence. Pass an isolated
- * `new LivingRemembranceEngine({ persistPath })` (which starts fresh and
- * never touches the canonical entropy.json) and all contributions and
- * reads route to it, with the shared side channels (field-memory,
- * live-field HTTP bridge) disabled for the duration. Pass `null` to
- * restore the canonical singleton on next use. The LRE physics are
- * untouched — only who holds the state changes.
+ * Inject an engine for every field verb here — the isolation lever that
+ * kills test order-dependence. Pass an isolated
+ * `new LivingRemembranceEngine({ persistPath })` and all verbs route to
+ * it with shared side channels disabled; pass `null` to restore the
+ * canonical singleton. The LRE physics are untouched — only who holds
+ * the state changes.
  */
 function _setEngine(engine) {
   _engineRef = engine || null;
   _engineLoadAttempted = engine != null;
   _engineInjected = engine != null;
   _lastReading = null;
+}
+
+/**
+ * Coupling-level surface over engine.pruneSources so the goggles reach
+ * it (`--do call …#pruneFieldSources`). Exact keys + mandatory reason;
+ * scalars untouched; the pruning is recorded in state.sourcesPruned.
+ */
+function pruneFieldSources(keys, reason) {
+  const engine = _loadEngine();
+  if (!engine) return null;
+  return engine.pruneSources(keys, reason);
 }
 
 // ── Live-field HTTP bridge ───────────────────────────────────────────────
@@ -1112,6 +1120,7 @@ module.exports = {
   getVarianceGateMode,
   _resetLearnedShapes,
   _setEngine,
+  pruneFieldSources,
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
@@ -1139,3 +1148,4 @@ learnedShapesByDomain.atomicProperties = { charge: 0, valence: 0, mass: "light",
 fieldDirection.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 recordTemporalSnapshot.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 _setEngine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility", taint: "none"  };
+pruneFieldSources.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility", taint: "none" };

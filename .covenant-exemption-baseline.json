@@ -1,9 +1,9 @@
 {
  "note": "Covenant exemption-surface baseline — the ratchet allows this list to SHRINK only. A new exemption requires an explicit --save-baseline, which also feeds each new file's stored Void-compressor reading into the field (cost of growing the surface).",
- "savedAt": "2026-08-07T08:33:34.049Z",
- "count": 490,
+ "savedAt": "2026-08-07T15:12:46.506Z",
+ "count": 489,
  "byKind": {
-  "infrastructure": 451,
+  "infrastructure": 450,
   "pattern-definitions": 39
  },
  "files": [
@@ -240,7 +240,6 @@
   "src/fractals/alignment.js",
   "src/fractals/engines.js",
   "src/ide/mcp-install.js",
-  "src/mcp/handlers.js",
   "src/mcp/http-server.js",
   "src/mcp/openai-schema.js",
   "src/orchestrator/self-improvement.js",

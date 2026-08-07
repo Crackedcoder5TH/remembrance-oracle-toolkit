@@ -824,7 +824,13 @@ function main() {
 
   // ── FOCUS ──
   console.log('  FOCUS  (the section you are editing)');
-  console.log(`    coherence   ${bar(r.coherence)} ${(r.coherence).toFixed(3)}  ${structureVerdict(r.coherence)}`);
+  if (r.coherence == null) {
+    // Unmeasured must read as unmeasured — never as a number, never as a
+    // crash (FIELD-SELF-COMPRESSION: the 0.0000-vs-unmeasured lesson).
+    console.log('    coherence   (unmeasured — compressor unreachable; start compressor_service and re-goggle)');
+  } else {
+    console.log(`    coherence   ${bar(r.coherence)} ${(r.coherence).toFixed(3)}  ${structureVerdict(r.coherence)}`);
+  }
   console.log('    ⚠ coherence is NOT a coding trust signal whatsoever. It measures STRUCTURE');
   console.log('      in whatever it is pointed at — never correctness. A well-formed wrong');
   console.log('      answer scores high; 1+1=3 wrapped in clean syntax still reads "solid".');

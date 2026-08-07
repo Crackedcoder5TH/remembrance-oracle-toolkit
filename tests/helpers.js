@@ -119,6 +119,28 @@ function createTestOracle(opts = {}) {
   return { oracle, tmpDir };
 }
 
+// ─── Isolated Field ─────────────────────────────────────────────────────────
+
+/**
+ * Give the calling suite its OWN Living Remembrance field — fresh state,
+ * persisted to a tmpdir, with the shared side channels (field-memory,
+ * live-field HTTP bridge) disabled. Kills test order-dependence: field
+ * assertions stop racing every other process that contributes to the
+ * canonical entropy.json. The LRE physics are identical; only who holds
+ * the state changes.
+ *
+ *   const { restore } = isolateField();   // in before()
+ *   restore();                            // in after()
+ */
+function isolateField() {
+  const fc = require('../src/core/field-coupling');
+  const { LivingRemembranceEngine } = require('../src/core/living-remembrance');
+  const dir = makeTempDir('field');
+  const engine = new LivingRemembranceEngine({ persistPath: path.join(dir, 'entropy.json') });
+  fc._setEngine(engine);
+  return { engine, restore: () => { fc._setEngine(null); cleanTempDir(dir); } };
+}
+
 // ─── Test Pattern Registration ──────────────────────────────────────────────
 
 function registerTestPattern(oracle, overrides = {}) {
@@ -145,4 +167,5 @@ module.exports = {
   createMockOracle,
   createTestOracle,
   registerTestPattern,
+  isolateField,
 };

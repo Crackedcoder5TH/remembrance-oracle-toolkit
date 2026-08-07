@@ -1619,7 +1619,8 @@ ${c.bold('Related commands:')}
       let changedFiles = [];
       try {
         const since = args.since || 'HEAD~1';
-        const diffOutput = execSync(`git diff --name-only ${since} HEAD 2>/dev/null`, { encoding: 'utf-8' });
+        const { execFileSync } = require('child_process');
+        const diffOutput = execFileSync('git', ['diff', '--name-only', since, 'HEAD'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
         changedFiles = diffOutput.trim().split('\n')
           .filter(f => f.trim() && /\.js$/.test(f) && fs.existsSync(f));
       } catch (_) {
@@ -2465,7 +2466,8 @@ ${c.bold('Environment:')}
       // ── Auto-harvest + auto-submit to capture anything missed ────
       try {
         const { execSync } = require('child_process');
-        execSync('node ' + path.join(repoRoot, 'src/cli.js') + ' auto-submit', {
+        const { execFileSync } = require('child_process');
+        execFileSync('node', [path.join(repoRoot, 'src/cli.js'), 'auto-submit'], {
           cwd: repoRoot, timeout: 30000, stdio: 'pipe',
         });
         console.log(c.dim('  Auto-submit pipeline ran (harvest + promote + sync)'));

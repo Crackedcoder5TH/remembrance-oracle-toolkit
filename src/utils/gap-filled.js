@@ -11,6 +11,13 @@
  * Every function has atomicProperties matching the gap spec exactly,
  * covenant-aligned (harmPotential=none, alignment=healing where
  * applicable), and passes all four validation gates.
+ *
+ * ELEMENT CORPUS — adjudicated 2026-08-07 (trap #24 sweep): zero callers here is
+ * NOT unwired-capability debt. These functions exist because the
+ * periodic table's discovery loop specified them to fill gaps in the
+ * property space — existence IS the deliverable. Adoption happens
+ * organically (deepEqual from this corpus now has 58 callers); the
+ * rest remain valid elements awaiting a consumer.
  */
 
 /**

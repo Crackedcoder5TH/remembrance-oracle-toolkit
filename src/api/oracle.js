@@ -39,8 +39,14 @@ const eternalMethods = require('./oracle-eternal');
 
 class RemembranceOracle {
   constructor(options = {}) {
-    this.store = options.store || new VerifiedHistoryStore(options.baseDir);
-    const storeDir = this.store.storeDir || require('path').join(options.baseDir || process.cwd(), '.remembrance');
+    // `baseDir` is the documented rooting option; `storeDir` is accepted as
+    // an alias because callers (14 test suites among them) already pass it —
+    // and when it was silently ignored, every one of those oracles landed on
+    // the LIVE repo store at process.cwd()/.remembrance instead of its own
+    // sandbox. A named option must either work or throw; this one now works.
+    const baseDir = options.baseDir || options.storeDir;
+    this.store = options.store || new VerifiedHistoryStore(baseDir);
+    const storeDir = this.store.storeDir || require('path').join(baseDir || process.cwd(), '.remembrance');
     this.patterns = options.patterns || new PatternLibrary(storeDir);
     this.threshold = options.threshold ?? 0.6;
     this._listeners = [];

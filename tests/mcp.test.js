@@ -17,19 +17,27 @@ const os = require('os');
 const path = require('path');
 const { MCPServer, TOOLS } = require('../src/mcp/server');
 const { RemembranceOracle } = require('../src/api/oracle');
+const { isolateField } = require('./helpers');
 
 describe('MCPServer', () => {
   let server;
   let tmpDir;
   let oracle;
+  let _iso;
 
   before(() => {
+    // The field-action tests contribute (including a 40-shot high-coherence
+    // priming loop) and assert on the result. On its own isolated field —
+    // same physics, private state — so runs neither pollute the canonical
+    // histogram nor race concurrent suites.
+    _iso = isolateField();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-test-'));
     oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false });
   });
 
   after(() => {
     if (server) server.stop();
+    _iso.restore();
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
   });
 
@@ -166,7 +174,9 @@ describe('MCPServer', () => {
       });
     }
     // Wide-uniform batch — natural-looking distribution, should be accepted.
-    const wide = Array.from({ length: 18 }, () => Math.random());
+    // Deterministic evenly-spread values: a Math.random() draw here made the
+    // shapeClass assertion flaky (an unlucky batch reads 'natural-mid').
+    const wide = Array.from({ length: 18 }, (_, i) => (i + 0.5) / 18);
     const resWide = await server.handleRequest({
       id: 1100,
       method: 'tools/call',

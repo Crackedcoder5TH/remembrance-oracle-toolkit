@@ -1,5 +1,5 @@
 // @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
-const { describe, it, beforeEach } = require('node:test');
+const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
@@ -8,6 +8,7 @@ const {
   _costFor,
 } = require('../src/core/event-field-bridge');
 const { peekField } = require('../src/core/field-coupling');
+const { isolateField } = require('./helpers');
 
 function fakeOracle() {
   const listeners = [];
@@ -62,10 +63,13 @@ describe('event-field-bridge — cost extraction', () => {
 });
 
 describe('event-field-bridge — wiring', () => {
-  beforeEach(() => {
-    // Defensive: each test gets a fresh fake oracle, but field-coupling
-    // is process-wide. That's fine — we observe deltas.
-  });
+  // These tests assert before/after deltas on field state. Against the
+  // process-wide canonical field that races every concurrent contributor
+  // (same entropy.json on disk), so the suite runs on its own isolated
+  // field — same physics, private state.
+  let _iso;
+  before(() => { _iso = isolateField(); });
+  after(() => { _iso.restore(); });
 
   it('contributes one field observation per known emit', () => {
     const oracle = fakeOracle();

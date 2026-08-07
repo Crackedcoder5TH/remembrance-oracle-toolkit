@@ -22,6 +22,10 @@
 
 let _engineRef = null;
 let _engineLoadAttempted = false;
+// True while an injected engine is active (tests, scratch fields). An
+// injected field is ISOLATED: no field-memory echo, no live-field HTTP
+// bridge — only the canonical singleton participates in those.
+let _engineInjected = false;
 let _localUpdateCount = 0;
 // The most recent LRE contribution reading, cached so a caller that just
 // contributed (e.g. the goggles reading a file) can surface the void term
@@ -184,6 +188,32 @@ function _loadEngine() {
   return _engineRef;
 }
 
+/**
+ * Inject an engine for every field verb here — the isolation lever that
+ * kills test order-dependence. Pass an isolated
+ * `new LivingRemembranceEngine({ persistPath })` and all verbs route to
+ * it with shared side channels disabled; pass `null` to restore the
+ * canonical singleton. The LRE physics are untouched — only who holds
+ * the state changes.
+ */
+function _setEngine(engine) {
+  _engineRef = engine || null;
+  _engineLoadAttempted = engine != null;
+  _engineInjected = engine != null;
+  _lastReading = null;
+}
+
+/**
+ * Coupling-level surface over engine.pruneSources so the goggles reach
+ * it (`--do call …#pruneFieldSources`). Exact keys + mandatory reason;
+ * scalars untouched; the pruning is recorded in state.sourcesPruned.
+ */
+function pruneFieldSources(keys, reason) {
+  const engine = _loadEngine();
+  if (!engine) return null;
+  return engine.pruneSources(keys, reason);
+}
+
 // ── Live-field HTTP bridge ───────────────────────────────────────────────
 // Historically `contribute()` only updated this process's in-memory engine, so
 // a repo running on its own (a CLI, a CI job, another service) fed a local,
@@ -287,17 +317,21 @@ function contribute(obs) {
   // gate in field-memory drops redundant shapes by design; only genuinely
   // new observations are stored. Snapshots of the whole field are taken
   // periodically so the library carries the field's own history.
-  // Best-effort — never blocks or breaks a contribute.
-  try {
-    const fm = require('./field-memory');
-    fm.recordObservation({ source: obs.source || null, coherence: clamped, cost });
-    fm.maybeSnapshot(result || (engine.getState && engine.getState()) || null);
-  } catch (_) { /* best-effort */ }
+  // Best-effort — never blocks or breaks a contribute. An injected
+  // (isolated) engine skips both shared side channels: its observations
+  // belong to it alone.
+  if (!_engineInjected) {
+    try {
+      const fm = require('./field-memory');
+      fm.recordObservation({ source: obs.source || null, coherence: clamped, cost });
+      fm.maybeSnapshot(result || (engine.getState && engine.getState()) || null);
+    } catch (_) { /* best-effort */ }
 
-  // Funnel the same observation into the shared LIVE field over HTTP when one is
-  // configured, so this repo's numbers reach the field every other repo and the
-  // interface read from — not just this process's in-memory engine. Best-effort.
-  _bridgeToLiveField({ coherence: clamped, source: obs.source || 'unknown', cost });
+    // Funnel the same observation into the shared LIVE field over HTTP when one is
+    // configured, so this repo's numbers reach the field every other repo and the
+    // interface read from — not just this process's in-memory engine. Best-effort.
+    _bridgeToLiveField({ coherence: clamped, source: obs.source || 'unknown', cost });
+  }
 
   return result;
 }
@@ -316,9 +350,11 @@ function peekField() {
   const engine = _loadEngine();
   if (!engine) return null;
   const state = engine.getState();
-  try {
-    require('./field-memory').maybeSnapshot(state);
-  } catch (_) { /* best-effort — never break a field read */ }
+  if (!_engineInjected) {
+    try {
+      require('./field-memory').maybeSnapshot(state);
+    } catch (_) { /* best-effort — never break a field read */ }
+  }
   return state;
 }
 
@@ -1083,6 +1119,8 @@ module.exports = {
   setVarianceGateMode,
   getVarianceGateMode,
   _resetLearnedShapes,
+  _setEngine,
+  pruneFieldSources,
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
@@ -1109,3 +1147,5 @@ cognitionTrajectory.atomicProperties = { charge: 0, valence: 0, mass: "light", s
 learnedShapesByDomain.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 fieldDirection.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 recordTemporalSnapshot.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_setEngine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility", taint: "none"  };
+pruneFieldSources.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility", taint: "none" };

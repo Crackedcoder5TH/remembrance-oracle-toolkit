@@ -56,9 +56,17 @@ function detectShellInjection(code) {
     },
   ];
 
+  // Database handles also expose .exec() — a db handle running an
+  // interpolated query is a SQL-injection question for the taint-aware
+  // security checker, not a shell question for this detector. Claiming it
+  // here double-reports the AST checker's territory with none of its
+  // sanitizer awareness.
+  const DB_RECEIVER = /(?:\b(?:db|database|sqlite|conn|connection|stmt|tx)\s*\.\s*)exec(?:Sync)?\s*\(/;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
+    if (DB_RECEIVER.test(line)) continue;
 
     for (const { pattern, suggestion } of patterns) {
       const match = line.match(pattern);

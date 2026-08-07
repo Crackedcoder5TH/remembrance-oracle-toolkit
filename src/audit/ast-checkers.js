@@ -119,6 +119,11 @@ function auditCode(source, options = {}) {
   if (isEnabled(BUG_CLASSES.EDGE_CASE)) checkEdgeCase(program, emit);
   if (isEnabled(BUG_CLASSES.SUBSTRATE_BYPASS)) checkSubstrateBypass(source, emit, options.filePath);
 
+  // The ten standalone audit-pattern detectors, bridged into the engine
+  // (each was implemented and tested but never called — trap #24).
+  const { runPatternDetectors } = require('./pattern-detectors');
+  runPatternDetectors(source, emit, isEnabled, { advisoryPatterns: options.advisoryPatterns });
+
   // Sort by severity then line. Use an immutable copy so consumers
   // that captured the findings array earlier aren't surprised by
   // in-place reordering.

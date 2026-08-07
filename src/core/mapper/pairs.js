@@ -52,12 +52,30 @@ function _annotateDataPairs(pairs, projectPath) {
     const m = rel.match(/^(.*?)(?:_v\d+)?(\.[a-z]+)$/i);
     return m ? m[1] + m[2] : rel;
   };
+  const realpathOf = (rel) => {
+    try { return fs.realpathSync(path.join(projectPath, rel)); }
+    catch { return null; }
+  };
+  const isSymlink = (rel) => {
+    try { return fs.lstatSync(path.join(projectPath, rel)).isSymbolicLink(); }
+    catch { return false; }
+  };
   for (const p of pairs) {
     // Versioned-snapshot series (derived_covenant_v1..v7, …): members of
     // one series are EXPECTED to resemble each other — that is what a
     // snapshot is. Convention: same base name modulo _vN ⇒ versionSeries,
     // reported separately from organic duplication.
     if (versionBase(p.a) === versionBase(p.b) && p.a !== p.b) p.versionSeries = true;
+    // Symlink-resolved pair: one member is a symlink whose realpath IS the
+    // other member — the deduplication already happened on disk, and the
+    // "duplicate" is one file with two names. The index may still carry the
+    // old path's vector (the substrate keeps memory), so this is decided at
+    // the byte level from the filesystem, not from resemblance.
+    if ((isSymlink(p.a) || isSymlink(p.b))) {
+      const ra = realpathOf(p.a);
+      const rb = realpathOf(p.b);
+      if (ra && rb && ra === rb) p.resolvedSymlink = true;
+    }
     if (!p.a.endsWith('.json') || !p.b.endsWith('.json')) continue;
     const ha = payloadHash(p.a);
     const hb = payloadHash(p.b);

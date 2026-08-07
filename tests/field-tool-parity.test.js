@@ -37,3 +37,27 @@ test('vendored field-tool encoder modules match canonical byte-for-byte', () => 
       `${f} drifted from canonical — re-sync: cp src/core/${f} packages/field-tool/src/${f}`);
   }
 });
+
+// fractal-waveform.js is NOT byte-mirrored: oracle and field-tool carry two
+// trusted reference implementations of docs/FRACTAL_WAVEFORM_SPEC.md, and
+// both headers claim byte-identical vectors for the same input. Nothing
+// enforced that claim — this does. Any spec change must land in both files
+// before this passes again.
+test('dual fractal-waveform implementations produce identical vectors', () => {
+  const oracleEnc = require(path.join(ROOT, 'src', 'core', 'fractal-waveform'));
+  const fieldEnc = require(path.join(ROOT, 'packages', 'field-tool', 'src', 'fractal-waveform'));
+  const samples = [
+    'src/core/fractal-waveform.js',   // JS source (self-referential input)
+    'src/core/mapper/pairs.js',       // JS source, different shape
+    'README.md',                      // prose
+    'package.json',                   // data
+  ];
+  assert.equal(oracleEnc.FRACTAL_DIM, fieldEnc.FRACTAL_DIM, 'FRACTAL_DIM diverged');
+  for (const f of samples) {
+    const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    assert.deepStrictEqual(
+      Array.from(oracleEnc.toFractalWaveform(text)),
+      Array.from(fieldEnc.toFractalWaveform(text)),
+      `encoder vectors diverged on ${f} — the two reference implementations no longer agree with the spec`);
+  }
+});

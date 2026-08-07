@@ -1,14 +1,13 @@
 {
  "note": "Covenant size baseline — grandfathered monoliths (> 500 lines). The ratchet allows this list to SHRINK only: no new module may exceed the cap, no listed module may grow past its recorded size + 40, and a module that drops under the cap leaves forever.",
- "savedAt": "2026-08-07T03:06:18.777Z",
+ "savedAt": "2026-08-07T08:33:33.939Z",
  "maxLines": 500,
  "slack": 40,
- "count": 69,
- "totalLines": 59111,
+ "count": 68,
+ "totalLines": 57148,
  "modules": {
   "src/cli/commands/admin.js": 3345,
   "src/store/sqlite.js": 3230,
-  "src/core/persistence.js": 1963,
   "src/evolution/recycler.js": 1812,
   "src/patterns/library.js": 1648,
   "src/mcp/handlers.js": 1640,

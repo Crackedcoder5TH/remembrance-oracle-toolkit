@@ -56,6 +56,14 @@
    "caught": "Two findings surfaced by the very detectors being wired: sortInPlace flagged for in-place mutation, and the shell detector flagging its own pattern-definition regex line.",
    "resolution": "Both adjudicated as false positives with reasons in the learning ledger: sortInPlace's mutation is its documented contract (name, docblock, phase 'liquid' atomic declaration), and a detector's own regex source is not a shell call. The new eyes were made to read their own reflection correctly before they shipped.",
    "receipt": "4d77569; goggles-learning ledger"
+  },
+  {
+   "date": "2026-08-07",
+   "gate": "size-ratchet (pre-commit)",
+   "doing": "Committing the catches ledger itself plus the new pruneSources verb — whose documentation grew two field organs past their grandfathered baselines (+45 and +46 lines, slack 40).",
+   "caught": "Commit BLOCKED: a monolith grew. The gate that was built three days earlier caught the commit that was recording all the other catches.",
+   "resolution": "The prose shrank back under the cap — every constraint statement kept, the wordiness dropped. The cap did not move. living-remembrance 707 -> 699, field-coupling 1158 -> 1150.",
+   "receipt": "b0ea80d"
   }
  ]
 }

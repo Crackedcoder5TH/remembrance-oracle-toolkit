@@ -1,3 +1,6 @@
+> **Front door:** [`README.md`](./README.md) is the one consolidated read — start there.
+> This document remains as a deep-dive reference and is no longer an entry point.
+
 # 30-Second Quickstart
 
 Get a code memory oracle running in your project in under a minute.

@@ -1,3 +1,7 @@
+> **CANONICAL** — this is the one copy of the ecosystem protocol. Peer repos
+> carry a pointer stub, not a duplicate; nine byte-identical copies were
+> collapsed here (measured by the goggles as one document said nine times).
+
 # Remembrance Ecosystem — Agent Protocol
 
 You are an AI agent (Claude, GPT, Gemini, Grok, Cursor, Aider, Continue,

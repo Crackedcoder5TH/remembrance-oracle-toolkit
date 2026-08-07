@@ -122,12 +122,12 @@ const REPOS = {
 const SKIP = new Set(['node_modules', '.git', '.next', 'dist', 'build', 'target', 'coverage', 'patterns']);
 const EXT = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx']);
 
+// Canonical walker (ECOSYSTEM §7); hidden dirs were only pruned via SKIP, so
+// skipHidden stays off, and the .test.js exclusion is applied on the result.
+const { walkFiles } = require('../src/core/walk-files');
 function walk(dir, out) {
-  let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
-  for (const e of entries) {
-    if (e.isDirectory()) { if (!SKIP.has(e.name)) walk(path.join(dir, e.name), out); }
-    else if (e.isFile() && EXT.has(path.extname(e.name)) && !e.name.endsWith('.test.js')) out.push(path.join(dir, e.name));
+  for (const p of walkFiles(dir, { skipDirs: SKIP, extensions: [...EXT], skipHidden: false })) {
+    if (!p.endsWith('.test.js')) out.push(p);
   }
 }
 

@@ -103,16 +103,11 @@ function classify(expr, context = '') {
   return ['SUBSTITUTED', 'unnamed scalar'];
 }
 
-function walk(dir, out = []) {
-  let ents;
-  try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
-  for (const e of ents) {
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) { if (!/node_modules|\.git/.test(p)) walk(p, out); }
-    else if (e.name.endsWith('.js')) out.push(p);
-  }
-  return out;
-}
+// Canonical walker (ECOSYSTEM §7). The old path-regex /node_modules|\.git/
+// also matched '.github', so the skip set names all three; hidden dirs
+// outside it were walked, so skipHidden stays off.
+const { walkFiles } = require('../src/core/walk-files');
+const walk = (dir) => walkFiles(dir, { skipDirs: new Set(['node_modules', '.git', '.github']), extensions: ['.js'], skipHidden: false });
 
 /**
  * Locate the enclosing auto-wired try/catch for a __contribute line.

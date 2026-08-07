@@ -1,3 +1,6 @@
+> **Front door:** [`README.md`](./README.md) is the one consolidated read — start there.
+> This document remains as a deep-dive reference and is no longer an entry point.
+
 # Remembrance — Concepts Simplified
 
 Plain-English translation of every concept in the ecosystem. Use these terms in documentation, marketing, and onboarding.

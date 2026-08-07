@@ -319,22 +319,14 @@ class CoherencyGenerator {
       const { CoherencyDirector } = require('./coherency-director');
       const fs = require('fs');
       const d = new CoherencyDirector();
-      const files = [];
+      // Canonical walker (ECOSYSTEM §7) — exact pre-order, so the every-10th
+      // cycle sampling below sees the same files the old recursion saw.
+      const { walkFiles } = require('../core/walk-files');
       const scanDir = path.join(this._repoRoot, 'src');
-      if (fs.existsSync(scanDir)) {
-        (function walk(dir) {
-          try {
-            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-              if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-              const p = path.join(dir, entry.name);
-              if (entry.isDirectory()) walk(p);
-              else if (entry.name.endsWith('.js')) {
-                try { files.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); } catch {}
-              }
-            }
-          } catch {}
-        })(scanDir);
-      }
+      const files = !fs.existsSync(scanDir) ? []
+        : walkFiles(scanDir, { skipDirs: new Set(['node_modules']), extensions: ['.js'] })
+          .map((p) => { try { return { id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }; } catch { return null; } })
+          .filter(Boolean);
       // Sample for speed — full scan every 10th cycle, sample otherwise
       const sample = this.cycleCount % 10 === 0 ? files : files.slice(0, 50);
       d.scan(sample);

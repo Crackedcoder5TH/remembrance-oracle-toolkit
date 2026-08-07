@@ -317,10 +317,12 @@ describe('Trust Boundary — Auto-Heal Covenant Gate', () => {
   });
 
   it('persistence pullFromCommunity includes covenant check', () => {
-    const persistenceSource = fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'core', 'persistence.js'),
-      'utf-8'
-    );
+    // persistence.js is a façade since the monolith decomposition — the
+    // covenant-checked paths live in its organs. Same assertions, read
+    // against the organ sources so the contract still bites.
+    const persistenceSource = ['community.js', 'transfer.js', 'stores.js']
+      .map((f) => fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'persistence', f), 'utf-8'))
+      .join('\n');
     assert.ok(
       persistenceSource.includes("covenantCheck(pattern.code"),
       'persistence should covenant-check community patterns'
@@ -332,10 +334,12 @@ describe('Trust Boundary — Auto-Heal Covenant Gate', () => {
   });
 
   it('persistence transferPattern uses safeJsonParse', () => {
-    const persistenceSource = fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'core', 'persistence.js'),
-      'utf-8'
-    );
+    // persistence.js is a façade since the monolith decomposition — the
+    // covenant-checked paths live in its organs. Same assertions, read
+    // against the organ sources so the contract still bites.
+    const persistenceSource = ['community.js', 'transfer.js', 'stores.js']
+      .map((f) => fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'persistence', f), 'utf-8'))
+      .join('\n');
     assert.ok(
       persistenceSource.includes("safeJsonParse(pattern.tags"),
       'transferPattern should use safeJsonParse for tags'

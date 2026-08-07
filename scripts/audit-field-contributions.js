@@ -44,18 +44,11 @@ const MEASURED = /(coherenc|unified)/i;
 // Names that denote something else entirely.
 const OTHER = /\b(confidence|matchScore|amplitude|composite|score|ratio|evidence|length|count|size|probability|weight|strength|similarity|density|agreement|total|reliability|quality)\b/i;
 
-function walk(dir, out = []) {
-  let ents;
-  try { ents = fs.readdirSync(dir); } catch { return out; }
-  for (const e of ents) {
-    const p = path.join(dir, e);
-    let st;
-    try { st = fs.statSync(p); } catch { continue; }
-    if (st.isDirectory()) { if (!/node_modules|\.git/.test(p)) walk(p, out); }
-    else if (e.endsWith('.js')) out.push(p);
-  }
-  return out;
-}
+// Canonical walker (ECOSYSTEM §7). The old path-regex /node_modules|\.git/
+// also matched '.github', so the skip set names all three; hidden dirs
+// outside it were walked, so skipHidden stays off.
+const { walkFiles } = require('../src/core/walk-files');
+const walk = (dir) => walkFiles(dir, { skipDirs: new Set(['node_modules', '.git', '.github']), extensions: ['.js'], skipHidden: false });
 
 /**
  * Classify what a contribution actually carries.

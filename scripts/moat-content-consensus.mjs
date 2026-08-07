@@ -27,7 +27,9 @@ const gzipRatio = (text) => zlib.gzipSync(Buffer.from(text)).length / Math.max(1
 function trigramEntropy(text) { const c = new Map(); let n = 0; for (let i = 0; i + 3 <= text.length; i++) { const g = text.slice(i, i + 3); c.set(g, (c.get(g) || 0) + 1); n++; } if (!n) return 0; let h = 0; for (const v of c.values()) { const p = v / n; h -= p * Math.log2(p); } return h / Math.log2(Math.max(2, c.size)); }
 
 // gather real content — code files across the toolkit (their subdir = domain)
-function walk(dir, out = []) { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { if (e.name.startsWith('.') || e.name === 'node_modules') continue; const p = path.join(dir, e.name); if (e.isDirectory()) walk(p, out); else if (/\.(js|mjs|cjs)$/.test(e.name)) out.push(p); } return out; }
+// Canonical walker (ECOSYSTEM §7) — exact pre-order, so slice(0, 400) samples the same files.
+const { walkFiles } = await import('../src/core/walk-files.js').then((m) => m.default || m);
+const walk = (dir) => walkFiles(dir, { skipDirs: new Set(['node_modules']), extensions: ['.js', '.mjs', '.cjs'] });
 const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'src');
 const files = walk(ROOT).slice(0, 400);
 const items = [];

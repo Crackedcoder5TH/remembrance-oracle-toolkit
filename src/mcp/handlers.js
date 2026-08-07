@@ -71,22 +71,11 @@ function _searchEnforcementNotice() {
  */
 function _scanJsZones(dir) {
   const fs = require('fs');
-  const items = [];
-  (function walk(d) {
-    let entries;
-    try { entries = fs.readdirSync(d, { withFileTypes: true }); }
-    catch { return; }
-    for (const e of entries) {
-      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
-      const p = path.join(d, e.name);
-      if (e.isDirectory()) { walk(p); continue; }
-      if (e.name.endsWith('.js')) {
-        try { items.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); }
-        catch { /* skip unreadable */ }
-      }
-    }
-  })(dir);
-  return items;
+  // Canonical walker (ECOSYSTEM §7), pre-order.
+  const { walkFiles } = require('../core/walk-files');
+  return walkFiles(dir, { skipDirs: new Set(['node_modules']), extensions: ['.js'] })
+    .map((p) => { try { return { id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }; } catch { return null; } })
+    .filter(Boolean);
 }
 
 const HANDLERS = {

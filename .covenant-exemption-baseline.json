@@ -1,6 +1,6 @@
 {
  "note": "Covenant exemption-surface baseline — the ratchet allows this list to SHRINK only. A new exemption requires an explicit --save-baseline, which also feeds each new file's stored Void-compressor reading into the field (cost of growing the surface).",
- "savedAt": "2026-08-05T18:17:35.211Z",
+ "savedAt": "2026-08-07T08:33:34.049Z",
  "count": 490,
  "byKind": {
   "infrastructure": 451,
@@ -217,7 +217,6 @@
   "src/core/meditation.js",
   "src/core/oracle-config.js",
   "src/core/parsers/code-validator.js",
-  "src/core/persistence.js",
   "src/core/preflight.js",
   "src/core/proposal-expiry.js",
   "src/core/reflection-scorers.js",
@@ -462,6 +461,7 @@
   "tests/serf-compression.test.js",
   "tests/session-enforcement.test.js",
   "tests/site-server.test.js",
+  "tests/size-ratchet.test.js",
   "tests/sqlite-store.test.js",
   "tests/state-machine.test.js",
   "tests/storage-tiers.test.js",

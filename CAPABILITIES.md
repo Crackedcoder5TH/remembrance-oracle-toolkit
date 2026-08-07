@@ -1,3 +1,6 @@
+> **Front door:** [`README.md`](./README.md) is the one consolidated read — start there.
+> This document remains as a deep-dive reference and is no longer an entry point.
+
 # Remembrance Oracle Toolkit — Verified Capabilities
 
 This repo's piece of the [ecosystem](../Void-Data-Compressor/CAPABILITIES.md).

@@ -170,7 +170,9 @@ function registerVoidCommands(handlers, { oracle }) {
 
         if (running) {
           try {
-            const log = execSync(`grep "SAVE" "${path.join(dir, 'crawler.log')}" | tail -1`, { encoding: 'utf-8' }).trim();
+            const { execFileSync } = require('child_process');
+            const grepOut = execFileSync('grep', ['SAVE', path.join(dir, 'crawler.log')], { encoding: 'utf-8' }).trim();
+            const log = grepOut.split('\n').pop();
             if (log) console.log(`  Last save:  ${log.replace(/.*======/, '').replace(/======.*/, '').trim()}`);
           } catch {}
         }
@@ -305,12 +307,14 @@ function registerVoidCommands(handlers, { oracle }) {
 
       if (running) {
         try {
-          const saves = execSync(`grep -c "SAVE" "${path.join(dir, 'crawler.log')}" 2>/dev/null`, { encoding: 'utf-8' }).trim();
+          const { execFileSync } = require('child_process');
+          const saves = execFileSync('grep', ['-c', 'SAVE', path.join(dir, 'crawler.log')], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
           console.log(`    Save checkpoints:   ${saves}`);
         } catch {}
 
         try {
-          const cascades = execSync(`grep -c "CASCADE" "${path.join(dir, 'crawler.log')}" 2>/dev/null`, { encoding: 'utf-8' }).trim();
+          const { execFileSync } = require('child_process');
+          const cascades = execFileSync('grep', ['-c', 'CASCADE', path.join(dir, 'crawler.log')], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
           console.log(`    Cascade events:     ${cascades}`);
         } catch {}
       }

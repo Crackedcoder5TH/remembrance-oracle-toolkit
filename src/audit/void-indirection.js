@@ -105,7 +105,8 @@ function measureRatio(content, options = {}) {
     fs.writeFileSync(tmpFile, buffer);
 
     const measureScript = path.join(voidPath, 'measure_ratio.py');
-    const result = execSync(`python3 "${measureScript}" "${tmpFile}"`, {
+    const { execFileSync } = require('child_process');
+    const result = execFileSync('python3', [measureScript, tmpFile], {
       timeout,
       encoding: 'utf-8',
       cwd: voidPath,

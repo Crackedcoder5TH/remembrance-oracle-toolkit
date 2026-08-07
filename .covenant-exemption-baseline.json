@@ -1,9 +1,9 @@
 {
  "note": "Covenant exemption-surface baseline — the ratchet allows this list to SHRINK only. A new exemption requires an explicit --save-baseline, which also feeds each new file's stored Void-compressor reading into the field (cost of growing the surface).",
- "savedAt": "2026-08-07T15:12:46.506Z",
- "count": 489,
+ "savedAt": "2026-08-07T18:49:04.606Z",
+ "count": 490,
  "byKind": {
-  "infrastructure": 450,
+  "infrastructure": 451,
   "pattern-definitions": 39
  },
  "files": [
@@ -395,6 +395,7 @@
   "tests/oracle.test.js",
   "tests/orchestrator-refinements.test.js",
   "tests/orchestrator.test.js",
+  "tests/pattern-detectors-wiring.test.js",
   "tests/pattern-lifecycle-sm.test.js",
   "tests/pattern-tests/coherency-langdetect-standalone.test.js",
   "tests/pattern-tests/covenant-patterns-standalone.test.js",

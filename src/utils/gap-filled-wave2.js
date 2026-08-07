@@ -7,6 +7,13 @@
  * after Wave 1 filled the original 20 gaps. Adding 20 elements to the
  * table created 18 NEW gaps at the frontier — confirming the table is
  * alive and expanding. These are the frontier fills.
+ *
+ * ELEMENT CORPUS — adjudicated 2026-08-07 (trap #24 sweep): zero callers here is
+ * NOT unwired-capability debt. These functions exist because the
+ * periodic table's discovery loop specified them to fill gaps in the
+ * property space — existence IS the deliverable. Adoption happens
+ * organically (deepEqual from this corpus now has 58 callers); the
+ * rest remain valid elements awaiting a consumer.
  */
 
 /**

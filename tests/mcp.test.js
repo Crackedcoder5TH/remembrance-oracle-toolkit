@@ -174,7 +174,9 @@ describe('MCPServer', () => {
       });
     }
     // Wide-uniform batch — natural-looking distribution, should be accepted.
-    const wide = Array.from({ length: 18 }, () => Math.random());
+    // Deterministic evenly-spread values: a Math.random() draw here made the
+    // shapeClass assertion flaky (an unlucky batch reads 'natural-mid').
+    const wide = Array.from({ length: 18 }, (_, i) => (i + 0.5) / 18);
     const resWide = await server.handleRequest({
       id: 1100,
       method: 'tools/call',

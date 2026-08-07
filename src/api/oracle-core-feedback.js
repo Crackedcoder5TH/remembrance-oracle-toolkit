@@ -165,6 +165,19 @@ module.exports = {
     const updated = this.patterns.recordUsage(id, succeeded);
     if (!updated) return { success: false, error: `Pattern ${id} not found` };
 
+    // Close the reputation loop: voters whose vote aligned with this
+    // outcome gain reputation, misaligned voters lose it. The store method
+    // existed with exactly these semantics but was never wired to feedback
+    // — reputation could only ever sit at its default. SQLite store only
+    // (votes live there).
+    try {
+      if (this.patterns._sqlite && typeof this.patterns._sqlite.updateVoterReputation === 'function') {
+        this.patterns._sqlite.updateVoterReputation(id, succeeded);
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle:patternFeedback] voter reputation update failed:', e?.message || e);
+    }
+
     // Record in temporal memory
     try {
       const tm = this.getTemporalMemory?.();

@@ -17,19 +17,27 @@ const os = require('os');
 const path = require('path');
 const { MCPServer, TOOLS } = require('../src/mcp/server');
 const { RemembranceOracle } = require('../src/api/oracle');
+const { isolateField } = require('./helpers');
 
 describe('MCPServer', () => {
   let server;
   let tmpDir;
   let oracle;
+  let _iso;
 
   before(() => {
+    // The field-action tests contribute (including a 40-shot high-coherence
+    // priming loop) and assert on the result. On its own isolated field —
+    // same physics, private state — so runs neither pollute the canonical
+    // histogram nor race concurrent suites.
+    _iso = isolateField();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-test-'));
     oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false });
   });
 
   after(() => {
     if (server) server.stop();
+    _iso.restore();
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
   });
 

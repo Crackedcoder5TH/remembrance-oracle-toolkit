@@ -838,11 +838,21 @@ function auditFile(filePath, options = {}) {
 }
 
 function auditFiles(files, options = {}) {
+  // .oracle-ignore support — compiled glob matcher from suppressions.js,
+  // written and tested but never called until 2026-08-08 (wire-later
+  // ledger). Opt-in via options.repoRoot; a missing/empty ignore file
+  // matches nothing, so behavior without one is byte-identical.
+  let ignore = null;
+  if (options.repoRoot) {
+    try { ignore = require('./suppressions').loadIgnoreFile(options.repoRoot); }
+    catch (_) { ignore = null; }
+  }
   const results = [];
   let totalFindings = 0;
   const byClass = {};
   const bySeverity = {};
   for (const file of files || []) {
+    if (ignore && ignore.shouldIgnore && ignore.shouldIgnore(file)) continue;
     const r = auditFile(file, options);
     if (r.findings && r.findings.length > 0) {
       results.push(r);

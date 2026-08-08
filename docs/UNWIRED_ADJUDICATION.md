@@ -35,15 +35,23 @@ distinguishes the species.
 | `formatMultiPRBody`, `parseCronInterval`, `getCircuitStatus` (reflector) | reflector feature surface behind the public `reflector*` wrappers. |
 | `registerFeedbackSignal`, `unifiedFieldMeasurement`, `quickAmplitude`, `shouldEntangle` | unified/quantum layer surface. |
 
-### WIRE-LATER (8) — real features whose consumer path is a design decision
+### WIRE-LATER — 3 of 8 wired 2026-08-08
+- `maybeAbsorbPattern` → WIRED into all three acceptance sites (submit /
+  register / evolve); first live absorption: both-accept, delta +0.278.
+  `maybeAbsorbBatch` reachable through the same module when a batch
+  caller exists.
+- `loadIgnoreFile` → WIRED into `auditFiles` via `options.repoRoot`
+  (.oracle-ignore support; no-file behavior byte-identical).
+- `checkFractalIntegrity` + `repairFractalIntegrity` → WIRED as
+  `oracle_maintain` actions `fractal-integrity` (read-only) and
+  `fractal-repair` (explicit mutation word required).
+
+### Still WIRE-LATER (5) — deeper integrations, honest status
 | item | natural consumer |
 |---|---|
-| `maybeAbsorbPattern` + `maybeAbsorbBatch` (covenant-trust) | the submit/absorb pipeline — field-validated growth is currently reachable only from a diagnostic script. Biggest one here. |
 | `auditSourceForLies` (grounding-semantics) | goggles META-DEBUG / audit engine. |
 | `classifyDebugFix` (resolve-hook) | the resolve-hook pipeline. |
-| `loadIgnoreFile` (suppressions) | `auditFiles` — an `.auditignore` feature, written and unplugged. |
 | `detectHiddenIdentifiers` (void-indirection) | void-scan. |
-| `checkFractalIntegrity` + `repairFractalIntegrity` | `oracle_maintain`. |
 | `withOfflineQueue` (sync-queue) | persistence sync path. |
 | `generateWithGate` (swarm) | swarm generation entry. |
 

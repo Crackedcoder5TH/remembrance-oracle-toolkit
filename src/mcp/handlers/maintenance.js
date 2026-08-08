@@ -153,6 +153,18 @@ const MAINTENANCE = {
         return oracle.fullOptimizationCycle({
           maxHealsPerRun: args.maxHealsPerRun || 20,
         });
+      // fractal store integrity — check finds orphaned deltas/embeddings
+      // and stale templates; repair removes them. Both existed tested and
+      // uncalled until 2026-08-08 (wire-later ledger). Check is read-only;
+      // repair mutates and therefore requires the explicit action word.
+      case 'fractal-integrity': {
+        const { checkFractalIntegrity } = require('../../compression/fractal-library-bridge');
+        return checkFractalIntegrity(oracle.patterns._sqlite || oracle.store);
+      }
+      case 'fractal-repair': {
+        const { repairFractalIntegrity } = require('../../compression/fractal-library-bridge');
+        return repairFractalIntegrity(oracle.patterns._sqlite || oracle.store);
+      }
       case 'candidates': {
         const filters = {};
         if (args.language) filters.language = args.language;

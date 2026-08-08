@@ -460,6 +460,11 @@
    "verdict": "corpus-content",
    "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
    "date": "2026-08-08"
+  },
+  "digital-cathedral/app/components/auth-provider.tsx": {
+   "verdict": "framework-wired",
+   "reason": "8-line next-auth SessionProvider wrapper, consumed by app/layout.tsx and app/lp/layout.tsx — too small to accumulate 3 stable-high siblings; the framework is its structure",
+   "date": "2026-08-08"
   }
  },
  "pairs": {

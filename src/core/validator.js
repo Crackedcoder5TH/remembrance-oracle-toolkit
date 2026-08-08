@@ -219,7 +219,7 @@ function executeTest(code, testCode, language, timeout) {
       fs.writeFileSync(codeFile, code, 'utf-8');
       const hasRequire = /require\s*\(\s*['"][^'"]+['"]\s*\)/.test(testCode);
       const testContent = hasRequire
-        ? testCode.replace(/require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g, `require('${codeFile}')`)
+        ? testCode.replace(/require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g, `require(${JSON.stringify(codeFile)})`)
         : `${code}\n;\n${testCode}`;
       fs.writeFileSync(testFile, testContent, 'utf-8');
       try {

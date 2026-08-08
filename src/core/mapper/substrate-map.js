@@ -228,7 +228,7 @@ function mapFromSubstrate(projectPath, opts = {}) {
   }
 
   const buckets = {
-    A_components_incoherent: results.filter(r => r.category === 'components' && !r.flags.includes('WELL-FORMED')),
+    A_components_incoherent: _annotateOrphans(results.filter(r => r.category === 'components' && !r.flags.includes('WELL-FORMED')), projectPath),
     B_api_inconsistent: results.filter(r => r.category.startsWith('api/') && r.flags.includes('INCONSISTENT')),
     C_lib_drift: results.filter(r => r.category === 'lib' && r.flags.includes('ORPHAN')),
     D_duplicate_pairs: _annotateDataPairs(_dedupePairs(results), projectPath),

@@ -114,16 +114,23 @@ function captureFeedbackDebug(oracle, id, entry, healResult) {
     const code = entry?.code || '';
     const language = entry?.language || 'javascript';
 
-    // Capture the failure as a debug pattern
+    // Capture the failure as a debug pattern. classifyDebugFix (wired
+    // 2026-08-08, wire-later ledger) tags the capture with its bug class
+    // so downstream cross-referencing can group by failure species.
     if (code) {
       const errorMessage = `Pattern "${name}" reported as failing (id: ${id})`;
+      let bugClassTag = null;
+      try {
+        const { classifyDebugFix } = require('../audit/resolve-hook');
+        bugClassTag = classifyDebugFix({ errorMessage, fixCode: code });
+      } catch (_) { /* classification is best-effort */ }
       const captureResult = debug.capture({
         errorMessage,
         stackTrace: '',
         fixCode: code,
         fixDescription: `Original code from failed pattern "${name}" — needs investigation or healing`,
         language,
-        tags: ['auto-debug', 'feedback-failure'],
+        tags: ['auto-debug', 'feedback-failure'].concat(bugClassTag ? [bugClassTag] : []),
       });
 
       if (captureResult.captured) {

@@ -46,7 +46,21 @@ distinguishes the species.
   `oracle_maintain` actions `fractal-integrity` (read-only) and
   `fractal-repair` (explicit mutation word required).
 
-### Still WIRE-LATER (5) — deeper integrations, honest status
+### Wired 2026-08-08 (second pass)
+- `auditSourceForLies` → advisory detector `pattern/annotation-lie-gap` in
+  the bridge (flags atomic declarations that contradict the body).
+- `classifyDebugFix` → tags every auto-captured debug pattern with its
+  bug class at the capture site (ci/auto-debug).
+- `detectHiddenIdentifiers` → opt-in `options.hiddenIdentifiers` pass in
+  `voidScanFile` (subprocess-heavy, so never default-on).
+
+### Reclassified / still open (2)
+- `generateWithGate`: KEEP-API — its generatorFn producers live in
+  rmb-swarm; this is cross-repo surface, not an unwired hub feature.
+- `withOfflineQueue`: OPEN — wrapping syncToGlobal needs a design call on
+  which callers should tolerate offline queuing. Honest deferral.
+
+### (historical) Still WIRE-LATER — resolved above
 | item | natural consumer |
 |---|---|
 | `auditSourceForLies` (grounding-semantics) | goggles META-DEBUG / audit engine. |

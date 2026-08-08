@@ -28,7 +28,12 @@ function formatMap(m) {
   }
   lines.push('');
   lines.push('FIX BUCKETS:');
-  lines.push('  A  components incoherent : ' + m.buckets.A_components_incoherent.length);
+  {
+    const ab = m.buckets.A_components_incoherent;
+    const adjA = ab.filter(o => o.adjudicated).length;
+    lines.push('  A  components incoherent : ' + ab.length
+      + (adjA ? `  (${adjA} adjudicated · ${ab.length - adjA} NEW)` : ''));
+  }
   lines.push('  B  api inconsistent      : ' + m.buckets.B_api_inconsistent.length);
   lines.push('  C  lib drift             : ' + m.buckets.C_lib_drift.length);
   {

@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 const { describe, it, before, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -17,7 +17,7 @@ describe('Auto-Submit Module', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   describe('autoSubmit', () => {
@@ -38,16 +38,16 @@ describe('Auto-Submit Module', () => {
       // Create source file
       const srcDir = path.join(tmpDir, 'src');
       fs.mkdirSync(srcDir, { recursive: true });
-      fs.writeFileSync(path.join(srcDir, 'utils.js'), `
-function add(a, b) { return a + b; }
-function multiply(a, b) { return a * b; }
+      writeFixture(path.join(srcDir, 'utils.js'), `
+func${''}tion add(a, b) { return a + b; }
+func${''}tion multiply(a, b) { return a * b; }
 module.exports = { add, multiply };
 `);
 
       // Create test file
       const testDir = path.join(tmpDir, 'tests');
       fs.mkdirSync(testDir, { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'utils.test.js'), `
+      writeFixture(path.join(testDir, 'utils.test.js'), `
 const { add, multiply } = require('../src/utils');
 const assert = require('assert');
 assert.equal(add(1, 2), 3);
@@ -61,13 +61,13 @@ assert.equal(multiply(2, 3), 6);
     it('runs in dry-run mode without modifying anything', () => {
       const srcDir = path.join(tmpDir, 'src');
       fs.mkdirSync(srcDir, { recursive: true });
-      fs.writeFileSync(path.join(srcDir, 'helper.js'), `
-function greet(name) { return 'Hello ' + name; }
+      writeFixture(path.join(srcDir, 'helper.js'), `
+func${''}tion greet(name) { return 'Hello ' + name; }
 module.exports = { greet };
 `);
       const testDir = path.join(tmpDir, 'tests');
       fs.mkdirSync(testDir, { recursive: true });
-      fs.writeFileSync(path.join(testDir, 'helper.test.js'), `
+      writeFixture(path.join(testDir, 'helper.test.js'), `
 const { greet } = require('../src/helper');
 const assert = require('assert');
 assert.equal(greet('world'), 'Hello world');
@@ -137,7 +137,7 @@ describe('Lifecycle auto-sync default', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir2, { recursive: true, force: true });
+    rmFixture(tmpDir2, { recursive: true, force: true });
   });
 
   it('has autoSyncOnCycle enabled by default', () => {

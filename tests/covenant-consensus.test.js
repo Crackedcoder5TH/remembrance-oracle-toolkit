@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Two-oracle consensus gate for covenant absorption.
  *
@@ -25,11 +24,11 @@ const fc = require('../src/core/field-coupling');
 const { maybeAbsorbPattern, maybeAbsorbBatch } = require('../src/core/covenant-trust');
 const { validateContribution, recognizedShapeSignatures, _resetLearnedShapes } = require('../src/core/field-coupling');
 
-function primeAt(target, spread = 0.05, n = 60) {
+const primeAt = (target, spread = 0.05, n = 60) => {
   for (let i = 0; i < n; i++) {
     fc.contribute({ source: 'consensus-test:prime', coherence: target + (Math.random() * 2 - 1) * spread, cost: 1 });
   }
-}
+};
 
 describe('covenant absorption — two-oracle consensus', () => {
 
@@ -124,9 +123,9 @@ describe('covenant absorption — two-oracle consensus', () => {
 
 describe('covenant absorption — batch consensus', () => {
 
-  function mkBatch(prefix, scores) {
+  const mkBatch = (prefix, scores) => {
     return scores.map((s, i) => ({ name: prefix + '-' + i + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,6), language: 'js', score: s }));
-  }
+  };
 
   it('both-accept absorbs an entire batch of naturally-distributed high-quality patterns', () => {
     primeAt(0.65, 0.12);
@@ -231,13 +230,13 @@ describe('variance gate — growth alongside the covenant', () => {
     _resetLearnedShapes();
   });
 
-  function mkBatch(prefix, scores) {
+  const mkBatch = (prefix, scores) => {
     return scores.map((s, i) => ({
       name: prefix + '-' + i + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,6),
       language: 'js',
       score: s,
     }));
-  }
+  };
 
   it('learned shape registry starts empty and accepts entries only after consensus absorption', () => {
     const before = recognizedShapeSignatures();

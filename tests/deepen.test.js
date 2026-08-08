@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -21,7 +20,7 @@ const { makePattern, createMockOracle: _createBaseMock } = require('./helpers');
 
 // ─── Extended mock with lifecycle/search for deepen tests ───
 
-function createMockOracle(patterns = []) {
+const createMockOracle = (patterns = []) => {
   const mock = _createBaseMock(patterns);
   mock.search = (term, opts) => {
     const limit = opts?.limit || 10;
@@ -47,7 +46,7 @@ function createMockOracle(patterns = []) {
     return this._lifecycle;
   };
   return mock;
-}
+};
 
 // ═══════════════════════════════════════════════════
 // DEEPEN 1: Self-Management Test Coverage

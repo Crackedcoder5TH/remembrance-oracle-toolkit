@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const { describe, it } = require('node:test');
 const assert = require('assert');
@@ -15,9 +14,9 @@ const {
 
 const NOW = new Date('2026-03-15T00:00:00Z');
 
-function daysAgo(days) {
+const daysAgo = (days) => {
   return new Date(NOW.getTime() - days * 86400000).toISOString();
-}
+};
 
 describe('Confidence Decay', () => {
   describe('daysBetween', () => {

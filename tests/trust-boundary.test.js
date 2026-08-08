@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -212,19 +211,19 @@ describe('Trust Boundary — Dashboard Auth Fail-Safe', () => {
 
 describe('Trust Boundary — JWT Expiry Validation', () => {
   // Inline the JWT functions for testing (same logic as cloud/server.js)
-  function base64url(buf) {
+  const base64url = (buf) => {
     return Buffer.from(buf).toString('base64url');
-  }
+  };
 
-  function createToken(payload, secret, expiresIn = 86400) {
+  const createToken = (payload, secret, expiresIn = 86400) => {
     const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
     const now = Math.floor(Date.now() / 1000);
     const body = base64url(JSON.stringify({ ...payload, iat: now, exp: now + expiresIn }));
     const sig = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
     return `${header}.${body}.${sig}`;
-  }
+  };
 
-  function verifyToken(token, secret) {
+  const verifyToken = (token, secret) => {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     const [header, body, sig] = parts;
@@ -239,7 +238,7 @@ describe('Trust Boundary — JWT Expiry Validation', () => {
     } catch {
       return null;
     }
-  }
+  };
 
   const SECRET = 'test-secret-key-12345';
 

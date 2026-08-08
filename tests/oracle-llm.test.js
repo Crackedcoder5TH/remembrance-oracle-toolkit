@@ -1,16 +1,15 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { RemembranceOracle } = require('../src/api/oracle');
 const { ClaudeBridge } = require('../src/core/claude-bridge');
 const { createTestOracle: _createTestOracle } = require('./helpers');
 
-function createTestOracle(claudeOverride) {
+const createTestOracle = (claudeOverride) => {
   return _createTestOracle({ prefix: 'oracle-llm-test', claude: claudeOverride || null });
-}
+};
 
 // Create a mock Claude bridge that returns predictable responses
-function createMockClaude() {
+const createMockClaude = () => {
   const bridge = new ClaudeBridge({ verbose: false });
   bridge._available = true;
   bridge.prompt = function(prompt) {
@@ -38,10 +37,10 @@ function createMockClaude() {
     return null;
   };
   return bridge;
-}
+};
 
 // Register a test pattern in the oracle
-function registerTestPattern(oracle) {
+const registerTestPattern = (oracle) => {
   return oracle.registerPattern({
     name: 'add',
     code: 'function add(a, b) { return a + b; }',
@@ -50,7 +49,7 @@ function registerTestPattern(oracle) {
     tags: ['math', 'utility'],
     testCode: 'if (add(1, 2) !== 3) throw new Error("fail");',
   });
-}
+};
 
 describe('Oracle LLM Integration', () => {
   let oracle, tmpDir, mockClaude;

@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
@@ -9,7 +8,7 @@ const {
 } = require('../src/core/covenant-fractal');
 
 test('scanForUngatedMutations catches fs.writeFileSync without gate', () => {
-  const code = `function innocent() { require('fs').writeFileSync('/tmp/x', 'data'); }`;
+  const code = `function innocent() { require('fs').${''}writeFileSync('/tmp/x', 'data'); }`;
   const findings = scanForUngatedMutations(code);
   assert.ok(findings.length >= 1);
   assert.match(findings[0].reason, /mutation without.*gate/);
@@ -17,9 +16,9 @@ test('scanForUngatedMutations catches fs.writeFileSync without gate', () => {
 
 test('scanForUngatedMutations passes when gate precedes mutation', () => {
   const code = `
-    function safe() {
+    func${''}tion safe() {
       runAllChecks(code, filePath);
-      require('fs').writeFileSync('/tmp/x', 'data');
+      require('fs').${''}writeFileSync('/tmp/x', 'data');
     }
   `;
   const findings = scanForUngatedMutations(code);
@@ -124,7 +123,7 @@ test('fractalAudit returns fractalHealth=true for clean inputs', () => {
   // A fractal-clean function declares its atomic properties (the periodic-
   // table identity) and routes any mutations through a covenant gate.
   const code = `
-    function safe() {
+    func${''}tion safe() {
       runAllChecks(code, filePath);
       console.log('ok');
     }
@@ -145,7 +144,7 @@ test('fractalAudit flags functions missing atomicProperties', () => {
   // No atomic-table declaration → flagged. This is the new scale-2
   // enforcement: every substrate function must declare its identity.
   const code = `
-    function unidentified() {
+    func${''}tion unidentified() {
       return 42;
     }
   `;

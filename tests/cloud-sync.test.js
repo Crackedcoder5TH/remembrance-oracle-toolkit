@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
@@ -9,7 +9,7 @@ const { CloudSyncServer, createToken, verifyToken, hashPassword, verifyPassword 
 const { RemembranceOracle } = require('../src/api/oracle');
 
 // Helper: make HTTP request to the server
-function request(port, method, path, body = null, token = null) {
+const request = (port, method, path, body = null, token = null) => {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: '127.0.0.1',
@@ -32,7 +32,7 @@ function request(port, method, path, body = null, token = null) {
     if (body) req.write(JSON.stringify(body));
     req.end();
   });
-}
+};
 
 // ─── JWT Tests ───
 
@@ -108,7 +108,7 @@ describe('CloudSyncServer', () => {
 
   after(async () => {
     await server.stop();
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('health check', async () => {

@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for the new core spine modules:
@@ -68,8 +68,8 @@ describe('core/analyze: unified envelope', () => {
     try {
       const a = path.join(dir, 'a.js');
       const b = path.join(dir, 'b.js');
-      fs.writeFileSync(a, 'function findUser(id) { if (!id) return null; return { name: "x" }; }');
-      fs.writeFileSync(b, 'function email(id) { const u = findUser(id); return u.name; }');
+      writeFixture(a, 'function findUser(id) { if (!id) return null; return { name: "x" }; }');
+      writeFixture(b, 'function email(id) { const u = findUser(id); return u.name; }');
       const envs = analyzeFiles([a, b]);
       assert.equal(envs.length, 2);
       const cross = crossFileCallGraph(envs);
@@ -77,7 +77,7 @@ describe('core/analyze: unified envelope', () => {
       // Cascade should flag b.js for dereferencing a nullable return
       assert.ok(cross.cascades.length >= 0); // smoke — exact count can vary
     } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
+      rmFixture(dir, { recursive: true, force: true });
     }
   });
 });
@@ -88,7 +88,7 @@ describe('core/storage: unified storage interface', () => {
   const { createStorage, BACKEND_JSON, BACKEND_SQLITE } = require('../src/core/storage');
   let tmp;
   before(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-store-')); });
-  after(() => { fs.rmSync(tmp, { recursive: true, force: true }); });
+  after(() => { rmFixture(tmp, { recursive: true, force: true }); });
 
   it('JSON backend round-trips through a namespace', () => {
     const s = createStorage(tmp, { backend: BACKEND_JSON });
@@ -122,7 +122,7 @@ describe('core/storage: unified storage interface', () => {
       s.namespace('audit').set('x', { a: 1 });
       assert.deepEqual(s.namespace('audit').get('x'), { a: 1 });
     } finally {
-      fs.rmSync(sqlTmp, { recursive: true, force: true });
+      rmFixture(sqlTmp, { recursive: true, force: true });
     }
   });
 

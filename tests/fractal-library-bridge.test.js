@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('assert');
@@ -20,7 +19,7 @@ const { createTestOracle, cleanTempDir } = require('./helpers');
 
 // ─── Mock Stores ─────────────────────────────────────────────────────────
 
-function createMockStore(overrides = {}) {
+const createMockStore = (overrides = {}) => {
   const deltas = overrides.deltas || {};
   const templates = overrides.templates || {};
   const embeddings = overrides.embeddings || {};
@@ -35,7 +34,7 @@ function createMockStore(overrides = {}) {
     getAllHoloEmbeddings: () => Object.entries(embeddings).map(([k, v]) => ({ patternId: k, embeddingVec: v.embeddingVec })),
     getAllPatterns: () => overrides.patterns || [],
   };
-}
+};
 
 describe('Fractal-Library Bridge', () => {
   describe('holoDecisionBoost', () => {

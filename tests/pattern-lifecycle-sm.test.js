@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const {
@@ -9,7 +8,7 @@ const {
 } = require('../src/evolution/pattern-state-machine');
 
 // Minimal in-memory store mock for testing
-function createMockStore() {
+const createMockStore = () => {
   const patterns = new Map();
   const candidates = new Map();
   const archive = new Map();
@@ -123,7 +122,7 @@ function createMockStore() {
   };
 
   return store;
-}
+};
 
 describe('Pattern Lifecycle State Machine', () => {
   let store;

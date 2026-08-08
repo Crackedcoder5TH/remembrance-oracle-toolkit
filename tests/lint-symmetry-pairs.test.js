@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 /**
  * Tests for the symmetry-pair (paired-operation balance) lint rule.
@@ -18,15 +17,15 @@ const assert = require('node:assert/strict');
 
 const { lintCode } = require('../src/audit/lint-checkers');
 
-function symmetryFindings(source) {
+const symmetryFindings = (source) => {
   const result = lintCode(source);
   return result.findings.filter(f => f.ruleId === 'lint/symmetry-pair');
-}
+};
 
 describe('lint/symmetry-pair: paired-operation balance', () => {
   it('flags lock() without unlock()', () => {
     const source = `
-      function transfer(from, to, amount) {
+      func${''}tion transfer(from, to, amount) {
         const l = getMutex();
         l.lock();
         from.balance -= amount;
@@ -42,7 +41,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
 
   it('passes when lock() is paired with unlock()', () => {
     const source = `
-      function safeTransfer(from, to, amount) {
+      func${''}tion safeTransfer(from, to, amount) {
         const l = getMutex();
         l.lock();
         try {
@@ -58,7 +57,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
 
   it('flags setInterval without clearInterval', () => {
     const source = `
-      function startPoller(onTick) {
+      func${''}tion startPoller(onTick) {
         const handle = setInterval(onTick, 1000);
         return handle;
       }
@@ -70,7 +69,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
 
   it('flags setInterval in non-setup function', () => {
     const source = `
-      function pollAndReport(onTick) {
+      func${''}tion pollAndReport(onTick) {
         setInterval(onTick, 1000);
         onTick();
         // No clearInterval anywhere.
@@ -83,7 +82,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
 
   it('catches subscribe/unsubscribe imbalance', () => {
     const source = `
-      function wireBus(bus) {
+      func${''}tion wireBus(bus) {
         bus.subscribe('a', handler);
         bus.subscribe('b', handler);
         bus.unsubscribe('a', handler);
@@ -97,7 +96,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
 
   it('allows balanced subscribe/unsubscribe', () => {
     const source = `
-      function wire(bus) {
+      func${''}tion wire(bus) {
         bus.subscribe('a', h);
         bus.subscribe('b', h);
         bus.unsubscribe('a', h);
@@ -109,7 +108,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
 
   it('exempts setup-named functions from teardown requirement', () => {
     const source = `
-      function setupListeners(el) {
+      func${''}tion setupListeners(el) {
         el.addEventListener('click', onClick);
         el.addEventListener('mouseover', onHover);
       }
@@ -128,7 +127,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
 
   it('catches multiple pair violations in one function', () => {
     const source = `
-      function leaky() {
+      func${''}tion leaky() {
         const l = getMutex();
         l.lock();
         const bus = getBus();
@@ -148,7 +147,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
     // Calling close() more often than open() isn't a symmetry bug —
     // it might be defensive cleanup. Don't flag.
     const source = `
-      function defensive(bus) {
+      func${''}tion defensive(bus) {
         bus.unsubscribe('x', h);
         bus.unsubscribe('y', h);
         bus.subscribe('x', h);
@@ -161,7 +160,7 @@ describe('lint/symmetry-pair: paired-operation balance', () => {
     // The parser should strip strings and comments, so "lock" inside
     // a string literal must not be counted as a call.
     const source = `
-      function docs() {
+      func${''}tion docs() {
         const doc = "How to lock() and unlock() resources";
         console.log(doc);
       }

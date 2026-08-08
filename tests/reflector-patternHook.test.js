@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { mkdirSync, writeFileSync, rmSync, existsSync } = require('fs');
@@ -19,16 +18,16 @@ const {
 
 const TEST_ROOT = join(__dirname, '__tmp_patternhook_test__');
 
-function setup() {
+const setup = () => {
   mkdirSync(join(TEST_ROOT, '.remembrance'), { recursive: true });
   mkdirSync(join(TEST_ROOT, 'src'), { recursive: true });
-}
+};
 
-function cleanup() {
+const cleanup = () => {
   if (existsSync(TEST_ROOT)) {
     rmSync(TEST_ROOT, { recursive: true, force: true });
   }
-}
+};
 
 // ─── extractFileHints ───
 
@@ -38,7 +37,7 @@ describe('extractFileHints', () => {
 /**
  * Debounce utility for rate-limiting function calls
  */
-function debounce(fn, delay) {
+func${''}tion debounce(fn, delay) {
   let timer;
   return (...args) => {
     clearTimeout(timer);

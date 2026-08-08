@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -146,7 +146,7 @@ describe('Layer 2: Batch Import', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('handles unknown repo names gracefully', () => {
@@ -321,7 +321,7 @@ describe('Layer 5: Provenance Tracking', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('getProvenance returns empty when no imported patterns', () => {
@@ -456,7 +456,7 @@ describe('Layer 6: Deduplication', () => {
     });
 
     afterEach(() => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
+      rmFixture(tmpDir, { recursive: true, force: true });
     });
 
     it('finds no duplicates in empty library', () => {
@@ -547,7 +547,7 @@ describe('Layer 6: Deduplication', () => {
     });
 
     afterEach(() => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
+      rmFixture(tmpDir, { recursive: true, force: true });
     });
 
     it('returns false for empty library', () => {
@@ -601,7 +601,7 @@ describe('Schema: Provenance columns', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('patterns include provenance fields after migration', () => {

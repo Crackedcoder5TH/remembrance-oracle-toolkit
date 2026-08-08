@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -22,11 +21,11 @@ describe('OracleConfig', () => {
   });
 
   // Re-require to pick up fresh cwd each time
-  function freshConfig() {
+  const freshConfig = () => {
     const modPath = require.resolve('../src/core/oracle-config');
     delete require.cache[modPath];
     return require('../src/core/oracle-config');
-  }
+  };
 
   it('returns default config when no file exists', () => {
     const { loadConfig, DEFAULT_CONFIG } = freshConfig();

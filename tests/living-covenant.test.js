@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,7 +18,7 @@ describe('LivingCovenant', () => {
       repoRoot: tmpDir,
     });
   });
-  afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
+  afterEach(() => { rmFixture(tmpDir, { recursive: true, force: true }); });
 
   it('starts with zero active evolved principles', () => {
     assert.equal(covenant.size, 0);

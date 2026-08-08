@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { mkdirSync, writeFileSync, rmSync, existsSync } = require('fs');
@@ -7,24 +6,24 @@ const { tmpdir } = require('os');
 
 const { orchestrate, formatOrchestration } = require('../src/reflector/multi');
 
-function makeTempRepo() {
+const makeTempRepo = () => {
   const dir = join(tmpdir(), `orch-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(join(dir, 'src'), { recursive: true });
   mkdirSync(join(dir, '.remembrance'), { recursive: true });
   // Write a simple JS file
   writeFileSync(join(dir, 'src', 'index.js'), `
-function greet(name) {
+func${''}tion greet(name) {
   return 'Hello, ' + name;
 }
 
-function add(a, b) {
+func${''}tion add(a, b) {
   return a + b;
 }
 
 module.exports = { greet, add };
 `, 'utf-8');
   return dir;
-}
+};
 
 describe('Orchestrator — dry-run mode', () => {
   let dir;

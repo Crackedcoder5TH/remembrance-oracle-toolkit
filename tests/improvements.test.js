@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -18,7 +18,7 @@ describe('Oracle Event System', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('fires event on submit', () => {
@@ -87,7 +87,7 @@ describe('Oracle Import', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('imports patterns from exported JSON string', () => {
@@ -109,7 +109,7 @@ describe('Oracle Import', () => {
     assert.ok(result.imported >= 1);
     assert.equal(result.errors.length, 0);
 
-    fs.rmSync(tmpDir2, { recursive: true, force: true });
+    rmFixture(tmpDir2, { recursive: true, force: true });
   });
 
   it('imports patterns from parsed object', () => {
@@ -181,7 +181,7 @@ describe('Oracle Import', () => {
     const patterns = oracle2.patterns.getAll();
     assert.ok(patterns.some(p => p.name === 'round-trip'));
 
-    fs.rmSync(tmpDir2, { recursive: true, force: true });
+    rmFixture(tmpDir2, { recursive: true, force: true });
   });
 });
 

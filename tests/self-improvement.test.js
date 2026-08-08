@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,7 +32,7 @@ describe('SelfImprovementEngine', () => {
       }
     }
   });
-  afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
+  afterEach(() => { rmFixture(tmpDir, { recursive: true, force: true }); });
 
   it('returns supervised mode below 0.85 coherency', () => {
     assert.equal(engine.getApprovalMode(0.76), 'supervised');

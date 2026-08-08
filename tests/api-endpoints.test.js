@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
@@ -55,7 +54,7 @@ describe('API Endpoints — submit, resolve, register, feedback', () => {
     server.close();
   });
 
-  function makeRequest(method, path, body) {
+  const makeRequest = (method, path, body) => {
     return new Promise((resolve, reject) => {
       const options = {
         hostname: 'localhost',
@@ -79,7 +78,7 @@ describe('API Endpoints — submit, resolve, register, feedback', () => {
       if (body) req.write(JSON.stringify(body));
       req.end();
     });
-  }
+  };
 
   it('POST /api/submit — accepts code', async () => {
     const res = await makeRequest('POST', '/api/submit', {

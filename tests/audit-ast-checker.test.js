@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for the new AST-based audit checker.
@@ -64,7 +64,7 @@ describe('parser.tokenize: regex literal handling', () => {
 describe('ast-checkers: regex-era false positives', () => {
   it('does not flag /covenant/i.test(path)', () => {
     const src = `
-      function isExempt(p) {
+      func${''}tion isExempt(p) {
         if (/covenant/i.test(p)) return true;
         return false;
       }
@@ -74,7 +74,7 @@ describe('ast-checkers: regex-era false positives', () => {
 
   it('does not flag template-literal PRAGMA as shell injection', () => {
     const src = `
-      function init(db) {
+      func${''}tion init(db) {
         db.exec(\`PRAGMA journal_mode = WAL\`);
         db.exec(\`CREATE TABLE IF NOT EXISTS foo (id TEXT)\`);
       }
@@ -84,7 +84,7 @@ describe('ast-checkers: regex-era false positives', () => {
 
   it('does not flag already-guarded null deref inside if block', () => {
     const src = `
-      function doStuff(map, key) {
+      func${''}tion doStuff(map, key) {
         const byId = map.get(key);
         if (byId) {
           const score = byId.coherencyScore;
@@ -100,12 +100,12 @@ describe('ast-checkers: regex-era false positives', () => {
 
   it('does not flag early-exit guard-clause pattern', () => {
     const src = `
-      function fetchAndUse() {
+      func${''}tion fetchAndUse() {
         const data = callExternal();
         if (!data) return null;
         return { value: data.coherence, count: data.items };
       }
-      function callExternal() {
+      func${''}tion callExternal() {
         if (Math.random() < 0.5) return null;
         return { coherence: 1, items: [] };
       }
@@ -116,7 +116,7 @@ describe('ast-checkers: regex-era false positives', () => {
 
   it('does not flag JSON content inside a string literal', () => {
     const src = `
-      function emitSql() {
+      func${''}tion emitSql() {
         const sample = "SELECT * FROM users WHERE id = 1";
         return sample;
       }
@@ -126,7 +126,7 @@ describe('ast-checkers: regex-era false positives', () => {
 
   it('does not flag regex flag suffix as division by zero', () => {
     const src = `
-      function clean(s) {
+      func${''}tion clean(s) {
         return s.replace(/foo/gi, '').replace(/bar/i, '');
       }
     `;
@@ -139,7 +139,7 @@ describe('ast-checkers: regex-era false positives', () => {
 describe('ast-checkers: real bug detection', () => {
   it('flags .sort() mutation without copy', () => {
     const src = `
-      function getSorted(data) {
+      func${''}tion getSorted(data) {
         return data.sort((a, b) => a - b);
       }
     `;
@@ -149,7 +149,7 @@ describe('ast-checkers: real bug detection', () => {
 
   it('does not flag data.slice().sort() — copy-then-sort is safe', () => {
     const src = `
-      function getSorted(data) {
+      func${''}tion getSorted(data) {
         return data.slice().sort((a, b) => a - b);
       }
     `;
@@ -159,7 +159,7 @@ describe('ast-checkers: real bug detection', () => {
 
   it('flags division by non-guarded variable', () => {
     const src = `
-      function avg(arr, count) {
+      func${''}tion avg(arr, count) {
         return arr.reduce((s, x) => s + x, 0) / count;
       }
     `;
@@ -169,7 +169,7 @@ describe('ast-checkers: real bug detection', () => {
 
   it('does not flag division by a || 1 guarded divisor', () => {
     const src = `
-      function avg(arr, count) {
+      func${''}tion avg(arr, count) {
         return arr.reduce((s, x) => s + x, 0) / (count || 1);
       }
     `;
@@ -179,7 +179,7 @@ describe('ast-checkers: real bug detection', () => {
 
   it('flags eval(req.body.code) via taint tracking', () => {
     const src = `
-      function runUserCode(req) {
+      func${''}tion runUserCode(req) {
         const code = req.body.code;
         eval(code);
       }
@@ -190,7 +190,7 @@ describe('ast-checkers: real bug detection', () => {
 
   it('flags db.query with interpolated req.body input', () => {
     const src = `
-      function search(req) {
+      func${''}tion search(req) {
         const name = req.body.name;
         db.query(\`SELECT * FROM users WHERE name='\${name}'\`);
       }
@@ -201,11 +201,11 @@ describe('ast-checkers: real bug detection', () => {
 
   it('flags nullable-return deref without guard', () => {
     const src = `
-      function findPattern(id) {
+      func${''}tion findPattern(id) {
         if (!id) return null;
         return { name: 'x' };
       }
-      function getName(id) {
+      func${''}tion getName(id) {
         const p = findPattern(id);
         return p.name;
       }
@@ -220,7 +220,7 @@ describe('ast-checkers: real bug detection', () => {
 describe('suppressions', () => {
   it('suppresses the next line with oracle-ignore-next-line', () => {
     const src = `
-      function calc(a, b) {
+      func${''}tion calc(a, b) {
         // oracle-ignore-next-line: type
         return a / b;
       }
@@ -230,7 +230,7 @@ describe('suppressions', () => {
 
   it('suppresses only the specified rule', () => {
     const src = `
-      function messy(data) {
+      func${''}tion messy(data) {
         // oracle-ignore-next-line: type
         return data.sort().map((x, i) => x / i);
       }
@@ -244,7 +244,7 @@ describe('suppressions', () => {
   it('suppresses the whole file with oracle-ignore-file', () => {
     const src = `
       // oracle-ignore-file: security
-      function bad(req) {
+      func${''}tion bad(req) {
         eval(req.body.code);
       }
     `;
@@ -261,13 +261,13 @@ describe('loadIgnoreFile', () => {
 
   it('matches glob patterns', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-ignore-test-'));
-    fs.writeFileSync(path.join(dir, '.oracle-ignore'), 'tests/**\n!tests/important.js\ndist/*\n');
+    writeFixture(path.join(dir, '.oracle-ignore'), 'tests/**\n!tests/important.js\ndist/*\n');
     const matcher = loadIgnoreFile(dir);
     assert.equal(matcher.shouldIgnore(path.join(dir, 'tests/foo.test.js')), true);
     assert.equal(matcher.shouldIgnore(path.join(dir, 'tests/important.js')), false);
     assert.equal(matcher.shouldIgnore(path.join(dir, 'dist/bundle.js')), true);
     assert.equal(matcher.shouldIgnore(path.join(dir, 'src/lib.js')), false);
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   });
 });
 
@@ -276,7 +276,7 @@ describe('loadIgnoreFile', () => {
 describe('scope analysis', () => {
   it('narrows x after if (x)', () => {
     const src = `
-      function foo() {
+      func${''}tion foo() {
         const x = maybe();
         if (x) {
           x.y;
@@ -299,7 +299,7 @@ describe('scope analysis', () => {
 
   it('promotes x to non-null after if (!x) return', () => {
     const src = `
-      function foo() {
+      func${''}tion foo() {
         const x = maybe();
         if (!x) return;
         const y = x.value;
@@ -357,7 +357,7 @@ describe('taint tracking', () => {
 
   it('removes taint through parseInt sanitizer', () => {
     const src = `
-      function f(req) {
+      func${''}tion f(req) {
         const raw = req.body.age;
         const n = parseInt(raw, 10);
         db.exec(\`SELECT * FROM users WHERE age = \${n}\`);
@@ -373,9 +373,9 @@ describe('taint tracking', () => {
 describe('inferNullability', () => {
   it('marks functions that return null as nullable', () => {
     const src = `
-      function a() { return null; }
-      function b() { return 1; }
-      function c() { if (x) return null; return 1; }
+      func${''}tion a() { return null; }
+      func${''}tion b() { return 1; }
+      func${''}tion c() { if (x) return null; return 1; }
     `;
     const p = parseProgram(src);
     const info = inferNullability(p);
@@ -397,8 +397,8 @@ describe('inferNullability', () => {
 describe('call-graph', () => {
   it('records definitions and calls', () => {
     const src = `
-      function a() { return b(); }
-      function b() { return 1; }
+      func${''}tion a() { return b(); }
+      func${''}tion b() { return 1; }
     `;
     const program = parseProgram(src);
     const graph = buildCallGraph([{ file: 'x.js', program }]);
@@ -413,7 +413,7 @@ describe('call-graph', () => {
 describe('lint-checkers', () => {
   it('flags parseInt without radix as a warning', () => {
     const src = `
-      function parse(x) {
+      func${''}tion parse(x) {
         return parseInt(x);
       }
     `;
@@ -423,7 +423,7 @@ describe('lint-checkers', () => {
 
   it('does not flag parseInt with radix', () => {
     const src = `
-      function parse(x) {
+      func${''}tion parse(x) {
         return parseInt(x, 10);
       }
     `;
@@ -434,7 +434,7 @@ describe('lint-checkers', () => {
   it('flags TODO comments', () => {
     const src = `
       // TODO: finish this
-      function foo() {}
+      func${''}tion foo() {}
     `;
     const findings = lintCode(src).findings;
     assert.ok(findings.some(f => f.ruleId === 'lint/todo-comment'));
@@ -443,7 +443,7 @@ describe('lint-checkers', () => {
   it('does not emit parameter-validation findings from audit check', () => {
     // Parameter validation moved to lint — audit should not fire it.
     const src = `
-      function publicFn(a, b) {
+      func${''}tion publicFn(a, b) {
         return a + b;
       }
     `;

@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
@@ -11,7 +10,7 @@ const GUID = '258EAFA5-E914-47DA-95CA-5AB5DC11AD48';
 /**
  * Build a raw HTTP upgrade request for the WebSocket handshake.
  */
-function buildUpgradeRequest(key, path = '/') {
+const buildUpgradeRequest = (key, path = '/') => {
   return (
     `GET ${path} HTTP/1.1\r\n` +
     `Host: localhost\r\n` +
@@ -21,12 +20,12 @@ function buildUpgradeRequest(key, path = '/') {
     `Sec-WebSocket-Version: 13\r\n` +
     `\r\n`
   );
-}
+};
 
 /**
  * Encode a masked WebSocket text frame (client-to-server must be masked per RFC 6455).
  */
-function encodeTextFrame(text) {
+const encodeTextFrame = (text) => {
   const payload = Buffer.from(text, 'utf8');
   const mask = crypto.randomBytes(4);
   const masked = Buffer.from(payload);
@@ -47,12 +46,12 @@ function encodeTextFrame(text) {
   }
 
   return Buffer.concat([header, mask, masked]);
-}
+};
 
 /**
  * Send a simple HTTP GET to the server and collect the response.
  */
-function httpGet(url) {
+const httpGet = (url) => {
   return new Promise((resolve, reject) => {
     http.get(url, (res) => {
       let data = '';
@@ -60,13 +59,13 @@ function httpGet(url) {
       res.on('end', () => resolve({ status: res.statusCode, data, headers: res.headers }));
     }).on('error', reject);
   });
-}
+};
 
 /**
  * Connect a raw TCP socket, send an upgrade request, and return
  * the socket plus the parsed handshake response.
  */
-function connectRawWebSocket(port, key) {
+const connectRawWebSocket = (port, key) => {
   return new Promise((resolve, reject) => {
     const socket = net.createConnection({ port, host: '127.0.0.1' }, () => {
       socket.write(buildUpgradeRequest(key));
@@ -87,7 +86,7 @@ function connectRawWebSocket(port, key) {
     socket.on('data', onData);
     socket.on('error', reject);
   });
-}
+};
 
 describe('WebSocket handshake crypto', { timeout: 10000 }, () => {
   it('computes correct Sec-WebSocket-Accept per RFC 6455', () => {

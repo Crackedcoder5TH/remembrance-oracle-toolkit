@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -20,19 +19,19 @@ const { reflectionScore } = require('../src/core/reflection-serf');
 
 // ─── Helpers ────────────────────────────────────────────────────
 
-function sineWave(n, periods = 4, phase = 0) {
+const sineWave = (n, periods = 4, phase = 0) => {
   const out = new Array(n);
   for (let i = 0; i < n; i++) {
     out[i] = Math.sin(2 * Math.PI * periods * (i / n) + phase);
   }
   return out;
-}
-function trendWave(n, slope = 0.01, intercept = 0) {
+};
+const trendWave = (n, slope = 0.01, intercept = 0) => {
   const out = new Array(n);
   for (let i = 0; i < n; i++) out[i] = intercept + slope * i;
   return out;
-}
-function flatNoise(n, mean = 0.5, jitter = 0.01) {
+};
+const flatNoise = (n, mean = 0.5, jitter = 0.01) => {
   // Deterministic LCG — avoids the periodic structure of Math.sin.
   const out = new Array(n);
   let x = 0.371234;
@@ -41,14 +40,14 @@ function flatNoise(n, mean = 0.5, jitter = 0.01) {
     out[i] = mean + ((x / 233280) - 0.5) * 2 * jitter;
   }
   return out;
-}
+};
 
 const NOW = Date.parse('2026-04-23T00:00:00Z');
 const MS = { d: 86_400_000, h: 3_600_000, min: 60_000, s: 1_000 };
 
-function ledger({ startISO, endISO, cadence }) {
+const ledger = ({ startISO, endISO, cadence }) => {
   return { observed_start: startISO, observed_end: endISO, cadence };
-}
+};
 
 // ─── Helper validation ─────────────────────────────────────────
 

@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,23 +38,23 @@ const CANNED = {
 
 const _realFetch = global.fetch;
 
-function stubFetchOk(payload = CANNED) {
+const stubFetchOk = (payload = CANNED) => {
   global.fetch = async () => ({
     ok: true,
     status: 200,
     json: async () => payload,
   });
-}
+};
 
-function stubFetchThrows() {
+const stubFetchThrows = () => {
   global.fetch = async () => { throw new Error('ECONNREFUSED'); };
-}
+};
 
 // Drive the shared field hot: a low-coherence / high-cost reading makes
 // globalEntropy = cost / (coherence + ε) shoot well past the threshold.
-function pushFieldHot() {
+const pushFieldHot = () => {
   fc.contribute({ cost: 50, coherence: 0.05, source: 'test:inflame' });
-}
+};
 
 describe('entropy-relaxer.relaxIfHot', () => {
   beforeEach(() => {

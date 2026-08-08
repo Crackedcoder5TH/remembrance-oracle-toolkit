@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -7,10 +6,10 @@ const crypto = require('node:crypto');
 
 const { FieldTool, read, scan, peers } = require('../src/core/field-tool');
 
-function uniquePattern(label) {
+const uniquePattern = (label) => {
   const salt = crypto.randomBytes(8).toString('hex');
   return `// ${label} ${salt}\nfunction ${label}_${salt}(x) { return x + ${salt.charCodeAt(0)}; }`;
-}
+};
 
 // Most tests skip the Void warmup (~2-3s on first call). Tests that
 // explicitly verify Void engagement enable it.

@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * repo-audit.test.js — the audit-by-URL/path surface behind the
@@ -14,19 +14,19 @@ const path = require('node:path');
 
 const { auditRepo, formatReport } = require('../src/audit/repo-audit');
 
-function fixtureRepo() {
+const fixtureRepo = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'repo-audit-fixture-'));
   fs.mkdirSync(path.join(dir, 'src'));
-  fs.writeFileSync(path.join(dir, 'src', 'metrics.js'),
+  writeFixture(path.join(dir, 'src', 'metrics.js'),
     'function averageLatency(samples, window) {\n'
     + '  const rate = samples.length / window\n'
     + '  return rate\n'
     + '}\nmodule.exports = { averageLatency };\n');
-  fs.writeFileSync(path.join(dir, 'src', 'clean.js'),
+  writeFixture(path.join(dir, 'src', 'clean.js'),
     'function add(a, b) {\n  return a + b;\n}\nmodule.exports = { add };\n');
-  fs.writeFileSync(path.join(dir, 'README.md'), '# fixture\n\nA tiny audit fixture repo.\n');
+  writeFixture(path.join(dir, 'README.md'), '# fixture\n\nA tiny audit fixture repo.\n');
   return dir;
-}
+};
 
 test('auditRepo on a local path: map + checker findings + confidentiality', () => {
   const dir = fixtureRepo();
@@ -51,7 +51,7 @@ test('auditRepo on a local path: map + checker findings + confidentiality', () =
     assert.ok(r.structure.minCoherence <= r.structure.medianCoherence);
     assert.ok(r.structure.medianCoherence <= r.structure.maxCoherence);
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   }
 });
 
@@ -71,7 +71,7 @@ test('formatReport renders both outcomes', () => {
     const bad = formatReport({ ok: false, error: 'x' });
     assert.match(bad, /audit failed/);
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   }
 });
 

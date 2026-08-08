@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +8,7 @@ const os = require('os');
 const { MeditationEngine, MEDITATION_DEFAULTS, STATE } =
   require('../src/core/meditation');
 
-function makeStubOracle() {
+const makeStubOracle = () => {
   // Minimal stub matching the Oracle surface meditation expects:
   // stats(), search(), submit(). Returns predictable patterns so the
   // benchmark + activities can run deterministically.
@@ -24,7 +23,7 @@ function makeStubOracle() {
     search: () => patterns,
     submit: () => ({ success: true }),
   };
-}
+};
 
 test('MeditationEngine constructs with defaults', () => {
   const eng = new MeditationEngine(makeStubOracle());

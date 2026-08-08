@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for the ecosystem discovery + auto-wire layer.
@@ -26,10 +26,10 @@ const {
 
 const { resetEventBus } = require('../src/core/events');
 
-function writeManifest(dir, manifest) {
+const writeManifest = (dir, manifest) => {
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'remembrance.json'), JSON.stringify(manifest, null, 2));
-}
+  writeFixture(path.join(dir, 'remembrance.json'), JSON.stringify(manifest, null, 2));
+};
 
 describe('ecosystem: static manifest discovery', () => {
   let root;
@@ -38,7 +38,7 @@ describe('ecosystem: static manifest discovery', () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'eco-'));
   });
   afterEach(() => {
-    if (root && fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true });
+    if (root && fs.existsSync(root)) rmFixture(root, { recursive: true, force: true });
   });
 
   it('finds a manifest in the root directory', () => {
@@ -93,7 +93,7 @@ describe('ecosystem: runtime registry', () => {
     });
   });
   afterEach(() => {
-    if (root && fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true });
+    if (root && fs.existsSync(root)) rmFixture(root, { recursive: true, force: true });
   });
 
   it('announces a module to the local registry', () => {
@@ -118,7 +118,7 @@ describe('ecosystem: runtime registry', () => {
       const rec = announceModule(noManifestDir);
       assert.equal(rec, null);
     } finally {
-      fs.rmSync(noManifestDir, { recursive: true, force: true });
+      rmFixture(noManifestDir, { recursive: true, force: true });
     }
   });
 });
@@ -146,7 +146,7 @@ describe('ecosystem: discoverEcosystem integration', () => {
     });
   });
   afterEach(() => {
-    if (root && fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true });
+    if (root && fs.existsSync(root)) rmFixture(root, { recursive: true, force: true });
   });
 
   it('returns modules + alive + helpers', async () => {
@@ -176,7 +176,7 @@ describe('ecosystem: autoWireAll invokes bindings', () => {
     peerDir = path.join(root, 'peer');
     // A test binding file that records its invocation.
     const bindingPath = path.join(root, 'test-binding.js');
-    fs.writeFileSync(bindingPath, `
+    writeFixture(bindingPath, `
       let _called = 0;
       module.exports = {
         wire(peer) { _called++; module.exports._lastPeer = peer; },
@@ -205,7 +205,7 @@ describe('ecosystem: autoWireAll invokes bindings', () => {
     });
   });
   afterEach(() => {
-    if (root && fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true });
+    if (root && fs.existsSync(root)) rmFixture(root, { recursive: true, force: true });
   });
 
   it('invokes a peer binding when the peer is alive', async () => {
@@ -241,7 +241,7 @@ describe('compliance: todosAllClosed check (friction-exit mitigation)', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'compl-todo-'));
   });
   afterEach(() => {
-    if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
+    if (tmp && fs.existsSync(tmp)) rmFixture(tmp, { recursive: true, force: true });
   });
 
   it('no todos recorded = check passes by default', () => {

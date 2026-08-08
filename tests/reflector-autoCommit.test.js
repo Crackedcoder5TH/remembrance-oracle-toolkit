@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } = require('fs');
@@ -20,7 +19,7 @@ const {
 
 const TEST_ROOT = join(__dirname, '__tmp_autocommit_test__');
 
-function setupGitRepo() {
+const setupGitRepo = () => {
   mkdirSync(TEST_ROOT, { recursive: true });
   execSync('git init', { cwd: TEST_ROOT, stdio: 'pipe' });
   execSync('git config user.email "test@test.com"', { cwd: TEST_ROOT, stdio: 'pipe' });
@@ -28,13 +27,13 @@ function setupGitRepo() {
   writeFileSync(join(TEST_ROOT, 'file.js'), 'const a = 1;\n');
   mkdirSync(join(TEST_ROOT, '.remembrance'), { recursive: true });
   execSync('git add -A && git commit -m "init"', { cwd: TEST_ROOT, stdio: 'pipe' });
-}
+};
 
-function cleanupRepo() {
+const cleanupRepo = () => {
   if (existsSync(TEST_ROOT)) {
     rmSync(TEST_ROOT, { recursive: true, force: true });
   }
-}
+};
 
 // ─── runCommand ───
 

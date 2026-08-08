@@ -1,5 +1,4 @@
 /**
- * @oracle-infrastructure
  *
  * Mutations in this file write internal ecosystem state
  * (entropy.json, pattern library, lock files, ledger, journal,
@@ -17,8 +16,7 @@ const os = require('os');
 const path = require('path');
 const { MCPServer, TOOLS } = require('../src/mcp/server');
 const { RemembranceOracle } = require('../src/api/oracle');
-const { isolateField } = require('./helpers');
-
+const { isolateField, rmFixture } = require('./helpers');
 describe('MCPServer', () => {
   let server;
   let tmpDir;
@@ -38,7 +36,7 @@ describe('MCPServer', () => {
   after(() => {
     if (server) server.stop();
     _iso.restore();
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+    try { rmFixture(tmpDir, { recursive: true, force: true }); } catch (_) {}
   });
 
   it('initializes', async () => {

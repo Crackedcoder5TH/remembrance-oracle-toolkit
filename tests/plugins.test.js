@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -7,7 +7,7 @@ const os = require('os');
 const { PluginManager, HookEmitter, VALID_HOOKS } = require('../src/plugins/manager');
 
 // ─── Mock oracle for testing ───
-function createMockOracle() {
+const createMockOracle = () => {
   return {
     patterns: { getAll: () => [], summary: () => ({ total: 0 }) },
     submit: () => ({ accepted: true }),
@@ -15,7 +15,7 @@ function createMockOracle() {
     search: () => [],
     store: { getAll: () => [] },
   };
-}
+};
 
 describe('HookEmitter', () => {
   it('emits events to listeners', () => {
@@ -378,7 +378,7 @@ describe('Plugin file loading', () => {
   it('loads a plugin from a file', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-test-'));
     const pluginFile = path.join(tmpDir, 'test-plugin.js');
-    fs.writeFileSync(pluginFile, `
+    writeFixture(pluginFile, `
       module.exports = {
         name: 'file-plugin',
         version: '1.0.0',
@@ -395,7 +395,7 @@ describe('Plugin file loading', () => {
     assert.strictEqual(pm.count, 1);
 
     pm.unload('file-plugin');
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('throws on missing file', () => {
@@ -406,7 +406,7 @@ describe('Plugin file loading', () => {
 
   it('loads from pluginDir', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-dir-'));
-    fs.writeFileSync(path.join(tmpDir, 'my-plugin.js'), `
+    writeFixture(path.join(tmpDir, 'my-plugin.js'), `
       module.exports = { name: 'dir-plugin', version: '1.0.0', activate() {} };
     `);
 
@@ -416,7 +416,7 @@ describe('Plugin file loading', () => {
     assert.strictEqual(manifest.name, 'dir-plugin');
 
     pm.unload('dir-plugin');
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 });
 

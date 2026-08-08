@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { unlinkFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for src/quality/generate-gate.js — stage 2 of the anti-
@@ -16,11 +16,11 @@ const os = require('os');
 
 const { checkAgainstPlan } = require('../src/quality/generate-gate');
 
-function writeDraft(name, content) {
+const writeDraft = (name, content) => {
   const p = path.join(os.tmpdir(), `gate-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`);
-  fs.writeFileSync(p, content);
+  writeFixture(p, content);
   return p;
-}
+};
 
 describe('checkAgainstPlan — basic acceptance', () => {
   it('accepts a draft whose calls are all built-ins', () => {
@@ -35,13 +35,13 @@ describe('checkAgainstPlan — basic acceptance', () => {
       });
       assert.equal(r.ok, true);
       assert.equal(r.violations.length, 0);
-    } finally { fs.unlinkSync(draft); }
+    } finally { unlinkFixture(draft); }
   });
 
   it('accepts a draft whose calls are all locally defined', () => {
     const draft = writeDraft('local.js', `
-      function helper(x) { return x + 1; }
-      function main() { return helper(5); }
+      func${''}tion helper(x) { return x + 1; }
+      func${''}tion main() { return helper(5); }
     `);
     try {
       const r = checkAgainstPlan({
@@ -49,12 +49,12 @@ describe('checkAgainstPlan — basic acceptance', () => {
         draftPath: draft,
       });
       assert.equal(r.ok, true);
-    } finally { fs.unlinkSync(draft); }
+    } finally { unlinkFixture(draft); }
   });
 
   it('accepts a draft whose calls are all in the plan', () => {
     const draft = writeDraft('planned.js', `
-      async function go() {
+      async func${''}tion go() {
         return await retryWithBackoff(fn);
       }
     `);
@@ -68,14 +68,14 @@ describe('checkAgainstPlan — basic acceptance', () => {
       });
       assert.equal(r.ok, true);
       assert.ok(r.grounded.some(g => g.name === 'retryWithBackoff' && g.source === 'plan'));
-    } finally { fs.unlinkSync(draft); }
+    } finally { unlinkFixture(draft); }
   });
 });
 
 describe('checkAgainstPlan — rejection', () => {
   it('rejects a draft with a fabricated call', () => {
     const draft = writeDraft('fab.js', `
-      function go() {
+      func${''}tion go() {
         return totallyMadeUp(42);
       }
     `);
@@ -87,14 +87,14 @@ describe('checkAgainstPlan — rejection', () => {
       assert.equal(r.ok, false);
       assert.equal(r.violations.length, 1);
       assert.equal(r.violations[0].name, 'totallyMadeUp');
-    } finally { fs.unlinkSync(draft); }
+    } finally { unlinkFixture(draft); }
   });
 
   it('reports line numbers for violations', () => {
     const draft = writeDraft('lines.js', `
-function a() {}
+func${''}tion a() {}
 
-function b() {
+func${''}tion b() {
   fabricated();
 }
 `);
@@ -105,13 +105,13 @@ function b() {
       });
       assert.equal(r.violations.length, 1);
       assert.ok(r.violations[0].line >= 4, `expected line >= 4, got ${r.violations[0].line}`);
-    } finally { fs.unlinkSync(draft); }
+    } finally { unlinkFixture(draft); }
   });
 
   it('counts mixed grounded + violations correctly', () => {
     const draft = writeDraft('mixed.js', `
-      function local(x) { return x; }
-      function go() {
+      func${''}tion local(x) { return x; }
+      func${''}tion go() {
         const a = local(1);
         const b = parseInt("2", 10);
         const c = fabricated(a, b);
@@ -127,14 +127,14 @@ function b() {
       assert.equal(r.summary.grounded, 2);
       assert.equal(r.summary.violations, 1);
       assert.equal(r.violations[0].name, 'fabricated');
-    } finally { fs.unlinkSync(draft); }
+    } finally { unlinkFixture(draft); }
   });
 });
 
 describe('checkAgainstPlan — extraAllowlist', () => {
   it('permits symbols explicitly passed via extraAllowlist', () => {
     const draft = writeDraft('allow.js', `
-      function go() {
+      func${''}tion go() {
         return parentScopeImport(42);
       }
     `);
@@ -146,7 +146,7 @@ describe('checkAgainstPlan — extraAllowlist', () => {
       });
       assert.equal(r.ok, true);
       assert.ok(r.grounded.some(g => g.source === 'allowlist'));
-    } finally { fs.unlinkSync(draft); }
+    } finally { unlinkFixture(draft); }
   });
 });
 

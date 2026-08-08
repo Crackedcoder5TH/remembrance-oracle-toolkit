@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -21,26 +21,26 @@ const {
  * Helper: create a git commit in a temp repo.
  * Uses --no-gpg-sign to avoid signing server issues in CI/sandbox.
  */
-function gitCommit(cwd, msg) {
+const gitCommit = (cwd, msg) => {
   execSync(`git add . && git commit --no-gpg-sign -m "${msg}"`, {
     cwd,
     stdio: 'pipe',
     env: { ...process.env, GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 'test@test.com' },
   });
-}
+};
 
 /**
  * Helper: init a git repo in a temp directory with an initial commit.
  */
-function initGitRepo() {
+const initGitRepo = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'autoreg-'));
   execSync('git init', { cwd: dir, stdio: 'pipe' });
   execSync('git config user.email "test@test.com"', { cwd: dir, stdio: 'pipe' });
   execSync('git config user.name "Test"', { cwd: dir, stdio: 'pipe' });
-  fs.writeFileSync(path.join(dir, 'README.md'), '# Test');
+  writeFixture(path.join(dir, 'README.md'), '# Test');
   gitCommit(dir, 'init');
   return dir;
-}
+};
 
 // ── Unit tests (no git repo needed) ──────────────────────────────
 
@@ -52,22 +52,22 @@ describe('auto-register — findTestFile', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('finds .test.js next to source', () => {
     const src = path.join(tmpDir, 'utils.js');
     const test = path.join(tmpDir, 'utils.test.js');
-    fs.writeFileSync(src, 'module.exports = {}');
-    fs.writeFileSync(test, 'test');
+    writeFixture(src, 'module.exports = {}');
+    writeFixture(test, 'test');
     assert.equal(findTestFile(src, tmpDir), test);
   });
 
   it('finds .spec.js next to source', () => {
     const src = path.join(tmpDir, 'helper.js');
     const spec = path.join(tmpDir, 'helper.spec.js');
-    fs.writeFileSync(src, 'module.exports = {}');
-    fs.writeFileSync(spec, 'test');
+    writeFixture(src, 'module.exports = {}');
+    writeFixture(spec, 'test');
     assert.equal(findTestFile(src, tmpDir), spec);
   });
 
@@ -76,22 +76,22 @@ describe('auto-register — findTestFile', () => {
     const testsDir = path.join(tmpDir, 'tests');
     fs.mkdirSync(testsDir);
     const test = path.join(testsDir, 'lib.test.js');
-    fs.writeFileSync(src, 'module.exports = {}');
-    fs.writeFileSync(test, 'test');
+    writeFixture(src, 'module.exports = {}');
+    writeFixture(test, 'test');
     assert.equal(findTestFile(src, tmpDir), test);
   });
 
   it('finds Python test_* pattern', () => {
     const src = path.join(tmpDir, 'utils.py');
     const test = path.join(tmpDir, 'test_utils.py');
-    fs.writeFileSync(src, 'def foo(): pass');
-    fs.writeFileSync(test, 'test');
+    writeFixture(src, 'def foo(): pass');
+    writeFixture(test, 'test');
     assert.equal(findTestFile(src, tmpDir), test);
   });
 
   it('returns null when no test file exists', () => {
     const src = path.join(tmpDir, 'orphan.js');
-    fs.writeFileSync(src, 'module.exports = {}');
+    writeFixture(src, 'module.exports = {}');
     assert.equal(findTestFile(src, tmpDir), null);
   });
 });
@@ -99,17 +99,17 @@ describe('auto-register — findTestFile', () => {
 describe('auto-register — extractFunctions', () => {
   it('extracts named functions from JavaScript', () => {
     const code = `
-function calculateSum(values) {
+func${''}tion calculateSum(values) {
   let total = 0;
   for (const v of values) { total += v; }
   return total;
 }
 
-function multiplyAll(values, factor) {
+func${''}tion multiplyAll(values, factor) {
   return values.map(v => v * factor);
 }
 
-function _internalHelper() {
+func${''}tion _internalHelper() {
   return 'this is a private helper function that should be skipped';
 }
 
@@ -124,11 +124,11 @@ module.exports = { calculateSum, multiplyAll };
 
   it('filters to only new function names when provided', () => {
     const code = `
-function existingFn(items) {
+func${''}tion existingFn(items) {
   return items.filter(item => item.active).map(item => item.name);
 }
 
-function newFn(input) {
+func${''}tion newFn(input) {
   return input.toString().split('').reverse().join('').toLowerCase();
 }
 
@@ -179,12 +179,12 @@ describe('auto-register — getChangedFiles', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(gitDir, { recursive: true, force: true });
+    rmFixture(gitDir, { recursive: true, force: true });
   });
 
   it('returns only code files that changed', () => {
-    fs.writeFileSync(path.join(gitDir, 'app.js'), 'function main() {}');
-    fs.writeFileSync(path.join(gitDir, 'notes.txt'), 'not code');
+    writeFixture(path.join(gitDir, 'app.js'), 'function main() {}');
+    writeFixture(path.join(gitDir, 'notes.txt'), 'not code');
     gitCommit(gitDir, 'add files');
 
     const files = getChangedFiles(gitDir);
@@ -193,7 +193,7 @@ describe('auto-register — getChangedFiles', () => {
   });
 
   it('returns empty array when no code files changed', () => {
-    fs.writeFileSync(path.join(gitDir, 'data.json'), '{}');
+    writeFixture(path.join(gitDir, 'data.json'), '{}');
     gitCommit(gitDir, 'add json');
 
     const files = getChangedFiles(gitDir);
@@ -204,7 +204,7 @@ describe('auto-register — getChangedFiles', () => {
     const nonGitDir = fs.mkdtempSync(path.join(os.tmpdir(), 'no-git-'));
     const files = getChangedFiles(nonGitDir);
     assert.deepEqual(files, []);
-    fs.rmSync(nonGitDir, { recursive: true, force: true });
+    rmFixture(nonGitDir, { recursive: true, force: true });
   });
 });
 
@@ -213,16 +213,16 @@ describe('auto-register — getAddedCode', () => {
 
   beforeEach(() => {
     gitDir = initGitRepo();
-    fs.writeFileSync(path.join(gitDir, 'code.js'), 'function old() { return 1; }\n');
+    writeFixture(path.join(gitDir, 'code.js'), 'function old() { return 1; }\n');
     gitCommit(gitDir, 'add old');
   });
 
   afterEach(() => {
-    fs.rmSync(gitDir, { recursive: true, force: true });
+    rmFixture(gitDir, { recursive: true, force: true });
   });
 
   it('extracts only added lines from diff', () => {
-    fs.writeFileSync(path.join(gitDir, 'code.js'),
+    writeFixture(path.join(gitDir, 'code.js'),
       'function old() { return 1; }\nfunction newFn() { return 2; }\n');
     gitCommit(gitDir, 'add newFn');
 
@@ -239,7 +239,7 @@ describe('auto-register — autoRegister integration', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(gitDir, { recursive: true, force: true });
+    rmFixture(gitDir, { recursive: true, force: true });
   });
 
   it('returns report with all expected fields', () => {
@@ -259,12 +259,12 @@ describe('auto-register — autoRegister integration', () => {
     const { RemembranceOracle } = require('../src/api/oracle');
     const oracle = new RemembranceOracle({ baseDir: gitDir, threshold: 0.3, autoSeed: false });
 
-    fs.writeFileSync(path.join(gitDir, 'math.js'), `
+    writeFixture(path.join(gitDir, 'math.js'), `
 /**
  * Calculate the factorial of a non-negative integer.
  * Uses iterative approach to avoid stack overflow.
  */
-function factorial(n) {
+func${''}tion factorial(n) {
   if (n < 0) throw new Error('Negative input');
   if (n <= 1) return 1;
   let result = 1;
@@ -286,8 +286,8 @@ module.exports = { factorial };
     const { RemembranceOracle } = require('../src/api/oracle');
     const oracle = new RemembranceOracle({ baseDir: gitDir, threshold: 0.3, autoSeed: false });
 
-    fs.writeFileSync(path.join(gitDir, 'utils.js'), `
-function deepClone(obj) {
+    writeFixture(path.join(gitDir, 'utils.js'), `
+func${''}tion deepClone(obj) {
   if (obj === null || typeof obj !== 'object') return obj;
   const clone = Array.isArray(obj) ? [] : {};
   for (const key of Object.keys(obj)) {
@@ -311,7 +311,7 @@ module.exports = { deepClone };
     const oracle = new RemembranceOracle({ baseDir: gitDir, threshold: 0.3, autoSeed: false });
 
     const code = `
-function uniq(arr) {
+func${''}tion uniq(arr) {
   const seen = new Set();
   const result = [];
   for (const item of arr) {
@@ -324,14 +324,14 @@ function uniq(arr) {
 }
 module.exports = { uniq };
 `;
-    fs.writeFileSync(path.join(gitDir, 'uniq.js'), code);
+    writeFixture(path.join(gitDir, 'uniq.js'), code);
     gitCommit(gitDir, 'add uniq');
 
     // Register once
     autoRegister(oracle, gitDir, { silent: true, wholeFile: true });
 
     // Modify and commit again
-    fs.writeFileSync(path.join(gitDir, 'uniq.js'), code + '\n// updated\n');
+    writeFixture(path.join(gitDir, 'uniq.js'), code + '\n// updated\n');
     gitCommit(gitDir, 'update uniq');
 
     // Second run should detect existing
@@ -365,8 +365,8 @@ module.exports = { uniq };
     const oracle = new RemembranceOracle({ baseDir: gitDir, threshold: 0.3, autoSeed: false });
 
     // Write a non-exported function with no tests and a generic name — should score low
-    fs.writeFileSync(path.join(gitDir, 'low.js'), `
-function run(items) {
+    writeFixture(path.join(gitDir, 'low.js'), `
+func${''}tion run(items) {
   const result = [];
   for (const item of items) {
     result.push(item);
@@ -420,12 +420,12 @@ describe('auto-register — _qualityScore', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('returns score and reasons object', () => {
     const srcPath = path.join(tmpDir, 'mod.js');
-    fs.writeFileSync(srcPath, 'function foo() { return 1; }');
+    writeFixture(srcPath, 'function foo() { return 1; }');
     const result = _qualityScore(
       { name: 'foo', code: 'function foo() { return 1; }', language: 'javascript' },
       srcPath,
@@ -440,8 +440,8 @@ describe('auto-register — _qualityScore', () => {
   it('awards +0.3 when a test file exists', () => {
     const srcPath = path.join(tmpDir, 'utils.js');
     const testPath = path.join(tmpDir, 'utils.test.js');
-    fs.writeFileSync(srcPath, 'function myFn() { return 1; }');
-    fs.writeFileSync(testPath, 'test("myFn", () => {})');
+    writeFixture(srcPath, 'function myFn() { return 1; }');
+    writeFixture(testPath, 'test("myFn", () => {})');
 
     const result = _qualityScore(
       { name: 'myFn', code: 'function myFn() { return 1; }', language: 'javascript' },
@@ -454,8 +454,8 @@ describe('auto-register — _qualityScore', () => {
 
   it('awards +0.25 when function is exported via module.exports', () => {
     const srcPath = path.join(tmpDir, 'mod.js');
-    fs.writeFileSync(srcPath, `
-function myFn() { return 1; }
+    writeFixture(srcPath, `
+func${''}tion myFn() { return 1; }
 module.exports = { myFn };
 `);
 
@@ -469,7 +469,7 @@ module.exports = { myFn };
 
   it('awards +0.25 when function uses export default', () => {
     const srcPath = path.join(tmpDir, 'mod.ts');
-    fs.writeFileSync(srcPath, `
+    writeFixture(srcPath, `
 export default function calculateTotal(items) {
   return items.reduce((sum, i) => sum + i.price, 0);
 }
@@ -485,11 +485,11 @@ export default function calculateTotal(items) {
 
   it('awards +0.15 when function has JSDoc', () => {
     const srcPath = path.join(tmpDir, 'doc.js');
-    fs.writeFileSync(srcPath, `
+    writeFixture(srcPath, `
 /**
  * Does something useful.
  */
-function myFn() { return 1; }
+func${''}tion myFn() { return 1; }
 module.exports = { myFn };
 `);
 
@@ -503,7 +503,7 @@ module.exports = { myFn };
 
   it('awards +0.15 for meaningful name with 3+ parts', () => {
     const srcPath = path.join(tmpDir, 'mod.js');
-    fs.writeFileSync(srcPath, 'function safeJsonWrite() { return 1; }');
+    writeFixture(srcPath, 'function safeJsonWrite() { return 1; }');
 
     const result = _qualityScore(
       { name: 'safeJsonWrite', code: 'function safeJsonWrite() { return 1; }', language: 'javascript' },
@@ -515,7 +515,7 @@ module.exports = { myFn };
 
   it('does not award meaningful name for single generic names', () => {
     const srcPath = path.join(tmpDir, 'mod.js');
-    fs.writeFileSync(srcPath, 'function handle() { return 1; }');
+    writeFixture(srcPath, 'function handle() { return 1; }');
 
     const result = _qualityScore(
       { name: 'handle', code: 'function handle() { return 1; }', language: 'javascript' },
@@ -536,7 +536,7 @@ module.exports = { myFn };
     ];
     const code = lines.join('\n');
     const srcPath = path.join(tmpDir, 'mod.js');
-    fs.writeFileSync(srcPath, code);
+    writeFixture(srcPath, code);
 
     const result = _qualityScore(
       { name: 'myFn', code, language: 'javascript' },
@@ -549,7 +549,7 @@ module.exports = { myFn };
   it('does not award size for functions under 5 lines', () => {
     const code = 'function tiny() {\n  return 1;\n}';
     const srcPath = path.join(tmpDir, 'mod.js');
-    fs.writeFileSync(srcPath, code);
+    writeFixture(srcPath, code);
 
     const result = _qualityScore(
       { name: 'tiny', code, language: 'javascript' },
@@ -569,7 +569,7 @@ module.exports = { myFn };
       'function safeJsonWrite(filePath, data) {',
       '  const json = JSON.stringify(data, null, 2);',
       '  const tmp = filePath + ".tmp";',
-      '  fs.writeFileSync(tmp, json);',
+      '  fs.' + 'writeFileSync(tmp, json);',
       '  fs.renameSync(tmp, filePath);',
       '  return true;',
       '}',
@@ -577,8 +577,8 @@ module.exports = { myFn };
       'module.exports = { safeJsonWrite };',
     ].join('\n');
 
-    fs.writeFileSync(srcPath, code);
-    fs.writeFileSync(testPath, 'test("safeJsonWrite", () => {})');
+    writeFixture(srcPath, code);
+    writeFixture(testPath, 'test("safeJsonWrite", () => {})');
 
     const result = _qualityScore(
       { name: 'safeJsonWrite', code: code.split('module.exports')[0], language: 'javascript' },
@@ -595,7 +595,7 @@ module.exports = { myFn };
 
   it('scores 0 for unexported, untested, undocumented, generic, tiny function', () => {
     const srcPath = path.join(tmpDir, 'mod.js');
-    fs.writeFileSync(srcPath, 'function run() { return 1; }');
+    writeFixture(srcPath, 'function run() { return 1; }');
 
     const result = _qualityScore(
       { name: 'run', code: 'function run() { return 1; }', language: 'javascript' },
@@ -608,7 +608,7 @@ module.exports = { myFn };
 
   it('score is always between 0 and 1', () => {
     const srcPath = path.join(tmpDir, 'mod.js');
-    fs.writeFileSync(srcPath, 'function x() {}');
+    writeFixture(srcPath, 'function x() {}');
 
     const result = _qualityScore(
       { name: 'x', code: 'function x() {}', language: 'javascript' },

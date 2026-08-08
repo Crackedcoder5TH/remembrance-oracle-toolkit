@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 
 /**
  * Tests for the session compliance ledger + commit gate.
@@ -34,7 +34,7 @@ describe('compliance: lifecycle', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'compl-'));
   });
   afterEach(() => {
-    if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
+    if (tmp && fs.existsSync(tmp)) rmFixture(tmp, { recursive: true, force: true });
     delete process.env.ORACLE_WORKFLOW;
   });
 
@@ -71,7 +71,7 @@ describe('compliance: scoring', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'compl-'));
   });
   afterEach(() => {
-    if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
+    if (tmp && fs.existsSync(tmp)) rmFixture(tmp, { recursive: true, force: true });
   });
 
   it('empty session is partial (no hooks, no end sweep yet)', () => {
@@ -143,7 +143,7 @@ describe('compliance: commit gate', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'compl-'));
   });
   afterEach(() => {
-    if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
+    if (tmp && fs.existsSync(tmp)) rmFixture(tmp, { recursive: true, force: true });
     delete process.env.ORACLE_WORKFLOW;
   });
 
@@ -204,7 +204,7 @@ describe('compliance: event bus wiring', () => {
   });
   afterEach(() => {
     resetCompliance();
-    if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
+    if (tmp && fs.existsSync(tmp)) rmFixture(tmp, { recursive: true, force: true });
   });
 
   it('wireCompliance captures search events from the bus', () => {

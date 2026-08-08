@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -16,12 +15,12 @@ const {
 const { SQLiteStore, DatabaseSync } = require('../src/store/sqlite');
 const { makeTempDir } = require('./helpers');
 
-function createStore(label) {
+const createStore = (label) => {
   const base = makeTempDir(label);
   return new SQLiteStore(base);
-}
+};
 
-function addPattern(store, name, opts = {}) {
+const addPattern = (store, name, opts = {}) => {
   store.addPattern({
     name,
     code: opts.code || `function ${name.replace(/[^a-zA-Z0-9]/g, '_')}() { return 1; }`,
@@ -31,7 +30,7 @@ function addPattern(store, name, opts = {}) {
     testCode: opts.testCode || null,
     patternType: opts.patternType || 'utility',
   });
-}
+};
 
 const REQUIRED_TABLES = [
   'entries', 'patterns', 'meta', 'audit_log', 'candidates',

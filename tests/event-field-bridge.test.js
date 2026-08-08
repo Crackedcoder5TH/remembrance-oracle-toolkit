@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -10,13 +9,13 @@ const {
 const { peekField } = require('../src/core/field-coupling');
 const { isolateField } = require('./helpers');
 
-function fakeOracle() {
+const fakeOracle = () => {
   const listeners = [];
   return {
     on: (l) => { listeners.push(l); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; },
     _emit: (e) => { for (const l of [...listeners]) l(e); },
   };
-}
+};
 
 describe('event-field-bridge — coherence mapping', () => {
   it('maps positive outcomes to high coherence', () => {

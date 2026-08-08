@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 
 /**
  * Tests for the cross-subsystem event reactions.
@@ -27,7 +27,7 @@ describe('core/reactions: cross-subsystem event fan-out', () => {
   });
   afterEach(() => {
     resetReactions();
-    if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
+    if (tmp && fs.existsSync(tmp)) rmFixture(tmp, { recursive: true, force: true });
   });
 
   it('feedback.fix updates the audit calibration store', () => {

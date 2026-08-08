@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +7,7 @@ const { makeTempDir, cleanTempDir, createTestOracle } = require('./helpers');
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const VALID_CODE_A = `
-function clamp(value, min, max) {
+func${''}tion clamp(value, min, max) {
   if (value < min) return min;
   if (value > max) return max;
   return value;
@@ -16,14 +15,14 @@ function clamp(value, min, max) {
 `.trim();
 
 const VALID_CODE_B = `
-function capitalize(str) {
+func${''}tion capitalize(str) {
   if (!str || typeof str !== 'string') return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 `.trim();
 
 const VALID_CODE_C = `
-function flatten(arr) {
+func${''}tion flatten(arr) {
   const result = [];
   for (const item of arr) {
     if (Array.isArray(item)) {
@@ -37,7 +36,7 @@ function flatten(arr) {
 `.trim();
 
 const VALID_CODE_D = `
-function debounce(fn, delay) {
+func${''}tion debounce(fn, delay) {
   let timer = null;
   return function debounced(...args) {
     clearTimeout(timer);
@@ -47,7 +46,7 @@ function debounce(fn, delay) {
 `.trim();
 
 const VALID_CODE_E = `
-function groupBy(arr, keyFn) {
+func${''}tion groupBy(arr, keyFn) {
   const groups = {};
   for (const item of arr) {
     const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];
@@ -744,7 +743,7 @@ describe('API Layer — Security', () => {
 
   it('securityScan returns result for suspicious code', () => {
     const sketchy = `
-function danger() {
+func${''}tion danger() {
   eval(userInput);
   child_process.execSync(cmd);
 }

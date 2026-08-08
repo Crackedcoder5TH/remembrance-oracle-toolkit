@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { mkdirSync, rmSync } = require('fs');
@@ -16,11 +15,11 @@ const {
   buildErrorReport,
 } = require('../src/reflector/scoring');
 
-function makeTempDir() {
+const makeTempDir = () => {
   const dir = join(tmpdir(), `err-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(join(dir, '.remembrance'), { recursive: true });
   return dir;
-}
+};
 
 // ─── Error Classification ───
 

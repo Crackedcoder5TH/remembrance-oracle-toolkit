@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -25,7 +25,7 @@ describe('Feature 1: Real-Time WebSocket Feedback Loop', () => {
       author: 'test',
     });
   });
-  afterEach(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+  afterEach(() => rmFixture(tmpDir, { recursive: true, force: true }));
 
   it('emits healing_start on resolve with heal=true', () => {
     const events = [];
@@ -61,7 +61,7 @@ describe('Feature 2: Auto-Promote High-Coherence Candidates', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smart-promote-'));
     oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
   });
-  afterEach(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+  afterEach(() => rmFixture(tmpDir, { recursive: true, force: true }));
 
   it('smartAutoPromote returns correct report shape', () => {
     const result = oracle.smartAutoPromote();
@@ -110,7 +110,7 @@ describe('Feature 3: Error Recovery & Rollback', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rollback-'));
     oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
   });
-  afterEach(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+  afterEach(() => rmFixture(tmpDir, { recursive: true, force: true }));
 
   it('rollback returns error when pattern has no history', () => {
     const result = oracle.rollback('nonexistent');
@@ -176,7 +176,7 @@ describe('Feature 4: Pattern Reliability Score', () => {
       author: 'test',
     });
   });
-  afterEach(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+  afterEach(() => rmFixture(tmpDir, { recursive: true, force: true }));
 
   it('getReliability returns correct shape', () => {
     const patterns = oracle.patterns.getAll();
@@ -238,7 +238,7 @@ describe('Feature 5: Security Covenant Enforcement (Deeper Scan)', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'security-'));
     oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
   });
-  afterEach(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+  afterEach(() => rmFixture(tmpDir, { recursive: true, force: true }));
 
   it('deepSecurityScan catches prototype pollution', () => {
     const { deepSecurityScan } = require('../src/core/covenant');

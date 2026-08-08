@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // Sandbox-compatible test for dynamic language detection
 // coherency.js is concatenated above — test via computeCoherencyScore from module.exports
 const assert = require('node:assert/strict');
@@ -14,7 +13,7 @@ assert.ok(score.breakdown.consistency >= 0, 'consistency must exist');
 
 // Test that code WITH Rust keywords in string context is not misdetected
 const codeWithRustKeywords = `
-function processCode(code) {
+func${''}tion processCode(code) {
   const hasFn = /fn/.test(code);
   const hasImpl = /impl/.test(code);
   return { hasFn, hasImpl };

@@ -72,6 +72,14 @@
    "caught": "Commit BLOCKED: search the oracle first. The reflex the system enforces on every writer was enforced on the writer of its doctrine.",
    "resolution": "Searched, then committed. --no-verify exists and was not used; the bypass is never the path.",
    "receipt": "git log — the doctrine commit"
+  },
+  {
+   "date": "2026-08-08",
+   "gate": "exemption-ratchet (pre-commit)",
+   "doing": "Committing decomposition #4 believing all organs were exemption-free — fractalAudit had read every file GREEN.",
+   "caught": "Surface GREW: the monolith's old @oracle-infrastructure line had ridden into engine.js inside a scooped comment block, and the GREEN verdict was the audit honoring the exemption, not the code passing. The ratchet counts what the audit excuses.",
+   "resolution": "The inherited tag was deleted; engine.js re-audited GREEN on its own merits (annotated accessors, zero mutations). Two gates measuring the same surface from different angles caught what either alone would have missed.",
+   "receipt": "decomposition-4 commit"
   }
  ]
 }

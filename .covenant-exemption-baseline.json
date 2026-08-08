@@ -1,9 +1,9 @@
 {
  "note": "Covenant exemption-surface baseline — the ratchet allows this list to SHRINK only. A new exemption requires an explicit --save-baseline, which also feeds each new file's stored Void-compressor reading into the field (cost of growing the surface).",
- "savedAt": "2026-08-07T18:49:04.606Z",
- "count": 490,
+ "savedAt": "2026-08-08T19:00:08.659Z",
+ "count": 489,
  "byKind": {
-  "infrastructure": 451,
+  "infrastructure": 450,
   "pattern-definitions": 39
  },
  "files": [
@@ -206,7 +206,6 @@
   "src/core/ecosystem.js",
   "src/core/feedback-coherency.js",
   "src/core/feedback-covenant.js",
-  "src/core/field-coupling.js",
   "src/core/field-tool.js",
   "src/core/field-workqueue.js",
   "src/core/function-record.js",

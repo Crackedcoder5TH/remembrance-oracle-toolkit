@@ -94,4 +94,26 @@ function _sortKeysDeep(v) {
   return v;
 }
 
-module.exports = { _dedupePairs, _annotateDataPairs, _sortKeysDeep };
+/**
+ * Annotate orphan rows with human-reviewed verdicts from the tracked
+ * adjudication store (.map-adjudications.json). An orphan is a
+ * measurement, not a sin — this lets the map report REVIEWED structural
+ * loneliness (wired-verified, singleton-by-design, corpus-content,
+ * framework-wired, standalone-tool) separately from NEW orphans, so
+ * fresh loneliness always surfaces while reviewed files stop counting
+ * as open flags. The map only ever READS the store.
+ */
+function _annotateOrphans(orphans, projectPath) {
+  let store = null;
+  try {
+    store = JSON.parse(fs.readFileSync(path.join(projectPath, '.map-adjudications.json'), 'utf8'));
+  } catch { return orphans; /* no store — nothing adjudicated */ }
+  const adj = (store && store.adjudications) || {};
+  for (const o of orphans) {
+    const a = adj[o.rel];
+    if (a && a.verdict) o.adjudicated = { verdict: a.verdict, date: a.date };
+  }
+  return orphans;
+}
+
+module.exports = { _dedupePairs, _annotateDataPairs, _annotateOrphans, _sortKeysDeep };

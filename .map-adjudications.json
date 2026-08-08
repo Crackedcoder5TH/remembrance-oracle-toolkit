@@ -1,0 +1,465 @@
+{
+ "_README": "MAP ADJUDICATIONS — human-reviewed verdicts for files the coherency map flags as structural orphans. An orphan is a measurement (no structural siblings), not a sin; this store records WHY each flagged file is fine (wired-verified, singleton-by-design, corpus-content, framework-wired, standalone-tool) or marks it retire-pending. The mapper reads this and reports adjudicated orphans separately from NEW ones, so fresh structural loneliness always surfaces while reviewed files stop counting as open flags. Append/update via review only; the map never writes this file.",
+ "adjudications": {
+  ".ai-oracle-protocol.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  ".ecosystem-health-baseline.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "docker-compose.yml": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "package.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "setup-ecosystem.sh": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "vscode-extension/src/api-client.ts": {
+   "verdict": "singleton-by-design",
+   "reason": "reviewed 2026-08-08: unique-by-nature (scaffold/asset/type surface)",
+   "date": "2026-08-08"
+  },
+  "vscode-extension/src/extension.js": {
+   "verdict": "singleton-by-design",
+   "reason": "reviewed 2026-08-08: unique-by-nature (scaffold/asset/type surface)",
+   "date": "2026-08-08"
+  },
+  "types/index.d.ts": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "tests/escape-html-standalone.test.js": {
+   "verdict": "wired-verified",
+   "reason": "executed by the suite runner; a test file resembles what it tests, not other tests",
+   "date": "2026-08-08"
+  },
+  "tests/field-coupling-contract.test.js": {
+   "verdict": "wired-verified",
+   "reason": "executed by the suite runner; a test file resembles what it tests, not other tests",
+   "date": "2026-08-08"
+  },
+  "tests/pattern-tests/self-referential-prevention.js": {
+   "verdict": "singleton-by-design",
+   "reason": "reviewed 2026-08-08: unique-by-nature (scaffold/asset/type surface)",
+   "date": "2026-08-08"
+  },
+  "tests/pattern-tests/self-referential-prevention.test.js": {
+   "verdict": "wired-verified",
+   "reason": "executed by the suite runner; a test file resembles what it tests, not other tests",
+   "date": "2026-08-08"
+  },
+  "tests/pattern-tests/sha256-cache-key.test.js": {
+   "verdict": "wired-verified",
+   "reason": "executed by the suite runner; a test file resembles what it tests, not other tests",
+   "date": "2026-08-08"
+  },
+  "tests/fixtures/code-to-waveform-reference.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "src/search/vectors.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/reflector/report.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/patterns/seeds-design-systems.json": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "src/patterns/seeds-go.json": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "src/patterns/seeds-python.json": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "src/dashboard/styles.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/dashboard/websocket.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/core/auto-tagger-detectors.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/core/covenant-harm.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/core/lexicon-live.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/cli/deprecations.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/atomic/periodic-table-additions.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "src/api/oracle-core-feedback.js": {
+   "verdict": "wired-verified",
+   "reason": "has real callers (verified 2026-08-08); structurally unique but consumed — loneliness is not debt when the file is load-bearing",
+   "date": "2026-08-08"
+  },
+  "site/style.css": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "seeds/code/bloom-filter.testcode.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "seeds/code/circuit-breaker.testcode.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "seeds/code/pub-sub.testcode.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "scripts/experiments/fifth-doc.md": {
+   "verdict": "standalone-tool",
+   "reason": "standalone entry point or experiment artifact — invoked directly, not imported",
+   "date": "2026-08-08"
+  },
+  "scripts/claude-hooks/post-read.sh": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "packages/shared/src/validate.ts": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "packages/field-tool/src/index.js": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "examples/quicksort.test.js": {
+   "verdict": "wired-verified",
+   "reason": "executed by the suite runner; a test file resembles what it tests, not other tests",
+   "date": "2026-08-08"
+  },
+  "docs/VOID_MIGRATION_MAP.md": {
+   "verdict": "singleton-by-design",
+   "reason": "document — structural loneliness is its nature",
+   "date": "2026-08-08"
+  },
+  "docs/benchmarks/void-vs-oracle-2026-04-14.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "dashboard/public/style.css": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  ".session-patterns/01-placeholder-detection.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".session-patterns/02-camelcase-regex-expansion.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".session-patterns/04-legacy-shape-fallback.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".session-patterns/05-uppercase-skip-guard.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".session-patterns/06-relaxed-assertion-extending-impl.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".session-patterns/08-lre-field-coupling-shim.py": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".github/workflows/ecosystem-sweep.yml": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  ".debug-patterns/api-endpoint-mismatch-fix.ts": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".debug-patterns/css-visibility-fix.ts": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".debug-patterns/password-mismatch-fix.ts": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  ".claude/settings.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "ecosystem-capabilities.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "site/index.html": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "scripts/stress-test-determinism.js": {
+   "verdict": "standalone-tool",
+   "reason": "standalone entry point or experiment artifact — invoked directly, not imported",
+   "date": "2026-08-08"
+  },
+  "remembrance-plugin/commands/field.md": {
+   "verdict": "singleton-by-design",
+   "reason": "document — structural loneliness is its nature",
+   "date": "2026-08-08"
+  },
+  "remembrance-plugin/commands/goggles.md": {
+   "verdict": "singleton-by-design",
+   "reason": "document — structural loneliness is its nature",
+   "date": "2026-08-08"
+  },
+  "docs/index.html": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/csp-directives.mjs": {
+   "verdict": "singleton-by-design",
+   "reason": "reviewed 2026-08-08: unique-by-nature (scaffold/asset/type surface)",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/package-lock.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/playwright.config.ts": {
+   "verdict": "singleton-by-design",
+   "reason": "reviewed 2026-08-08: unique-by-nature (scaffold/asset/type surface)",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/public/manifest.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/patterns/copy-to-clipboard.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/patterns/skeleton-loader.tsx": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/patterns/batch6/is-uuid.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/patterns/batch6/validate-date.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/patterns/batch5/longest-common-subseq.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/patterns/batch5/topological-sort.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/patterns/batch4/matrix.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/patterns/batch3/run-tests.js": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/packages/shared/src/types.ts": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/packages/shared/src/validate.ts": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/error.tsx": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/globals.css": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/robots.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lp/layout.tsx": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lib/demo-leads.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lib/lead-events.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lib/money-ledger.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lib/notification-recipients.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lib/session-cookie.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lib/site-content.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lib/valor/lexicon.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/lib/client-database/index.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/api/site-content/route.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/api/client/logout/route.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  ".github/workflows/seams.yml": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "scripts/fixtures/entropy-residual-data.json": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "scripts/calib/structural_compressor_v3.py": {
+   "verdict": "standalone-tool",
+   "reason": "standalone entry point or experiment artifact — invoked directly, not imported",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/create-repo.sh": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/app/guides/data.ts": {
+   "verdict": "framework-wired",
+   "reason": "Next.js filesystem convention wires this (routes/layouts/libs) — the framework is the caller",
+   "date": "2026-08-08"
+  },
+  ".github/workflows/pr-trademark.yml": {
+   "verdict": "singleton-by-design",
+   "reason": "configuration/content file — one of its kind in the repo by nature",
+   "date": "2026-08-08"
+  },
+  "tests/field-tool-parity.test.js": {
+   "verdict": "wired-verified",
+   "reason": "executed by the suite runner; a test file resembles what it tests, not other tests",
+   "date": "2026-08-08"
+  },
+  "seeds/traps.seed.json": {
+   "verdict": "corpus-content",
+   "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
+   "date": "2026-08-08"
+  }
+ }
+}

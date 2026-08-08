@@ -44,7 +44,13 @@ function formatMap(m) {
         ? `  (${series} version-series · ${linked} symlink-resolved · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
         : ''));
   }
-  lines.push('  E  other orphans         : ' + m.buckets.E_other_orphans.length);
+  {
+    const eo = m.buckets.E_other_orphans;
+    const adjudicated = eo.filter(o => o.adjudicated).length;
+    const fresh = eo.length - adjudicated;
+    lines.push('  E  other orphans         : ' + eo.length
+      + (adjudicated ? `  (${adjudicated} adjudicated · ${fresh} NEW)` : ''));
+  }
   lines.push('  TOTAL flagged            : ' +
     (m.buckets.A_components_incoherent.length + m.buckets.B_api_inconsistent.length +
      m.buckets.C_lib_drift.length + m.buckets.D_duplicate_pairs.length + m.buckets.E_other_orphans.length));

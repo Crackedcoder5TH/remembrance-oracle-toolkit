@@ -22,7 +22,7 @@ const {
 const { DEFAULT_CATEGORIZER, _walk, substrateSelfNames } = require('./config');
 const { namespaceFromIndexNames } = require('./namespace');
 const { _pairwiseFlow } = require('./flow');
-const { _dedupePairs, _annotateDataPairs } = require('./pairs');
+const { _dedupePairs, _annotateDataPairs, _annotateOrphans } = require('./pairs');
 
 /**
  * Build the macro coherency map from the substrate's existing vectors.
@@ -232,11 +232,11 @@ function mapFromSubstrate(projectPath, opts = {}) {
     B_api_inconsistent: results.filter(r => r.category.startsWith('api/') && r.flags.includes('INCONSISTENT')),
     C_lib_drift: results.filter(r => r.category === 'lib' && r.flags.includes('ORPHAN')),
     D_duplicate_pairs: _annotateDataPairs(_dedupePairs(results), projectPath),
-    E_other_orphans: results.filter(r =>
+    E_other_orphans: _annotateOrphans(results.filter(r =>
       r.flags.includes('ORPHAN')
       && !['components', 'lib'].includes(r.category)
       && !r.category.startsWith('api/')
-    ),
+    ), projectPath),
   };
 
   // 7. Field contribution — only what the vectors honestly witness.

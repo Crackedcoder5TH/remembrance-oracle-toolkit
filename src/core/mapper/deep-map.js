@@ -39,7 +39,7 @@ const {
 } = require('./config');
 const { detectSubstrateNamespace } = require('./namespace');
 const { _pairwiseFlow } = require('./flow');
-const { _dedupePairs, _annotateDataPairs } = require('./pairs');
+const { _dedupePairs, _annotateDataPairs, _annotateOrphans } = require('./pairs');
 
 function mapProjectCoherency(projectPath, opts = {}) {
   const categorize = opts.categorize || DEFAULT_CATEGORIZER;
@@ -242,11 +242,11 @@ function mapProjectCoherency(projectPath, opts = {}) {
       (!r.flags.includes('WELL-FORMED') && r.topExternal && r.topExternal.score >= 0.95)
     )),
     D_duplicate_pairs: _annotateDataPairs(_dedupePairs(results), projectPath),
-    E_other_orphans: results.filter(r =>
+    E_other_orphans: _annotateOrphans(results.filter(r =>
       r.flags.includes('ORPHAN') &&
       !['components', 'lib'].includes(r.category) &&
       !r.category.startsWith('api/')
-    ),
+    ), projectPath),
   };
 
   // ── 4. Cross-system bridges ──────────────────────────────────

@@ -35,13 +35,14 @@ function formatMap(m) {
     const dp = m.buckets.D_duplicate_pairs;
     const series = dp.filter(p => p.versionSeries).length;
     const linked = dp.filter(p => p.resolvedSymlink).length;
-    const organic = dp.filter(p => !p.versionSeries && !p.resolvedSymlink);
+    const adjudicated = dp.filter(p => p.adjudicated && !p.versionSeries && !p.resolvedSymlink).length;
+    const organic = dp.filter(p => !p.versionSeries && !p.resolvedSymlink && !p.adjudicated);
     const fmtEcho = organic.filter(p => p.payloadIdentical === false).length;
     const trueDup = organic.filter(p => p.payloadIdentical === true).length;
     const unverified = organic.length - fmtEcho - trueDup;
     lines.push('  D  duplicate pairs       : ' + dp.length
-      + (series || linked || fmtEcho || trueDup
-        ? `  (${series} version-series · ${linked} symlink-resolved · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
+      + (series || linked || adjudicated || fmtEcho || trueDup
+        ? `  (${series} version-series · ${linked} symlink-resolved · ${adjudicated} adjudicated · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
         : ''));
   }
   {

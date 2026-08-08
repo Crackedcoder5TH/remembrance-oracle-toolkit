@@ -461,5 +461,52 @@
    "reason": "pattern-library corpus — the file IS the data; each specimen is unique by intent",
    "date": "2026-08-08"
   }
+ },
+ "pairs": {
+  "packages/field-tool/src/lexical-waveform.js ↔ src/core/lexical-waveform.js": {
+   "verdict": "governed-vendored",
+   "reason": "deliberate vendoring into the published field-tool package, byte-governed by tests/field-tool-parity.test.js — verdict holds ONLY while the mapper live-verifies byte equality; drift voids it and the pair surfaces unverified again",
+   "date": "2026-08-08"
+  },
+  "packages/field-tool/src/numerical-waveform.js ↔ src/core/numerical-waveform.js": {
+   "verdict": "governed-vendored",
+   "reason": "deliberate vendoring into the published field-tool package, byte-governed by tests/field-tool-parity.test.js — verdict holds ONLY while the mapper live-verifies byte equality; drift voids it and the pair surfaces unverified again",
+   "date": "2026-08-08"
+  },
+  "packages/field-tool/src/redundancy-waveform.js ↔ src/core/redundancy-waveform.js": {
+   "verdict": "governed-vendored",
+   "reason": "deliberate vendoring into the published field-tool package, byte-governed by tests/field-tool-parity.test.js — verdict holds ONLY while the mapper live-verifies byte equality; drift voids it and the pair surfaces unverified again",
+   "date": "2026-08-08"
+  },
+  "packages/field-tool/src/spectral-waveform.js ↔ src/core/spectral-waveform.js": {
+   "verdict": "governed-vendored",
+   "reason": "deliberate vendoring into the published field-tool package, byte-governed by tests/field-tool-parity.test.js — verdict holds ONLY while the mapper live-verifies byte equality; drift voids it and the pair surfaces unverified again",
+   "date": "2026-08-08"
+  },
+  "packages/field-tool/src/content-projection.js ↔ src/core/content-projection.js": {
+   "verdict": "governed-vendored",
+   "reason": "deliberate vendoring into the published field-tool package, byte-governed by tests/field-tool-parity.test.js — verdict holds ONLY while the mapper live-verifies byte equality; drift voids it and the pair surfaces unverified again",
+   "date": "2026-08-08"
+  },
+  "packages/field-tool/src/dimensional-waveform.js ↔ src/core/dimensional-waveform.js": {
+   "verdict": "governed-vendored",
+   "reason": "deliberate vendoring into the published field-tool package, byte-governed by tests/field-tool-parity.test.js — verdict holds ONLY while the mapper live-verifies byte equality; drift voids it and the pair surfaces unverified again",
+   "date": "2026-08-08"
+  },
+  "packages/field-tool/src/dynamical-waveform.js ↔ src/core/dynamical-waveform.js": {
+   "verdict": "governed-vendored",
+   "reason": "deliberate vendoring into the published field-tool package, byte-governed by tests/field-tool-parity.test.js — verdict holds ONLY while the mapper live-verifies byte equality; drift voids it and the pair surfaces unverified again",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/packages/shared/package.json ↔ packages/shared/package.json": {
+   "verdict": "scaffold-convention",
+   "reason": "two DIVERGED packages (root: solana; cathedral: phone/DOB validators) sharing only scaffolding — every package.json resembles every package.json. The @cathedral/shared NAME collision is a separate open decision.",
+   "date": "2026-08-08"
+  },
+  "digital-cathedral/packages/shared/tsconfig.json ↔ packages/shared/tsconfig.json": {
+   "verdict": "scaffold-convention",
+   "reason": "two DIVERGED packages (root: solana; cathedral: phone/DOB validators) sharing only scaffolding — every package.json resembles every package.json. The @cathedral/shared NAME collision is a separate open decision.",
+   "date": "2026-08-08"
+  }
  }
 }

@@ -43,3 +43,38 @@ describe('orphan adjudications', () => {
     }
   });
 });
+
+describe('pair adjudications — verdict plus live proof', () => {
+  const { _annotateDataPairs } = require('../src/core/mapper/pairs');
+
+  const makePairStore = (dir, entries) => {
+    fs.writeFileSync(path.join(dir, '.map-adjudications.json'),
+      JSON.stringify({ pairs: entries }));
+  };
+
+  it('governed-vendored sticks only while bytes are identical', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'padj-'));
+    fs.writeFileSync(path.join(dir, 'a.js'), 'same content');
+    fs.writeFileSync(path.join(dir, 'b.js'), 'same content');
+    makePairStore(dir, { 'a.js ↔ b.js': { verdict: 'governed-vendored', reason: 'r', date: 'd' } });
+    const pairs = [{ a: 'a.js', b: 'b.js', score: 1 }];
+    _annotateDataPairs(pairs, dir);
+    assert.equal(pairs[0].adjudicated, 'governed-vendored');
+
+    fs.writeFileSync(path.join(dir, 'b.js'), 'DRIFTED content');
+    const pairs2 = [{ a: 'a.js', b: 'b.js', score: 1 }];
+    _annotateDataPairs(pairs2, dir);
+    assert.equal(pairs2[0].adjudicated, undefined,
+      'drift must VOID the adjudication — the pair surfaces raw again');
+  });
+
+  it('review-only verdicts annotate without a byte requirement', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'padj2-'));
+    fs.writeFileSync(path.join(dir, 'x.json'), '{"n":1}');
+    fs.writeFileSync(path.join(dir, 'y.json'), '{"n":2}');
+    makePairStore(dir, { 'x.json ↔ y.json': { verdict: 'scaffold-convention', reason: 'r', date: 'd' } });
+    const pairs = [{ a: 'x.json', b: 'y.json', score: 1 }];
+    _annotateDataPairs(pairs, dir);
+    assert.equal(pairs[0].adjudicated, 'scaffold-convention');
+  });
+});

@@ -60,12 +60,33 @@ function _annotateDataPairs(pairs, projectPath) {
     try { return fs.lstatSync(path.join(projectPath, rel)).isSymbolicLink(); }
     catch { return false; }
   };
+  // Pair adjudications from the tracked store. `governed-vendored` is
+  // verdict-plus-proof: it sticks ONLY while the two files are still
+  // byte-identical — drift voids the adjudication on the spot and the
+  // pair surfaces unverified again. Other verdicts (scaffold-convention)
+  // are review-only classifications.
+  let pairAdj = {};
+  try {
+    pairAdj = (JSON.parse(fs.readFileSync(path.join(projectPath, '.map-adjudications.json'), 'utf8')).pairs) || {};
+  } catch { /* no store */ }
+  const pairKey = (a, b) => [a, b].sort().join(' ↔ ');
+  const byteEqual = (a, b) => {
+    try { return fs.readFileSync(path.join(projectPath, a)).equals(fs.readFileSync(path.join(projectPath, b))); }
+    catch { return false; }
+  };
   for (const p of pairs) {
     // Versioned-snapshot series (derived_covenant_v1..v7, …): members of
     // one series are EXPECTED to resemble each other — that is what a
     // snapshot is. Convention: same base name modulo _vN ⇒ versionSeries,
     // reported separately from organic duplication.
     if (versionBase(p.a) === versionBase(p.b) && p.a !== p.b) p.versionSeries = true;
+    const adj = pairAdj[pairKey(p.a, p.b)];
+    if (adj && adj.verdict === 'governed-vendored') {
+      if (byteEqual(p.a, p.b)) p.adjudicated = adj.verdict;
+      // else: governance broken — no annotation, the pair surfaces raw
+    } else if (adj && adj.verdict) {
+      p.adjudicated = adj.verdict;
+    }
     // Symlink-resolved pair: one member is a symlink whose realpath IS the
     // other member — the deduplication already happened on disk, and the
     // "duplicate" is one file with two names. The index may still carry the

@@ -320,35 +320,6 @@ function buildFractalSystem() {
 // TEST: Prove it works at every scale
 // ═══════════════════════════════════════════════════════════════════
 
-function selfTest() {
-  const results = [];
-
-  // Test Scale 1: Function
-  const r1 = processValue('  HELLO  ');
-  results.push({ scale: 'function', ok: r1.ok, data: r1.data, expected: 'hello' });
-
-  // Test Scale 2: Module
-  const processor = new DataProcessor({
-    validators: [(v) => v ? { ok: true } : { ok: false, error: 'empty' }],
-    transformers: [(d) => typeof d === 'string' ? d.toUpperCase() : d],
-    emitters: [],
-  });
-  const r2 = processor.process('test');
-  results.push({ scale: 'module', ok: r2.ok, data: r2.data, expected: 'TEST' });
-
-  // Test Scale 3: Service
-  const service = new ServicePipeline({ processor });
-  const r3 = service.handle({ method: 'POST', path: '/process', body: 'hello', headers: { authorization: 'Bearer x' } });
-  results.push({ scale: 'service', ok: r3.ok, data: r3.data, expected: 'HELLO' });
-
-  // Test Scale 4: System
-  const system = buildFractalSystem();
-  const r4 = system.orchestrate({ type: 'data', payload: '  World  ' });
-  results.push({ scale: 'system', ok: r4.ok, data: r4.data, expected: 'world' });
-
-  return results;
-}
-
 
 module.exports = {
   processValue,
@@ -356,7 +327,7 @@ module.exports = {
   ServicePipeline,
   SystemOrchestrator,
   buildFractalSystem,
-  selfTest,
+
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
@@ -364,4 +335,3 @@ module.exports = {
 // own extractAtomicProperties over the function body.
 processValue.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 buildFractalSystem.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-selfTest.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };

@@ -225,19 +225,6 @@ function decodeSignature(sig) {
 }
 
 /**
- * Generate a fractal signature — encodes self-similarity alongside properties.
- */
-function generateFractalSignature(code, props) {
-  const propSig = encodeSignature(props);
-  // Fractal dimensions from code structure
-  const nesting = (code.match(/\{/g) || []).length;
-  const selfSim = Math.min(1, nesting * 0.1);
-  const funcCount = (code.match(/function|=>/g) || []).length;
-  const fractalBits = `F${Math.round(selfSim * 9)}N${Math.min(9, funcCount)}`;
-  return `${propSig}:${fractalBits}`;
-}
-
-/**
  * Calculate emergence potential — functions with high coherence + low harm
  * have the highest potential for emergent behavior.
  */
@@ -686,7 +673,7 @@ module.exports = {
   CovenantValidator,
   encodeSignature,
   decodeSignature,
-  generateFractalSignature,
+
   calculateEmergencePotential,
   isRemembranceRegister,
   GROUPS,
@@ -709,12 +696,6 @@ encodeSignature.atomicProperties = {
 decodeSignature.atomicProperties = {
   charge: 1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'core',
-};
-generateFractalSignature.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
   domain: 'core',
 };

@@ -147,75 +147,6 @@ function heal(pattern, options = {}) {
 
 // ─── Strategy Helpers ───
 
-/**
- * Quick heal — used by feedback on failure. Fast, 2 loops max.
- */
-function healQuick(pattern, options = {}) {
-  return heal(pattern, { ...options, strategy: 'quick' });
-}
-
-/**
- * Full heal — used by resolve with healing enabled. 3 loops, full context.
- */
-function healFull(pattern, options = {}) {
-  return heal(pattern, { ...options, strategy: 'full' });
-}
-
-/**
- * Sweep heal — used by lifecycle/optimize. Lower target, capped.
- */
-function healSweep(patterns, options = {}) {
-  const config = { ...HEALING_DEFAULTS, ...options };
-  const maxHeals = config.maxHealsPerSweep;
-  const targetCoherency = config.sweepTargetCoherency;
-
-  // Sort by lowest coherency first — heal worst patterns first
-  const candidates = patterns
-    .filter(p => (p.coherencyScore?.total ?? 0) < targetCoherency)
-    .sort((a, b) => (a.coherencyScore?.total ?? 0) - (b.coherencyScore?.total ?? 0));
-
-  const report = {
-    attempted: 0,
-    healed: [],
-    failed: [],
-    skipped: 0,
-    totalImprovement: 0,
-  };
-
-  for (const pattern of candidates) {
-    if (report.attempted >= maxHeals) break;
-    report.attempted++;
-
-    const result = heal(pattern, {
-      ...options,
-      strategy: 'sweep',
-      targetCoherence: config.targetCoherence,
-    });
-
-    if (result && result.improvement > 0) {
-      report.healed.push({
-        id: pattern.id,
-        name: pattern.name,
-        oldCoherency: result.originalCoherency,
-        newCoherency: result.newCoherency,
-        improvement: result.improvement,
-      });
-      report.totalImprovement += result.improvement;
-    } else if (result?.skipped === 'cooldown') {
-      report.skipped++;
-    } else {
-      report.failed.push({
-        id: pattern.id,
-        name: pattern.name,
-        coherency: pattern.coherencyScore?.total ?? 0,
-        reason: result?.skipped || (result && result.improvement < 0 ? 'regression' : 'no-improvement'),
-      });
-    }
-  }
-
-  return report;
-}
-
 // ─── Decision Helpers ───
 
 /**
@@ -254,9 +185,6 @@ function resetTracking() {
 
 module.exports = {
   heal,
-  healQuick,
-  healFull,
-  healSweep,
   needsHealing,
   resetTracking,
   HEALING_DEFAULTS,
@@ -271,24 +199,6 @@ module.exports = {
 
 // ── Atomic self-description (batch-generated) ────────────────────
 heal.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-healQuick.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-healFull.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-healSweep.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',

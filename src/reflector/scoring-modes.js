@@ -157,12 +157,6 @@ function shouldAutoCreatePR(report, config) {
   return __retVal;
 }
 
-function getModeInfo(modeName) {
-  const preset = PRESET_MODES[modeName];
-  if (!preset) return null;
-  return { name: modeName, description: getModeDescription(modeName), settings: preset };
-}
-
 function getModeDescription(modeName) {
   switch (modeName) {
     case 'strict': return 'High standards. Requires approval, no auto-merge, stricter thresholds. Best for production repos.';
@@ -224,7 +218,7 @@ module.exports = {
   applyOverrides,
   resolveConfig,
   shouldAutoCreatePR,
-  getModeInfo,
+
   listModes,
   setMode,
   getCurrentMode,
@@ -238,7 +232,6 @@ readEnvOverrides.atomicProperties = { charge: 0, valence: 0, mass: "medium", spi
 applyOverrides.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 resolveConfig.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 shouldAutoCreatePR.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
-getModeInfo.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 getModeDescription.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 listModes.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 setMode.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

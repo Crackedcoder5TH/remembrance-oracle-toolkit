@@ -149,16 +149,6 @@ function classifyWaveform(w) {
   return _classifyWithStrength(w).label;
 }
 
-/**
- * Return a [0, 1] score for how confidently ``w`` fits its classifier
- * bucket. Feeds into projectionConfidence so a weakly-classified signal
- * (e.g. a trend at r²=0.86 — barely above threshold) earns less pull
- * than a strongly-classified one (r²=0.99).
- */
-function classificationStrength(w) {
-  return _classifyWithStrength(w).strength;
-}
-
 // ─── Future projection ──────────────────────────────────────────
 
 function projectForward(pattern, tNow) {
@@ -303,7 +293,7 @@ module.exports = {
   cadenceToMs,
   isTimeAligned,
   classifyWaveform,
-  classificationStrength,
+
   projectForward,
   projectionConfidence,
   gateProjection,
@@ -324,12 +314,6 @@ projectForward.atomicProperties = {
   domain: 'oracle',
 };
 classifyWaveform.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-classificationStrength.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',

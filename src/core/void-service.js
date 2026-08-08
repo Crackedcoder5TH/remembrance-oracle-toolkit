@@ -239,19 +239,7 @@ function _reset() {
   _unavailable = false;
 }
 
-/**
- * The reading WITH its provenance: what the compressor matched, and whether
- * that match was the content itself. Reflects the most recent uncached read.
- *
- * @returns {{coherence, blend, selfMatched, measures}|null}
- */
-function readingOf(content, opts = {}) {
-  const c = coherencyOf(content, opts);
-  if (LAST_READING && LAST_READING.coherence === c) return LAST_READING;
-  return { coherence: c, blend: null, selfMatched: null, measures: null };
-}
-
-module.exports = { coherencyOf, readingOf, ensureUp, isUp, _reset };
+module.exports = { coherencyOf, ensureUp, isUp, _reset };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
@@ -259,4 +247,3 @@ module.exports = { coherencyOf, readingOf, ensureUp, isUp, _reset };
 isUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-readingOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

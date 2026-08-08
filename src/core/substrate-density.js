@@ -61,9 +61,6 @@ function getDensityFactor(opts) {
   return Number.isFinite(f) ? f : 1;       // no cache / malformed → neutral 1.0
 }
 
-/** The full cached density reading (or null) — for introspection/telemetry. */
-function getDensityState(opts) { return _readCache(opts); }
-
 /**
  * Re-fit the density from the CURRENT substrate. Expensive (whitening fit on a
  * bounded sample); call from the lazy refresh or the CLI, not the hot path.
@@ -106,11 +103,10 @@ function refreshDensity(opts = {}) {
   return entry;
 }
 
-module.exports = { getDensityFactor, getDensityState, refreshDensity, CACHE_PATH, FIT_SAMPLE };
+module.exports = { getDensityFactor,  refreshDensity, CACHE_PATH, FIT_SAMPLE };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 getDensityFactor.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-getDensityState.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 refreshDensity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

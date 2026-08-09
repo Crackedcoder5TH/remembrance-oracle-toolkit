@@ -79,6 +79,20 @@ if ! node scripts/ledger-append-ratchet.js; then
   echo "[covenant] ledgers are memory: append a correction entry, never edit the past."
   exit 1
 fi
+echo "[covenant] enforcing silent-catch ratchet..."
+if ! node scripts/silent-catch-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — swallowed failure grew."
+  echo "[covenant] name the failure (counter, debug line, rethrow); silence is not error handling."
+  exit 1
+fi
+echo "[covenant] enforcing console ratchet..."
+if ! node scripts/console-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — the src/ print surface grew."
+  echo "[covenant] route it through a logger, or keep output in scripts/ and bin/."
+  exit 1
+fi
 echo "[covenant] enforcing orphan ratchet..."
 if ! node scripts/orphan-ratchet.js; then
   echo ""

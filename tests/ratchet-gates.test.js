@@ -126,6 +126,30 @@ describe('ledger-append-ratchet — verifyAppendOnly', () => {
   });
 });
 
+describe('silent-catch-ratchet — countSwallowedCatches', () => {
+  const { countSwallowedCatches } = require('../scripts/silent-catch-ratchet');
+
+  it('counts empty and comment-only catch bodies, parameterized or not', () => {
+    assert.equal(countSwallowedCatches('try { x(); } catch (e) { }'), 1);
+    assert.equal(countSwallowedCatches('try { x(); } catch { /* best-effort */ }'), 1);
+    assert.equal(countSwallowedCatches('try { x(); } catch (e) { count++; }'), 0);
+    assert.equal(countSwallowedCatches('try { x(); } catch (e) { throw e; }'), 0);
+    assert.equal(countSwallowedCatches('const s = "catch (e) { }";'), 0);
+  });
+});
+
+describe('console-ratchet — countConsoleCalls', () => {
+  const { countConsoleCalls } = require('../scripts/console-ratchet');
+
+  it('counts real global console calls only', () => {
+    assert.equal(countConsoleCalls('console.log("a"); console.error("b");'), 2);
+    assert.equal(countConsoleCalls('// console.log("commented")'), 0);
+    assert.equal(countConsoleCalls("const s = 'console.log(\"string\")';"), 0);
+    assert.equal(countConsoleCalls('logger.console.log("namespaced")'), 0);
+    assert.equal(countConsoleCalls('console.table(x)'), 0);
+  });
+});
+
 describe('orphan-ratchet — exportNames and hasConsumer', () => {
   const { exportNames, hasConsumer } = require('../scripts/orphan-ratchet');
 

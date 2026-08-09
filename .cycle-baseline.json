@@ -1,6 +1,7 @@
 {
- "note": "cycle-ratchet baseline — require-graph SCCs in src/. The list only untangles.",
- "savedAt": "2026-08-09T01:09:37.018Z",
+ "note": "cycle-ratchet baseline — require-graph SCCs in src/. load = top-level edges (the hard gate; held at ZERO since 2026-08-09). lexical = every edge (coupling debt; shrinks through real decomposition). Both lists only untangle.",
+ "savedAt": "2026-08-09T14:46:43.896Z",
+ "loadCycles": [],
  "cycles": [
   {
    "size": 62,

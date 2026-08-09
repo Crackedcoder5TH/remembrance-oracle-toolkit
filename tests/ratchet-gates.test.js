@@ -46,6 +46,17 @@ describe('cycle-ratchet — compareCycles', () => {
   });
 });
 
+describe('cycle-ratchet — dual census: load-time vs lexical', () => {
+  const { censusCycles } = require('../scripts/cycle-ratchet');
+
+  it('separates load-time edges from lexical ones — the load graph is acyclic', () => {
+    const c = censusCycles();
+    assert.ok(Array.isArray(c.load) && Array.isArray(c.lexical));
+    assert.equal(c.load.length, 0, 'src/ load-time require graph must stay acyclic — a lazy require is invisible here, a top-level one is not');
+    for (const cyc of c.lexical) assert.ok(cyc.length > 1);
+  });
+});
+
 describe('suite-reachability-ratchet — censusUnreachable', () => {
   const { censusUnreachable } = require('../scripts/suite-reachability-ratchet');
 

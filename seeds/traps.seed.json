@@ -388,6 +388,22 @@
    "truth": "Its matcher required the literal key order cost:, coherence:, source: on ONE line. Any hand-written site with a different key order, or a call formatted across lines, was invisible. Found 2026-08-09 while building the field-source ratchet: the widened order-independent matcher revealed 68 sites where the audit reported 29 — 39 write sites had never been audited, and 22 of the 68 carry non-coherency quantities awaiting adjudication.",
    "tell": "A census whose regex encodes a spelling (argument order, one-line formatting, a specific quote style). Verifying a gate by only feeding it inputs shaped like the ones it already counts.",
    "correct": "Adversarially test every census with a syntactically-valid variant it should catch but formatted differently (reordered keys, multi-line, renamed receiver). If the count does not move, the census has a spelling requirement — widen extraction (balanced parens, order-independent fields), never narrow the input."
+  },
+  {
+   "match": [
+    "cycle-ratchet",
+    "require cycle",
+    "lexical",
+    "load-time",
+    "lazy require",
+    "SCC",
+    "62-file"
+   ],
+   "severity": "high",
+   "wrong": "Measuring lexical require mentions and calling them cycles — then planning 8 lazy-require cuts to untangle a 62-file knot.",
+   "truth": "A require inside a function body or expression-bodied arrow runs at CALL time and cannot deadlock module init. Position-aware measurement (tokenizer, fn-body + expression-arrow contexts) showed the load-time require graph of src/ was ALREADY ACYCLIC — every cycle-participating edge was already lazy, largely thanks to prior decompositions and report-lazy. The planned cuts would have converted already-lazy edges while the lexical census read 62 unchanged: execution theater against a misread instrument. Found 2026-08-09 while executing the cut plan with byte-level precision.",
+   "tell": "A remediation plan whose success metric is read from an instrument that cannot distinguish the cure from the disease (lazy vs top-level require, demonstration vs instance, mention vs call). The first cut appearing to change nothing.",
+   "correct": "Before executing a graph-surgery plan, measure the graph the failure mode actually lives on (load order for init deadlock; lexical for coupling). The ratchet now censuses BOTH: load-time gated at zero, lexical shrink-only through real decomposition."
   }
  ]
 }

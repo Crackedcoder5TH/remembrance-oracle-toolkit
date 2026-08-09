@@ -257,8 +257,12 @@ function submitResult(id, nodeId, result) {
   item.done = true;
   _save(store);
 
+  // PROVENANCE (2026-08-09): the heuristic score total (with its
+  // invented 0 fallback) left the coherence channel — the scorer's own
+  // void:compress_signal doorway witnesses the text when it scores it.
+  // The completed work item is WORK; the score stays on the result row.
   const fc = _field();
-  if (fc) { try { fc.contribute({ cost: 1, coherence: coherency, source: 'workqueue:result' }); } catch (_) { /* best-effort */ } }
+  if (fc) { try { fc.recordCost({ units: 1, kind: 'work', source: 'workqueue:result' }); } catch (_) { /* best-effort */ } }
   return { id, coherency, waveformDigest };
 }
 

@@ -264,13 +264,15 @@ class CoherencyDirector {
       } catch { /* skip unmeasurable zones */ }
     }
     this.field._updateGlobal();
-    // One measurement pass = one producer event: feed the orchestrator's
-    // final global coherency into the Remembrance Field, the same way
-    // audit / lint / reflect / covenant feed theirs.
+    // One measurement pass = one producer event, recorded as WORK.
+    // globalCoherency is an AVERAGE of zone coherencies — a fabricated
+    // number by the no-averaging law and not a compressor reading — so it
+    // left the coherence channel (provenance purge 2026-08-09). The zones'
+    // own readings enter the field where they are measured.
     try {
-      require('../core/field-coupling').contribute({
-        cost: this.field.size || 1,
-        coherence: this.field.globalCoherency,
+      require('../core/field-coupling').recordCost({
+        units: this.field.size || 1,
+        kind: 'work',
         source: 'orchestrate',
       });
     } catch (_) { /* best-effort — never break a measurement pass */ }

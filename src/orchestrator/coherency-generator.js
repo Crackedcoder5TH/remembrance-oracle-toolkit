@@ -239,8 +239,8 @@ class CoherencyGenerator {
       require('path').join(__dirname, '../core/field-coupling')];
     for (const __p of __lre_enginePaths) {
       try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, result.globalCoherency)), source: 'oracle:coherency-generator:runCycle' });
+        const { recordCost: __recordCost } = require(__p);
+        __recordCost({ units: 1, kind: 'work', source: 'oracle:coherency-generator:runCycle' });
         break;
       } catch (_) { /* try next */ }
     }

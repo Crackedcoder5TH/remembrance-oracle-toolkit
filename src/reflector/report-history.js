@@ -116,8 +116,8 @@ function createRunRecord(report, preSnapshot, options) {
       require('path').join(__dirname, '../core/field-coupling')];
     for (const __p of __lre_enginePaths) {
       try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence)), source: 'oracle:report-history:createRunRecord' });
+        const { recordCost: __recordCost } = require(__p);
+        __recordCost({ units: 1, kind: 'work', source: 'oracle:report-history:createRunRecord' });
         break;
       } catch (_) { /* try next */ }
     }

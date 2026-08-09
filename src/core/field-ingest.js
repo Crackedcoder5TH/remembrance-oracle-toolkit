@@ -50,7 +50,8 @@ function _contribute() {
 function ingestPatterns(store, opts = {}) {
   const report = { total: 0, encoded: 0, contributed: 0, skipped: 0 };
   if (!store || !store.db) return report;
-  const contribute = _contribute();
+  let contribute = null;
+  try { ({ recordCost: contribute } = require('./field-coupling')); } catch (_) { /* best-effort */ }
   try {
     let sql = 'SELECT id, name, code, language, coherency_total, coherency_json FROM patterns';
     if (opts.limit) sql += ` LIMIT ${Math.max(1, parseInt(opts.limit, 10))}`;
@@ -75,15 +76,17 @@ function ingestPatterns(store, opts = {}) {
           report.encoded += 1;
         }
 
-        // Contribute the pattern to the field. coherency_total is the
-        // pattern's own measured coherency — its standing in the field.
-        // Grouped source (library:<language>) keeps the histogram a
-        // bounded compass even at 80k+ patterns; per-pattern granularity
-        // lives in the field-memory mesh, not the histogram.
+        // Count the pattern into the field as an ingestion event. The
+        // stored coherency_total is the submit-time heuristic aggregate
+        // with an invented ||0 fallback — not a compressor reading — so
+        // it left the coherence channel (provenance purge 2026-08-09).
+        // A pattern's lawful coherency enters at its witness/replay
+        // doorway, where the compressor read its bytes. Grouped source
+        // (library:<language>) keeps the histogram a bounded compass.
         if (contribute) {
           contribute({
-            cost: 1,
-            coherence: Math.max(0, Math.min(1, Number(p.coherency_total) || 0)),
+            units: 1,
+            kind: 'ingestion',
             source: `library:${p.language || 'unknown'}`,
           });
           report.contributed += 1;

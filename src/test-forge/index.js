@@ -358,14 +358,15 @@ class TestForge {
       // just proved. It was written to the pattern row and never to the
       // field, so the ecosystem could see the stored score but never became
       // aware that a reading had been taken.
+      // PROVENANCE (2026-08-09): the total is the heuristic scorer's
+      // aggregate, not a compressor reading — the scorer's own
+      // void:compress_signal doorway already witnesses the code's lawful
+      // coherency when it runs. The proof event is WORK with the outcome
+      // in the bucket; the score stays on the pattern row.
       try {
-        const total = newCoherency && typeof newCoherency.total === 'number' ? newCoherency.total : null;
-        if (total !== null && isFinite(total)) {
-          require('../core/field-coupling').contribute({
-            cost: 1.0, coherence: Math.max(0, Math.min(1, total)),
-            source: 'oracle:test-forge:proven-coherency',
-          });
-        }
+        require('../core/field-coupling').recordCost({
+          units: 1, kind: 'verification', source: 'oracle:test-forge:proven',
+        });
       } catch (_) { /* field optional — the forge must not depend on it */ }
 
       // Update in DB

@@ -116,14 +116,15 @@ function heal(pattern, options = {}) {
     // Only newCoherency is contributed. originalCoherency is a re-read of a
     // value the field has already seen; contributing it again would count the
     // same observation twice and inflate the field.
+    // PROVENANCE (2026-08-09): the total is the heuristic scorer's
+    // aggregate, not a compressor reading — the scorer's own
+    // void:compress_signal doorway witnesses the healed code's lawful
+    // coherency when it scores it. The heal is WORK; the score stays in
+    // the result.
     try {
-      const total = newCoherency && typeof newCoherency.total === 'number' ? newCoherency.total : null;
-      if (total !== null && isFinite(total)) {
-        require('../core/field-coupling').contribute({
-          cost: 1.0, coherence: Math.max(0, Math.min(1, total)),
-          source: 'oracle:healing:healed-coherency',
-        });
-      }
+      require('../core/field-coupling').recordCost({
+        units: 1, kind: 'healing', source: 'oracle:healing:healed',
+      });
     } catch (_) { /* field optional — healing must not depend on it */ }
 
     // Track healing to prevent duplicates

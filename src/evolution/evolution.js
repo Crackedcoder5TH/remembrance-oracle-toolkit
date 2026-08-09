@@ -381,8 +381,8 @@ function evolve(ctx, options = {}) {
         require('path').join(__dirname, '../core/field-coupling')];
       for (const __p of __lre_enginePaths) {
         try {
-          const { contribute: __contribute } = require(__p);
-          __contribute({ cost: __n, coherence: Math.max(0, Math.min(1, __c / __n)), source: 'oracle:evolution:evolve' });
+          const { recordCost: __recordCost } = require(__p);
+          __recordCost({ units: __n, kind: 'work', source: 'oracle:evolution:evolve' });
           break;
         } catch (_) { /* try next */ }
       }

@@ -83,13 +83,15 @@ function _fieldAudit(fc, args) {
     } catch (_) { /* orchestrator deferral is best-effort */ }
   }
 
-  // Balance the audit's cost into the entropy field — globalEntropy
-  // = cost / coherence, so a full audit's larger cost raises entropy
-  // more, and the field's backpressure signals callers to ease off.
-  const auditCoherence = Math.max(0, Math.min(1, (env.coherency && env.coherency.total) || 0));
-  const contributed = fc.contribute({
-    cost: workUnits,
-    coherence: auditCoherence,
+  // Balance the audit's cost into the entropy field. The env coherency
+  // total is a heuristic aggregate with an invented ||0 fallback — not a
+  // compressor reading — so it left the coherence channel (provenance
+  // purge 2026-08-09). recordCost raises entropy by the audit's work
+  // without claiming a coherency, which is exactly the backpressure this
+  // contribution existed to produce.
+  const contributed = fc.recordCost({
+    units: workUnits,
+    kind: 'audit',
     source: `ecosystem-audit:${mode}`,
   });
   const pressure = fc.fieldPressure();

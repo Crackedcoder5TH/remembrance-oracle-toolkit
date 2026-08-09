@@ -203,8 +203,8 @@ function covenantGroupCoherence(periodicTable, options) {
     const __lre_p2 = require('path').join(__dirname, 'field-coupling');
     for (const __p of [__lre_p1, __lre_p2]) {
       try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__retVal.coherence))), source: 'oracle:covenant-fractal:covenantGroupCoherence' });
+        const { recordCost: __recordCost } = require(__p);
+        __recordCost({ units: 1, kind: 'work', source: 'oracle:covenant-fractal:covenantGroupCoherence' });
         break;
       } catch (_) { /* try next */ }
     }

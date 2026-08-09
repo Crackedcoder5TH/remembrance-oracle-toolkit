@@ -238,12 +238,12 @@ class PatternComposer {
       const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
       for (const __p of [__lre_p1, __lre_p2]) {
         try {
-          const { contribute: __contribute } = require(__p);
+          const { recordCost: __recordCost } = require(__p);
           // NO AVERAGING. This used to reduce the composed patterns to one
           // mean coherency. Each pattern's own reading goes in as itself;
           // patterns without one contribute nothing rather than a zero.
           for (const __p2 of (__retVal.patterns || [])) {
-            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__p2.coherency))), source: 'oracle:composer:compose' });
+            __recordCost({ units: 1, kind: 'work', source: 'oracle:composer:compose' });
           }
           break;
         } catch (_) { /* try next */ }

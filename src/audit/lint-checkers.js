@@ -317,10 +317,12 @@ function lintFiles(files, options = {}) {
   //                   so a finding-heavy scan raises globalEntropy, not just
   //                   lowers coherence.
   try {
+    // The cleanliness ratio was a count ratio, not a compressor reading —
+    // removed from the coherence channel (provenance purge 2026-08-09).
+    // Scan size is work, findings are disorder; both ride recordCost.
     const filesScanned = files ? files.length : 0;
-    const coh = Math.max(0, Math.min(1, 1 - (totalFindings / Math.max(1, filesScanned))));
-    const { contribute, recordCost } = require('../core/field-coupling');
-    contribute({ cost: Math.max(1, filesScanned), coherence: coh, source: 'lint' });
+    const { recordCost } = require('../core/field-coupling');
+    recordCost({ units: Math.max(1, filesScanned), source: 'lint:scan', kind: 'work' });
     if (totalFindings > 0) recordCost({ units: totalFindings, source: 'lint:findings', kind: 'disorder' });
   } catch (_) { /* best-effort */ }
 

@@ -485,10 +485,15 @@ function scan(source, opts = {}) {
   // through it, so it stays out of the field.
   if (opts.dryRun) return { findings, scannedBlocks: blocks.length, librarySize: lib.signatures.length };
   try {
+    // PROVENANCE (2026-08-09): 0.2/0.95 were invented constants coding
+    // hit/clean — no compressor emitted them. The scan is work and the
+    // outcome lives in the source bucket; the scanned file's lawful
+    // coherency enters the field when the goggles' own compressor read
+    // of the same bytes runs.
     const fc = require('../core/field-coupling');
-    fc.contribute({
-      cost: 1,
-      coherence: findings.length ? 0.2 : 0.95,
+    fc.recordCost({
+      units: Math.max(1, findings.length),
+      kind: findings.length ? 'disorder' : 'audit',
       source: 'goggles:defect-resonance:' + (findings.length ? 'hit' : 'clean'),
     });
   } catch (_) { /* field optional */ }

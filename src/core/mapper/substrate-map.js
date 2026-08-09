@@ -239,13 +239,15 @@ function mapFromSubstrate(projectPath, opts = {}) {
     ), projectPath),
   };
 
-  // 7. Field contribution — only what the vectors honestly witness.
+  // 7. Field contribution — only what the vectors honestly witness. The
+  // duplication level is a count ratio, not a compressor reading, so it
+  // rides recordCost as a diagnostic (provenance purge 2026-08-09).
   let contributionsCount = 0;
   try {
-    fc.contribute({
-      cost: 1.0,
-      coherence: 1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2),
-      source: 'coherency-map:' + namespace + ':non-duplication',
+    fc.recordCost({
+      units: Math.max(1, buckets.D_duplicate_pairs.length),
+      kind: 'diagnostic',
+      source: 'coherency-map:' + namespace + ':duplicate-pairs',
     });
     contributionsCount++;
   } catch { /* best-effort */ }

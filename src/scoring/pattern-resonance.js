@@ -177,10 +177,13 @@ function scoreResonance(text, opts = {}) {
   // (a hallucination tell). Feeding it back into the field gives the
   // per-source histogram a "what we've been resonating against" signal.
   try {
-    const { contribute } = require('../core/field-coupling');
-    contribute({
-      cost: 1,
-      coherence: score,
+    // PROVENANCE (2026-08-09): vocabulary overlap is a lexical heuristic,
+    // not a compressor reading — it left the coherence channel. The scan
+    // is work; the score stays in the return for the caller.
+    const { recordCost } = require('../core/field-coupling');
+    recordCost({
+      units: 1,
+      kind: 'work',
       source: 'oracle:pattern-resonance:score',
     });
   } catch (_) { /* best-effort */ }

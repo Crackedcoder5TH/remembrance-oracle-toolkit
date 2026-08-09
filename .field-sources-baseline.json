@@ -1,7 +1,7 @@
 {
  "note": "field-source baseline — every call site allowed to feed contribute({coherence}). New sites are a decision; the grandfathered non-measured list is shrink-only and each entry awaits owner adjudication.",
- "savedAt": "2026-08-09T04:13:46.002Z",
- "count": 65,
+ "savedAt": "2026-08-09T04:37:14.835Z",
+ "count": 47,
  "measured": [
   {
    "key": "src/agent-integration.js#oracle:agent-integration:validate",
@@ -74,11 +74,6 @@
    "why": "coherency (via measured)"
   },
   {
-   "key": "src/core/field-coupling/history.js#(unlabeled)#2",
-   "kind": "MEASURED",
-   "why": "coherency (via arc)"
-  },
-  {
    "key": "src/core/field-coupling/validate.js#(unlabeled)",
    "kind": "MEASURED",
    "why": "coherency (via c)"
@@ -137,11 +132,6 @@
    "key": "src/core/reflection-scorers.js#void:compress_signal:reflection-scorer",
    "kind": "MEASURED",
    "why": "coherency (via measured)"
-  },
-  {
-   "key": "src/core/validator.js#validator:domain-floor-ratchet:${domain}",
-   "kind": "MEASURED",
-   "why": "coherency (via cohValue)"
   },
   {
    "key": "src/evolution/evolution.js#oracle:evolution:evolve",
@@ -236,42 +226,7 @@
  ],
  "grandfathered": [
   {
-   "key": "src/audit/baseline.js#audit:baseline:improvement-ratio",
-   "kind": "SUBSTITUTED",
-   "why": "length (via fixed)"
-  },
-  {
-   "key": "src/audit/ground.js#audit:ground:grounding-ratio",
-   "kind": "SUBSTITUTED",
-   "why": "ratio"
-  },
-  {
-   "key": "src/audit/lint-checkers.js#lint",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
-   "key": "src/audit/smell-checkers.js#smell",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
-   "key": "src/ci/harvest.js#harvest",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
-   "key": "src/core/field-coupling/history.js#(unlabeled)",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
    "key": "src/core/field-coupling/verbs.js#(unlabeled)#3",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
-   "key": "src/core/field-ingest.js#constant:${moduleKey}",
    "kind": "SUBSTITUTED",
    "why": "unnamed scalar"
   },
@@ -281,54 +236,9 @@
    "why": "unnamed scalar"
   },
   {
-   "key": "src/core/mapper/substrate-map.js#coherency-map:",
-   "kind": "SUBSTITUTED",
-   "why": "length"
-  },
-  {
-   "key": "src/core/validator.js#validator:domain:${domain}",
-   "kind": "SUBSTITUTED",
-   "why": "length (via valid)"
-  },
-  {
-   "key": "src/debug/defect-resonance.js#goggles:defect-resonance:",
-   "kind": "SUBSTITUTED",
-   "why": "length"
-  },
-  {
    "key": "src/orchestrator/entropy-relaxer.js#orchestrator:entropy-relax",
    "kind": "SUBSTITUTED",
    "why": "unnamed scalar"
-  },
-  {
-   "key": "src/quality/risk-score.js#risk-score",
-   "kind": "SUBSTITUTED",
-   "why": "probability"
-  },
-  {
-   "key": "src/quantum/quantum-field.js#quantum:decoherence-sweep",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
-   "key": "src/quantum/quantum-field.js#quantum:phase-drift-sweep",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
-   "key": "src/scoring/evaluate.js#evaluate:",
-   "kind": "SUBSTITUTED",
-   "why": "score"
-  },
-  {
-   "key": "src/scoring/exec-verify.js#oracle:exec-verify:",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
-   "key": "src/scoring/pattern-resonance.js#oracle:pattern-resonance:score",
-   "kind": "SUBSTITUTED",
-   "why": "score"
   }
  ]
 }

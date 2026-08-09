@@ -103,17 +103,24 @@ function ingestPatterns(store, opts = {}) {
  */
 function ingestConstants() {
   const report = { total: 0, contributed: 0 };
-  const contribute = _contribute();
-  if (!contribute) return report;
+  let recordCost = null;
+  try { ({ recordCost } = require('./field-coupling')); } catch (_) { /* best-effort */ }
+  if (!recordCost) return report;
 
   const buckets = [];
   try { buckets.push(['thresholds', require('../constants/thresholds')]); } catch (_) { /* skip */ }
   try { buckets.push(['quantum', require('../quantum/quantum-core')]); } catch (_) { /* skip */ }
 
   // Flatten: walk each module's exports, emit one observation per number.
-  // Source is grouped at the module level (constant:<module>) — the
-  // histogram stays a bounded compass; each constant's value still
-  // enters the field (moves coherence, is counted).
+  // Source is grouped at the module level (constant:<module>) so the
+  // histogram stays a bounded compass.
+  //
+  // PROVENANCE (2026-08-09): a declared constant is a DECLARATION, not a
+  // measurement — no compressor ever emitted it, so its value no longer
+  // enters the coherence channel. Each constant is counted as a
+  // declaration event through recordCost (which passes through the
+  // field's own coherence — nothing invented); the census memory the
+  // histogram carries is unchanged.
   const walk = (prefix, obj, depth) => {
     if (depth > 3 || obj == null) return;
     const moduleKey = prefix.split(':')[0];
@@ -121,11 +128,7 @@ function ingestConstants() {
       if (typeof val === 'number' && isFinite(val)) {
         report.total += 1;
         try {
-          contribute({
-            cost: 1,
-            coherence: Math.max(0, Math.min(1, val)),
-            source: `constant:${moduleKey}`,
-          });
+          recordCost({ units: 1, source: `constant:${moduleKey}`, kind: 'declaration' });
           report.contributed += 1;
         } catch (_) { /* best-effort */ }
       } else if (val && typeof val === 'object' && !Array.isArray(val)) {

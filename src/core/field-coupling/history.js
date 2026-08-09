@@ -6,7 +6,7 @@
  * inline requires repathed one level deeper.
  */
 
-const { contribute, peekField } = require('./verbs');
+const { contribute, peekField, recordCost } = require('./verbs');
 
 // The direction history snapshot is a real mutation — covenant-gated.
 const { createGate, requireGate } = require('../covenant-fractal');
@@ -189,23 +189,29 @@ function recordTemporalSnapshot({ repoDir, filePath, maxVersions = 12 } = {}) {
   for (let i = 0; i < versions.length - 1; i++) {
     adj.push(fractalCoherencyOf(versions[i].content, versions[i + 1].content));
   }
-  // NO AVERAGING. Each adjacent-version reading goes in as itself. The mean
-  // used to be the contribution; it is now only a returned descriptor of the
-  // series, never the field's input.
+  // NO AVERAGING. Each adjacent-version reading is returned as itself.
+  //
+  // PROVENANCE (2026-08-09): these readings come from the fractal ENCODER
+  // fed raw git-history bytes that never passed through the Void
+  // compressor — so they are not the unified quantity the rest of the
+  // substrate measures, and they no longer enter the coherence channel.
+  // The temporal module is dormant by owner decision; its activation path
+  // is compressor-witnessed time ledgers at the harvest doorway, at which
+  // point the versions' compressor readings — not encoder ratios — become
+  // the lawful field input. The snapshot WORK is real and rides
+  // recordCost; the encoder descriptors stay in the return for the caller.
   const arc = fractalCoherencyOf(versions[0].content, versions[versions.length - 1].content);
   const repoName = path.basename(repoDir);
   const cleanFile = filePath.replace(/[^a-zA-Z0-9_\-.]/g, '_');
-  const adjSource = 'temporal:' + repoName + ':' + cleanFile + ':adjacent';
-  const arcSource = 'temporal:' + repoName + ':' + cleanFile + ':arc';
-  for (const a of adj) contribute({ source: adjSource, coherence: a, cost: 1 });
-  contribute({ source: arcSource, coherence: arc, cost: 1 });
+  const snapSource = 'temporal:' + repoName + ':' + cleanFile + ':snapshot';
+  recordCost({ units: versions.length, source: snapSource, kind: 'work' });
   return {
     recorded: true,
     adjacent: adj,
     arc,
     versions: versions.length,
     span: { from: versions[0].date, to: versions[versions.length - 1].date },
-    sources: [adjSource, arcSource],
+    sources: [snapSource],
   };
 }
 

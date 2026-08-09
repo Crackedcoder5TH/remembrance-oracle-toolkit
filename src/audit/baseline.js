@@ -138,18 +138,20 @@ function readBaseline(baselinePath) {
  *   improvedFiles: string[],
  * }}
  */
-// FIELD: the ratchet's own verdict as a coherence reading. fixed/(fixed+new)
-// is high when a change repairs more than it introduces — the quality axis
-// the covenant ratchet already enforces, now witnessed by the field instead
-// of only gating commits. Best-effort; never breaks a diff.
+// FIELD: the diff's movement enters as WORK, not as a coherency.
+// fixed/(fixed+new) is a count ratio — no compressor ever emitted it, so
+// feeding it as coherence was a false number (provenance purge 2026-08-09).
+// The counts are real load, so they ride recordCost, which passes through
+// the field's own current coherence — nothing invented. Best-effort;
+// never breaks a diff.
 function _contributeBaselineDelta(result) {
   try {
     const fixed = result.fixed.length, added = result.new.length;
-    if (fixed + added === 0) return;                    // nothing moved: no reading
-    require('../core/field-coupling').contribute({
-      cost: 1.0,
-      coherence: fixed / (fixed + added),
-      source: 'audit:baseline:improvement-ratio',
+    if (fixed + added === 0) return;                    // nothing moved: no event
+    require('../core/field-coupling').recordCost({
+      units: fixed + added,
+      source: 'audit:baseline:delta',
+      kind: 'audit',
     });
   } catch (_) { /* field optional */ }
 }

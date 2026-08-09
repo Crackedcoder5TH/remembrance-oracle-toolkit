@@ -196,10 +196,14 @@ async function verifyExecution(code, opts = {}) {
 function _contributeExec(result) {
   if (!result || typeof result.signal !== 'number' || !isFinite(result.signal)) return;
   try {
-    const { contribute } = require('../core/field-coupling');
-    contribute({
-      cost: 1,
-      coherence: Math.max(0, Math.min(1, result.signal)),
+    // PROVENANCE (2026-08-09): the execution signal is a verification
+    // outcome, not a compressor reading — it left the coherence channel.
+    // The run is work, the status lives in the source bucket, the signal
+    // stays in the result.
+    const { recordCost } = require('../core/field-coupling');
+    recordCost({
+      units: 1,
+      kind: 'verification',
       source: 'oracle:exec-verify:' + (result.status || 'unknown'),
     });
   } catch (_) { /* best-effort */ }

@@ -284,15 +284,23 @@ function mapProjectCoherency(projectPath, opts = {}) {
   for (const r of scored) {
     _ctr(r.coherence, 'void:compress_signal:map:' + namespace);
   }
-  _ctr(1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2), 'coherency-map:' + namespace + ':non-duplication');
+  // The duplication level is a count ratio, and the orphan-rate signal was
+  // a constant 0.9 with the rate hidden in the source name — neither is a
+  // compressor reading, so both left the coherence channel (provenance
+  // purge 2026-08-09). The counts are diagnostics and ride recordCost.
+  if (buckets.D_duplicate_pairs.length) {
+    try { fc.recordCost({ units: buckets.D_duplicate_pairs.length, source: 'coherency-map:' + namespace + ':duplicate-pairs', kind: 'diagnostic' }); } catch {}
+  }
   // Orphan-rate meta-signal — same rule as the residual and dimensional
   // couplings: a completed wiring measurement is a COHERENT event (the
   // instrument worked), so it contributes at healthy coherence with the
   // RATE in the source bucket, never in the coherence scalar.
-  const orphanRate = results.length
-    ? results.filter(r => r.flags.includes('ORPHAN')).length / results.length : 0;
-  _ctr(0.9, 'coherency-map:' + namespace + ':orphan-rate:'
-    + (orphanRate >= 0.5 ? 'high' : orphanRate >= 0.15 ? 'elevated' : 'low'));
+  const orphanCount = results.filter(r => r.flags.includes('ORPHAN')).length;
+  const orphanRate = results.length ? orphanCount / results.length : 0;
+  if (orphanCount) {
+    try { fc.recordCost({ units: orphanCount, source: 'coherency-map:' + namespace + ':orphan-rate:'
+      + (orphanRate >= 0.5 ? 'high' : orphanRate >= 0.15 ? 'elevated' : 'low'), kind: 'diagnostic' }); } catch {}
+  }
 
   return {
     project: namespace,

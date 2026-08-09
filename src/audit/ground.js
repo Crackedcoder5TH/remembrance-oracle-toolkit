@@ -555,14 +555,16 @@ function resolveIndirections(code) {
 // ecosystem's grounding, not just its defects. Best-effort: a field failure
 // must never break an audit.
 function _contributeGrounding(res) {
+  // The grounding rate is a count ratio — not a compressor reading, so it
+  // no longer enters the coherence channel (provenance purge 2026-08-09).
+  // The scan's size is real work and rides recordCost; the rate stays in
+  // the returned report where it belongs.
   try {
     if (!res || res.error || !res.totalCalls) return;
-    const ratio = (typeof res.rate === 'number') ? res.rate
-      : 1 - (res.ungrounded.length / res.totalCalls);
-    require('../core/field-coupling').contribute({
-      cost: 1.0,
-      coherence: Math.max(0, Math.min(1, ratio)),
-      source: 'audit:ground:grounding-ratio',
+    require('../core/field-coupling').recordCost({
+      units: res.totalCalls,
+      source: 'audit:ground',
+      kind: 'audit',
     });
   } catch (_) { /* field optional */ }
 }

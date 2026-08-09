@@ -242,13 +242,14 @@ function smellFiles(files, options = {}) {
     }
   }
 
-  // Contribute smell outcome to the LRE field.
-  // cost = filesScanned, coherence = 1 - (smells / max(1, files)).
+  // Field: scan size is work, findings are disorder — both recordCost.
+  // The old cleanliness ratio was a count ratio, not a compressor
+  // reading, so it left the coherence channel (provenance purge
+  // 2026-08-09).
   try {
     const filesScanned = files ? files.length : 0;
-    const coh = Math.max(0, Math.min(1, 1 - (totalFindings / Math.max(1, filesScanned))));
-    const { contribute, recordCost } = require('../core/field-coupling');
-    contribute({ cost: Math.max(1, filesScanned), coherence: coh, source: 'smell' });
+    const { recordCost } = require('../core/field-coupling');
+    recordCost({ units: Math.max(1, filesScanned), source: 'smell:scan', kind: 'work' });
     if (totalFindings > 0) recordCost({ units: totalFindings, source: 'smell:findings', kind: 'disorder' });
   } catch (_) { /* best-effort */ }
 

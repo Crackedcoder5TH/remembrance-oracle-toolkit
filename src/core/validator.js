@@ -139,22 +139,27 @@ function validateCode(code, options = {}) {
   // validation if the field is unavailable.
   if (domain) {
     try {
-      const { contribute } = require('./field-coupling');
-      // If covenant rejected, coherency is null — treat as 0 (max disalignment).
-      const cohValue = result.coherencyScore?.total ?? 0;
-      contribute({
-        cost: 1,
-        coherence: result.valid ? cohValue : 0,
-        source: `validator:domain:${domain}`,
+      const { recordCost } = require('./field-coupling');
+      // PROVENANCE (2026-08-09): the heuristic score total is not a
+      // compressor reading, and the old invalid→0 mapping INVENTED a
+      // number — a zero still crunches through the field's math as if it
+      // were measured. Withheld is not zero. The validation event is real
+      // work and rides recordCost, with the verdict in the source bucket;
+      // the artifact's lawful coherency already enters the field at the
+      // scorer's own void:compress_signal doorway.
+      recordCost({
+        units: 1,
+        kind: 'validation',
+        source: `validator:domain:${domain}:${result.valid ? 'valid' : 'rejected'}`,
       });
       // When the domain floor RATCHETED the threshold above what the
       // caller asked for, emit a second observation so that ratcheting
       // events are visible in the histogram. Cost reflects the bump
       // size to weight the field signal.
       if (explicitThreshold !== undefined && domainFloor !== null && domainFloor > explicitThreshold) {
-        contribute({
-          cost: Math.max(0.5, (domainFloor - explicitThreshold) * 10),
-          coherence: result.valid ? cohValue : 0,
+        recordCost({
+          units: Math.max(0.5, (domainFloor - explicitThreshold) * 10),
+          kind: 'ratchet',
           source: `validator:domain-floor-ratchet:${domain}`,
         });
       }

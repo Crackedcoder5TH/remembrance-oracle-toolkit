@@ -387,13 +387,14 @@ function harvest(oracle, source, options = {}) {
       if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] best effort:', e?.message || e);
     }
 
-    // Contribute harvest outcome to the LRE field. cost = harvested
-    // (functions found), coherence = registered/harvested (how many
-    // passed covenant + coherency to make it in).
+    // Field: the harvest pass is WORK (recordCost). The acceptance rate
+    // registered/harvested is a count ratio, not a compressor reading, so
+    // it left the coherence channel (provenance purge 2026-08-09) — every
+    // accepted pattern already carries its own compressor reading taken
+    // at the witness doorway, which is the lawful coherency of a harvest.
     try {
-      const coh = result.harvested > 0 ? result.registered / result.harvested : 0;
-      const { contribute } = require('../core/field-coupling');
-      contribute({ cost: Math.max(1, result.harvested), coherence: Math.max(0, Math.min(1, coh)), source: 'harvest' });
+      const { recordCost } = require('../core/field-coupling');
+      recordCost({ units: Math.max(1, result.harvested), source: 'harvest:pass', kind: 'work' });
     } catch (_) { /* best-effort */ }
 
     return result;

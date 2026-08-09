@@ -97,8 +97,31 @@ function classify(expr, context = '') {
 
 
 const rows = [];
+// Blank comment spans (newlines preserved so line numbers hold) before
+// scanning. Without this, an explanatory comment DESCRIBING an old
+// contribute site counts as a live write site — three of the first
+// grandfathered "sites" were exactly that: documentation of already-fixed
+// bugs in entangle.js and living-remembrance.js. The census reads code,
+// not prose about code. Tokenizer-backed, same instrument as the covenant
+// scanners; on tokenize failure the raw text is scanned (best-effort,
+// never silently narrower than before).
+let _tokenizeFn = null;
+try { ({ tokenize: _tokenizeFn } = require('../src/audit/parser')); } catch (_) { /* raw fallback */ }
+function stripCommentSpans(text) {
+  if (!_tokenizeFn) return text;
+  try {
+    let out = text;
+    for (const t of _tokenizeFn(text)) {
+      if (t.type !== 'comment') continue;
+      const span = out.slice(t.start, t.end).replace(/[^\n]/g, ' ');
+      out = out.slice(0, t.start) + span + out.slice(t.end);
+    }
+    return out;
+  } catch (_) { return text; }
+}
+
 for (const f of walk(SRC)) {
-  const src = fs.readFileSync(f, 'utf8');
+  const src = stripCommentSpans(fs.readFileSync(f, 'utf8'));
   // Match BOTH the auto-wired `__contribute({` and hand-written
   // `contribute({`. Seeing only the auto-wired form meant a
   // hand-written substitution could never be caught — the audit was

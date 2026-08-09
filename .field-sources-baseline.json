@@ -1,7 +1,7 @@
 {
  "note": "field-source baseline — every call site allowed to feed contribute({coherence}). New sites are a decision; the grandfathered non-measured list is shrink-only and each entry awaits owner adjudication.",
- "savedAt": "2026-08-09T01:14:29.038Z",
- "count": 68,
+ "savedAt": "2026-08-09T04:13:46.002Z",
+ "count": 65,
  "measured": [
   {
    "key": "src/agent-integration.js#oracle:agent-integration:validate",
@@ -261,11 +261,6 @@
    "why": "unnamed scalar"
   },
   {
-   "key": "src/core/entangle.js#entangle:node:<id>",
-   "kind": "CONSTANT",
-   "why": "literal value"
-  },
-  {
    "key": "src/core/field-coupling/history.js#(unlabeled)",
    "kind": "SUBSTITUTED",
    "why": "unnamed scalar"
@@ -279,16 +274,6 @@
    "key": "src/core/field-ingest.js#constant:${moduleKey}",
    "kind": "SUBSTITUTED",
    "why": "unnamed scalar"
-  },
-  {
-   "key": "src/core/living-remembrance.js#(unlabeled)#2",
-   "kind": "SUBSTITUTED",
-   "why": "unnamed scalar"
-  },
-  {
-   "key": "src/core/living-remembrance.js#encoder:L<n>",
-   "kind": "SUBSTITUTED",
-   "why": "agreement"
   },
   {
    "key": "src/core/mapper/deep-map.js#(unlabeled)",

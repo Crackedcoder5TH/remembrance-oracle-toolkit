@@ -70,12 +70,24 @@ function classify(expr, context = '') {
   const locals = [...new Set((inner.match(/[A-Za-z_$][\w$]*/g) || []))]
     .filter((v) => !['Math', 'max', 'min', 'Number', 'reduce', 'length'].includes(v));
   for (const v of locals) {
-    const re = new RegExp(`\\b${v.replace(/[$]/g, '\\$')}\\s*(?:=|\\+=)([^;\\n]+)`, 'g');
-    let m;
-    while ((m = re.exec(context)) !== null) {
-      if (MEASURED.test(m[1])) return ['MEASURED', 'coherency (via ' + v + ')'];
-      const o = m[1].match(OTHER);
-      if (o) return ['SUBSTITUTED', o[0] + ' (via ' + v + ')'];
+    const vEsc = v.replace(/[$]/g, '\\$');
+    // Three binding forms, same judgment: plain assignment, loop-of
+    // (for (const c of coherences) — the conduit shape the field organs
+    // use post no-averaging), and push-population (adj.push(expr)).
+    // Only the first was resolved before, so a genuine reading iterated
+    // through a loop variable read as an unnamed scalar.
+    const res = [
+      new RegExp(`\\b${vEsc}\\s*(?:=|\\+=)([^;\\n]+)`, 'g'),
+      new RegExp(`for\\s*\\(\\s*(?:const|let|var)\\s+${vEsc}\\s+of\\s+([^)]+)\\)`, 'g'),
+      new RegExp(`\\b${vEsc}\\.push\\(([^;\\n]+)`, 'g'),
+    ];
+    for (const re of res) {
+      let m;
+      while ((m = re.exec(context)) !== null) {
+        if (MEASURED.test(m[1])) return ['MEASURED', 'coherency (via ' + v + ')'];
+        const o = m[1].match(OTHER);
+        if (o) return ['SUBSTITUTED', o[0] + ' (via ' + v + ')'];
+      }
     }
   }
   const m2 = inner.match(OTHER);
@@ -93,18 +105,42 @@ for (const f of walk(SRC)) {
   // blind to exactly the contributions a human would add by hand.
   if (!/\b_?_?contribute\(\{/.test(src)) continue;
   const lines = src.split('\n');
-  lines.forEach((ln, i) => {
-    // Source may be a single-quoted literal OR a template literal
-    // (`entangle:${kind}:${id}`). Matching only the quoted form hid every
-    // contribution whose source is built dynamically — which is most of
-    // the ones that carry an id, i.e. the ones firing most often.
-    const m = ln.match(/\b_?_?contribute\(\{\s*cost:[^,]+,\s*coherence:\s*([\s\S]*?),\s*source:\s*(?:'([^']*)'|`([^`]*)`|"([^"]*)")/);
-    if (m && !m[2]) m[2] = m[3] || m[4] || '(dynamic)';
-    if (!m) return;
+  // Key-order-independent, multi-line-tolerant matcher. The first version
+  // required the literal order `cost:, coherence:, source:` on ONE line —
+  // so a hand-written site with `{ coherence: x, cost: 1 }`, or a call
+  // formatted across lines, was invisible to the audit and therefore to
+  // the field-source ratchet riding on it. A census with a spelling
+  // requirement is not a census. The window joins the call's next 8 lines
+  // and each field is extracted independently of its position.
+  const siteRe = /\b_?_?contribute\(\{/g;
+  let sm;
+  while ((sm = siteRe.exec(src)) !== null) {
+    const i = src.slice(0, sm.index).split('\n').length - 1;
+    const window = lines.slice(i, i + 8).join('\n');
+    const local = window.slice(window.indexOf('contribute({'));
+    // Balanced extraction: the coherence expression ends at the first
+    // comma or closing brace at paren/bracket depth 0 — a truncating
+    // regex here turns Math.max(0, Math.min(1, x.coherence)) into
+    // "Math.max(0" and misclassifies a real reading as an unnamed scalar.
+    const kAt = local.search(/\bcoherence\s*:/);
+    if (kAt < 0) continue;
+    let p = local.indexOf(':', kAt) + 1;
+    let depth = 0, expr = '';
+    for (; p < local.length; p++) {
+      const ch = local[p];
+      if ('([{'.includes(ch)) depth++;
+      else if (')]}'.includes(ch)) { if (depth === 0) break; depth--; }
+      else if (ch === ',' && depth === 0) break;
+      expr += ch;
+    }
+    const coh = [null, expr];
+    if (!expr.trim()) continue;
+    const srcM = local.match(/\bsource\s*:\s*(?:'([^']*)'|`([^`]*)`|"([^"]*)")/);
+    const sourceName = srcM ? (srcM[1] || srcM[2] || srcM[3] || '(dynamic)') : '(unlabeled)';
     const ctx = lines.slice(Math.max(0, i - 20), i).join('\n');
-    const [kind, why] = classify(m[1].trim(), ctx);
-    rows.push({ file: path.relative(ROOT, f), line: i + 1, kind, why, source: m[2] });
-  });
+    const [kind, why] = classify(coh[1].trim(), ctx);
+    rows.push({ file: path.relative(ROOT, f), line: i + 1, kind, why, source: sourceName });
+  }
 }
 
 if (process.argv.includes('--json')) {

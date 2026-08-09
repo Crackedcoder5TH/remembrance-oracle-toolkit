@@ -50,4 +50,40 @@ if ! node scripts/size-ratchet.js; then
   echo "[covenant] or release shrunk modules: node scripts/size-ratchet.js --save-baseline"
   exit 1
 fi
+echo "[covenant] enforcing cycle ratchet..."
+if ! node scripts/cycle-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — the require graph tangled further."
+  echo "[covenant] untangle with a call-time lazy require or a decomposition; never widen the knot."
+  exit 1
+fi
+echo "[covenant] enforcing suite-reachability ratchet..."
+if ! node scripts/suite-reachability-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — a test file the suite runner cannot reach."
+  echo "[covenant] move it under tests/*.test.js or adjudicate it in the baseline."
+  exit 1
+fi
+echo "[covenant] enforcing field-source ratchet..."
+if ! node scripts/field-source-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — the coherency field's write surface changed."
+  echo "[covenant] a new MEASURED site is a decision (--save-baseline); a non-measured"
+  echo "[covenant] reading has no acceptance path — fix the site, never the gate."
+  exit 1
+fi
+echo "[covenant] enforcing ledger append-only..."
+if ! node scripts/ledger-append-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — a governed ledger's history was edited."
+  echo "[covenant] ledgers are memory: append a correction entry, never edit the past."
+  exit 1
+fi
+echo "[covenant] enforcing orphan ratchet..."
+if ! node scripts/orphan-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — an export was born with zero consumers and no verdict."
+  echo "[covenant] wire a consumer or adjudicate it in .map-adjudications.json under exports."
+  exit 1
+fi
 echo "[covenant] ✓ pass"

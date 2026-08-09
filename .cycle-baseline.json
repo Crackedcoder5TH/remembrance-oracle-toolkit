@@ -1,0 +1,96 @@
+{
+ "note": "cycle-ratchet baseline — require-graph SCCs in src/. The list only untangles.",
+ "savedAt": "2026-08-09T01:09:37.018Z",
+ "cycles": [
+  {
+   "size": 62,
+   "members": [
+    "src/audit/ground.js",
+    "src/compression/fractal-library-bridge.js",
+    "src/compression/holographic.js",
+    "src/compression/index.js",
+    "src/compression/serf-integration.js",
+    "src/core/covenant-trust.js",
+    "src/core/covenant.js",
+    "src/core/feedback-coherency.js",
+    "src/core/feedback-covenant.js",
+    "src/core/feedback.js",
+    "src/core/field-coupling.js",
+    "src/core/field-coupling/engine.js",
+    "src/core/field-coupling/history.js",
+    "src/core/field-coupling/pressure.js",
+    "src/core/field-coupling/validate.js",
+    "src/core/field-coupling/verbs.js",
+    "src/core/field-memory.js",
+    "src/core/living-remembrance.js",
+    "src/core/persistence.js",
+    "src/core/persistence/community.js",
+    "src/core/persistence/debug-share.js",
+    "src/core/persistence/repos.js",
+    "src/core/persistence/stats.js",
+    "src/core/persistence/stores.js",
+    "src/core/persistence/sync.js",
+    "src/core/persistence/transfer.js",
+    "src/core/reflection-loop.js",
+    "src/core/reflection-scorers.js",
+    "src/core/reflection.js",
+    "src/core/validator.js",
+    "src/debug/debug-oracle.js",
+    "src/evolution/evolution.js",
+    "src/evolution/test-synth.js",
+    "src/patterns/library.js",
+    "src/reflector/multi-analysis.js",
+    "src/reflector/multi-engine.js",
+    "src/reflector/multi-orchestrator.js",
+    "src/reflector/multi-scheduler.js",
+    "src/reflector/multi.js",
+    "src/reflector/report-autocommit.js",
+    "src/reflector/report-dashboard.js",
+    "src/reflector/report-github.js",
+    "src/reflector/report-history.js",
+    "src/reflector/report-lazy.js",
+    "src/reflector/report-notifications.js",
+    "src/reflector/report-pattern-hook.js",
+    "src/reflector/report-safety.js",
+    "src/reflector/report.js",
+    "src/reflector/scoring-analysis-aggregate.js",
+    "src/reflector/scoring-analysis-complexity.js",
+    "src/reflector/scoring-analysis-security.js",
+    "src/reflector/scoring-analysis.js",
+    "src/reflector/scoring-coherence.js",
+    "src/reflector/scoring-errors.js",
+    "src/reflector/scoring.js",
+    "src/scoring/exec-verify.js",
+    "src/store/fractal-store.js",
+    "src/store/history.js",
+    "src/store/sqlite.js",
+    "src/unified/coherency.js",
+    "src/unified/healing.js",
+    "src/unified/similarity.js"
+   ]
+  },
+  {
+   "size": 4,
+   "members": [
+    "src/audit/ast-checkers.js",
+    "src/audit/lint-checkers.js",
+    "src/audit/smell-checkers.js",
+    "src/core/analyze.js"
+   ]
+  },
+  {
+   "size": 2,
+   "members": [
+    "src/core/compliance.js",
+    "src/core/preflight.js"
+   ]
+  },
+  {
+   "size": 2,
+   "members": [
+    "src/core/field-workqueue-poller.js",
+    "src/core/field-workqueue.js"
+   ]
+  }
+ ]
+}

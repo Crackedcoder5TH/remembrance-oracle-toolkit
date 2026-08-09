@@ -1,0 +1,349 @@
+{
+ "note": "field-source baseline — every call site allowed to feed contribute({coherence}). New sites are a decision; the grandfathered non-measured list is shrink-only and each entry awaits owner adjudication.",
+ "savedAt": "2026-08-09T01:14:29.038Z",
+ "count": 68,
+ "measured": [
+  {
+   "key": "src/agent-integration.js#oracle:agent-integration:validate",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/analytics/insights.js#oracle:insights:stalePatterns",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/api/oracle-core-search.js#oracle:oracle-core-search:search",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/api/oracle-patterns-candidates.js#oracle:oracle-patterns-candidates:_evaluateCandidate",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/api/oracle-patterns-export.js#oracle:oracle-patterns-export:diff",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/atomic/role-aware-coherence.js#oracle:role-aware-coherence:covenantGroupCoherenceRoleAware",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/ci/open-source-registry.js#oracle:open-source-registry:getProvenance",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/cloud/negotiation.js#oracle:negotiation:generateManifest",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/analyze.js#oracle:analyze:get",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/auto-publish.js#oracle:auto-publish:computeCoherency",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/blockchain-ingest.js#oracle:blockchain-ingest:parseIssue",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/covenant-fractal.js#oracle:covenant-fractal:covenantGroupCoherence",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/covenant.js#security-scan",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/covenant.js#void:compress_signal:covenant",
+   "kind": "MEASURED",
+   "why": "coherency (via measured)"
+  },
+  {
+   "key": "src/core/field-coupling/history.js#(unlabeled)#2",
+   "kind": "MEASURED",
+   "why": "coherency (via arc)"
+  },
+  {
+   "key": "src/core/field-coupling/validate.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency (via c)"
+  },
+  {
+   "key": "src/core/field-coupling/verbs.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency (via clamped)"
+  },
+  {
+   "key": "src/core/field-coupling/verbs.js#(unlabeled)#2",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/field-ingest.js#library:${p.language || 'unknown'}",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/field-tool.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/field-workqueue.js#workqueue:result",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/heal.js#oracle:heal:tryConfidentLevel",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/living-remembrance.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/llm-healing.js#oracle:llm-healing:structuralHeal",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/meditation.js#oracle:meditation:_saveHighWaterMark",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/reflection-loop.js#reflect",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/reflection-scorers.js#void:compress_signal:reflection-scorer",
+   "kind": "MEASURED",
+   "why": "coherency (via measured)"
+  },
+  {
+   "key": "src/core/validator.js#validator:domain-floor-ratchet:${domain}",
+   "kind": "MEASURED",
+   "why": "coherency (via cohValue)"
+  },
+  {
+   "key": "src/evolution/evolution.js#oracle:evolution:evolve",
+   "kind": "MEASURED",
+   "why": "coherency (via __c)"
+  },
+  {
+   "key": "src/evolution/recycler.js#oracle:recycler:promoteWithProof",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/ide/bridge.js#oracle:bridge:getDefinition",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/mcp/handlers/field-audit.js#ecosystem-audit:${mode}",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/mcp/handlers/field.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/orchestrator/coherency-director.js#orchestrate",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/orchestrator/coherency-generator.js#oracle:coherency-generator:runCycle",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/patterns/composer.js#oracle:composer:compose",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/quality/planner.js#oracle:planner:verifySymbol",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/reflector/multi-engine.js#oracle:multi-engine:evaluateFile",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/reflector/report-history.js#oracle:report-history:createRunRecord",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/reflector/report-pattern-hook.js#oracle:report-pattern-hook:queryPatternsForFile",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/reflector/scoring-modes.js#oracle:scoring-modes:shouldAutoCreatePR",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/test-forge/index.js#oracle:test-forge:proven-coherency",
+   "kind": "MEASURED",
+   "why": "coherency (via total)"
+  },
+  {
+   "key": "src/unified/coherency-v1.js#oracle:coherency-v1:compute",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/unified/coherency.js#void:compress_signal:coherency-scorer",
+   "kind": "MEASURED",
+   "why": "coherency (via measured)"
+  },
+  {
+   "key": "src/unified/healing.js#oracle:healing:healed-coherency",
+   "kind": "MEASURED",
+   "why": "coherency (via total)"
+  },
+  {
+   "key": "src/unified/quantum-scorer.js#oracle:quantum-scorer:unifiedMeasurement",
+   "kind": "MEASURED",
+   "why": "coherency"
+  }
+ ],
+ "grandfathered": [
+  {
+   "key": "src/audit/baseline.js#audit:baseline:improvement-ratio",
+   "kind": "SUBSTITUTED",
+   "why": "length (via fixed)"
+  },
+  {
+   "key": "src/audit/ground.js#audit:ground:grounding-ratio",
+   "kind": "SUBSTITUTED",
+   "why": "ratio"
+  },
+  {
+   "key": "src/audit/lint-checkers.js#lint",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/audit/smell-checkers.js#smell",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/ci/harvest.js#harvest",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/core/entangle.js#entangle:node:<id>",
+   "kind": "CONSTANT",
+   "why": "literal value"
+  },
+  {
+   "key": "src/core/field-coupling/history.js#(unlabeled)",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/core/field-coupling/verbs.js#(unlabeled)#3",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/core/field-ingest.js#constant:${moduleKey}",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/core/living-remembrance.js#(unlabeled)#2",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/core/living-remembrance.js#encoder:L<n>",
+   "kind": "SUBSTITUTED",
+   "why": "agreement"
+  },
+  {
+   "key": "src/core/mapper/deep-map.js#(unlabeled)",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/core/mapper/substrate-map.js#coherency-map:",
+   "kind": "SUBSTITUTED",
+   "why": "length"
+  },
+  {
+   "key": "src/core/validator.js#validator:domain:${domain}",
+   "kind": "SUBSTITUTED",
+   "why": "length (via valid)"
+  },
+  {
+   "key": "src/debug/defect-resonance.js#goggles:defect-resonance:",
+   "kind": "SUBSTITUTED",
+   "why": "length"
+  },
+  {
+   "key": "src/orchestrator/entropy-relaxer.js#orchestrator:entropy-relax",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/quality/risk-score.js#risk-score",
+   "kind": "SUBSTITUTED",
+   "why": "probability"
+  },
+  {
+   "key": "src/quantum/quantum-field.js#quantum:decoherence-sweep",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/quantum/quantum-field.js#quantum:phase-drift-sweep",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/scoring/evaluate.js#evaluate:",
+   "kind": "SUBSTITUTED",
+   "why": "score"
+  },
+  {
+   "key": "src/scoring/exec-verify.js#oracle:exec-verify:",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/scoring/pattern-resonance.js#oracle:pattern-resonance:score",
+   "kind": "SUBSTITUTED",
+   "why": "score"
+  }
+ ]
+}

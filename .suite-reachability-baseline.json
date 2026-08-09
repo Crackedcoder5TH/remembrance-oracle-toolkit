@@ -1,0 +1,41 @@
+{
+ "note": "suite-reachability baseline — tracked *.test.js the runner glob cannot reach. Shrink-only; each entry needs a verdict to stay.",
+ "savedAt": "2026-08-09T01:10:23.046Z",
+ "unreachable": [
+  {
+   "file": "tests/pattern-tests/coherency-langdetect-standalone.test.js",
+   "verdict": "grandfathered-unadjudicated",
+   "reason": "present at ratchet birth; wire into the suite, run standalone in CI, or adjudicate standalone-by-design"
+  },
+  {
+   "file": "tests/pattern-tests/covenant-patterns-standalone.test.js",
+   "verdict": "grandfathered-unadjudicated",
+   "reason": "present at ratchet birth; wire into the suite, run standalone in CI, or adjudicate standalone-by-design"
+  },
+  {
+   "file": "tests/pattern-tests/dynamic-fix-suggestions.test.js",
+   "verdict": "grandfathered-unadjudicated",
+   "reason": "present at ratchet birth; wire into the suite, run standalone in CI, or adjudicate standalone-by-design"
+  },
+  {
+   "file": "tests/pattern-tests/embedding-cache-standalone.test.js",
+   "verdict": "grandfathered-unadjudicated",
+   "reason": "present at ratchet birth; wire into the suite, run standalone in CI, or adjudicate standalone-by-design"
+  },
+  {
+   "file": "tests/pattern-tests/feedback-dynamic-standalone.test.js",
+   "verdict": "grandfathered-unadjudicated",
+   "reason": "present at ratchet birth; wire into the suite, run standalone in CI, or adjudicate standalone-by-design"
+  },
+  {
+   "file": "tests/pattern-tests/self-referential-prevention.test.js",
+   "verdict": "grandfathered-unadjudicated",
+   "reason": "present at ratchet birth; wire into the suite, run standalone in CI, or adjudicate standalone-by-design"
+  },
+  {
+   "file": "tests/pattern-tests/sha256-cache-key.test.js",
+   "verdict": "grandfathered-unadjudicated",
+   "reason": "present at ratchet birth; wire into the suite, run standalone in CI, or adjudicate standalone-by-design"
+  }
+ ]
+}

@@ -80,6 +80,14 @@
    "caught": "Surface GREW: the monolith's old @oracle-infrastructure line had ridden into engine.js inside a scooped comment block, and the GREEN verdict was the audit honoring the exemption, not the code passing. The ratchet counts what the audit excuses.",
    "resolution": "The inherited tag was deleted; engine.js re-audited GREEN on its own merits (annotated accessors, zero mutations). Two gates measuring the same surface from different angles caught what either alone would have missed.",
    "receipt": "decomposition-4 commit"
+  },
+  {
+   "date": "2026-08-09",
+   "gate": "The Living Water (covenant pre-commit, principle 11)",
+   "doing": "Committing the five NEW ratchet gates — the commit that grows the gate family from four to nine.",
+   "caught": "COVENANT BROKEN: command injection via dynamic execution, in two of the newborn gate scripts. The orphan gate interpolated a variable into a git-grep shell string — the exact interpolated-shell class the detectors were wired to catch two days earlier (4d77569).",
+   "resolution": "Code fixed, gate untouched: the shell call became an execFileSync argument array, and the regex-exec loops that co-triggered the file-window pattern became matchAll. The eight existing gates had all read green on the same commit; the covenant caught what the newcomers themselves were built to prevent. The gatekeeper was carded at its own door.",
+   "receipt": "the five-gates commit"
   }
  ]
 }

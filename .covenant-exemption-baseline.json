@@ -1,9 +1,9 @@
 {
  "note": "Covenant exemption-surface baseline — the ratchet allows this list to SHRINK only. A new exemption requires an explicit --save-baseline, which also feeds each new file's stored Void-compressor reading into the field (cost of growing the surface).",
- "savedAt": "2026-08-10T02:27:12.449Z",
- "count": 258,
+ "savedAt": "2026-08-10T21:48:23.237Z",
+ "count": 257,
  "byKind": {
-  "infrastructure": 221,
+  "infrastructure": 220,
   "pattern-definitions": 37
  },
  "files": [
@@ -177,7 +177,6 @@
   "src/cli/commands/admin.js",
   "src/cli/commands/core.js",
   "src/cli/commands/fractals.js",
-  "src/cli/commands/library.js",
   "src/cli/commands/meditation.js",
   "src/cli/commands/quality.js",
   "src/cli/commands/reasoning.js",

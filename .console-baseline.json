@@ -1,7 +1,7 @@
 {
  "note": "console baseline — token-verified console.<method>( call sites in src/, per file. Shrink-only: migrate to a logger or remove; new print surface blocks.",
- "savedAt": "2026-08-10T01:37:39.074Z",
- "total": 2893,
+ "savedAt": "2026-08-10T21:48:23.100Z",
+ "total": 2622,
  "byFile": {
   "src/action.js": 31,
   "src/analytics/actionable-insights.js": 8,
@@ -44,7 +44,7 @@
   "src/cli/commands/federation.js": 140,
   "src/cli/commands/fractals.js": 53,
   "src/cli/commands/integration.js": 139,
-  "src/cli/commands/library.js": 274,
+  "src/cli/commands/library/out.js": 3,
   "src/cli/commands/meditation.js": 40,
   "src/cli/commands/onboard.js": 20,
   "src/cli/commands/quality.js": 117,

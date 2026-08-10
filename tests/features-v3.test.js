@@ -12,7 +12,11 @@ const readCliSources = () => {
   const mainCli = fs.readFileSync(path.join(cliDir, 'cli.js'), 'utf-8');
   const commandsDir = path.join(cliDir, 'cli', 'commands');
   if (!fs.existsSync(commandsDir)) return mainCli;
-  const modules = fs.readdirSync(commandsDir)
+  // Recurse: command modules now include organs under subdirectories
+  // (admin/, library/, …) created by the façade+organs decompositions.
+  // A flat read missed them, so a string moved into an organ read as
+  // "absent" even though the CLI still ships it.
+  const modules = fs.readdirSync(commandsDir, { recursive: true })
     .filter(f => f.endsWith('.js'))
     .map(f => fs.readFileSync(path.join(commandsDir, f), 'utf-8'));
   return [mainCli, ...modules].join('\n');

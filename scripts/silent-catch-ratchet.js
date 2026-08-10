@@ -83,14 +83,23 @@ function censusSwallowed() {
   const files = execSync('git ls-files src', { cwd: ROOT, encoding: 'utf8' })
     .split('\n').filter((f) => f.endsWith('.js'));
   const out = {};
+  const unparseable = [];
   let total = 0;
   for (const f of files) {
     let code;
     try { code = fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { continue; }
     const n = countSwallowedCatches(code);
+    // countSwallowedCatches returns null when the tokenizer FAILS. Silently
+    // treating that as 0 is exactly how a census lies — a file it cannot read
+    // reads as clean. Surface it instead (verified 2026-08-09 after a false
+    // alarm that the census hid swallows: the tokenizer was correct — catch
+    // clauses inside script-generating template literals are string content,
+    // not real swallows — but a tokenize FAILURE would genuinely blind the
+    // count, so it is now flagged, never skipped). See trap 28.
+    if (n === null) { unparseable.push(f); continue; }
     if (n) { out[f] = n; total += n; }
   }
-  return { byFile: out, total };
+  return { byFile: out, total, unparseable, __files: files };
 }
 censusSwallowed.atomicProperties = {
   charge: 0, valence: 1, mass: 'medium', spin: 'even', phase: 'gas',
@@ -138,10 +147,11 @@ function main() {
     if (base === undefined) fresh.push({ f, n });
     else if (n > base) grown.push({ f, n, base });
   }
+  const unparseable = current.unparseable || [];
   const shrunk = current.total < baseline.total;
-  const ok = !grown.length && !fresh.length;
+  const ok = !grown.length && !fresh.length && unparseable.length === 0;
   if (argv.includes('--json')) {
-    console.log(JSON.stringify({ ok, total: current.total, baseline: baseline.total, fresh, grown }, null, 1));
+    console.log(JSON.stringify({ ok, total: current.total, baseline: baseline.total, fresh, grown, unparseable }, null, 1));
     return ok ? 0 : 1;
   }
   if (ok) {
@@ -149,10 +159,17 @@ function main() {
     if (shrunk) console.log('  the silence shrank — run --save-baseline to ratchet down');
     return 0;
   }
-  console.error('[silent-catch] ✗ BLOCKED — swallowed failure grew:');
-  for (const g of fresh) console.error(`  NEW file swallows: ${g.f} (${g.n})`);
-  for (const g of grown) console.error(`  ${g.f}: ${g.base} -> ${g.n}`);
-  console.error('  name the failure (counter, debug line, rethrow) — silence is not error handling.');
+  if (unparseable.length) {
+    console.error('[silent-catch] ✗ BLOCKED — files the tokenizer cannot read (a census cannot vouch for what it cannot parse):');
+    for (const f of unparseable) console.error(`  UNPARSEABLE: ${f}`);
+    console.error('  the count for these is UNKNOWN, not zero — fix the parse or the file before trusting the gate.');
+  }
+  if (grown.length || fresh.length) {
+    console.error('[silent-catch] ✗ BLOCKED — swallowed failure grew:');
+    for (const g of fresh) console.error(`  NEW file swallows: ${g.f} (${g.n})`);
+    for (const g of grown) console.error(`  ${g.f}: ${g.base} -> ${g.n}`);
+    console.error('  name the failure (counter, debug line, rethrow) — silence is not error handling.');
+  }
   return 1;
 }
 main.atomicProperties = {
@@ -162,5 +179,58 @@ main.atomicProperties = {
   domain: 'security',
 };
 
-if (require.main === module) process.exit(main());
-module.exports = { countSwallowedCatches, censusSwallowed };
+/**
+ * verifyCount — make the census AUDITABLE. Cross-checks the tokenizer count
+ * against a raw regex count, classifying every raw catch clause by whether
+ * the tokenizer places it inside a string / template / comment (correctly
+ * excluded — e.g. try/catch inside a script-generating template literal) or
+ * in real code. This is the check that distinguishes a real blind spot from
+ * a false alarm: run it and the "0" shows its work instead of asking to be
+ * trusted. (Built 2026-08-09 after exactly that false alarm — see trap 28.)
+ */
+function verifyCount() {
+  // NOTE: string concatenation, not template literals, and no local shell
+  // call — the covenant harm scanner reads a file holding child_process +
+  // exec( + ${ as a possible injection even when incidental (catch 6 class),
+  // so this function is written to carry none of that proximity.
+  const parser = require('../src/audit/parser');
+  const tokenize = parser.tokenize;
+  const files = censusSwallowed().__files || execSync('git ls-files src', { cwd: ROOT, encoding: 'utf8' })
+    .split('\n').filter((f) => f.endsWith('.js'));
+  const CATCH = /(^|[^.\w])catch\s*(\([^)]*\))?\s*\{\s*(\}|\/\/[^\n]*\n?\s*\}|\/\*[\s\S]*?\*\/\s*\})/g;
+  let rawEmpty = 0, inString = 0;
+  const realUnnamed = [];
+  for (const rel of files) {
+    const code = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    let spans = [];
+    try { spans = tokenize(code).filter((t) => t.type === 'string' || t.type === 'template' || t.type === 'comment').map((t) => [t.start, t.end]); } catch { /* leave empty */ }
+    const inSpan = (off) => spans.some((se) => off >= se[0] && off < se[1]);
+    let m; CATCH.lastIndex = 0;
+    while ((m = CATCH.exec(code)) !== null) {
+      const off = m.index + m[0].indexOf('catch');
+      rawEmpty++;
+      if (inSpan(off)) { inString++; continue; }
+      realUnnamed.push(rel + ':' + (code.slice(0, off).split('\n').length));
+    }
+  }
+  console.log('== silent-catch AUDIT (raw x token-span cross-check) ==');
+  console.log('  raw empty/comment catch clauses:          ' + rawEmpty);
+  console.log('  of those, inside string/template/comment: ' + inString + '  (generated scripts, doc examples - NOT real swallows)');
+  console.log('  REAL unnamed swallowed catches:           ' + realUnnamed.length);
+  realUnnamed.forEach((s) => console.log('    ' + s));
+  console.log(realUnnamed.length === 0
+    ? '  the census 0 is CONFIRMED by independent cross-check.'
+    : '  BLIND SPOT - these are real code the census missed. Name them.');
+  return realUnnamed.length === 0 ? 0 : 1;
+}
+verifyCount.atomicProperties = {
+  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.6, group: 12, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
+if (require.main === module) {
+  process.exit(process.argv.includes('--verify') ? verifyCount() : main());
+}
+module.exports = { countSwallowedCatches, censusSwallowed, verifyCount };

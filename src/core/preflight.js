@@ -14,7 +14,6 @@ const { quiet } = require('./quiet');
 
 const fs = require('fs');
 const path = require('path');
-const { findGitHooksDir, HOOK_MARKER } = require('../ci/hooks');
 const { isOracleEnabled } = require('./oracle-config');
 
 const SYNC_STALENESS_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -25,27 +24,11 @@ const BYPASS_COMMANDS = new Set([
   'deploy', 'dashboard', 'plugin', 'preflight',
 ]);
 
-/**
- * Check if git hooks are installed.
- */
-function checkHooksInstalled(cwd = process.cwd()) {
-  const hooksDir = findGitHooksDir(cwd);
-  if (!hooksDir) return { installed: false, reason: 'Not a git repository' };
-
-  const preCommit = path.join(hooksDir, 'pre-commit');
-  const postCommit = path.join(hooksDir, 'post-commit');
-
-  const preOk = fs.existsSync(preCommit) &&
-    fs.readFileSync(preCommit, 'utf-8').includes(HOOK_MARKER);
-  const postOk = fs.existsSync(postCommit) &&
-    fs.readFileSync(postCommit, 'utf-8').includes(HOOK_MARKER);
-
-  if (preOk && postOk) return { installed: true };
-  const missing = [];
-  if (!preOk) missing.push('pre-commit');
-  if (!postOk) missing.push('post-commit');
-  return { installed: false, reason: `Missing hooks: ${missing.join(', ')}` };
-}
+// The filesystem probe itself now lives in ./hooks-probe, a leaf, because
+// compliance needs the same answer and this module needs compliance's ledger
+// (see checkHooksWithLedger below) — which formed a require cycle. Re-exported
+// unchanged at the bottom of this file, so importing it from here still works.
+const { checkHooksInstalled } = require('./hooks-probe');
 
 /**
  * Check when the last sync pull happened.

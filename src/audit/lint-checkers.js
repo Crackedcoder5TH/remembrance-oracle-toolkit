@@ -291,9 +291,11 @@ function lintFile(filePath, options = {}) {
   }
   try {
     const source = fs.readFileSync(filePath, 'utf-8');
-    const { analyzeCached } = require('../core/analyze');
-    const env = analyzeCached(source, filePath);
-    return { file: filePath, ...lintCode(source, { ...options, program: env.program }) };
+    // ./program-cache, not core/analyze — analyze builds its envelope by
+    // calling lintCode, so requiring it back from here closed a cycle. The
+    // parsed program is the only field this ever used.
+    const { programCached } = require('./program-cache');
+    return { file: filePath, ...lintCode(source, { ...options, program: programCached(source, filePath) }) };
   } catch (e) {
     return { file: filePath, findings: [], summary: { total: 0, byRule: {} }, error: e.message };
   }

@@ -826,12 +826,14 @@ function auditFile(filePath, options = {}) {
   }
   try {
     const source = fs.readFileSync(filePath, 'utf-8');
-    // Route through the process-level envelope cache so a second
-    // analysis of the same file (audit, lint, smell, prior in one
-    // session) hits the same parsed program.
-    const { analyzeCached } = require('../core/analyze');
-    const env = analyzeCached(source, filePath, { language: options.language });
-    const result = auditCode(source, { ...options, filePath, program: env.program });
+    // Route through the process-level program cache so a second analysis
+    // of the same file (audit, lint, smell, prior in one session) hits the
+    // same parsed program. This used to call core/analyze's envelope cache
+    // and read one field off it — but analyze builds its envelope by
+    // calling the checkers, so that made these modules require each other.
+    // The parse is the only shared thing, and it now lives in its own leaf.
+    const { programCached } = require('./program-cache');
+    const result = auditCode(source, { ...options, filePath, program: programCached(source, filePath) });
     return { file: filePath, ...result };
   } catch (e) {
     return { file: filePath, findings: [], summary: { total: 0, byClass: {}, bySeverity: {} }, error: e.message };

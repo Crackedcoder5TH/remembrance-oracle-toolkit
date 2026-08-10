@@ -99,7 +99,10 @@ function startSession(repoRoot, options = {}) {
  */
 function probeHooksInstalled(repoRoot) {
   try {
-    const { checkHooksInstalled } = require('./preflight');
+    // ./hooks-probe, not ./preflight — preflight consults this module's
+    // ledger, so requiring it back from here closed a cycle. The probe is
+    // a leaf both sides can share.
+    const { checkHooksInstalled } = require('./hooks-probe');
     const result = checkHooksInstalled(repoRoot || process.cwd());
     return !!result.installed;
   } catch { return false; }

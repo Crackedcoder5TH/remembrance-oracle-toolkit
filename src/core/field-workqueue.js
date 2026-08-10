@@ -44,6 +44,12 @@ const CHAIN_TTL_MS = 3000;
 let _saveCount = 0;
 let _chainCache = { at: 0, value: null };
 
+// The local poller's nudge callback, registered by the poller while it is
+// engaged (see setNudge). Kept as an injected callback rather than a require
+// so this module never has to name the poller — the two used to require each
+// other, which put them in a lexical cycle.
+let _nudge = null;
+
 // ── local cache ──────────────────────────────────────────────────────
 function _loadLocal() {
   try {
@@ -310,7 +316,14 @@ async function offload(kind, payload, opts = {}) {
 
   // Nudge the local poller — a cool node claims it at once; a hot
   // node's claim is entropy-gated, so the work flows to the pool.
-  try { await require('./field-workqueue-poller')._tick(); } catch (_) { quiet('core:field-workqueue:post', _); /* poller optional */ }
+  //
+  // The poller registers this callback while engaged (setNudge below)
+  // instead of being required from here. It used to be
+  // `require('./field-workqueue-poller')._tick()`, which made these two
+  // modules require each other. Behaviour is unchanged: _tick() already
+  // returned immediately unless the poller was engaged, and the callback
+  // is registered for exactly that engaged lifetime.
+  try { if (_nudge) await _nudge(); } catch (_) { quiet('core:field-workqueue:post', _); /* poller optional */ }
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -333,7 +346,27 @@ function stats() {
   };
 }
 
-module.exports = { post, claim, submitResult, collect, offload, flush, stats, STORE_PATH, _merge };
+/**
+ * Register the local poller's nudge, called by offload() right after it
+ * posts work so a cool node picks the item up immediately instead of
+ * waiting for the next poll interval.
+ *
+ * The poller registers on engage() and clears on disengage(), so the nudge
+ * exists for exactly as long as there is a poller to nudge. Pass null (or
+ * anything non-callable) to clear.
+ */
+function setNudge(fn) {
+  _nudge = typeof fn === 'function' ? fn : null;
+  return { nudge: !!_nudge };
+}
+setNudge.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'odd', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.2, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
+};
+
+module.exports = { post, claim, submitResult, collect, offload, flush, stats, setNudge, STORE_PATH, _merge };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's

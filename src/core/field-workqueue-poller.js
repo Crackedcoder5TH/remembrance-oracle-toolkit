@@ -101,6 +101,11 @@ function engage(opts = {}) {
     ? opts.intervalMs : POLL_INTERVAL_MS;
   _timer = setInterval(() => { _tick(); }, interval);
   if (_timer.unref) _timer.unref();
+  // Hand the queue our nudge so offload() can wake us the moment work is
+  // posted, instead of the queue requiring this module by name (which made
+  // the two require each other). Registered for exactly the engaged
+  // lifetime — which is also when _tick() stops being a no-op.
+  try { wq.setNudge(_tick); } catch (_) { quiet('core:field-workqueue-poller:setNudge', _); /* nudge optional */ }
   return { engaged: true, nodeId: _resolveNodeId(), intervalMs: interval };
 }
 
@@ -108,6 +113,7 @@ function engage(opts = {}) {
 function disengage() {
   if (_timer) { clearInterval(_timer); _timer = null; }
   _engaged = false;
+  try { wq.setNudge(null); } catch (_) { quiet('core:field-workqueue-poller:setNudge', _); /* nudge optional */ }
   return { engaged: false };
 }
 

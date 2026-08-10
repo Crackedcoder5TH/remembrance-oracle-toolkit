@@ -2,7 +2,6 @@
 'use strict';
 
 /**
- * @oracle-infrastructure — PreToolUse hook for WebFetch; read-only, fires a
  * detached substrate read of the URL being fetched. Never blocks, never denies.
  *
  * goggles-web-hook — PASSIVE web reading. This is the piece that makes the
@@ -25,7 +24,8 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
-function passthrough() { process.exit(0); }   // never block browsing
+function passthrough() { process.exit(0); }
+passthrough.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };   // never block browsing
 
 let raw = '';
 try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { passthrough(); }

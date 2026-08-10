@@ -3,7 +3,6 @@
 /**
  * CLI for the Remembrance Oracle.
  *
- * @oracle-infrastructure
  *
  * Usage:
  *   remembrance-oracle submit --file code.js --test test.js --tags "sort,algorithm"
@@ -87,6 +86,7 @@ function speakCLI(text) {
     if (process.env.ORACLE_DEBUG) console.warn('[cli:speakCLI] TTS not available — silent fallback:', e?.message || e);
   }
 }
+speakCLI.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function parseArgs(args) {
   const parsed = { _command: args[0], _positional: [], _all: args };
@@ -105,6 +105,7 @@ function parseArgs(args) {
   parsed._rest = parsed._positional.join(' ');
   return parsed;
 }
+parseArgs.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Read all data from stdin (for pipe support).
@@ -119,6 +120,7 @@ function readStdin() {
     return '';
   }
 }
+readStdin.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Get code from --file flag or stdin pipe.
@@ -137,6 +139,7 @@ function getCode(args) {
   if (stdin.trim()) return stdin;
   return null;
 }
+getCode.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 3, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function readFile(filePath, label) {
   const resolved = safePath(filePath, process.cwd());
@@ -146,10 +149,12 @@ function readFile(filePath, label) {
   }
   return fs.readFileSync(resolved, 'utf-8');
 }
+readFile.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function showHelp() {
   console.log(generateHelp(c));
 }
+showHelp.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -352,5 +357,6 @@ async function main() {
     process.exit(1);
   }
 }
+main.atomicProperties = { charge: 0, valence: 8, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "benevolent", domain: "utility" };
 
 main();

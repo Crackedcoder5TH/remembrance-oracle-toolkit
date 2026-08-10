@@ -2,7 +2,6 @@
 'use strict';
 
 /**
- * @oracle-infrastructure — advisory PostToolUse dev hook; read-only scoring,
  * internal-state-bounded, never user-input-driven.
  *
  * goggles-hook — PostToolUse adapter for ambient structural meta-awareness.
@@ -44,6 +43,7 @@ function out(context) {
     hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: context },
   }));
 }
+out.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 let raw = '';
 try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { process.exit(0); }
@@ -88,6 +88,7 @@ function editPair() {
   }
   return { oldStr: '', newStr: '' };
 }
+editPair.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 const { oldStr, newStr } = editPair();
 
 // Locate the changed lines, then expand to a syntactic whole: pad ±25 lines,
@@ -101,6 +102,7 @@ function lineRangeOf(text, needle) {
   const startLine = text.slice(0, idx).split('\n').length - 1;
   return { startLine, endLine: startLine + needle.split('\n').length - 1 };
 }
+lineRangeOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function regionAt(text, startLine, endLine) {
   const all = text.split('\n');
@@ -119,6 +121,7 @@ function regionAt(text, startLine, endLine) {
   }
   return { text: all.slice(s, e + 1).join('\n'), startLine: s + 1, endLine: e + 1 };
 }
+regionAt.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const postRange = lineRangeOf(content, newStr);
 const sec = postRange ? regionAt(content, postRange.startLine, postRange.endLine) : null;
@@ -131,6 +134,7 @@ function score(text, name) {
     { source: 'goggles:hook', growSubstrate: false, topK: 5 },
   );
 }
+score.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 let r;
 try { r = score(scopeText, base); } catch (_) { process.exit(0); }

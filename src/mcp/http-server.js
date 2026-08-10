@@ -1,5 +1,4 @@
 /**
- * @oracle-infrastructure
  *
  * MCP HTTP transport — wraps the stdio MCPServer with a single
  * `POST /mcp` endpoint speaking JSON-RPC 2.0. Lets any AI agent that

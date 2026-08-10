@@ -404,6 +404,22 @@
    "truth": "A require inside a function body or expression-bodied arrow runs at CALL time and cannot deadlock module init. Position-aware measurement (tokenizer, fn-body + expression-arrow contexts) showed the load-time require graph of src/ was ALREADY ACYCLIC — every cycle-participating edge was already lazy, largely thanks to prior decompositions and report-lazy. The planned cuts would have converted already-lazy edges while the lexical census read 62 unchanged: execution theater against a misread instrument. Found 2026-08-09 while executing the cut plan with byte-level precision.",
    "tell": "A remediation plan whose success metric is read from an instrument that cannot distinguish the cure from the disease (lazy vs top-level require, demonstration vs instance, mention vs call). The first cut appearing to change nothing.",
    "correct": "Before executing a graph-surgery plan, measure the graph the failure mode actually lives on (load order for init deadlock; lexical for coupling). The ratchet now censuses BOTH: load-time gated at zero, lexical shrink-only through real decomposition."
+  },
+  {
+   "match": [
+    "exemption shed",
+    "@oracle-infrastructure",
+    "fractalAudit",
+    "covenantCheck",
+    "SQL identifier",
+    "quantum-field",
+    "load-bearing exemption"
+   ],
+   "severity": "high",
+   "wrong": "Deciding an @oracle-infrastructure exemption is sheddable because fractalAudit (byte+atomic) reads clean once the blocking findings are resolved.",
+   "truth": "The exemption tag relieves a file from MORE than one scanner. quantum-field.js reached byte:0 atomic:0 after atomic annotation, but its tag was load-bearing for the COVENANT SQL-identifier rule (principle 11) — its  DDL interpolations are identifiers SQL cannot parameterise, and the file header says so. Removing the tag left fractalAudit green but covenantCheck BROKEN; the pre-commit gate would have blocked it. Found 2026-08-09 shedding the src exemption tranche — a file-modification note surfaced the header just in time to check covenantCheck before trusting the shed.",
+   "tell": "A file whose header EXPLAINS why it is exempt (SQL identifiers, dense code, a scoped security-rule exemption) — that prose is the load-bearing reason, and it names a scanner fractalAudit does not run.",
+   "correct": "Before shedding any exemption, run BOTH covenantCheck (covenant.js — SQL/harm/injection, principle 11) AND fractalAudit (covenant-fractal.js — byte mutations + atomic properties). An exemption is only sheddable when both read clean. Read the file header first: if it argues for its own exemption, that argument is usually the second gate."
   }
  ]
 }

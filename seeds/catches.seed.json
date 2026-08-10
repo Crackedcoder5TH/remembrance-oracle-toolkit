@@ -88,6 +88,14 @@
    "caught": "COVENANT BROKEN: command injection via dynamic execution, in two of the newborn gate scripts. The orphan gate interpolated a variable into a git-grep shell string — the exact interpolated-shell class the detectors were wired to catch two days earlier (4d77569).",
    "resolution": "Code fixed, gate untouched: the shell call became an execFileSync argument array, and the regex-exec loops that co-triggered the file-window pattern became matchAll. The eight existing gates had all read green on the same commit; the covenant caught what the newcomers themselves were built to prevent. The gatekeeper was carded at its own door.",
    "receipt": "the five-gates commit"
+  },
+  {
+   "date": "2026-08-09",
+   "gate": "cycle-ratchet (pre-commit, lexical scale)",
+   "doing": "Entangling the two covenant gates by adding fullCovenantAudit to covenant-fractal.js with a call-time require of covenant.js.",
+   "caught": "Commit BLOCKED: the lexical require knot grew 62 -> 64 — even a call-time (load-safe) require is a lexical edge, and it pulled covenant-fractal.js into the coupling cluster. The load graph stayed acyclic (correctness intact) but the coupling debt rose, and the ratchet built two days earlier refused it.",
+   "resolution": "Not a baseline bump — a real separation, which is what the ratchet asks for. fullCovenantAudit moved into a new leaf module (covenant-entangled.js) that requires BOTH gates and is required BACK by nothing in core, so the coupling lives in one consumer instead of tangling the two cores. Lexical baseline held at 4/70.",
+   "receipt": "the entangle-gate commit"
   }
  ]
 }

@@ -153,3 +153,36 @@ test('fractalAudit flags functions missing atomicProperties', () => {
   assert.equal(report.atomicScale.length, 1);
   assert.equal(report.atomicScale[0].excerpt, 'function unidentified(...)');
 });
+
+// ── The two gates, entangled (fullCovenantAudit) ──
+// Trap 27: an exemption judged sheddable from the fractal audit alone slips
+// past the covenant scanner. fullCovenantAudit crosses both — clean only
+// when BOTH pass.
+const { fullCovenantAudit } = require('../src/core/covenant-entangled');
+
+test('fullCovenantAudit: clean only when BOTH gates pass', () => {
+  const clean = 'const add = (a, b) => a + b;\nmodule.exports = { add };\n';
+  const v = fullCovenantAudit({ code: clean, filePath: 'clean.js' });
+  assert.equal(v.clean, true);
+  assert.equal(v.fractalHealth, true);
+  assert.equal(v.sealed, true);
+});
+
+test('fullCovenantAudit: covenant-blocked file is NOT clean even when fractal-healthy', () => {
+  // SQL value interpolation trips the covenant scanner (principle 11) but not
+  // the fractal byte/atomic scales — the exact shape of trap 27.
+  const sqlInterp = 'const q = (name) => db.exec(`SELECT * FROM users WHERE n = ${name}`);\nq.atomicProperties = {};\nmodule.exports = { q };\n';
+  const v = fullCovenantAudit({ code: sqlInterp, filePath: 'sql.js' });
+  assert.equal(v.sealed, false, 'covenant scanner must block SQL interpolation');
+  assert.equal(v.clean, false, 'entangled verdict must be NOT clean when either gate blocks');
+  assert.ok(v.reasons.some((r) => /covenant scale/.test(r)));
+});
+
+test('fullCovenantAudit: fractal-blocked file is NOT clean even when covenant seals', () => {
+  // An ungated mutation trips the fractal byte scale; no SQL/harm, so the
+  // covenant scanner seals — the mirror image of the case above.
+  const ungated = 'function w(p, d) {\n  require("fs").writeFileSync(p, d);\n}\nw.atomicProperties = {};\nmodule.exports = { w };\n';
+  const v = fullCovenantAudit({ code: ungated, filePath: 'mut.js' });
+  assert.equal(v.fractalHealth, false, 'fractal audit must flag the ungated mutation');
+  assert.equal(v.clean, false, 'entangled verdict must be NOT clean when either gate blocks');
+});

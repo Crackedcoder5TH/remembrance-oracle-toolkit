@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * SERF × Compression Integration
  *
@@ -301,7 +302,7 @@ function validateAllReconstructions(store) {
 
       // Persist validation result if store supports it
       if (typeof store.storeValidationResult === 'function') {
-        try { store.storeValidationResult(result); } catch (_) { /* non-fatal */ }
+        try { store.storeValidationResult(result); } catch (_) { quiet('compression:serf-integration:validateReconstruction', _); /* non-fatal */ }
       }
 
       if (result.valid) {

@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * MCP Auto-Installation — Register the oracle MCP server across AI editors.
@@ -80,7 +81,7 @@ function updateConfigFile(filePath, serverConfig) {
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[mcp-install:updateConfigFile] silent failure:', e?.message || e);
         // Corrupted config — back up original before overwriting
-        try { fs.writeFileSync(filePath + '.bak', content); } catch (_) {}
+        try { fs.writeFileSync(filePath + '.bak', content); } catch (_) { quiet('ide:mcp-install:updateConfigFile', _);}
         config = { mcpServers: {} };
       }
     }

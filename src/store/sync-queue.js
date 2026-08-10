@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Offline-First Sync Queue
@@ -53,7 +54,7 @@ class SyncQueue {
           const raw = fs.readFileSync(bakPath, 'utf-8');
           const parsed = JSON.parse(raw);
           const data = Array.isArray(parsed) ? parsed : [];
-          try { fs.writeFileSync(this._queueFile, raw, 'utf-8'); } catch (_) { /* best effort */ }
+          try { fs.writeFileSync(this._queueFile, raw, 'utf-8'); } catch (_) { quiet('store:sync-queue:constructor', _); /* best effort */ }
           return data;
         }
       } catch (bakErr) {
@@ -76,7 +77,7 @@ class SyncQueue {
       const tmpPath = this._queueFile + '.tmp';
       fs.writeFileSync(tmpPath, json, 'utf-8');
       if (fs.existsSync(this._queueFile)) {
-        try { fs.copyFileSync(this._queueFile, this._queueFile + '.bak'); } catch (_) { /* best effort */ }
+        try { fs.copyFileSync(this._queueFile, this._queueFile + '.bak'); } catch (_) { quiet('store:sync-queue:constructor', _); /* best effort */ }
       }
       fs.renameSync(tmpPath, this._queueFile);
     } catch (err) {

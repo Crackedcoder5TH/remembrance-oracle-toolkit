@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 
 /**
@@ -85,9 +86,9 @@ async function computeCoherency(repo, pr) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:auto-publish:computeCoherency' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('core:auto-publish:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:auto-publish:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
 computeCoherency.atomicProperties = {

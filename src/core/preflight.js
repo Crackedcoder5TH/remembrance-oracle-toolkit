@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -71,7 +72,7 @@ function checkLastSync(cwd = process.cwd()) {
         lastPull: data.lastPull,
         reason: `Last sync pull was ${_humanAge(age)} ago (threshold: 24h)`,
       };
-    } catch (_) { /* corrupt file */ }
+    } catch (_) { quiet('core:preflight:require', _); /* corrupt file */ }
   }
 
   // Fallback: check if personal store exists and local store was modified recently
@@ -100,7 +101,7 @@ function recordSyncPull(cwd = process.cwd()) {
     const filePath = path.join(dir, 'sync-timestamp.json');
     const data = { lastPull: new Date().toISOString() };
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (_) { /* best effort */ }
+  } catch (_) { quiet('core:preflight:recordSyncPull', _); /* best effort */ }
 }
 
 /**
@@ -193,7 +194,7 @@ function checkHooksWithLedger(cwd) {
       try {
         recordEvent(session, 'hooks.installed', { source: 'filesystem-heal' });
         saveSession(session, cwd);
-      } catch { /* best-effort */ }
+      } catch (_e) { quiet('core:preflight:saveSession', _e); /* best-effort */ }
     }
     return fs;
   } catch {

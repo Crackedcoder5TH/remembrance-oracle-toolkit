@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Dependency Scanner — Supply Chain Security
@@ -199,11 +200,11 @@ function scanSinglePackage(pkgPath, options = {}) {
             flags.push('covenant-violation-deep');
             reasons.push(`Deep scan: ${relPath} covenant violation`);
           }
-        } catch {
+        } catch (_e) { quiet('audit:dep-scanner:covenantCheck', _e);
           // Skip unreadable files in deep scan
         }
       }
-    } catch {
+    } catch (_e) { quiet('audit:dep-scanner:covenantCheck', _e);
       // Skip if directory listing fails
     }
   }
@@ -243,12 +244,12 @@ function collectJsFiles(dir, limit, excludePath) {
               results.push(path.join(fullPath, sub.name));
             }
           }
-        } catch {
+        } catch (_e) { quiet('audit:dep-scanner:collectJsFiles', _e);
           // Skip inaccessible subdirectories
         }
       }
     }
-  } catch {
+  } catch (_e) { quiet('audit:dep-scanner:collectJsFiles', _e);
     // Skip inaccessible directories
   }
 

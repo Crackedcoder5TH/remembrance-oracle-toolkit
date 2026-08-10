@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -369,7 +370,7 @@ class LivingCovenant {
         activationHistory: this._activationHistory,
         savedAt: new Date().toISOString(),
       }, null, 2));
-    } catch { /* best effort */ }
+    } catch (_e) { quiet('core:living-covenant:c1', _e); /* best effort */ }
   }
 
   _load() {
@@ -382,7 +383,7 @@ class LivingCovenant {
       if (raw.activationHistory) {
         this._activationHistory = raw.activationHistory;
       }
-    } catch { /* start fresh */ }
+    } catch (_e) { quiet('core:living-covenant:c2', _e); /* start fresh */ }
   }
 }
 

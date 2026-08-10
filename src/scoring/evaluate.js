@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * evaluate.js — observation-driven tool dispatcher.
@@ -205,7 +206,7 @@ async function evaluate(input, opts = {}) {
       kind: 'evaluation',
       source: 'evaluate:' + (opts.language || (observation.looksLikeCode ? 'code' : 'text')),
     });
-  } catch (_e) { /* best-effort */ }
+  } catch (_e) { quiet('scoring:evaluate:recordCost', _e); /* best-effort */ }
 
   return {
     observation: {

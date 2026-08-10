@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Oracle Core — Resolve (Unified Quantum Measurement).
  *
@@ -299,7 +300,7 @@ module.exports = {
     if (patternData?.id && this._quantumField && (decision.decision === 'pull' || decision.decision === 'evolve')) {
       try {
         this._quantumField.observe('patterns', [patternData.id]);
-      } catch (_) { /* non-fatal */ }
+      } catch (_) { quiet('api:oracle-core-resolve:_computeFractalAlignment', _); /* non-fatal */ }
     }
 
     // Build resolve result
@@ -347,7 +348,7 @@ module.exports = {
     resolveResult = applyPromptTag(resolveResult);
 
     // Track resolve interaction for session summary
-    try { trackResolve(resolveResult, request); } catch (_) { /* non-fatal */ }
+    try { trackResolve(resolveResult, request); } catch (_) { quiet('api:oracle-core-resolve:trackResolve', _); /* non-fatal */ }
 
     return resolveResult;
   },

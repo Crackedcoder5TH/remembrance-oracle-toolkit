@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * oracle plan <intent> — verified symbol plan before code generation.
@@ -92,13 +93,13 @@ function verifySymbol(symbol, context) {
                 const { recordCost: __recordCost } = require(__p);
                 __recordCost({ units: 1, kind: 'work', source: 'oracle:planner:verifySymbol' });
                 break;
-              } catch (_) { /* try next */ }
+              } catch (_) { quiet('quality:planner:__recordCost', _); /* try next */ }
             }
-          } catch (_) { /* best-effort */ }
+          } catch (_) { quiet('quality:planner:__recordCost', _); /* best-effort */ }
           return __retVal;
         }
       }
-    } catch { /* degrade gracefully */ }
+    } catch (_e) { quiet('quality:planner:__recordCost', _e); /* degrade gracefully */ }
   }
 
   // Tier 4: filesystem scan — look for a definition in the repo's src tree
@@ -224,7 +225,7 @@ function planFromIntent(args) {
   try {
     const { registerPlanSignal } = require('../unified/emergent-coherency');
     registerPlanSignal(missing.length, symbols.length);
-  } catch { /* emergent module not available */ }
+  } catch (_e) { quiet('quality:planner:registerPlanSignal', _e); /* emergent module not available */ }
 
   return {
     intent,

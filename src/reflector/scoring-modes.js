@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Reflector — Modes & Presets
  *
@@ -151,9 +152,9 @@ function shouldAutoCreatePR(report, config) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:scoring-modes:shouldAutoCreatePR' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('reflector:scoring-modes:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('reflector:scoring-modes:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
 

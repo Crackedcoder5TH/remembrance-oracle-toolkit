@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Auto-Submit Module — Automatic pattern submission after commits and tests.
@@ -43,7 +44,7 @@ function _persistErrors(baseDir, errors) {
         // Keep the last 256KB
         fs.writeFileSync(logPath, content.slice(-256 * 1024), 'utf-8');
       }
-    } catch (_) { /* rotation failure is non-fatal */ }
+    } catch (_) { quiet('ci:auto-submit:_persistErrors', _); /* rotation failure is non-fatal */ }
   } catch (_) { console.error('[auto-submit] error logging failed:', _.message, 'original errors:', errors); }
 }
 

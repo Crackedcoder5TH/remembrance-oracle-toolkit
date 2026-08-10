@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * pattern library and field; bounded to internal state, not user-input-driven,
  * so the covenant-gate semantics don't apply here.
@@ -54,7 +55,7 @@ function contributeComplexity(breakdown) {
     // RATIO, not a coherency. Feeding it in as `coherence` averaged a measure
     // of how decomposed the codebase is into a measure of how structured it
     // is — two different questions with the same range.
-  } catch (_) { /* field unreachable — analytics still returns its report */ }
+  } catch (_) { quiet('analytics:analytics:contributeComplexity', _); /* field unreachable — analytics still returns its report */ }
 }
 contributeComplexity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 

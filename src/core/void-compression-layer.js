@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 
 /**
@@ -281,7 +282,7 @@ class VoidStore {
 
     if (otherRefs.length === 0 && hash) {
       const blobPath = path.join(this._storePath, hash.slice(0, 2), hash.slice(2, 4), hash.slice(4));
-      try { fs.unlinkSync(blobPath); } catch {}
+      try { fs.unlinkSync(blobPath); } catch (_e) { quiet('core:void-compression-layer:c1', _e);}
       delete this._index.hashes[hash];
     }
 
@@ -320,7 +321,7 @@ class VoidStore {
             results.push({ file: filePath, ...result });
             originalTotal += result.originalSize;
             compressedTotal += result.compressedSize || 0;
-          } catch {}
+          } catch (_e) { quiet('core:void-compression-layer:walk', _e);}
         }
       }
     };
@@ -496,7 +497,7 @@ class VoidStore {
           }));
           return this._patternCache;
         }
-      } catch {}
+      } catch (_e) { quiet('core:void-compression-layer:c3', _e);}
     }
 
     return [];
@@ -541,7 +542,7 @@ class VoidStore {
       if (fs.existsSync(this._indexPath)) {
         return JSON.parse(fs.readFileSync(this._indexPath, 'utf8'));
       }
-    } catch {}
+    } catch (_e) { quiet('core:void-compression-layer:c4', _e);}
     return { keys: {}, hashes: {} };
   }
 

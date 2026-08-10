@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Oracle Patterns — Diff, import, and export.
  */
@@ -41,9 +42,9 @@ module.exports = {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:oracle-patterns-export:diff' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('api:oracle-patterns-export:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('api:oracle-patterns-export:__recordCost', _); /* best-effort */ }
     return __retVal;
   },
 

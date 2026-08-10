@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Test Forge — Auto-generate, run, and score tests for oracle patterns.
  *
@@ -367,7 +368,7 @@ class TestForge {
         require('../core/field-coupling').recordCost({
           units: 1, kind: 'verification', source: 'oracle:test-forge:proven',
         });
-      } catch (_) { /* field optional — the forge must not depend on it */ }
+      } catch (_) { quiet('test-forge:index:require', _); /* field optional — the forge must not depend on it */ }
 
       // Update in DB
       if (this.oracle.patterns._backend === 'sqlite' && this.oracle.patterns._sqlite) {

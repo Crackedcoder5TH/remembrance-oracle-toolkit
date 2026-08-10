@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Auto-Register Module — Diff-targeted pattern registration.
  *
@@ -255,7 +256,7 @@ function _qualityScore(func, filePath, baseDir) {
   let fileContent = '';
   try {
     fileContent = fs.readFileSync(filePath, 'utf-8');
-  } catch (e) {
+  } catch (e) { quiet('ci:auto-register:findTestFile', e);
     // If we can't read the file, skip this check
   }
 

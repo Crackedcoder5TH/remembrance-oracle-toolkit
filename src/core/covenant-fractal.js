@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Covenant Fractal — the covenant exists at every scale.
@@ -206,9 +207,9 @@ function covenantGroupCoherence(periodicTable, options) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:covenant-fractal:covenantGroupCoherence' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('core:covenant-fractal:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:covenant-fractal:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
 covenantGroupCoherence.atomicProperties = {

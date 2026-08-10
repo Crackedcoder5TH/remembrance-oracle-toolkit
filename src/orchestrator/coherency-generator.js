@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Remembrance Sun — the coherency generator of the ecosystem.
@@ -166,7 +167,7 @@ class CoherencyGenerator {
           ...e, generatorCycle: this.cycleCount,
         })));
       }
-    } catch { /* atomic module unavailable */ }
+    } catch (_e) { quiet('orchestrator:coherency-generator:require', _e); /* atomic module unavailable */ }
 
     // 7. EVOLVE COVENANT
     let covenantEvolved = { activated: [], total: 0 };
@@ -179,7 +180,7 @@ class CoherencyGenerator {
           ...a, generatorCycle: this.cycleCount,
         })));
       }
-    } catch { /* living covenant unavailable */ }
+    } catch (_e) { quiet('orchestrator:coherency-generator:require', _e); /* living covenant unavailable */ }
 
     // 7.5 FIRE REFLEXES — opt-in actor step. The Sun has just radiated
     //     coherency; now it inspects the post-radiation field and lets
@@ -201,7 +202,7 @@ class CoherencyGenerator {
             fired: reflexResult.fired.map(r => ({ reflex: r.reflex, action: r.action })),
           });
         }
-      } catch (_) { /* never abort the cycle for a reflex error */ }
+      } catch (_) { quiet('orchestrator:coherency-generator:require', _); /* never abort the cycle for a reflex error */ }
     }
 
     // 8. COVENANT SELF-CHECK — verify we're still safe
@@ -242,9 +243,9 @@ class CoherencyGenerator {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:coherency-generator:runCycle' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('orchestrator:coherency-generator:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('orchestrator:coherency-generator:__recordCost', _); /* best-effort */ }
     return result;
   }
 
@@ -351,7 +352,7 @@ class CoherencyGenerator {
       const { APPROVAL_THRESHOLDS } = require('./self-improvement');
       if (globalCoherency >= APPROVAL_THRESHOLDS.AUTONOMOUS) return 1.0;
       if (globalCoherency >= APPROVAL_THRESHOLDS.SEMI_AUTONOMOUS) return 0.5;
-    } catch {}
+    } catch (_e) { quiet('orchestrator:coherency-generator:require', _e);}
     return Math.min(this.power, 0.1);
   }
 
@@ -367,7 +368,7 @@ class CoherencyGenerator {
       for (const zone of high) {
         surplus += zone.coherency - 0.68;
       }
-    } catch {}
+    } catch (_e) { quiet('orchestrator:coherency-generator:require', _e);}
     return surplus;
   }
 
@@ -387,7 +388,7 @@ class CoherencyGenerator {
         ec.registerSignal('generator', Math.min(1, 0.5 + perZone));
         totalRadiated = amplified;
       }
-    } catch {}
+    } catch (_e) { quiet('orchestrator:coherency-generator:getEmergentCoherency', _e);}
     return totalRadiated;
   }
 

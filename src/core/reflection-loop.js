@@ -1,3 +1,4 @@
+const { quiet } = require('./quiet');
 /**
  * Reflection Loop — the iterative refinement engine.
  * Generates candidates, scores them, selects winners, and repeats.
@@ -272,7 +273,7 @@ function reflectionLoop(code, options = {}) {
   try {
     const { recordCost } = require('./field-coupling');
     recordCost({ units: loops, kind: 'work', source: 'reflect' });
-  } catch (_) { /* field unavailable — best-effort */ }
+  } catch (_) { quiet('core:reflection-loop:recordCost', _); /* field unavailable — best-effort */ }
 
   return {
     code: current.code, coherence: current.coherence, fullCoherency: current.fullCoherency,

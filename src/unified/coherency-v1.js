@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * coherency_v1 — published unified coherency formula.
@@ -40,9 +41,9 @@ function compute({ textScore = null, waveformScore = null, atomicScore = null } 
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:coherency-v1:compute' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('unified:coherency-v1:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('unified:coherency-v1:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
 

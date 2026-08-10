@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Pattern Composition Engine
  *
@@ -246,9 +247,9 @@ class PatternComposer {
             __recordCost({ units: 1, kind: 'work', source: 'oracle:composer:compose' });
           }
           break;
-        } catch (_) { /* try next */ }
+        } catch (_) { quiet('patterns:composer:__recordCost', _); /* try next */ }
       }
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('patterns:composer:__recordCost', _); /* best-effort */ }
     return __retVal;
   }
 

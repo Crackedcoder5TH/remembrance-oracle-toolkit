@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * detached substrate read of the URL being fetched. Never blocks, never denies.
@@ -58,7 +59,7 @@ try {
     cwd: ROOT, detached: true, stdio: ['ignore', out, out],
   });
   child.unref();
-} catch (_) { /* fail open — browsing must never break on our account */ }
+} catch (_) { quiet('tools:goggles-web-hook:spawn', _); /* fail open — browsing must never break on our account */ }
 
 // Deliberately NOT process.exit() here: an immediate exit races the fork and
 // the detached child dies before it runs (observed — the log stayed empty).

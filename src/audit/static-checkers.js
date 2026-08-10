@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * the very patterns it looks for: SQL keywords adjacent to interpolation, exec
@@ -817,7 +818,7 @@ function auditCode(code, options = {}) {
   try {
     const { registerAuditSignal } = require('../unified/emergent-coherency');
     registerAuditSignal(findings.length);
-  } catch { /* emergent module not available — no-op */ }
+  } catch (_e) { quiet('audit:static-checkers:registerAuditSignal', _e); /* emergent module not available — no-op */ }
 
   return {
     findings,

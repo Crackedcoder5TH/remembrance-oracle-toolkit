@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * @oracle-infrastructure — substrate-native defect detection; internal,
@@ -242,7 +243,7 @@ function _save(lib) {
   try {
     fs.mkdirSync(path.dirname(LIB_PATH), { recursive: true });
     fs.writeFileSync(LIB_PATH, JSON.stringify(lib));
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('debug:defect-resonance:_save', _); /* best-effort */ }
 }
 
 function _sigId(label, code) {
@@ -279,7 +280,7 @@ function ensureLibrary() {
       const restored = _load();
       if (restored && restored.signatures && restored.signatures.length) return restored;
     }
-  } catch (_) { /* no chain reachable — seed locally */ }
+  } catch (_) { quiet('debug:defect-resonance:_load', _); /* no chain reachable — seed locally */ }
 
   lib = { version: 2, depth, signatures: [] };
   for (const s of SEEDS) {
@@ -297,7 +298,7 @@ function ensureLibrary() {
         hits: 0,
         resolved: 0,
       });
-    } catch (_) { /* skip a seed the encoder rejects */ }
+    } catch (_) { quiet('debug:defect-resonance:enc', _); /* skip a seed the encoder rejects */ }
   }
   _save(lib);
   return lib;
@@ -333,7 +334,7 @@ function _reencode(lib, enc, depth) {
         // from the first 200 chars. Visible rather than passing as whole.
         reencodedFrom: full ? undefined : 'excerpt',
       }));
-    } catch (_) { /* a signature the encoder now rejects is dropped, not kept stale */ }
+    } catch (_) { quiet('debug:defect-resonance:enc', _); /* a signature the encoder now rejects is dropped, not kept stale */ }
   }
   _save(out);
   return out;
@@ -496,7 +497,7 @@ function scan(source, opts = {}) {
       kind: findings.length ? 'disorder' : 'audit',
       source: 'goggles:defect-resonance:' + (findings.length ? 'hit' : 'clean'),
     });
-  } catch (_) { /* field optional */ }
+  } catch (_) { quiet('debug:defect-resonance:require', _); /* field optional */ }
 
   return { findings, scannedBlocks: blocks.length, librarySize: lib.signatures.length };
 }

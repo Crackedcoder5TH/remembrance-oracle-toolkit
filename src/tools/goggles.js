@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * @oracle-infrastructure — read-only developer overlay (structural scoring +
@@ -245,12 +246,12 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
   if (parseable) {
     let audit = null;
     try { audit = require('../audit/ast-checkers'); }
-    catch (_) { try { audit = require('../audit/static-checkers'); } catch (_) { /* none */ } }
+    catch (_) { try { audit = require('../audit/static-checkers'); } catch (_) { quiet('tools:goggles:require', _); /* none */ } }
     if (audit && typeof audit.auditCode === 'function') {
       try {
         findings = (audit.auditCode(fullText, { filePath: absFile }) || {}).findings || [];
         channels.push('parse');
-      } catch (_) { /* parse channel unavailable for this content */ }
+      } catch (_) { quiet('tools:goggles:require', _); /* parse channel unavailable for this content */ }
     }
   }
 
@@ -309,7 +310,7 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
         }
       }
     }
-  } catch (_) { /* shape channel optional */ }
+  } catch (_) { quiet('tools:goggles:require', _); /* shape channel optional */ }
 
   if (!channels.length) {
     console.log('\n  META-DEBUG  (audit checkers + learning loop — correctness axis)');
@@ -336,7 +337,7 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
       suppressed = out.suppressed || 0;
       resolved = out.resolved || 0;
     }
-  } catch (_) { /* learning optional — surface everything */ }
+  } catch (_) { quiet('tools:goggles:require', _); /* learning optional — surface everything */ }
 
   console.log('\n  META-DEBUG  (channels: ' + channels.join(' + ') + ' — correctness axis)');
   if (!surfaced.length && !medium.length) {
@@ -428,7 +429,7 @@ function printAndRecordDelta(root, rel, current) {
   try {
     fs.mkdirSync(path.dirname(readingsPath(root)), { recursive: true });
     fs.writeFileSync(readingsPath(root), JSON.stringify(all));
-  } catch (_) { /* history is best-effort */ }
+  } catch (_) { quiet('tools:goggles:readingsPath', _); /* history is best-effort */ }
 }
 
 /**
@@ -500,7 +501,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
   // ── Live depth-flow readings: the working copy vs the substrate's
   //    memory, and (when goggling --lines) the section vs its home. ──
   let composedAtDepth = null;
-  try { composedAtDepth = require('../core/decoder-stack').composedAtDepth; } catch { /* engine-only install */ }
+  try { composedAtDepth = require('../core/decoder-stack').composedAtDepth; } catch (_e) { quiet('tools:goggles:require', _e); /* engine-only install */ }
   if (composedAtDepth && fullText) {
     const liveFileVec = composedAtDepth(fullText, 4);
 
@@ -532,7 +533,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
           console.log('    vs substrate:   not yet witnessed by the substrate (new file)');
         }
       }
-    } catch { /* void library unavailable — skip the drift reading */ }
+    } catch (_e) { quiet('tools:goggles:_flowLabel', _e); /* void library unavailable — skip the drift reading */ }
 
     // Section-in-file: when goggling --lines, place the LINES inside the
     // file and the file inside its neighborhood — all zoom levels in one
@@ -563,7 +564,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
               console.log(`    section pull:   leans toward ${pull.rel} (${pull.d4.toFixed(3)}) more than its own file (${_deepest(inFile).toFixed(3)}) — consider whether it belongs there`);
             }
           }
-        } catch { /* best-effort */ }
+        } catch (_e) { quiet('tools:goggles:_deepest', _e); /* best-effort */ }
       }
     }
   }
@@ -572,7 +573,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
     if (fs.statSync(absFile).mtimeMs > Date.parse(m.timestamp)) {
       console.log('    ⚠ this file changed after the map was built — re-run --map for a fresh macro read');
     }
-  } catch { /* stat best-effort */ }
+  } catch (_e) { quiet('tools:goggles:_deepest', _e); /* stat best-effort */ }
 }
 
 /**
@@ -592,7 +593,7 @@ function printCanonicalStatus(absFile) {
   for (let i = 0; i < 6; i++) {
     const p = path.join(dir, 'CANONICAL.json');
     if (fs.existsSync(p)) {
-      try { manifest = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { /* unreadable */ }
+      try { manifest = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_e) { quiet('tools:goggles:printCanonicalStatus', _e); /* unreadable */ }
       break;
     }
     const up = path.dirname(dir);
@@ -750,7 +751,7 @@ function resolveAutoIngest(absFile) {
       if (up === dir) break;
       dir = up;
     }
-  } catch (_) { /* unreadable config must not disable witnessing */ }
+  } catch (_) { quiet('tools:goggles:String', _); /* unreadable config must not disable witnessing */ }
 
   return true;   // default ON
 }
@@ -818,7 +819,7 @@ function main() {
     const brief = require('./brief');
     brief.printTraps(abs);
     brief.printIdentity(abs);
-  } catch (_) { /* brief optional — never break a read */ }
+  } catch (_) { quiet('tools:goggles:require', _); /* brief optional — never break a read */ }
   printCanonicalStatus(abs);
   printDocCaveats(abs);
 
@@ -892,7 +893,7 @@ function main() {
         console.log('       run any of them:  goggles --do call <path>#<fn> [jsonArg ...]');
       }
     }
-  } catch (_) { /* index optional — regenerate with build-capability-index.js */ }
+  } catch (_) { quiet('tools:goggles:String', _); /* index optional — regenerate with build-capability-index.js */ }
 
   // ── FUNCTION RESONANCE — passive. Every goggle resonates WHAT YOU ARE LOOKING AT
   // directly against every function's OWN structural signature and surfaces the ones
@@ -901,7 +902,7 @@ function main() {
   // THIS content wherever they live. Built by scripts/build-capability-index.js.
   try {
     let cad = null, ccos = null;
-    try { const es = require('../core/decoder-stack'); cad = es.composedAtDepth; ccos = es.composedCosine; } catch (_) { /* engine-only install */ }
+    try { const es = require('../core/decoder-stack'); cad = es.composedAtDepth; ccos = es.composedCosine; } catch (_) { quiet('tools:goggles:require', _); /* engine-only install */ }
     const idxPath = path.resolve(__dirname, '..', '..', 'ecosystem-capabilities.json');
     if (cad && ccos && content && fs.existsSync(idxPath)) {
       const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
@@ -925,7 +926,7 @@ function main() {
         }
       }
     }
-  } catch (_) { /* index optional — regenerate with build-capability-index.js */ }
+  } catch (_) { quiet('tools:goggles:cad', _); /* index optional — regenerate with build-capability-index.js */ }
 
   const cr = r.codeResonance;
   if (cr && Array.isArray(cr.topMatches) && cr.topMatches.length) {
@@ -935,7 +936,7 @@ function main() {
     }
   }
   let peers = [];
-  try { peers = ft.peers() || []; } catch (_) { /* none */ }
+  try { peers = ft.peers() || []; } catch (_) { quiet('tools:goggles:cad', _); /* none */ }
   if (peers.length) {
     console.log(`    live field peers entangled: ${peers.length}`);
   }
@@ -965,7 +966,7 @@ function main() {
       }
       console.log(`    updates          ${state.updateCount ?? 0}`);
     }
-  } catch (_) { /* field optional — never block a read */ }
+  } catch (_) { quiet('tools:goggles:require', _); /* field optional — never block a read */ }
 
   // ── MACRO ──  (zoomed out: this section inside the whole-codebase map)
   printMacro(abs, r.coherence, sectionText, fullText);

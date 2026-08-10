@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * AST-based static checkers — the replacement for the regex-based
@@ -879,7 +880,7 @@ function auditFiles(files, options = {}) {
     });
     // entropy side: severity-weighted findings are disorder — route as cost.
     if (weighted > 0) recordCost({ units: weighted, source: 'audit:findings', kind: 'disorder' });
-  } catch (_) { /* field unavailable — best-effort */ }
+  } catch (_) { quiet('audit:ast-checkers:contribute', _); /* field unavailable — best-effort */ }
 
   return {
     files: results,

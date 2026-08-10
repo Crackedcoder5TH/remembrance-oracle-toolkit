@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Unified healing pipeline.
@@ -222,9 +223,9 @@ async function tryConfidentLevel(source, envelope, options) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:heal:tryConfidentLevel' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('core:heal:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:heal:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
 
@@ -370,7 +371,7 @@ async function trySwarmLevel(source, envelope, options) {
       if (!providers || providers.length === 0) {
         return { success: false, level: 'swarm', reason: 'no swarm providers configured' };
       }
-    } catch { /* ignore — proceed to full call */ }
+    } catch (_e) { quiet('core:heal:getAvailableProviders', _e); /* ignore — proceed to full call */ }
   }
 
   try {

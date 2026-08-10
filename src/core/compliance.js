@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — internal machinery whose flagged functions are NESTED helper closures inside its exported functions (AST-parser internals, CLI, daemon, reflector analysis, lifecycle manager) — implementation internals, not module-scope periodic-table elements
 
 /**
@@ -115,7 +116,7 @@ function saveSession(session, repoRoot, options = {}) {
   const ns = storage.namespace(NAMESPACE);
   ns.set(CURRENT_KEY, session);
   // Also archive by id so the history log is queryable later.
-  try { ns.set(session.id, session); } catch { /* ignore */ }
+  try { ns.set(session.id, session); } catch (_e) { quiet('core:compliance:saveSession', _e); /* ignore */ }
 }
 
 function endSession(repoRoot, options = {}) {
@@ -459,7 +460,7 @@ function wireCompliance(repoRoot, options = {}) {
 }
 
 function _off() {
-  for (const off of _offHandlers) { try { off && off(); } catch { /* ignore */ } }
+  for (const off of _offHandlers) { try { off && off(); } catch (_e) { quiet('core:compliance:_off', _e); /* ignore */ } }
   _offHandlers = [];
   _wired = false;
 }

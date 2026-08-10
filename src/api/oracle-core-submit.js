@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Oracle Core — Submit, Register, Evolve (Quantum Capture).
  *
@@ -119,7 +120,7 @@ module.exports = {
     // entry isn't searchable by signature until the next rebuild.
     if (this._fractalIndex && entry && entry.id != null) {
       try { this._fractalIndex.add(String(entry.id), code); }
-      catch (_) { /* indexing failure is non-fatal */ }
+      catch (_) { quiet('api:oracle-core-submit:String', _); /* indexing failure is non-fatal */ }
     }
     this._emit({ type: 'entry_added', id: entry.id, language: validation.coherencyScore.language, description });
     auditLog('submit', { id: entry.id, actor: author, language: validation.coherencyScore.language, success: true, meta: { description: description.slice(0, 120) } });

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Architectural smell detectors — the third category alongside bugs
@@ -251,7 +252,7 @@ function smellFiles(files, options = {}) {
     const { recordCost } = require('../core/field-coupling');
     recordCost({ units: Math.max(1, filesScanned), source: 'smell:scan', kind: 'work' });
     if (totalFindings > 0) recordCost({ units: totalFindings, source: 'smell:findings', kind: 'disorder' });
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('audit:smell-checkers:recordCost', _); /* best-effort */ }
 
   return {
     files: results,

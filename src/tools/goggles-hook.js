@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * internal-state-bounded, never user-input-driven.
@@ -153,7 +154,7 @@ if (sec && postRange) {
     if (preRegion.text !== scopeText) {
       delta = (r.coherence ?? 0) - (score(preRegion.text, `${base}#pre`).coherence ?? 0);
     }
-  } catch (_) { /* delta is optional */ }
+  } catch (_) { quiet('tools:goggles-hook:score', _); /* delta is optional */ }
 }
 
 // ── Pattern resonance (library-fit): drives the verdict + neighbours ───────
@@ -189,7 +190,7 @@ try {
     // Only what this edit touched (or everything, for a whole-file write).
     debugFindings = sec ? found.filter((f) => f.line >= sec.startLine && f.line <= sec.endLine) : found;
   }
-} catch (_) { /* audit layer unavailable — skip */ }
+} catch (_) { quiet('tools:goggles-hook:require', _); /* audit layer unavailable — skip */ }
 
 // ── (6) Learning loop: feed findings through the quantum debug-oracle. It
 // learns which finding classes are worth surfacing (resolved → reinforced,
@@ -200,7 +201,7 @@ try {
   const learning = require(path.join(__dirname, '..', 'debug', 'goggles-learning'));
   const res = learning.processFindings({ filePath: fp, findings: debugFindings, content, language: lang });
   if (res && Array.isArray(res.surface)) debugFindings = res.surface;
-} catch (_) { /* learning optional — surface everything */ }
+} catch (_) { quiet('tools:goggles-hook:require', _); /* learning optional — surface everything */ }
 
 // ── (3) Exception-only: speak when it matters, stay silent otherwise ───────
 // The scored region is brace-balanced (a syntactic whole, pre and post scored

@@ -1,3 +1,4 @@
+const { quiet } = require('../quiet');
 /**
  * AST-based code parser for enhanced coherency scoring.
  *
@@ -180,7 +181,7 @@ function _validatePythonSyntax(code, result) {
       // python3 not found or other error — fall back to heuristic
       return _validatePythonHeuristic(code, result);
     } finally {
-      try { fs.unlinkSync(tmpFile); fs.rmdirSync(tmpDir); } catch (_) { /* cleanup best-effort */ }
+      try { fs.unlinkSync(tmpFile); fs.rmdirSync(tmpDir); } catch (_) { quiet('core:parsers:code-validator:execFileSync', _); /* cleanup best-effort */ }
     }
   } catch (_) {
     return _validatePythonHeuristic(code, result);
@@ -353,7 +354,7 @@ function _validateExternalTool(tool, args, code, ext, result) {
       // Tool not found — fall back to heuristic
       return _heuristicBraceValidation(code, result);
     } finally {
-      try { fs.unlinkSync(tmpFile); fs.rmdirSync(tmpDir); } catch (_) { /* cleanup best-effort */ }
+      try { fs.unlinkSync(tmpFile); fs.rmdirSync(tmpDir); } catch (_) { quiet('core:parsers:code-validator:execFileSync', _); /* cleanup best-effort */ }
     }
   } catch (_) {
     return _heuristicBraceValidation(code, result);

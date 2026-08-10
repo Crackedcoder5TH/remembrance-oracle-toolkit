@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 const fs = require('fs');
@@ -132,7 +133,7 @@ function saveSwarmConfig(rootDir, config) {
   const tmpPath = configPath + '.tmp';
   fs.writeFileSync(tmpPath, json, 'utf-8');
   if (fs.existsSync(configPath)) {
-    try { fs.copyFileSync(configPath, configPath + '.bak'); } catch (_) { /* best effort */ }
+    try { fs.copyFileSync(configPath, configPath + '.bak'); } catch (_) { quiet('swarm:swarm-config:_encryptKey', _); /* best effort */ }
   }
   fs.renameSync(tmpPath, configPath);
 }

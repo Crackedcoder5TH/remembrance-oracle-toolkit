@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Event → LRE field bridge.
@@ -105,12 +106,12 @@ function wireEventFieldBridge(oracle) {
       if (coherence === null) return; // unknown type — skip rather than mislabel
       const cost = _costFor(event);
       contribute({ cost, coherence, source: `event:${event.type}` });
-    } catch (_) { /* best-effort — bridge must never break emit */ }
+    } catch (_) { quiet('core:event-field-bridge:contribute', _); /* best-effort — bridge must never break emit */ }
   });
 
   oracle._fieldBridgeWired = true;
   oracle._fieldBridgeOff = () => {
-    try { off(); } catch (_) { /* noop */ }
+    try { off(); } catch (_) { quiet('core:event-field-bridge:off', _); /* noop */ }
     oracle._fieldBridgeWired = false;
     oracle._fieldBridgeOff = null;
   };

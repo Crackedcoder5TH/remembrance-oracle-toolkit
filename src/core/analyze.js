@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — internal machinery whose flagged functions are NESTED helper closures inside its exported functions (AST-parser internals, CLI, daemon, reflector analysis, lifecycle manager) — implementation internals, not module-scope periodic-table elements
 
 /**
@@ -218,7 +219,7 @@ function analyze(source, filePath, options = {}) {
             if (typeof mod.covenantCheck === 'function') {
               return mod.covenantCheck(source, { language });
             }
-          } catch { /* not available */ }
+          } catch (_e) { quiet('core:analyze:require', _e); /* not available */ }
           return { sealed: true, violations: [], principlesPassed: 15, totalPrinciples: 15 };
         });
       },
@@ -294,7 +295,7 @@ function analyze(source, filePath, options = {}) {
             if (typeof mod.computeCoherencyScore === 'function') {
               return mod.computeCoherencyScore(source, { language });
             }
-          } catch { /* not available */ }
+          } catch (_e) { quiet('core:analyze:require', _e); /* not available */ }
           return { total: 0, dimensions: {} };
         });
       },
@@ -339,9 +340,9 @@ function analyze(source, filePath, options = {}) {
           const { recordCost: __recordCost } = require(__p);
           __recordCost({ units: 1, kind: 'work', source: 'oracle:analyze:get' });
           break;
-        } catch (_) { /* try next */ }
+        } catch (_) { quiet('core:analyze:__recordCost', _); /* try next */ }
       }
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('core:analyze:__recordCost', _); /* best-effort */ }
     return __retVal;
   };
 

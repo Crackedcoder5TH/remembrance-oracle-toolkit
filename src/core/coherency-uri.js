@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Coherency Pattern URI — `coh://` scheme.
@@ -45,7 +46,7 @@ function _loadNamespaceExtensions() {
         for (const d of data.domains || []) domains.add(String(d).toLowerCase());
         break; // first registry found wins
       }
-    } catch (_) { /* malformed registry never blocks URI construction */ }
+    } catch (_) { quiet('core:coherency-uri:String', _); /* malformed registry never blocks URI construction */ }
   }
   for (const r of (process.env.COHERENCY_EXTRA_REPOS || '').split(',')) {
     if (r.trim()) repos.add(r.trim().toLowerCase());

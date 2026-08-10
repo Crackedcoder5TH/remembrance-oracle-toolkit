@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../quiet');
 
 /**
  * field-coupling/bridge.js — the live-field HTTP bridge: server-role opt-out, target resolution, fire-and-forget observation mirroring.
@@ -74,9 +75,9 @@ function _bridgeToLiveField(obs) {
       path: u.pathname + (u.search || ''), headers,
     }, (res) => { res.on('data', () => {}); res.on('end', () => {}); res.on('error', () => {}); });
     req.on('error', () => {}); // a down field must never surface
-    req.setTimeout(1500, () => { try { req.destroy(); } catch (_) {} });
+    req.setTimeout(1500, () => { try { req.destroy(); } catch (_) { quiet('core:field-coupling:bridge:require', _);} });
     req.end(body);
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:field-coupling:bridge:require', _); /* best-effort */ }
 }
 
 module.exports = { markFieldServer, _liveFieldTarget, _bridgeToLiveField };

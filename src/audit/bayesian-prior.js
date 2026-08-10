@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -36,7 +37,7 @@ function loadFingerprint() {
     if (typeof mod.structuralFingerprint === 'function') {
       _fingerprintFn = mod.structuralFingerprint;
     }
-  } catch { /* not available */ }
+  } catch (_e) { quiet('audit:bayesian-prior:require', _e); /* not available */ }
   if (!_fingerprintFn) {
     // Fallback: return a hash-of-code so the module still functions.
     const crypto = require('crypto');
@@ -63,7 +64,7 @@ function loadPrior() {
       try {
         _priorCache = JSON.parse(fs.readFileSync(p, 'utf-8'));
         return _priorCache;
-      } catch { /* bad JSON, keep trying */ }
+      } catch (_e) { quiet('audit:bayesian-prior:loadPrior', _e); /* bad JSON, keep trying */ }
     }
   }
   _priorCache = { version: 1, patterns: [] };
@@ -191,7 +192,7 @@ function addPriorEntry(entry) {
         fs.writeFileSync(p, JSON.stringify(prior, null, 2));
         resetPriorCache();
         return p;
-      } catch { /* read-only, try next */ }
+      } catch (_e) { quiet('audit:bayesian-prior:resetPriorCache', _e); /* read-only, try next */ }
     }
   }
   return null;

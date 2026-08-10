@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — internal machinery whose flagged functions are NESTED helper closures inside its exported functions (AST-parser internals, CLI, daemon, reflector analysis, lifecycle manager) — implementation internals, not module-scope periodic-table elements
 
 /**
@@ -311,7 +312,7 @@ function groundFile(filePath, knownIdentifiers, options = {}) {
   try {
     const { registerGroundSignal } = require('../unified/emergent-coherency');
     registerGroundSignal(ungrounded.length, calls.length);
-  } catch { /* emergent module not available */ }
+  } catch (_e) { quiet('audit:ground:registerGroundSignal', _e); /* emergent module not available */ }
 
   const _gr = calls.length > 0 ? groundedHits.length / calls.length : 1;
   _contributeGrounding({ error: null, totalCalls: calls.length, ungrounded, rate: _gr });
@@ -566,7 +567,7 @@ function _contributeGrounding(res) {
       source: 'audit:ground',
       kind: 'audit',
     });
-  } catch (_) { /* field optional */ }
+  } catch (_) { quiet('audit:ground:require', _); /* field optional */ }
 }
 
 module.exports = {

@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Self-Evolution Engine — Closes the gap between detection and action.
  *
@@ -384,10 +385,10 @@ function evolve(ctx, options = {}) {
           const { recordCost: __recordCost } = require(__p);
           __recordCost({ units: __n, kind: 'work', source: 'oracle:evolution:evolve' });
           break;
-        } catch (_) { /* try next */ }
+        } catch (_) { quiet('evolution:evolution:__recordCost', _); /* try next */ }
       }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('evolution:evolution:__recordCost', _); /* best-effort */ }
 
   return report;
 }

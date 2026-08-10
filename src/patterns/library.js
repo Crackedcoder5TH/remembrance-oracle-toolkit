@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * @oracle-infrastructure
  *
@@ -369,7 +370,7 @@ class PatternLibrary {
         const existing = JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
         if (Array.isArray(existing)) shape = 'array';
       }
-    } catch { /* treat as wrapped */ }
+    } catch (_e) { quiet('patterns:library:loadJSONSafe', _e); /* treat as wrapped */ }
     const payload = shape === 'array' ? (data.patterns || []) : data;
     this._writeJSON(payload);
   }
@@ -387,7 +388,7 @@ class PatternLibrary {
           payload = data.patterns;
         }
       }
-    } catch { /* treat as wrapped */ }
+    } catch (_e) { quiet('patterns:library:loadJSONSafe', _e); /* treat as wrapped */ }
 
     const unlock = acquireLock(this.storeDir);
     try {

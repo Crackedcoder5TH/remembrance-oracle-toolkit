@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 
 /**
@@ -185,7 +186,7 @@ class LivingRemembranceEngine {
       const { restoreLatest } = require('./field-memory');
       const remembered = restoreLatest();
       if (remembered && remembered.updateCount > 0) witnesses.push(remembered);
-    } catch (_e) { /* field-memory unavailable — fall through */ }
+    } catch (_e) { quiet('core:living-remembrance:restoreLatest', _e); /* field-memory unavailable — fall through */ }
 
     if (witnesses.length > 0) {
       // Load from the witness with the most history (no in-place sort).
@@ -295,7 +296,7 @@ class LivingRemembranceEngine {
       fs.renameSync(tmp, this._persistPath);
       // The file now holds everything we just wrote, so that is our new base.
       this._markBase(out);
-    } catch (_e) { /* best-effort persistence; never crash a caller */ }
+    } catch (_e) { quiet('core:living-remembrance:c2', _e); /* best-effort persistence; never crash a caller */ }
   }
 
   /** Load the healed-attractor vector (personal anchor + covenant). Sovereign. */

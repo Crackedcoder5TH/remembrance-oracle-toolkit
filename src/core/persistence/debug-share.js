@@ -1,3 +1,4 @@
+const { quiet } = require('../quiet');
 // mapper-style organ of the former persistence.js monolith (1,962 lines).
 // Extracted VERBATIM along the file's own section seams; persistence.js
 // remains the façade with a byte-compatible export surface.
@@ -257,7 +258,7 @@ function debugGlobalStats() {
         const { DebugOracle } = require('../../debug/debug-oracle');
         stats.personal = new DebugOracle(personalStore).stats();
       } finally {
-        if (typeof personalStore.close === 'function') try { personalStore.close(); } catch (_) {}
+        if (typeof personalStore.close === 'function') try { personalStore.close(); } catch (_) { quiet('core:persistence:debug-share:require', _);}
       }
     }
   } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
@@ -269,7 +270,7 @@ function debugGlobalStats() {
         const { DebugOracle } = require('../../debug/debug-oracle');
         stats.community = new DebugOracle(communityStore).stats();
       } finally {
-        if (typeof communityStore.close === 'function') try { communityStore.close(); } catch (_) {}
+        if (typeof communityStore.close === 'function') try { communityStore.close(); } catch (_) { quiet('core:persistence:debug-share:require', _);}
       }
     }
   } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }

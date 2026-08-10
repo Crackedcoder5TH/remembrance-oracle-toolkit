@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -153,7 +154,7 @@ function _contributeBaselineDelta(result) {
       source: 'audit:baseline:delta',
       kind: 'audit',
     });
-  } catch (_) { /* field optional */ }
+  } catch (_) { quiet('audit:baseline:require', _); /* field optional */ }
 }
 
 function diffAgainstBaseline(baseline, currentByFile, repoRoot) {

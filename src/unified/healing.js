@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Unified Healing Orchestrator — single entry point for all code healing.
@@ -125,7 +126,7 @@ function heal(pattern, options = {}) {
       require('../core/field-coupling').recordCost({
         units: 1, kind: 'healing', source: 'oracle:healing:healed',
       });
-    } catch (_) { /* field optional — healing must not depend on it */ }
+    } catch (_) { quiet('unified:healing:require', _); /* field optional — healing must not depend on it */ }
 
     // Track healing to prevent duplicates
     _trackHealing(patternId);

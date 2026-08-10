@@ -1,3 +1,4 @@
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Covenant Evolution — The Living Law
@@ -40,7 +41,7 @@ function loadEvolvedPrinciples(rootDir = process.cwd()) {
       if (fs.existsSync(bakPath)) {
         const raw = fs.readFileSync(bakPath, 'utf-8');
         const parsed = JSON.parse(raw);
-        try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (_) { /* best effort */ }
+        try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (_) { quiet('core:covenant-evolution:loadEvolvedPrinciples', _); /* best effort */ }
         return parsed;
       }
     } catch (bakErr) {

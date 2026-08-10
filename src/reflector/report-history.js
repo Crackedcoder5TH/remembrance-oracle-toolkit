@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Remembrance Reflector BOT — History Sub-Module
  *
@@ -119,9 +120,9 @@ function createRunRecord(report, preSnapshot, options) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:report-history:createRunRecord' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('reflector:report-history:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('reflector:report-history:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
 

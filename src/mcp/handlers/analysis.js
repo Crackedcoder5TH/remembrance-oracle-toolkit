@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * mcp/handlers/analysis.js — fractal, audit, lint, smell, analyze, risk
@@ -95,7 +96,7 @@ const ANALYSIS = {
               result.findings = diff.new.map(f => ({ ...f, file: undefined }));
               result.baselineHiddenCount = diff.persisted.length;
             }
-          } catch { /* best-effort */ }
+          } catch (_e) { quiet('mcp:handlers:analysis:require', _e); /* best-effort */ }
         }
 
         // Auto-fix

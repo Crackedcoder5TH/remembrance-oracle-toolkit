@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -203,7 +204,7 @@ function readLines(file) {
   for (const line of content.split('\n')) {
     if (!line.trim()) continue;
     try { out.push(JSON.parse(line)); }
-    catch { /* skip malformed */ }
+    catch (_e) { quiet('quality:feedback-store:readLines', _e); /* skip malformed */ }
   }
   return out;
 }

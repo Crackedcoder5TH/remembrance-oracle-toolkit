@@ -1,3 +1,4 @@
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Code validator — only code that PROVES itself gets stored.
@@ -163,7 +164,7 @@ function validateCode(code, options = {}) {
           source: `validator:domain-floor-ratchet:${domain}`,
         });
       }
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('core:validator:recordCost', _); /* best-effort */ }
   }
 
   // ─── Atomic auto-registration ─────────────────────────────────
@@ -191,7 +192,7 @@ function validateCode(code, options = {}) {
       }
       result.atomicSignature = sig;
       result.atomicProperties = props;
-    } catch { /* atomic module not available — no-op */ }
+    } catch (_e) { quiet('core:validator:encodeSignature', _e); /* atomic module not available — no-op */ }
   }
 
   // Generate actionable feedback for any failures

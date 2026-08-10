@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Cross-Reference Engine — correlates audit findings with known debug pattern fixes.
@@ -115,7 +116,7 @@ function findRelatedFixes(finding, oracle, maxFixes, minAmplitude) {
           });
         }
       }
-    } catch (_) {
+    } catch (_) { quiet('audit:cross-reference:scoreRelevance', _);
       // Search may fail — non-critical
     }
   }
@@ -143,7 +144,7 @@ function findRelatedFixes(finding, oracle, maxFixes, minAmplitude) {
           });
         }
       }
-    } catch (_) {
+    } catch (_) { quiet('audit:cross-reference:scoreRelevance', _);
       // Search may fail — non-critical
     }
   }

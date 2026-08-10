@@ -1,3 +1,4 @@
+const { quiet } = require('../../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Library CLI commands: patterns, search, resolve, register, diff, export, import,
@@ -159,7 +160,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
         const pub = sqliteStore.db.prepare('SELECT COUNT(*) as c FROM patterns WHERE blockchain_tx IS NOT NULL').get();
         publishedCount = pub ? pub.c : 0;
       }
-    } catch (_) { /* non-fatal */ }
+    } catch (_) { quiet('cli:commands:library:jsonOut', _); /* non-fatal */ }
     console.log(`  Published to chain: ${c.bold(String(publishedCount))}`);
     console.log(`  Avg coherency: ${colorScore(stats.avgCoherency)}`);
     if (Object.keys(stats.byType).length > 0) {
@@ -188,7 +189,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     try {
       const { getEventBus } = require('../../core/events');
       getEventBus().emitSync('search', { file: args.file, term, mode });
-    } catch { /* ignore */ }
+    } catch (_e) { quiet('cli:commands:library:getEventBus', _e); /* ignore */ }
     if (jsonOut()) { console.log(JSON.stringify(results)); return; }
     if (results.length === 0) {
       console.log(c.yellow('No matches found.'));
@@ -772,7 +773,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
               if (txResult.success) {
                 console.log(`  ${c.green('Recorded')} blockchain_tx in pattern DB`);
               }
-            } catch (_) {
+            } catch (_) { quiet('cli:commands:library:setBlockchainTx', _);
               // Non-fatal — pattern published but DB update failed
             }
           }
@@ -787,7 +788,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
         console.log(JSON.stringify(exportPayload, null, 2));
       });
       return;
-    } catch (_) {
+    } catch (_) { quiet('cli:commands:library:setBlockchainTx', _);
       // Blockchain module not available — fall back to export payload
     }
 
@@ -820,7 +821,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
           if (row) {
             dbPattern = store._rowToPattern ? store._rowToPattern(row) : row;
           }
-        } catch (_) { /* non-fatal */ }
+        } catch (_) { quiet('cli:commands:library:_verifyPublication', _); /* non-fatal */ }
       }
 
       if (dbPattern) {
@@ -847,7 +848,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
           }
           return;
         }
-      } catch (_) { /* blockchain module not available */ }
+      } catch (_) { quiet('cli:commands:library:getPublisher', _); /* blockchain module not available */ }
 
       // Offline fallback
       if (!dbPattern) {
@@ -870,7 +871,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
           const likeParam = '%' + name.replace(/[%_]/g, '') + '%';
           const row = store.db.prepare('SELECT * FROM patterns WHERE LOWER(name) LIKE LOWER(?) LIMIT 1').get(likeParam);
           if (row) pattern = store._rowToPattern ? store._rowToPattern(row) : row;
-        } catch (_) { /* non-fatal */ }
+        } catch (_) { quiet('cli:commands:library:getPublisher', _); /* non-fatal */ }
       }
     }
 

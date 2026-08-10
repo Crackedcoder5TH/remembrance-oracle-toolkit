@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * @oracle-infrastructure — internal schema migration on a FIXED table
@@ -384,7 +385,7 @@ class QuantumField {
             .run(updated, now, linkedId);
           propagated++;
           break; // Found in this table, skip remaining tables
-        } catch (e) {
+        } catch (e) { quiet('quantum:quantum-field:safeParse', e);
           // Table might not exist or column might be missing — skip
         }
       }
@@ -482,7 +483,7 @@ class QuantumField {
           });
         }
       }
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('quantum:quantum-field:recordCost', _); /* best-effort */ }
 
     return report;
   }
@@ -649,7 +650,7 @@ class QuantumField {
             walk(linkedId, currentDepth + 1);
           }
           break; // Found in this table
-        } catch (e) { /* table might not have the right columns yet */ }
+        } catch (e) { quiet('quantum:quantum-field:walk', e); /* table might not have the right columns yet */ }
       }
     };
 

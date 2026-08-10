@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Coherency Recalibration — one-time rescore of all stored patterns
@@ -124,7 +125,7 @@ function recalibrateCoherency(store, options = {}) {
             total: newScore,
             breakdown: computeCoherencyScore(pattern.code, { language: pattern.language }).breakdown,
           });
-        } catch { /* store update failed — skip this pattern */ }
+        } catch (_e) { quiet('unified:coherency-recalibrate:computeCoherencyScore', _e); /* store update failed — skip this pattern */ }
       }
     } else {
       summary.unchanged++;

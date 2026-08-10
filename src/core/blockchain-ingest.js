@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Blockchain Ingest — drains ledger-queue issues on remembrance-blockchain
@@ -52,9 +53,9 @@ function parseIssue(issue) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:blockchain-ingest:parseIssue' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('core:blockchain-ingest:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:blockchain-ingest:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
 parseIssue.atomicProperties = {

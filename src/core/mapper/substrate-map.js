@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../quiet');
 
 /**
  * mapper/substrate-map.js — the substrate-native map: read the
@@ -250,7 +251,7 @@ function mapFromSubstrate(projectPath, opts = {}) {
       source: 'coherency-map:' + namespace + ':duplicate-pairs',
     });
     contributionsCount++;
-  } catch { /* best-effort */ }
+  } catch (_e) { quiet('core:mapper:substrate-map:_annotateOrphans', _e); /* best-effort */ }
 
   for (const r of results) delete r._vecIdx;
 

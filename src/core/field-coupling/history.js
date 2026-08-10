@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../quiet');
 
 /**
  * field-coupling/history.js — durable field direction + temporal snapshots; the write rides a sealed covenant gate.
@@ -52,7 +53,7 @@ function _readDirectionLines(p) {
       try {
         const s = JSON.parse(ln);
         if (s && typeof s.coherence === 'number') out.push(s);
-      } catch (_) { /* skip malformed line */ }
+      } catch (_) { quiet('core:field-coupling:history:_readDirectionLines', _); /* skip malformed line */ }
     }
     return out;
   } catch (_) { return []; }
@@ -86,7 +87,7 @@ function _captureDirectionSnapshot(state) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     _writeDirection(_sealedGate(), _DIRECTION_PATH,
       _directionHistory.map((s) => JSON.stringify(s)).join('\n') + '\n');
-  } catch (_) { /* best-effort persistence */ }
+  } catch (_) { quiet('core:field-coupling:history:_sealedGate', _); /* best-effort persistence */ }
 }
 
 /**

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Unified Coherency Scorer — single source of truth for code quality scoring.
@@ -173,7 +174,7 @@ function scoreSyntax(code, language) {
         return hasStructure ? SYNTAX_SCORES.PERFECT : SYNTAX_SCORES.BALANCED_BRACES;
       }
       return SYNTAX_SCORES.INVALID;
-    } catch (_) { /* fall through */ }
+    } catch (_) { quiet('unified:coherency:parseCode', _); /* fall through */ }
   }
 
   if (['javascript', 'js', 'typescript', 'ts'].includes(lang)) {
@@ -391,7 +392,7 @@ function computeCoherencyScore(code, metadata = {}) {
         const hasTest = _testFileExistsCache(filePath);
         if (hasTest) testProof = 0.75;
       }
-    } catch { /* auto-detect is best-effort */ }
+    } catch (_e) { quiet('unified:coherency:_testFileExistsCache', _e); /* auto-detect is best-effort */ }
   }
   let coverageGate = null;
   if (metadata.testCode) {
@@ -404,7 +405,7 @@ function computeCoherencyScore(code, metadata = {}) {
   if (historicalReliability === COHERENCY_DEFAULTS.HISTORICAL_RELIABILITY_FALLBACK && metadata.filePath) {
     try {
       if (_fileExistsCache(metadata.filePath)) historicalReliability = 0.7;
-    } catch { /* best-effort */ }
+    } catch (_e) { quiet('unified:coherency:_fileExistsCache', _e); /* best-effort */ }
   }
 
   // Large files that were truncated should use the full code for syntax
@@ -486,7 +487,7 @@ function computeCoherencyScore(code, metadata = {}) {
       emergentTotal = ec.total;
       emergentBreakdown = ec.breakdown;
     }
-  } catch {
+  } catch (_e) { quiet('unified:coherency:getEmergentCoherency', _e);
     // emergent-coherency not available — use legacy score as-is
   }
 
@@ -532,7 +533,7 @@ function computeCoherencyScore(code, metadata = {}) {
         source: 'void:compress_signal:coherency-scorer',
       });
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('unified:coherency:contribute', _); /* best-effort */ }
 
   return {
     total: __retVal_total,

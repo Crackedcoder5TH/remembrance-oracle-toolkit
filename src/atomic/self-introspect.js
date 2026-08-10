@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Remembrance Introspection — the system examines its own code.
@@ -139,7 +140,7 @@ function introspect(table, options = {}) {
           table, globalCoherency: 0.76, maxProposals: Math.min(5, gaps.length),
         }).catch(() => {}); // async, fire-and-forget
       }
-    } catch { /* self-improvement not available */ }
+    } catch (_e) { quiet('atomic:self-introspect:require', _e); /* self-improvement not available */ }
   }
 
   return { registered, gaps, errors };
@@ -184,7 +185,7 @@ function _loadVoidAtomicProperties(voidRoot) {
           if (Object.keys(props).length >= 5) {
             combined[fnName] = props;
           }
-        } catch { /* skip malformed */ }
+        } catch (_e) { quiet('atomic:self-introspect:parseFloat', _e); /* skip malformed */ }
       }
     }
   }

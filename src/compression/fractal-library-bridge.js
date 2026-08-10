@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Fractal-Library Bridge — Connects the fractal compression/holographic encoding
@@ -629,7 +630,7 @@ function repairFractalIntegrity(store) {
       templatesFixed,
     };
   } catch (e) {
-    try { store.db.exec('ROLLBACK'); } catch (_) { /* ignore */ }
+    try { store.db.exec('ROLLBACK'); } catch (_) { quiet('compression:fractal-library-bridge:repairFractalIntegrity', _); /* ignore */ }
     if (process.env.ORACLE_DEBUG) console.warn('[bridge:repairFractalIntegrity]', e?.message);
     return { orphanedDeltasRemoved: 0, orphanedEmbeddingsRemoved: 0, templatesFixed: 0 };
   }

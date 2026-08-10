@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 
 /**
@@ -96,7 +97,7 @@ async function ecosystemReview(code, options = {}) {
         const ratio = parseFloat(out) || 0;
         voidScore = Math.min(1, ratio / 3); // normalize: ratio 3+ = 1.0
       }
-    } catch { /* void not available, use default */ }
+    } catch (_e) { quiet('core:ecosystem-review:parseFloat', _e); /* void not available, use default */ }
     components.push({
       name: 'Remembrance Void',
       score: voidScore,
@@ -234,7 +235,7 @@ async function ecosystemReview(code, options = {}) {
                 const r = computeCoherencyScore(patched, { description: options.description || '' });
                 projectedScore = r.total || r.score || 0;
               }
-            } catch { /* projection failed, use estimate */ }
+            } catch (_e) { quiet('core:ecosystem-review:computeCoherencyScore', _e); /* projection failed, use estimate */ }
             healingDiff.push({
               component: comp.name,
               line: fix.line || 0,

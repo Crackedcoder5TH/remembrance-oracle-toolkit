@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../quiet');
 
 /**
  * mapper/pairs.js — duplicate-pair bookkeeping: dedupe, version-series
@@ -44,7 +45,7 @@ function _annotateDataPairs(pairs, projectPath) {
       const parsed = JSON.parse(fs.readFileSync(path.join(projectPath, rel), 'utf8'));
       h = crypto.createHash('md5')
         .update(JSON.stringify(_sortKeysDeep(parsed))).digest('hex');
-    } catch { /* unreadable or not valid JSON — no verdict */ }
+    } catch (_e) { quiet('core:mapper:pairs:_sortKeysDeep', _e); /* unreadable or not valid JSON — no verdict */ }
     cache.set(rel, h);
     return h;
   };
@@ -68,7 +69,7 @@ function _annotateDataPairs(pairs, projectPath) {
   let pairAdj = {};
   try {
     pairAdj = (JSON.parse(fs.readFileSync(path.join(projectPath, '.map-adjudications.json'), 'utf8')).pairs) || {};
-  } catch { /* no store */ }
+  } catch (_e) { quiet('core:mapper:pairs:_sortKeysDeep', _e); /* no store */ }
   const pairKey = (a, b) => [a, b].sort().join(' ↔ ');
   const byteEqual = (a, b) => {
     try { return fs.readFileSync(path.join(projectPath, a)).equals(fs.readFileSync(path.join(projectPath, b))); }

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -165,7 +166,7 @@ function auditLog(event, details = {}) {
     const dir = path.dirname(AUDIT_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.appendFileSync(AUDIT_PATH, JSON.stringify(entry) + '\n');
-  } catch { /* audit logging should never crash the app */ }
+  } catch (_e) { quiet('core:auth:auditLog', _e); /* audit logging should never crash the app */ }
 }
 
 function readAuditLog(options = {}) {

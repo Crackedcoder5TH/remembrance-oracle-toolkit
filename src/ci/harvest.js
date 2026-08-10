@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * GitHub Harvester — Bulk import patterns from any Git repository.
  *
@@ -294,7 +295,7 @@ function harvest(oracle, source, options = {}) {
     try {
       const allPatterns = oracle.patterns?.getAll?.() || [];
       for (const p of allPatterns) existingNames.add(p.name);
-    } catch (_) { /* patterns API may not exist */ }
+    } catch (_) { quiet('ci:harvest:harvestFunctions', _); /* patterns API may not exist */ }
 
     // Register test-backed patterns first (higher value)
     for (const d of discovered) {
@@ -395,7 +396,7 @@ function harvest(oracle, source, options = {}) {
     try {
       const { recordCost } = require('../core/field-coupling');
       recordCost({ units: Math.max(1, result.harvested), source: 'harvest:pass', kind: 'work' });
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('ci:harvest:recordCost', _); /* best-effort */ }
 
     return result;
   } finally {

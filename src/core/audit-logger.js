@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Audit Logger — immutable, append-only audit trail for oracle operations.
@@ -37,7 +38,7 @@ function initAuditLog(baseDir) {
   _auditStream.on('error', (err) => {
     if (process.env.ORACLE_DEBUG) console.error('[audit-logger] stream error — audit entries may be lost:', err.message);
     // Attempt to re-open the stream on next write
-    try { _auditStream.destroy(); } catch (_) { /* already destroyed */ }
+    try { _auditStream.destroy(); } catch (_) { quiet('core:audit-logger:initAuditLog', _); /* already destroyed */ }
     _auditStream = null;
   });
 }
@@ -68,15 +69,15 @@ function auditLog(action, details = {}) {
         _auditStream = fs.createWriteStream(logPath, { flags: 'a', encoding: 'utf-8' });
         _auditStream.on('error', (err) => {
           if (process.env.ORACLE_DEBUG) console.error('[audit-logger] stream error:', err.message);
-          try { _auditStream.destroy(); } catch (_) {}
+          try { _auditStream.destroy(); } catch (_) { quiet('core:audit-logger:auditLog', _);}
           _auditStream = null;
         });
-      } catch (_) { /* cannot reinitialize — entries lost until explicit re-init */ }
+      } catch (_) { quiet('core:audit-logger:auditLog', _); /* cannot reinitialize — entries lost until explicit re-init */ }
     }
     if (_auditStream && !_auditStream.destroyed) {
       _auditStream.write(line);
     }
-  } catch (_) {
+  } catch (_) { quiet('core:audit-logger:auditLog', _);
     // Audit logging must never throw — silent swallow by design
   }
 }

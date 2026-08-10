@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * IDE Integration — Editor Bridge
  *
@@ -342,9 +343,9 @@ class IDEBridge {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:bridge:getDefinition' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('ide:bridge:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('ide:bridge:__recordCost', _); /* best-effort */ }
     return __retVal;
   }
 

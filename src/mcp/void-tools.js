@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * MCP void_* tool family.
@@ -115,7 +116,7 @@ function _runPython(scriptBody, cwd) {
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i].trim();
     if (line.startsWith('{') || line.startsWith('[')) {
-      try { return JSON.parse(line); } catch { /* keep looking */ }
+      try { return JSON.parse(line); } catch (_e) { quiet('mcp:void-tools:spawnSync', _e); /* keep looking */ }
     }
   }
   throw new Error(`no JSON output from python: ${r.stdout.slice(0, 200)}`);

@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * SQLite-backed Verified Code History Store
  *
@@ -1781,7 +1782,7 @@ class SQLiteStore {
     try {
       const { getEventBus } = require('../core/events');
       getEventBus().emitSync('pattern.deleted', { id: row.id, name: row.name, reason });
-    } catch { /* best-effort */ }
+    } catch (_e) { quiet('store:sqlite:getEventBus', _e); /* best-effort */ }
     return { deleted: true, id: row.id, name: row.name, reason };
   }
 
@@ -1952,7 +1953,7 @@ class SQLiteStore {
       this.db.exec('COMMIT');
       return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(id));
     } catch (e) {
-      try { this.db.exec('ROLLBACK'); } catch (_) {}
+      try { this.db.exec('ROLLBACK'); } catch (_) { quiet('store:sqlite:c2', _);}
       throw e;
     }
   }
@@ -3088,10 +3089,10 @@ class SQLiteStore {
   vacuum() {
     const fs = require('fs');
     let beforeMB = null;
-    try { beforeMB = Math.round(fs.statSync(this.dbPath).size / 1024 / 1024 * 100) / 100; } catch (e) {}
+    try { beforeMB = Math.round(fs.statSync(this.dbPath).size / 1024 / 1024 * 100) / 100; } catch (e) { quiet('store:sqlite:require', e);}
     this.db.exec('VACUUM');
     let afterMB = null;
-    try { afterMB = Math.round(fs.statSync(this.dbPath).size / 1024 / 1024 * 100) / 100; } catch (e) {}
+    try { afterMB = Math.round(fs.statSync(this.dbPath).size / 1024 / 1024 * 100) / 100; } catch (e) { quiet('store:sqlite:require', e);}
     return { beforeMB, afterMB, savedMB: beforeMB != null && afterMB != null ? Math.round((beforeMB - afterMB) * 100) / 100 : null };
   }
 
@@ -3192,7 +3193,7 @@ class SQLiteStore {
         this._audit('rotate', 'entries', 'bulk', { stale: stale.length, dupes: dupes.length });
         this.db.exec('COMMIT');
       } catch (e) {
-        try { this.db.exec('ROLLBACK'); } catch (_) {}
+        try { this.db.exec('ROLLBACK'); } catch (_) { quiet('store:sqlite:c5', _);}
         throw e;
       }
     }

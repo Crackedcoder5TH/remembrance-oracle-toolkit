@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * pattern-resonance.js — score code against the oracle's proven library.
@@ -105,7 +106,7 @@ function _load() {
   try {
     _index = _loadFromSqlite();
     if (_index && _index.docs.length > 0) return _index;
-  } catch (e) {
+  } catch (e) { quiet('scoring:pattern-resonance:_loadFromSqlite', e);
     // sqlite unreachable — fall through to JSON
   }
   try {
@@ -186,7 +187,7 @@ function scoreResonance(text, opts = {}) {
       kind: 'work',
       source: 'oracle:pattern-resonance:score',
     });
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('scoring:pattern-resonance:recordCost', _); /* best-effort */ }
 
   return {
     score: Math.round(score * 10000) / 10000,

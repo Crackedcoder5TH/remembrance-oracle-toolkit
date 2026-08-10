@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * mcp/handlers/helpers.js — module-level helpers every handler organ
@@ -47,7 +48,7 @@ function _searchEnforcementNotice() {
           `The oracle exists so you don't reinvent proven patterns.`,
       };
     }
-  } catch (_) {}
+  } catch (_) { quiet('mcp:handlers:helpers:getSearchGracePeriod', _);}
   return null;
 }
 _searchEnforcementNotice.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility", taint: "none" };

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 
 /**
@@ -622,7 +623,7 @@ class PeriodicTable {
         knownDomains: Array.from(this._knownDomains),
         evolvedDomains: this._evolvedDomains,
       }, null, 2));
-    } catch { /* best effort */ }
+    } catch (_e) { quiet('atomic:periodic-table:isRemembranceRegister', _e); /* best effort */ }
   }
 
   _load() {
@@ -648,7 +649,7 @@ class PeriodicTable {
         for (const d of raw.knownDomains) this._knownDomains.add(d);
       }
       if (raw.evolvedDomains) this._evolvedDomains = raw.evolvedDomains;
-    } catch { /* best effort */ }
+    } catch (_e) { quiet('atomic:periodic-table:c2', _e); /* best effort */ }
   }
 }
 

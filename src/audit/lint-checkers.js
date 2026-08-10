@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Style / opinion checkers for the `oracle lint` command.
@@ -324,7 +325,7 @@ function lintFiles(files, options = {}) {
     const { recordCost } = require('../core/field-coupling');
     recordCost({ units: Math.max(1, filesScanned), source: 'lint:scan', kind: 'work' });
     if (totalFindings > 0) recordCost({ units: totalFindings, source: 'lint:findings', kind: 'disorder' });
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('audit:lint-checkers:recordCost', _); /* best-effort */ }
 
   return {
     files: results,

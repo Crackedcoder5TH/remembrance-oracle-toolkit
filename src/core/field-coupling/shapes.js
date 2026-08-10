@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../quiet');
 
 /**
  * field-coupling/shapes.js — variance-signature growth — the recognised-natural shape registry, grown only from already-verified material; persistence rides a sealed covenant gate.
@@ -52,9 +53,9 @@ function _loadLearnedShapes() {
         if (Number.isFinite(sig.mean) && Number.isFinite(sig.variance) && Number.isFinite(sig.n)) {
           _LEARNED_SHAPES.push(sig);
         }
-      } catch (_) { /* skip malformed line */ }
+      } catch (_) { quiet('core:field-coupling:shapes:require', _); /* skip malformed line */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:field-coupling:shapes:require', _); /* best-effort */ }
 }
 
 function _persistLearnedShape(sig) {

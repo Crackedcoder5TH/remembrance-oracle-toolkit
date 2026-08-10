@@ -1,3 +1,4 @@
+const { quiet } = require('../../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * CLI commands for the Oracle-Void Bridge + Crawler Controls
@@ -174,7 +175,7 @@ function registerVoidCommands(handlers, { oracle }) {
             const grepOut = execFileSync('grep', ['SAVE', path.join(dir, 'crawler.log')], { encoding: 'utf-8' }).trim();
             const log = grepOut.split('\n').pop();
             if (log) console.log(`  Last save:  ${log.replace(/.*======/, '').replace(/======.*/, '').trim()}`);
-          } catch {}
+          } catch (_e) { quiet('cli:commands:void:execFileSync', _e);}
         }
       } else {
         console.log('  Substrate:  Not found');
@@ -190,7 +191,7 @@ function registerVoidCommands(handlers, { oracle }) {
         if (status.connected) {
           console.log(`  Connected:  ${status.substratePath}`);
         }
-      } catch {}
+      } catch (_e) { quiet('cli:commands:void:require', _e);}
 
       console.log();
       return;
@@ -245,7 +246,7 @@ function registerVoidCommands(handlers, { oracle }) {
 
       try {
         execSync('pkill -f realtime_crawler', { shell: true });
-      } catch {}
+      } catch (_e) { quiet('cli:commands:void:execSync', _e);}
 
       console.log('\n  Crawler stopped.');
       console.log('  All learned patterns are safe on disk.');
@@ -310,13 +311,13 @@ function registerVoidCommands(handlers, { oracle }) {
           const { execFileSync } = require('child_process');
           const saves = execFileSync('grep', ['-c', 'SAVE', path.join(dir, 'crawler.log')], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
           console.log(`    Save checkpoints:   ${saves}`);
-        } catch {}
+        } catch (_e) { quiet('cli:commands:void:execFileSync', _e);}
 
         try {
           const { execFileSync } = require('child_process');
           const cascades = execFileSync('grep', ['-c', 'CASCADE', path.join(dir, 'crawler.log')], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
           console.log(`    Cascade events:     ${cascades}`);
-        } catch {}
+        } catch (_e) { quiet('cli:commands:void:execFileSync', _e);}
       }
       console.log();
       return;
@@ -384,7 +385,7 @@ function registerVoidCommands(handlers, { oracle }) {
       if (action === 'stop') {
         try {
           execSync('pkill -f "api.py"', { shell: true });
-        } catch {}
+        } catch (_e) { quiet('cli:commands:void:execSync', _e);}
         console.log('\n  API stopped.\n');
         return;
       }
@@ -397,7 +398,7 @@ function registerVoidCommands(handlers, { oracle }) {
           console.log('  Use: oracle void api stop — to stop it\n');
           return;
         }
-      } catch {}
+      } catch (_e) { quiet('cli:commands:void:execSync', _e);}
 
       const port = positional[1] && !isNaN(positional[1]) ? positional[1] : '8080';
 
@@ -613,7 +614,7 @@ function registerVoidCommands(handlers, { oracle }) {
             index[name].push({ file: f, i });
             totalIndexed++;
           }
-        } catch {}
+        } catch (_e) { quiet('cli:commands:void:findVoidDir', _e);}
       }
       const out = {
         built: new Date().toISOString(),

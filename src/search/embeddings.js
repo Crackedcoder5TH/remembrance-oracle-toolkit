@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Lightweight Semantic Embeddings for Code Search
  *
@@ -313,7 +314,7 @@ function identifyConcepts(text) {
  */
 // Pre-resolve vectors module once at load time
 let _vectorSimilarity = null;
-try { _vectorSimilarity = require('./vectors').vectorSimilarity; } catch {}
+try { _vectorSimilarity = require('./vectors').vectorSimilarity; } catch (_e) { quiet('search:embeddings:require', _e);}
 
 function _fastSimilarity(queryData, docFeatures, idf) {
   // Concept overlap (pre-computed sets)
@@ -355,7 +356,7 @@ function _fastSimilarity(queryData, docFeatures, idf) {
   const ngramScore = cosineSim(queryData.ngrams, docFeatures.ngrams);
   // Vector similarity
   let vectorScore = 0;
-  try { if (_vectorSimilarity) vectorScore = _vectorSimilarity(queryData.concepts[0]?.id || '', docFeatures.text.slice(0, 200)); } catch {}
+  try { if (_vectorSimilarity) vectorScore = _vectorSimilarity(queryData.concepts[0]?.id || '', docFeatures.text.slice(0, 200)); } catch (_e) { quiet('search:embeddings:_vectorSimilarity', _e);}
   const similarity = conceptScore * 0.4 + keywordScore * 0.3 + ngramScore * 0.2 + vectorScore * 0.1;
   return { similarity: Math.min(1, similarity), matchedConcepts };
 }

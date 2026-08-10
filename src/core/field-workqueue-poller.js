@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Work-queue poller — turns a node into a worker.
@@ -34,7 +35,7 @@ function _resolveNodeId() {
   try {
     const id = require('./entangle').status().nodeId; // share one node identity
     if (id) { _nodeId = id; return _nodeId; }
-  } catch (_) { /* fall through */ }
+  } catch (_) { quiet('core:field-workqueue-poller:require', _); /* fall through */ }
   const os = require('os');
   const crypto = require('crypto');
   _nodeId = crypto.createHash('sha256')
@@ -85,7 +86,7 @@ async function _tick() {
       catch (e) { result = { error: `executor failed: ${e.message}` }; }
     }
     wq.submitResult(item.id, _resolveNodeId(), result);
-  } catch (_) {
+  } catch (_) { quiet('core:field-workqueue-poller:_resolveNodeId', _);
     /* best-effort — a poll failure never crashes the host */
   } finally {
     _busy = false;

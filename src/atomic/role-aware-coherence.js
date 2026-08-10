@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Role-Aware Coherence — rewards functional COMPLEMENTARITY (not similarity).
@@ -206,9 +207,9 @@ function covenantGroupCoherenceRoleAware(periodicTable) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:role-aware-coherence:covenantGroupCoherenceRoleAware' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('atomic:role-aware-coherence:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('atomic:role-aware-coherence:__recordCost', _); /* best-effort */ }
     return __retVal;
   }
   let total = 0;

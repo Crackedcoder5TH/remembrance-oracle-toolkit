@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -71,7 +72,7 @@ function loadWorkflowConfig(rootDir) {
       const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       Object.assign(config, fileConfig);
     }
-  } catch {}
+  } catch (_e) { quiet('core:auto-workflow:loadWorkflowConfig', _e);}
 
   // 2. Environment overrides (highest priority)
   if (process.env.REMEMBRANCE_AUTO_WORKFLOW === 'false') config.autoWorkflow = false;
@@ -92,7 +93,7 @@ function saveWorkflowConfig(rootDir, updates) {
   const configPath = path.join(configDir, 'config.json');
   if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
   let existing = {};
-  try { existing = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch {}
+  try { existing = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch (_e) { quiet('core:auto-workflow:saveWorkflowConfig', _e);}
   const merged = { ...existing, ...updates };
   fs.writeFileSync(configPath, JSON.stringify(merged, null, 2));
   return merged;
@@ -173,7 +174,7 @@ class AutoWorkflow {
           };
           this._stats.searched++;
         }
-      } catch {}
+      } catch (_e) { quiet('core:auto-workflow:saveWorkflowConfig', _e);}
     }
 
     // ─── Step 2: DECIDE (PULL/EVOLVE/GENERATE recommendation) ────────
@@ -204,7 +205,7 @@ class AutoWorkflow {
           verdict: total >= 0.68 ? 'PULL-READY' : total >= 0.50 ? 'EVOLVE-NEEDED' : 'REGENERATE',
         };
         this._stats.scored++;
-      } catch {}
+      } catch (_e) { quiet('core:auto-workflow:c4', _e);}
     }
 
     // ─── Step 4: HEAL (auto-fix if below threshold) ──────────────────
@@ -241,7 +242,7 @@ class AutoWorkflow {
             this._stats.healed++;
           }
         }
-      } catch {}
+      } catch (_e) { quiet('core:auto-workflow:c5', _e);}
     }
 
     // ─── Step 5: CASCADE (cross-domain validation via Void) ──────────
@@ -256,7 +257,7 @@ class AutoWorkflow {
           };
           this._stats.cascaded++;
         }
-      } catch {}
+      } catch (_e) { quiet('core:auto-workflow:c6', _e);}
     }
 
     // ─── Step 6: REGISTER (store successful patterns) ────────────────
@@ -275,7 +276,7 @@ class AutoWorkflow {
             result.steps.register = { registered: true, name, coherency: finalScore };
             this._stats.registered++;
           }
-        } catch {}
+        } catch (_e) { quiet('core:auto-workflow:c7', _e);}
       }
     }
 
@@ -423,7 +424,7 @@ function initAutoWorkflow(oracle, rootDir) {
     if (hooksModule.installHooks && !hooksModule.hooksInstalled(rootDir)) {
       hooksModule.installHooks(rootDir);
     }
-  } catch {}
+  } catch (_e) { quiet('core:auto-workflow:require', _e);}
 
   return workflow;
 }

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -29,7 +30,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 let _whit = null;
-try { _whit = require('./whitening'); } catch (_) { /* whitening unreachable */ }
+try { _whit = require('./whitening'); } catch (_) { quiet('core:substrate-density:require', _); /* whitening unreachable */ }
 
 const CACHE_PATH = path.join(__dirname, '..', '..', '.remembrance', 'substrate-density.json');
 const DEFAULT_SUBSTRATE = path.join(__dirname, '..', '..', '..', 'Void-Data-Compressor', 'pattern_index_fractal.json');
@@ -46,7 +47,7 @@ function _readCache(opts) {
 }
 function _writeCache(obj, opts) {
   const p = _cachePath(opts);
-  try { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); } catch (_) { /* best-effort */ }
+  try { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); } catch (_) { quiet('core:substrate-density:_cachePath', _); /* best-effort */ }
 }
 
 /**

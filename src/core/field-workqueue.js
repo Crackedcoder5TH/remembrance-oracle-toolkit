@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -50,7 +51,7 @@ function _loadLocal() {
       const parsed = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
       if (parsed && Array.isArray(parsed.items)) return parsed;
     }
-  } catch (_) { /* corrupt / unreadable — start fresh */ }
+  } catch (_) { quiet('core:field-workqueue:_loadLocal', _); /* corrupt / unreadable — start fresh */ }
   return { items: [] };
 }
 
@@ -61,7 +62,7 @@ function _writeLocal(store) {
     const tmp = STORE_PATH + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(store, null, 2));
     fs.renameSync(tmp, STORE_PATH);
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:field-workqueue:_writeLocal', _); /* best-effort */ }
 }
 
 // ── shared store: the blockchain ledger, the same one the field uses ─
@@ -76,7 +77,7 @@ function _blockchainLedger() {
     path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'src', 'index'),
   ];
   for (const p of candidates) {
-    try { return require(p).PatternLedger; } catch (_) { /* try next */ }
+    try { return require(p).PatternLedger; } catch (_) { quiet('core:field-workqueue:_blockchainLedger', _); /* try next */ }
   }
   return null;
 }
@@ -100,7 +101,7 @@ function _loadFromChain() {
         }
       }
     }
-  } catch (_) { /* ledger unavailable — local only */ }
+  } catch (_) { quiet('core:field-workqueue:_ledgerPath', _); /* ledger unavailable — local only */ }
   _chainCache = { at: Date.now(), value: found };
   return found;
 }
@@ -210,7 +211,7 @@ function post(kind, payload) {
 function claim(nodeId) {
   const fc = _field();
   if (fc && fc.fieldPressure) {
-    try { if (fc.fieldPressure().hot) return null; } catch (_) { /* proceed */ }
+    try { if (fc.fieldPressure().hot) return null; } catch (_) { quiet('core:field-workqueue:_field', _); /* proceed */ }
   }
   const store = _load();
   const now = Date.now();
@@ -244,14 +245,14 @@ function submitResult(id, nodeId, result) {
   try {
     const { codeToWaveform, digestWaveform } = require('./code-to-waveform');
     waveformDigest = digestWaveform(codeToWaveform(text));
-  } catch (_) { /* compressor unavailable — result still records */ }
+  } catch (_) { quiet('core:field-workqueue:codeToWaveform', _); /* compressor unavailable — result still records */ }
 
   let coherency = 0;
   try {
     const { computeCoherencyScore } = require('./coherency');
     const score = computeCoherencyScore(text, {});
     if (score && typeof score.total === 'number') coherency = score.total;
-  } catch (_) { /* coherency scorer unavailable */ }
+  } catch (_) { quiet('core:field-workqueue:computeCoherencyScore', _); /* coherency scorer unavailable */ }
 
   item.results.push({ node: nodeId || 'anonymous', coherency, waveformDigest, result, at: Date.now() });
   item.done = true;
@@ -262,7 +263,7 @@ function submitResult(id, nodeId, result) {
   // void:compress_signal doorway witnesses the text when it scores it.
   // The completed work item is WORK; the score stays on the result row.
   const fc = _field();
-  if (fc) { try { fc.recordCost({ units: 1, kind: 'work', source: 'workqueue:result' }); } catch (_) { /* best-effort */ } }
+  if (fc) { try { fc.recordCost({ units: 1, kind: 'work', source: 'workqueue:result' }); } catch (_) { quiet('core:field-workqueue:_field', _); /* best-effort */ } }
   return { id, coherency, waveformDigest };
 }
 
@@ -309,7 +310,7 @@ async function offload(kind, payload, opts = {}) {
 
   // Nudge the local poller — a cool node claims it at once; a hot
   // node's claim is entropy-gated, so the work flows to the pool.
-  try { await require('./field-workqueue-poller')._tick(); } catch (_) { /* poller optional */ }
+  try { await require('./field-workqueue-poller')._tick(); } catch (_) { quiet('core:field-workqueue:post', _); /* poller optional */ }
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {

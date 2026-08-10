@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Batch risk scanner — walks a directory tree, scores every source
@@ -110,7 +111,7 @@ function scanDirectory(rootDir, options = {}) {
       skipped: analysis.meta?.skipped || null,
     });
 
-    if (onFile) { try { onFile(file, idx, candidates.length); } catch { /* ignore */ } }
+    if (onFile) { try { onFile(file, idx, candidates.length); } catch (_e) { quiet('quality:risk-scanner:onFile', _e); /* ignore */ } }
   }
 
   return buildReport(rootDir, results, topN);

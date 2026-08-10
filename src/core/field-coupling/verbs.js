@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../quiet');
 
 /**
  * field-coupling/verbs.js — the field verbs every producer calls: contribute, peekField, fieldPressure, projections, pruning, and the record* telemetry family.
@@ -63,7 +64,7 @@ function contribute(obs) {
       const fm = require('../field-memory');
       fm.recordObservation({ source: obs.source || null, coherence: clamped, cost });
       fm.maybeSnapshot(result || (engine.getState && engine.getState()) || null);
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('core:field-coupling:verbs:require', _); /* best-effort */ }
 
     // Funnel the same observation into the shared LIVE field over HTTP when one is
     // configured, so this repo's numbers reach the field every other repo and the
@@ -93,7 +94,7 @@ function peekField() {
   if (!_engineInjected()) {
     try {
       require('../field-memory').maybeSnapshot(state);
-    } catch (_) { /* best-effort — never break a field read */ }
+    } catch (_) { quiet('core:field-coupling:verbs:require', _); /* best-effort — never break a field read */ }
   }
   return state;
 }

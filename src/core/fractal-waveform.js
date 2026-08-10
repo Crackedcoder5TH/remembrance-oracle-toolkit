@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * fractal-waveform.js — oracle's structural encoder.
@@ -478,7 +479,7 @@ function fractalCoherencyMultiScale(textA, textB, opts) {
 let _toLexicalWaveform = null;
 try {
   _toLexicalWaveform = require('./lexical-waveform').toLexicalWaveform;
-} catch (_) { /* L2 unavailable — composed falls back to L1 only */ }
+} catch (_) { quiet('core:fractal-waveform:require', _); /* L2 unavailable — composed falls back to L1 only */ }
 
 /**
  * Concatenate the L1 structural fractal (29-D) with the L2 lexical

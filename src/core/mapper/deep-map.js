@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../quiet');
 
 /**
  * mapper/deep-map.js — the live re-encode path: map a project's
@@ -139,7 +140,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
     if (category.startsWith('api/') && stableHighSameCategory.length === 0 && stableHighSameProject.length > 0) flags.push('INCONSISTENT');
     if (stableHighSameProject.length >= 3 && stableHighSameCategory.length >= 1) flags.push('WELL-FORMED');
 
-    try { onProgress(fileIdx, files.length, rel, Date.now() - tFile); } catch { /* progress is best-effort */ }
+    try { onProgress(fileIdx, files.length, rel, Date.now() - tFile); } catch (_e) { quiet('core:mapper:deep-map:onProgress', _e); /* progress is best-effort */ }
 
     // Over-cap files: re-read coherence from the full text (the focused
     // goggle has no cap and handles these fine) so the map carries the
@@ -154,7 +155,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
             { source: sourceTag + ':full-coherence', growSubstrate: false, topK: 1 },
           );
           if (rFull && typeof rFull.coherence === 'number') coherence = rFull.coherence;
-        } catch { /* stays withheld */ }
+        } catch (_e) { quiet('core:mapper:deep-map:_inferLang', _e); /* stays withheld */ }
       }
     }
 
@@ -269,7 +270,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
   // report as diagnostics but are not field observations.
   let contributionsCount = 0;
   function _ctr(coh, src) {
-    try { fc.contribute({ cost: 1.0, coherence: coh, source: src }); contributionsCount++; } catch {}
+    try { fc.contribute({ cost: 1.0, coherence: coh, source: src }); contributionsCount++; } catch (_e) { quiet('core:mapper:deep-map:_ctr', _e);}
   }
   // NO AVERAGING. This used to reduce every scored file to one mean and
   // contribute that single number as the repo's structural coherency. The
@@ -289,7 +290,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
   // compressor reading, so both left the coherence channel (provenance
   // purge 2026-08-09). The counts are diagnostics and ride recordCost.
   if (buckets.D_duplicate_pairs.length) {
-    try { fc.recordCost({ units: buckets.D_duplicate_pairs.length, source: 'coherency-map:' + namespace + ':duplicate-pairs', kind: 'diagnostic' }); } catch {}
+    try { fc.recordCost({ units: buckets.D_duplicate_pairs.length, source: 'coherency-map:' + namespace + ':duplicate-pairs', kind: 'diagnostic' }); } catch (_e) { quiet('core:mapper:deep-map:_ctr', _e);}
   }
   // Orphan-rate meta-signal — same rule as the residual and dimensional
   // couplings: a completed wiring measurement is a COHERENT event (the
@@ -299,7 +300,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
   const orphanRate = results.length ? orphanCount / results.length : 0;
   if (orphanCount) {
     try { fc.recordCost({ units: orphanCount, source: 'coherency-map:' + namespace + ':orphan-rate:'
-      + (orphanRate >= 0.5 ? 'high' : orphanRate >= 0.15 ? 'elevated' : 'low'), kind: 'diagnostic' }); } catch {}
+      + (orphanRate >= 0.5 ? 'high' : orphanRate >= 0.15 ? 'elevated' : 'low'), kind: 'diagnostic' }); } catch (_e) { quiet('core:mapper:deep-map:_ctr', _e);}
   }
 
   return {

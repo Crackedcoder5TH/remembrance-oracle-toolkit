@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Inter-Oracle Negotiation Protocol — The Missing Tongue
  *
@@ -59,9 +60,9 @@ function generateManifest(oracle) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:negotiation:generateManifest' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('cloud:negotiation:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('cloud:negotiation:__recordCost', _); /* best-effort */ }
     return __retVal;
   });
 }

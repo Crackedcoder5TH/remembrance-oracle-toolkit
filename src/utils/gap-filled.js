@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Gap-Filled Utilities — real implementations for elements discovered
@@ -476,7 +477,7 @@ function reactiveMap(emitter, event, fn) {
   const mapped = new EventEmitter();
   emitter.on(event, (...args) => {
     try { mapped.emit(event, fn(...args)); }
-    catch { /* swallow transform errors in stream */ }
+    catch (_e) { quiet('utils:gap-filled:fn', _e); /* swallow transform errors in stream */ }
   });
   mapped._source = emitter;
   mapped._event = event;

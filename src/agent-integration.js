@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./core/quiet');
 
 
 /**
@@ -79,7 +80,7 @@ function buildRememberedSystemPrompt(oracle, task, options = {}) {
           pattern: best.name,
         };
       }
-    } catch {}
+    } catch (_e) { quiet('agent-integration:buildRememberedSystemPrompt', _e);}
   }
 
   // 3. Inject patterns based on decision
@@ -201,9 +202,9 @@ function wrapAgent(oracle, options = {}) {
               const { recordCost: __recordCost } = require(__p);
               __recordCost({ units: 1, kind: 'work', source: 'oracle:agent-integration:validate' });
               break;
-            } catch (_) { /* try next */ }
+            } catch (_) { quiet('agent-integration:__recordCost', _); /* try next */ }
           }
-        } catch (_) { /* best-effort */ }
+        } catch (_) { quiet('agent-integration:__recordCost', _); /* best-effort */ }
         return __retVal;
       }
 
@@ -243,7 +244,7 @@ function wrapAgent(oracle, options = {}) {
               topMatch: cascadeResult.matches?.[0]?.domain || 'none',
             };
           }
-        } catch {}
+        } catch (_e) { quiet('agent-integration:__recordCost', _e);}
       }
 
       // Register
@@ -252,7 +253,7 @@ function wrapAgent(oracle, options = {}) {
         try {
           oracle.submit(finalCode, { language, description: name, tags: [language, 'ai-generated'] });
           registered = true;
-        } catch {}
+        } catch (_e) { quiet('agent-integration:__recordCost', _e);}
       }
 
       return { code: finalCode, coherency, healed: !!steps.heal, registered, cascade: steps.cascade || null, steps };

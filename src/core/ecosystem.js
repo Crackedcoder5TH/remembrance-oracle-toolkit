@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — internal machinery whose flagged functions are NESTED helper closures inside its exported functions (AST-parser internals, CLI, daemon, reflector analysis, lifecycle manager) — implementation internals, not module-scope periodic-table elements
 
 /**
@@ -175,7 +176,7 @@ function announceModule(repoRoot, options = {}) {
 
   try {
     getEventBus().emitSync('ecosystem.module.announced', record);
-  } catch { /* ignore */ }
+  } catch (_e) { quiet('core:ecosystem:getEventBus', _e); /* ignore */ }
 
   return record;
 }
@@ -201,7 +202,7 @@ function readRegistry(repoRoot) {
         record._source = 'global';
         record.stale = isStale(record);
         out.set(record.name, record);
-      } catch { /* skip */ }
+      } catch (_e) { quiet('core:ecosystem:isStale', _e); /* skip */ }
     }
   }
 
@@ -216,7 +217,7 @@ function readRegistry(repoRoot) {
           record._source = 'local';
           record.stale = isStale(record);
           out.set(record.name, record);
-        } catch { /* skip */ }
+        } catch (_e) { quiet('core:ecosystem:isStale', _e); /* skip */ }
       }
     }
   }

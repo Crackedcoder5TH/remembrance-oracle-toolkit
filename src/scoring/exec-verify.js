@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -62,7 +63,7 @@ function _harmScreen(code) {
     try {
       if (hp.pattern.global) hp.pattern.lastIndex = 0;
       if (hp.pattern.test(code)) return hp.reason || 'covenant harm pattern';
-    } catch (_e) { /* skip a bad pattern */ }
+    } catch (_e) { quiet('scoring:exec-verify:_loadHarmPatterns', _e); /* skip a bad pattern */ }
   }
   return '';
 }
@@ -184,7 +185,7 @@ async function verifyExecution(code, opts = {}) {
     _contributeExec(r);
     return r;
   } finally {
-    if (dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { /* best-effort */ } }
+    if (dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { quiet('scoring:exec-verify:_contributeExec', _e); /* best-effort */ } }
   }
 }
 
@@ -206,7 +207,7 @@ function _contributeExec(result) {
       kind: 'verification',
       source: 'oracle:exec-verify:' + (result.status || 'unknown'),
     });
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('scoring:exec-verify:recordCost', _); /* best-effort */ }
 }
 
 /**

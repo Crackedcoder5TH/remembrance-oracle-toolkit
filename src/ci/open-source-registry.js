@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * @oracle-infrastructure
  *
@@ -559,9 +560,9 @@ function getProvenance(oracle, options = {}) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:open-source-registry:getProvenance' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('ci:open-source-registry:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('ci:open-source-registry:__recordCost', _); /* best-effort */ }
     return __retVal;
   });
 }

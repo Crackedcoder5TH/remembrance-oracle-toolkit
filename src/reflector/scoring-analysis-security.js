@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Reflector — Security pattern scanning.
  * Dynamic pattern builders prevent self-referential false positives.
@@ -128,7 +129,7 @@ function securityScan(code, language) {
   try {
     const { isPatternDefinitionFile } = require('../core/covenant-trust');
     _isPatternDefs = isPatternDefinitionFile(code);
-  } catch (_) { /* covenant-trust unavailable — fall back to running all detectors */ }
+  } catch (_) { quiet('reflector:scoring-analysis-security:isPatternDefinitionFile', _); /* covenant-trust unavailable — fall back to running all detectors */ }
 
   // ── Deeper injection detection (scans RAW code) ──
   // The language blocks above gate SQL/command checks on a fixed set of
@@ -224,7 +225,7 @@ function securityScan(code, language) {
         findings.push({ severity: severity || 'medium', message: reason, count: 1 });
       }
     }
-  } catch (_e) { /* ecosystem module not reachable — best-effort */ }
+  } catch (_e) { quiet('reflector:scoring-analysis-security:require', _e); /* ecosystem module not reachable — best-effort */ }
 
   let score = 1.0;
   for (const finding of findings) {

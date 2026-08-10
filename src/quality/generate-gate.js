@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * oracle generate <plan> — stage 2 of the anti-hallucination generation
@@ -124,7 +125,7 @@ function checkAgainstPlan(args) {
   try {
     const { registerGateSignal } = require('../unified/emergent-coherency');
     registerGateSignal(violations.length, calls.length);
-  } catch { /* emergent module not available */ }
+  } catch (_e) { quiet('quality:generate-gate:registerGateSignal', _e); /* emergent module not available */ }
 
   return {
     ok: violations.length === 0,

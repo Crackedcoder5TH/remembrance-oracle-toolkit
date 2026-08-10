@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * File-level bug-probability risk score.
@@ -91,7 +92,7 @@ function computeBugProbability(code, options = {}) {
       kind: 'work',
       source: 'risk-score',
     });
-  } catch (_) { /* field unavailable — best-effort */ }
+  } catch (_) { quiet('quality:risk-score:recordCost', _); /* field unavailable — best-effort */ }
 
   return {
     probability: round4(probability),

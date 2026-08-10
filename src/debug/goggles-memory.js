@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * @oracle-infrastructure — goggles learned-memory persistence across
@@ -63,7 +64,7 @@ function _publisher() {
     try {
       const { Publisher } = require(c);
       if (Publisher) return new Publisher({ oracleRoot: ROOT });
-    } catch (_) { /* try next */ }
+    } catch (_) { quiet('debug:goggles-memory:require', _); /* try next */ }
   }
   return null;
 }

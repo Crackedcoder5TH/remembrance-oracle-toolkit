@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * field-ingest — pull the existing ecosystem INTO the field.
@@ -51,7 +52,7 @@ function ingestPatterns(store, opts = {}) {
   const report = { total: 0, encoded: 0, contributed: 0, skipped: 0 };
   if (!store || !store.db) return report;
   let contribute = null;
-  try { ({ recordCost: contribute } = require('./field-coupling')); } catch (_) { /* best-effort */ }
+  try { ({ recordCost: contribute } = require('./field-coupling')); } catch (_) { quiet('core:field-ingest:require', _); /* best-effort */ }
   try {
     let sql = 'SELECT id, name, code, language, coherency_total, coherency_json FROM patterns';
     if (opts.limit) sql += ` LIMIT ${Math.max(1, parseInt(opts.limit, 10))}`;
@@ -91,9 +92,9 @@ function ingestPatterns(store, opts = {}) {
           });
           report.contributed += 1;
         }
-      } catch (_) { /* one pattern failing never aborts the pass */ }
+      } catch (_) { quiet('core:field-ingest:contribute', _); /* one pattern failing never aborts the pass */ }
     }
-  } catch (_) { /* store unreadable — return what we have */ }
+  } catch (_) { quiet('core:field-ingest:contribute', _); /* store unreadable — return what we have */ }
   return report;
 }
 
@@ -107,12 +108,12 @@ function ingestPatterns(store, opts = {}) {
 function ingestConstants() {
   const report = { total: 0, contributed: 0 };
   let recordCost = null;
-  try { ({ recordCost } = require('./field-coupling')); } catch (_) { /* best-effort */ }
+  try { ({ recordCost } = require('./field-coupling')); } catch (_) { quiet('core:field-ingest:require', _); /* best-effort */ }
   if (!recordCost) return report;
 
   const buckets = [];
-  try { buckets.push(['thresholds', require('../constants/thresholds')]); } catch (_) { /* skip */ }
-  try { buckets.push(['quantum', require('../quantum/quantum-core')]); } catch (_) { /* skip */ }
+  try { buckets.push(['thresholds', require('../constants/thresholds')]); } catch (_) { quiet('core:field-ingest:require', _); /* skip */ }
+  try { buckets.push(['quantum', require('../quantum/quantum-core')]); } catch (_) { quiet('core:field-ingest:require', _); /* skip */ }
 
   // Flatten: walk each module's exports, emit one observation per number.
   // Source is grouped at the module level (constant:<module>) so the
@@ -133,7 +134,7 @@ function ingestConstants() {
         try {
           recordCost({ units: 1, source: `constant:${moduleKey}`, kind: 'declaration' });
           report.contributed += 1;
-        } catch (_) { /* best-effort */ }
+        } catch (_) { quiet('core:field-ingest:recordCost', _); /* best-effort */ }
       } else if (val && typeof val === 'object' && !Array.isArray(val)) {
         walk(`${prefix}:${key}`, val, depth + 1);
       }

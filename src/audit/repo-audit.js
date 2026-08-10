@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -30,7 +31,7 @@ const { execFileSync } = require('node:child_process');
 const { mapProjectCoherency } = require('../core/coherency-mapper');
 const { auditFiles } = require('./ast-checkers');
 let fc = null;
-try { fc = require('../core/field-coupling'); } catch (_) { /* field optional */ }
+try { fc = require('../core/field-coupling'); } catch (_) { quiet('audit:repo-audit:require', _); /* field optional */ }
 
 const CHECKER_EXTENSIONS = new Set(['.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx']);
 const DEFAULT_MAX_CHECKER_FILES = 400;
@@ -109,7 +110,7 @@ function auditRepo(target, opts = {}) {
       // A clone failure (unreachable host, private repo, timeout, bad
       // ref) is a clean negative result, not a crash — a bad URL must
       // never 500 the MCP server serving a phone.
-      try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { /* best-effort */ }
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { quiet('audit:repo-audit:execFileSync', _e); /* best-effort */ }
       const detail = (e && (e.stderr ? e.stderr.toString() : e.message) || '').trim().split('\n').pop();
       return { ok: false, error: `clone failed: ${String(detail).slice(0, 120)}` };
     }
@@ -196,13 +197,13 @@ function auditRepo(target, opts = {}) {
         // Flat literal removed: a repo-audit bucket is an EVENT/BUCKET marker, not a coherency.
         // A constant cannot vary with what was measured, so contributing one
         // moves the global EMA without carrying any information about it.
-      } catch (_) { /* field optional */ }
+      } catch (_) { quiet('audit:repo-audit:_walkSources', _); /* field optional */ }
     }
 
     return report;
   } finally {
     if (cloned && !opts.keepClone) {
-      try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { /* temp cleanup best-effort */ }
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { quiet('audit:repo-audit:_walkSources', _e); /* temp cleanup best-effort */ }
     }
   }
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * goggles-call — invoke a capability the goggles surfaced.
@@ -90,7 +91,7 @@ function main() {
     if (c) {
       console.error(`→ ${r.fn}(${c.params})${c.doc ? `   — ${c.doc}` : ''}`);
     }
-  } catch (_) { /* index optional */ }
+  } catch (_) { quiet('tools:goggles-call:resolveRef', _); /* index optional */ }
 
   let mod;
   try {

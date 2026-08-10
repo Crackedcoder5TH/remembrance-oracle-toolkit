@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Pattern Insights — Deep analytics for the pattern library.
  *
@@ -234,9 +235,9 @@ function stalePatterns(oracle, maxDays = 90, limit = 20) {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:insights:stalePatterns' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('analytics:insights:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('analytics:insights:__recordCost', _); /* best-effort */ }
       return __retVal;
     })
     .filter(p => p.isStale)

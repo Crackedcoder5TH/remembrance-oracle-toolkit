@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Oracle Core — Search and query (Quantum Observation).
  *
@@ -167,9 +168,9 @@ module.exports = {
             const { recordCost: __recordCost } = require(__p);
             __recordCost({ units: 1, kind: 'work', source: 'oracle:oracle-core-search:search' });
             break;
-          } catch (_) { /* try next */ }
+          } catch (_) { quiet('api:oracle-core-search:__recordCost', _); /* try next */ }
         }
-      } catch (_) { /* best-effort */ }
+      } catch (_) { quiet('api:oracle-core-search:__recordCost', _); /* best-effort */ }
       return __retVal;
     }).filter(r => r.matchScore > 0);
 
@@ -227,7 +228,7 @@ module.exports = {
     }
 
     // Track search interaction for session summary
-    try { trackSearch(term, finalResults, { mode, language, limit }); } catch (_) { /* non-fatal */ }
+    try { trackSearch(term, finalResults, { mode, language, limit }); } catch (_) { quiet('api:oracle-core-search:trackSearch', _); /* non-fatal */ }
 
     return finalResults;
   },

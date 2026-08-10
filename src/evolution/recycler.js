@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Pattern Recycler — the exponential growth engine.
  *
@@ -1582,9 +1583,9 @@ class PatternRecycler {
             const { recordCost: __recordCost } = require(__p);
             __recordCost({ units: 1, kind: 'work', source: 'oracle:recycler:promoteWithProof' });
             break;
-          } catch (_) { /* try next */ }
+          } catch (_) { quiet('evolution:recycler:__recordCost', _); /* try next */ }
         }
-      } catch (_) { /* best-effort */ }
+      } catch (_) { quiet('evolution:recycler:__recordCost', _); /* best-effort */ }
       return __retVal;
     }
 

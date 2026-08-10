@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Debug Oracle — Quantum Debugging Intelligence
  *
@@ -1073,7 +1074,7 @@ class DebugOracle {
       const parentRow = this.store.db.prepare('SELECT entangled_with FROM debug_patterns WHERE id = ?').get(parentId);
       if (parentRow) {
         let existing = [];
-        try { existing = JSON.parse(parentRow.entangled_with || '[]'); } catch (_) { /* corrupt data — reset */ }
+        try { existing = JSON.parse(parentRow.entangled_with || '[]'); } catch (_) { quiet('debug:debug-oracle:walk', _); /* corrupt data — reset */ }
         const merged = [...new Set([...existing, ...childIds])];
         this.store.db.prepare('UPDATE debug_patterns SET entangled_with = ? WHERE id = ?')
           .run(JSON.stringify(merged), parentId);
@@ -1084,7 +1085,7 @@ class DebugOracle {
         const childRow = this.store.db.prepare('SELECT entangled_with FROM debug_patterns WHERE id = ?').get(childId);
         if (childRow) {
           let existing = [];
-          try { existing = JSON.parse(childRow.entangled_with || '[]'); } catch (_) { /* corrupt data — reset */ }
+          try { existing = JSON.parse(childRow.entangled_with || '[]'); } catch (_) { quiet('debug:debug-oracle:walk', _); /* corrupt data — reset */ }
           const merged = [...new Set([...existing, parentId])];
           this.store.db.prepare('UPDATE debug_patterns SET entangled_with = ? WHERE id = ?')
             .run(JSON.stringify(merged), childId);

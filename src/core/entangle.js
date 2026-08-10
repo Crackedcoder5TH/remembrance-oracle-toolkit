@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Field entanglement — an ambient sensor layer that couples the host
@@ -61,7 +62,7 @@ function _entangledNodeCount() {
   try {
     const { getEngine } = require('./living-remembrance');
     return getEngine().nodeCount();
-  } catch (_) { /* field unreachable */ }
+  } catch (_) { quiet('core:entangle:require', _); /* field unreachable */ }
   return 1;
 }
 
@@ -88,7 +89,7 @@ function _sense(coherence, kind) {
       coherence,
       source: `entangle:${kind}:${_resolveNodeId()}`,
     });
-  } catch (_) { /* best-effort — entanglement never breaks the host */ }
+  } catch (_) { quiet('core:entangle:_abundanceCost', _); /* best-effort — entanglement never breaks the host */ }
 }
 
 /**
@@ -112,7 +113,7 @@ function engage() {
     //
     // Registering is now presence only: it touches no equation term.
     require('./living-remembrance').getEngine().registerNode(nodeId);
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:entangle:require', _); /* best-effort */ }
 
   const onWarning   = () => _sense(0.5, 'warning');
   const onUncaught  = () => _sense(0.05, 'uncaught-exception');
@@ -140,7 +141,7 @@ function engage() {
 function disengage() {
   if (!_engaged) return { engaged: false };
   for (const [event, fn] of _listeners) {
-    try { process.removeListener(event, fn); } catch (_) { /* ignore */ }
+    try { process.removeListener(event, fn); } catch (_) { quiet('core:entangle:disengage', _); /* ignore */ }
   }
   _listeners = [];
   if (_heartbeat) { clearInterval(_heartbeat); _heartbeat = null; }

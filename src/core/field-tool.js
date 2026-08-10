@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -54,7 +55,7 @@ const crypto = require('node:crypto');
 
 const fc = require('./field-coupling');
 let entangle = null;
-try { entangle = require('./entangle'); } catch (_) { /* optional */ }
+try { entangle = require('./entangle'); } catch (_) { quiet('core:field-tool:require', _); /* optional */ }
 
 // L1 base encoder: 29-D structural fractal — the JS↔Python parity
 // anchor (see Void's to_fractal_waveform.py / verify_fractal_parity.py).
@@ -69,7 +70,7 @@ const { toFractalWaveform } = require('./fractal-waveform');
 let _encoderStack = null;
 try {
   _encoderStack = require('./decoder-stack');
-} catch (_) { /* stack unreachable — read falls back to L1 only */ }
+} catch (_) { quiet('core:field-tool:require', _); /* stack unreachable — read falls back to L1 only */ }
 
 // New-layer meta-awareness. The encoder layers are pure functions (L1-L7
 // alike never touch the field directly), so the LRE coupling lives here,
@@ -81,7 +82,7 @@ try {
 let _dimensionalGain = null;
 try {
   _dimensionalGain = require('./dimensional-waveform').dimensionalGain;
-} catch (_) { /* dimensional layer unreachable */ }
+} catch (_) { quiet('core:field-tool:require', _); /* dimensional layer unreachable */ }
 
 // Residual meta-awareness. The residual monitor measures what the current
 // encoder stack FAILS to explain (false-equivalence rate: distinct-domain
@@ -95,14 +96,14 @@ try {
 // must pass the multi-telescope calibration gate first (an operator act,
 // via residual-monitor.checkAndSpawn). Best-effort like every coupling.
 let _residualMonitor = null;
-try { _residualMonitor = require('./residual-monitor'); } catch (_) { /* monitor unreachable */ }
+try { _residualMonitor = require('./residual-monitor'); } catch (_) { quiet('core:field-tool:require', _); /* monitor unreachable */ }
 const RESIDUAL_CHECK_EVERY = 250;
 const RESIDUAL_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'residual-check.json');
 
 // Information-density fuel (the retro module's power source), kept LIVE: read
 // on every field read, re-fit lazily as the substrate grows. See step 5c.
 let _substrateDensity = null;
-try { _substrateDensity = require('./substrate-density'); } catch (_) { /* density module unreachable */ }
+try { _substrateDensity = require('./substrate-density'); } catch (_) { quiet('core:field-tool:require', _); /* density module unreachable */ }
 const DENSITY_REFRESH_EVERY = 500;
 const DENSITY_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'density-refresh.json');
 
@@ -113,7 +114,7 @@ const DENSITY_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'd
 let _voidLib = null;
 try {
   _voidLib = require('./void-library');
-} catch (_) { /* substrate unreachable — read still records */ }
+} catch (_) { quiet('core:field-tool:require', _); /* substrate unreachable — read still records */ }
 
 // Coding-specific filter: Oracle's pattern library (oracle.db
 // patterns table) via lexical TF-IDF resonance. Narrower than Void
@@ -122,7 +123,7 @@ try {
 let _scoreResonance = null;
 try {
   _scoreResonance = require('../scoring/pattern-resonance').scoreResonance;
-} catch (_) { /* coding filter unreachable */ }
+} catch (_) { quiet('core:field-tool:require', _); /* coding filter unreachable */ }
 
 // Structural-validity scorer: syntax validity + completeness + consistency +
 // AST, read directly from the content. This is NOT a coherency — measured over
@@ -132,7 +133,7 @@ try {
 // DISTINCT again from pattern resonance (voidResonance: how much the content is
 // shaped like the library's patterns). Three separate signals; never conflated.
 let _coherency = null;
-try { _coherency = require('./coherency'); } catch (_) { /* structural scorer unreachable */ }
+try { _coherency = require('./coherency'); } catch (_) { quiet('core:field-tool:require', _); /* structural scorer unreachable */ }
 
 // ── THE COHERENCY READING ────────────────────────────────────────────────
 // One producer: the Void compressor. Nothing in this file calculates a
@@ -140,7 +141,7 @@ try { _coherency = require('./coherency'); } catch (_) { /* structural scorer un
 // reach it (src/core/void-service.js — which also starts the service when it
 // is cold, caches by content hash, and returns null rather than a substitute).
 let _voidService = null;
-try { _voidService = require('./void-service'); } catch (_) { /* instrument unreachable */ }
+try { _voidService = require('./void-service'); } catch (_) { quiet('core:field-tool:require', _); /* instrument unreachable */ }
 
 function _voidCoherencyOf(content) {
   if (!_voidService) return null;
@@ -150,7 +151,7 @@ function _voidCoherencyOf(content) {
 let _SQLiteStore = null;
 try {
   _SQLiteStore = require('../store/sqlite').SQLiteStore;
-} catch (_) { /* substrate capture degrades to a no-op */ }
+} catch (_) { quiet('core:field-tool:require', _); /* substrate capture degrades to a no-op */ }
 
 const DEFAULT_SOURCE = 'field-tool:read';
 
@@ -237,7 +238,7 @@ class FieldTool {
         // dropped — everywhere the substrate carries them.
         const depth = _encoderStack.currentDepth ? _encoderStack.currentDepth() : 4;
         composed = Array.from(_encoderStack.composedAtDepth(content, depth));
-      } catch (_) { /* fall back to L1-only resonance */ }
+      } catch (_) { quiet('core:field-tool:toFractalWaveform', _); /* fall back to L1-only resonance */ }
     }
 
     // 3. Primary substrate read: FLOW-AWARE score across all four
@@ -267,7 +268,7 @@ class FieldTool {
           if (voidResonance) voidResonance.flowAware = false;
           layers.voidScored = voidResonance != null;
         }
-      } catch (_) { /* keep null */ }
+      } catch (_) { quiet('core:field-tool:toFractalWaveform', _); /* keep null */ }
     }
 
     // 4. Secondary filter: lexical TF-IDF resonance against Oracle's
@@ -282,7 +283,7 @@ class FieldTool {
           language: language || undefined,
         });
         layers.codingFiltered = codeResonance != null;
-      } catch (_) { /* keep null */ }
+      } catch (_) { quiet('core:field-tool:_scoreResonance', _); /* keep null */ }
     }
 
     // 5. Grow the substrate (Oracle's coding-specific filter; Void's
@@ -299,7 +300,7 @@ class FieldTool {
     try {
       const { nodeId } = require('./entangle');
       require('./living-remembrance').getEngine().registerNode(nodeId());
-    } catch (_) { /* presence is best-effort — a read must never fail on it */ }
+    } catch (_) { quiet('core:field-tool:nodeId', _); /* presence is best-effort — a read must never fail on it */ }
 
     if (merged.growSubstrate) {
       grew = this._growSubstrate({ content, name, language, id });
@@ -342,7 +343,7 @@ class FieldTool {
         }
         fs.mkdirSync(path.dirname(RESIDUAL_COUNTER_PATH), { recursive: true });
         fs.writeFileSync(RESIDUAL_COUNTER_PATH, JSON.stringify(st));
-      } catch (_) { /* residual coupling optional — never break a read */ }
+      } catch (_) { quiet('core:field-tool:nodeId', _); /* residual coupling optional — never break a read */ }
     }
 
     // 5c. Information-density meta-awareness (the retro fuel, kept LIVE).
@@ -374,7 +375,7 @@ class FieldTool {
         // A constant cannot vary with what was measured, so contributing one
         // moves the global EMA without carrying any information about it.
         layers.densityFactor = +factor.toFixed(4);
-      } catch (_) { /* density coupling optional — never break a read */ }
+      } catch (_) { quiet('core:field-tool:c16', _); /* density coupling optional — never break a read */ }
     }
 
     // 6. THE COHERENCY. Asked of the Void compressor, reading this artifact's
@@ -403,7 +404,7 @@ class FieldTool {
       try {
         const c = _coherency.computeCoherencyScore(content, { language, measurableOnly: true });
         if (c && Number.isFinite(c.total)) structuralValidity = c.total;
-      } catch (_) { /* keep 0 */ }
+      } catch (_) { quiet('core:field-tool:c17', _); /* keep 0 */ }
     }
 
     const coherency = _voidCoherencyOf(content);
@@ -430,7 +431,7 @@ class FieldTool {
         });
         layers.contributed = true;
         if (_res !== null) layers.resonanceWeight = +_res.toFixed(4);
-      } catch (_) { /* field unreachable */ }
+      } catch (_) { quiet('core:field-tool:_voidCoherencyOf', _); /* field unreachable */ }
     } else {
       layers.contributed = false;
       layers.notContributedReason = 'no coherency reading — Void compressor unreachable';
@@ -458,7 +459,7 @@ class FieldTool {
           // moves the global EMA without carrying any information about it.
           layers.dimensionalGain = +gain.toFixed(4);
         }
-      } catch (_) { /* dimensional coupling optional */ }
+      } catch (_) { quiet('core:field-tool:_dimensionalGain', _); /* dimensional coupling optional */ }
     }
 
     return {

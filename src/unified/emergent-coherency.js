@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -293,7 +294,7 @@ except Exception as e:
         }
       }
     } finally {
-      try { fs.unlinkSync(tmpFile); } catch { /* best effort */ }
+      try { fs.unlinkSync(tmpFile); } catch (_e) { quiet('unified:emergent-coherency:isFinite', _e); /* best effort */ }
     }
   } catch (e) {
     // Void compressor unavailable — degrade gracefully

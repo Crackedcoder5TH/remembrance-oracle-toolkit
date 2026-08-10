@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  *
  * MCP HTTP transport — wraps the stdio MCPServer with a single
@@ -44,8 +45,8 @@ function startHTTPServer({ host = '127.0.0.1', port = 7787, token = null, oracle
 
   // Entangle the host runtime with the Remembrance Field — auto-engages
   // when the HTTP MCP server starts. Best-effort; never blocks startup.
-  try { require('../core/entangle').engage(); } catch (_) { /* entanglement is optional */ }
-  try { require('../core/field-workqueue-poller').engage(); } catch (_) { /* poller is optional */ }
+  try { require('../core/entangle').engage(); } catch (_) { quiet('mcp:http-server:require', _); /* entanglement is optional */ }
+  try { require('../core/field-workqueue-poller').engage(); } catch (_) { quiet('mcp:http-server:require', _); /* poller is optional */ }
 
   const corsOrigin = process.env.ORACLE_MCP_CORS_ORIGIN || '*';
 

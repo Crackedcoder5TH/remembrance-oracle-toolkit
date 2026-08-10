@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 
 /**
@@ -289,7 +290,7 @@ class MeditationEngine {
       if (fs.existsSync(vetoPath)) {
         return JSON.parse(fs.readFileSync(vetoPath, 'utf8'));
       }
-    } catch {}
+    } catch (_e) { quiet('core:meditation:c1', _e);}
     return { vetoes: [], lessons: [] };
   }
 
@@ -299,7 +300,7 @@ class MeditationEngine {
       const dir = path.dirname(vetoPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(vetoPath, JSON.stringify(memory, null, 2));
-    } catch {}
+    } catch (_e) { quiet('core:meditation:c2', _e);}
   }
 
   /**
@@ -579,9 +580,9 @@ class MeditationEngine {
         const { recordCost: __recordCost } = require(__p);
         __recordCost({ units: 1, kind: 'work', source: 'oracle:meditation:_saveHighWaterMark' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('core:meditation:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:meditation:__recordCost', _); /* best-effort */ }
           return __retVal;
         }),
       },
@@ -597,7 +598,7 @@ class MeditationEngine {
       const dir = path.dirname(hwmPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(hwmPath, JSON.stringify(trimmed, null, 2));
-    } catch {}
+    } catch (_e) { quiet('core:meditation:__recordCost', _e);}
   }
 
   /**
@@ -609,7 +610,7 @@ class MeditationEngine {
       if (fs.existsSync(hwmPath)) {
         return JSON.parse(fs.readFileSync(hwmPath, 'utf8'));
       }
-    } catch {}
+    } catch (_e) { quiet('core:meditation:__recordCost', _e);}
     return [];
   }
 
@@ -736,7 +737,7 @@ class MeditationEngine {
           timestamp: new Date().toISOString(),
           archivedPatterns: archived,
         }, null, 2));
-      } catch {}
+      } catch (_e) { quiet('core:meditation:c7', _e);}
     }
 
     // Restore: Keep only patterns that existed at the target water mark
@@ -822,7 +823,7 @@ class MeditationEngine {
               name: p.name,
             });
             restored++;
-          } catch {}
+          } catch (_e) { quiet('core:meditation:c8', _e);}
         }
 
         this._log('archive-restored', { archiveFile, restored, total: patterns.length });
@@ -1215,7 +1216,7 @@ class MeditationEngine {
       if (this._oracle.search) {
         return this._oracle.search('', { limit: 1000 }) || [];
       }
-    } catch {}
+    } catch (_e) { quiet('core:meditation:c9', _e);}
 
     // Fallback: read seed files
     try {
@@ -1227,7 +1228,7 @@ class MeditationEngine {
         allPatterns.push(...pats);
       }
       return allPatterns;
-    } catch {}
+    } catch (_e) { quiet('core:meditation:c10', _e);}
 
     return [];
   }
@@ -1259,7 +1260,7 @@ class MeditationEngine {
       const dir = path.dirname(this._journalPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.appendFileSync(this._journalPath, JSON.stringify(entry) + '\n');
-    } catch {}
+    } catch (_e) { quiet('core:meditation:c11', _e);}
   }
 
   _readJournal() {

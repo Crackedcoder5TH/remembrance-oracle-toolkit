@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Unified Oracle history.
@@ -110,7 +111,7 @@ function readRawLog(storage) {
     for (const line of raw.split('\n')) {
       if (!line.trim()) continue;
       try { out.push(JSON.parse(line)); }
-      catch { /* skip malformed */ }
+      catch (_e) { quiet('core:history:require', _e); /* skip malformed */ }
     }
     return out;
   }

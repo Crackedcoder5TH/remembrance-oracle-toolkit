@@ -1,12 +1,11 @@
 {
  "note": "Covenant size baseline — grandfathered monoliths (> 500 lines). The ratchet allows this list to SHRINK only: no new module may exceed the cap, no listed module may grow past its recorded size + 40, and a module that drops under the cap leaves forever.",
- "savedAt": "2026-08-08T19:00:08.424Z",
+ "savedAt": "2026-08-10T01:37:36.525Z",
  "maxLines": 500,
  "slack": 40,
- "count": 64,
- "totalLines": 53312,
+ "count": 63,
+ "totalLines": 49978,
  "modules": {
-  "src/cli/commands/admin.js": 3347,
   "src/store/sqlite.js": 3230,
   "src/evolution/recycler.js": 1812,
   "src/patterns/library.js": 1648,
@@ -25,10 +24,10 @@
   "src/ci/hooks.js": 796,
   "src/core/versioning.js": 772,
   "src/ci/open-source-registry.js": 753,
+  "src/orchestrator/coherency-director.js": 753,
   "src/reflector/multi-analysis.js": 752,
-  "src/orchestrator/coherency-director.js": 751,
   "src/evolution/test-synth.js": 729,
-  "src/quantum/quantum-field.js": 725,
+  "src/quantum/quantum-field.js": 729,
   "src/atomic/periodic-table.js": 714,
   "src/core/field-tool.js": 705,
   "src/core/sandbox.js": 702,
@@ -50,7 +49,7 @@
   "src/dashboard/routes.js": 631,
   "src/utils/gap-filled.js": 617,
   "src/core/compliance.js": 615,
-  "src/audit/ground.js": 610,
+  "src/audit/ground.js": 612,
   "src/core/covenant-trust.js": 602,
   "src/core/void-compression-layer.js": 591,
   "src/audit/parser.js": 578,
@@ -67,8 +66,8 @@
   "src/quantum/quantum-core.js": 529,
   "src/cli/commands/integration.js": 524,
   "src/audit/explain.js": 523,
+  "src/debug/defect-resonance.js": 511,
   "src/search/embedding-engine.js": 510,
-  "src/core/session-tracker.js": 507,
-  "src/debug/defect-resonance.js": 506
+  "src/core/session-tracker.js": 507
  }
 }

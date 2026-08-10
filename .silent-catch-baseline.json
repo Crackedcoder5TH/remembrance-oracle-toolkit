@@ -1,7 +1,7 @@
 {
  "note": "silent-catch baseline — catch blocks with zero executable body tokens, per file. Shrink-only: name the failure, never delete the try.",
- "savedAt": "2026-08-09T18:25:36.463Z",
- "total": 491,
+ "savedAt": "2026-08-10T01:37:37.807Z",
+ "total": 462,
  "byFile": {
   "src/agent-integration.js": 5,
   "src/analytics/analytics.js": 1,
@@ -39,7 +39,6 @@
   "src/ci/feedback.js": 4,
   "src/ci/harvest.js": 2,
   "src/ci/open-source-registry.js": 2,
-  "src/cli/commands/admin.js": 29,
   "src/cli/commands/core.js": 1,
   "src/cli/commands/library.js": 7,
   "src/cli/commands/onboard.js": 1,

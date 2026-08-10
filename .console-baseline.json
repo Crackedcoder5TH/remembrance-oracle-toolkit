@@ -1,7 +1,7 @@
 {
  "note": "console baseline — token-verified console.<method>( call sites in src/, per file. Shrink-only: migrate to a logger or remove; new print surface blocks.",
- "savedAt": "2026-08-09T18:25:38.171Z",
- "total": 3793,
+ "savedAt": "2026-08-10T01:37:39.074Z",
+ "total": 2893,
  "byFile": {
   "src/action.js": 31,
   "src/analytics/actionable-insights.js": 8,
@@ -36,7 +36,8 @@
   "src/ci/implicit-feedback.js": 10,
   "src/ci/open-source-registry.js": 6,
   "src/cli.js": 50,
-  "src/cli/commands/admin.js": 908,
+  "src/cli/commands/admin.js": 4,
+  "src/cli/commands/admin/out.js": 4,
   "src/cli/commands/chromadb.js": 49,
   "src/cli/commands/core.js": 81,
   "src/cli/commands/debug.js": 135,

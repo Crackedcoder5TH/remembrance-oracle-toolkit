@@ -5,13 +5,17 @@ import { AEOSpeakablePage } from "../components/aeo-schema";
 export const metadata: Metadata = {
   title: "Frequently Asked Questions",
   description:
-    "Common questions about Valor Legacies, military life insurance options, SGLI alternatives, and how our free coverage review works.",
+    "Common questions about Valor Legacies, life insurance for major life moments, and how our no-cost coverage review works.",
 };
 
 const FAQS = [
   {
-    q: "What is the best life insurance for veterans?",
-    a: "The best life insurance for veterans depends on your needs. Term life is ideal for mortgage protection and income replacement. Whole life works well for final expense and legacy planning. Indexed Universal Life (IUL) offers retirement savings with life insurance protection. A licensed professional can help you compare options based on your service history, age, and family situation.",
+    q: "How do I know what kind of life insurance may fit my family?",
+    a: "The right fit depends on the people who rely on you, your budget, health, debts, income, and long-term goals. Term and permanent policies serve different needs. A licensed insurance professional can explain available options and help you compare them without assuming one solution fits everyone.",
+  },
+  {
+    q: "When should I review my life insurance needs?",
+    a: "Major life moments are useful times to review protection: welcoming a child, getting married, buying a home, changing jobs, preparing for retirement, supporting aging relatives, or planning final expenses. You can also request a review simply because your current coverage no longer feels clear.",
   },
   {
     q: "Is this the same as SGLI?",
@@ -19,15 +23,15 @@ const FAQS = [
   },
   {
     q: "Is this affiliated with the military or government?",
-    a: "No. Valor Legacies is independently operated and not affiliated with the U.S. Government, Department of Defense, or any branch of military service.",
+    a: "No. Valor Legacies is independently operated and is not affiliated with the U.S. Department of Veterans Affairs, the Department of Defense, or any government agency.",
   },
   {
     q: "Is there any obligation to purchase?",
     a: "No. Requesting a review simply connects you with a licensed professional to explore your options. There is no obligation, no pressure, and no cost for the consultation.",
   },
   {
-    q: "Are veterans eligible?",
-    a: "Yes. Many life insurance options are available for veterans, including those who have fully separated from service. Options vary by state and individual eligibility.",
+    q: "Who can request a coverage review?",
+    a: "Adults exploring family, income, mortgage, final expense, retirement, or legacy protection may request a review. Valor Legacies also welcomes service members, veterans, and military families. Available options depend on state availability, underwriting, and individual eligibility.",
   },
   {
     q: "How long does the process take?",
@@ -43,11 +47,11 @@ const FAQS = [
   },
   {
     q: "Who will contact me?",
-    a: "A licensed insurance professional experienced in military-family coverage will review your information and reach out via phone or email.",
+    a: "A licensed insurance professional will review your information and may reach out by phone, text, or email using the contact preferences and consent you provide.",
   },
   {
     q: "What types of coverage can I explore?",
-    a: "You can explore mortgage protection, final expense (burial/funeral), income replacement, retirement savings (IUL), guaranteed income (annuity), and legacy/wealth transfer options. If you're not sure, a licensed professional will help determine the best fit.",
+    a: "You can ask about family and income protection, mortgage responsibilities, final expenses, retirement considerations, and legacy goals. Product availability and suitability vary, so a licensed professional can explain the options available for your circumstances.",
   },
   {
     q: "Can my AI assistant help me sign up?",
@@ -99,7 +103,7 @@ export default function FaqPage() {
       />
       <AEOSpeakablePage
         title="Frequently Asked Questions — Valor Legacies"
-        description="Common questions about military life insurance, SGLI, VGLI, VA programs, and veteran coverage options."
+        description="Common questions about family protection, major life moments, coverage reviews, and veteran insurance considerations."
         url="/faq"
         speakableCssSelectors={["h1", "h2", "p"]}
       />
@@ -116,7 +120,7 @@ export default function FaqPage() {
             Frequently Asked Questions
           </h1>
           <p className="text-sm text-[var(--text-muted)]">
-            Common questions about our free coverage review service.
+            Common questions about planning protection around life’s biggest moments.
           </p>
         </header>
 
@@ -158,7 +162,7 @@ export default function FaqPage() {
         <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
           <nav className="flex gap-4 justify-center mb-3">
             <Link href="/blog" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Blog</Link>
-            <Link href="/resources" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Resources</Link>
+            <Link href="/resources" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Guides</Link>
             <Link href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">About</Link>
             <Link href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Privacy Policy</Link>
             <Link href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Terms of Service</Link>

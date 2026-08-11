@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "About & Contact",
   description:
-    "Learn about Valor Legacies — veteran-founded life insurance lead generation for military families.",
+    "Meet Andrea Golden and learn why she founded Valor Legacies to make family protection more personal, understandable, and rooted in real life.",
 };
 
 export default function AboutPage() {
@@ -25,14 +25,21 @@ export default function AboutPage() {
 
         <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
-            Our Mission
+            Andrea Golden’s Founder Story
           </h2>
           <p>
-            Valor Legacies was founded by a veteran with a simple mission: to
-            help military families understand their life insurance options beyond
-            standard military coverage. We connect service members, veterans,
-            and their families with licensed professionals who specialize in
-            protecting military households.
+            Valor Legacies was founded by Andrea Golden, a veteran who believes
+            service means showing up with purpose, protecting others, and doing
+            the right thing even when no one is watching. That same spirit is
+            the foundation of Valor Legacies.
+          </p>
+          <p>
+            Andrea created the company to make life insurance feel personal,
+            understandable, and rooted in real life—not complicated or
+            intimidating. Whether someone has welcomed a baby, bought a home,
+            gotten married, started planning for retirement, or wants to keep a
+            financial burden from falling on family, Valor Legacies helps them
+            take the next step with confidence.
           </p>
           <p>
             &ldquo;Valor&rdquo; represents courage, bravery, and selfless
@@ -44,6 +51,10 @@ export default function AboutPage() {
           <p>
             Together, Valor Legacies stands for honoring a life of courage by
             protecting the future of those you love.
+          </p>
+          <p className="font-medium text-[var(--text-primary)]">
+            For the life you live, and the love you leave, this is why Valor
+            Legacies exists.
           </p>
         </section>
 
@@ -59,6 +70,8 @@ export default function AboutPage() {
               "Military Families",
               "Transitioning Service Members",
               "Military Spouses",
+              "New Parents",
+              "Homeowners & Families",
             ].map((category) => (
               <div
                 key={category}
@@ -80,8 +93,8 @@ export default function AboutPage() {
               sell, quote, or bind insurance coverage.
             </li>
             <li>
-              We operate as an independent lead generation service, connecting
-              military families with licensed insurance professionals.
+              We are an independent life insurance resource and may connect
+              consumers with licensed insurance professionals.
             </li>
             <li>
               We do not provide insurance advice, recommendations, or coverage
@@ -89,8 +102,8 @@ export default function AboutPage() {
             </li>
             <li>
               Valor Legacies is independently operated and is not affiliated
-              with the U.S. Government, Department of Defense, or any branch of
-              the military.
+              with the U.S. Department of Veterans Affairs, the Department of
+              Defense, or any government agency.
             </li>
             <li>
               Coverage availability, rates, and terms vary by state and are
@@ -215,6 +228,12 @@ export default function AboutPage() {
         </section>
 
         <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
+          <nav className="mb-3 flex justify-center gap-4" aria-label="Footer navigation">
+            <Link href="/resources" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Guides</Link>
+            <Link href="/faq" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">FAQ</Link>
+            <Link href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Privacy Policy</Link>
+            <Link href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Terms of Service</Link>
+          </nav>
           <p className="text-xs text-[var(--text-muted)]">
             &copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.
           </p>

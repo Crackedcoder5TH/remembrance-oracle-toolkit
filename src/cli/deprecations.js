@@ -19,9 +19,26 @@ const DEPRECATIONS = {
   'full-cycle':  { canonical: 'maintain', message: 'Use "maintain" instead of "full-cycle" (deprecated since v3)' },
 
   // Overlapping commands — guide users to the better version
-  'smart-search': { canonical: 'search --mode smart', message: 'Use "search --mode smart" for intent-aware search' },
   'recycle':      { canonical: 'generate',             message: 'Use "generate" instead of "recycle"' },
-  'deep-clean':   { canonical: 'prune --deep',         message: 'Use "prune --deep" instead of "deep-clean"' },
+
+  // REMOVED 2026-08-11 — both pointed at canonicals that do not exist, and
+  // a deprecation whose target is imaginary does not simplify a surface, it
+  // deletes one. Each silently swallowed a live capability:
+  //
+  //   'smart-search' -> 'search --mode smart'
+  //       search() only branches on mode === 'semantic'; there is no smart
+  //       mode. Every `oracle smart-search` ran a plain hybrid search while
+  //       the notice claimed otherwise, so smartSearch's intent detection,
+  //       typo correction, rewritten query and suggestions — all live, all
+  //       advertised in `oracle help` — were unreachable from the CLI.
+  //
+  //   'deep-clean' -> 'prune --deep'
+  //       prune() reads only --untested and --min-coherency; --deep is not
+  //       a flag it has. The redirect ran an ordinary prune.
+  //
+  // Both commands have real implementations and are no longer intercepted.
+  // A deprecation belongs here only when its canonical genuinely does the
+  // same work — the tests in tests/cli-contract.test.js now check that.
 };
 
 /**

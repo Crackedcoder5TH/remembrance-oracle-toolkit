@@ -313,12 +313,11 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     }
   };
 
-  handlers['vacuum'] = (args) => {
-    const sqliteStore = oracle.store?.getSQLiteStore?.() || oracle.patterns?._sqlite;
-    if (!sqliteStore) { console.error(c.boldRed('Error:') + ' No SQLite store available.'); process.exit(1); }
-    const result = sqliteStore.vacuum();
-    console.log(`VACUUM complete: ${result.beforeMB} MB → ${result.afterMB} MB (saved ${c.boldGreen(String(result.savedMB))} MB)`);
-  };
+  // RETIRED 2026-08-11 — `vacuum` lived here and in self-manage.js, which
+  // registers later in cli.js and therefore won every invocation. This copy
+  // had never run. self-manage's is a strict superset: the same
+  // sqliteStore.vacuum() call, plus --json and a clearer report. Removed
+  // rather than left as unreachable code that reads as if it were live.
 
   handlers['restore'] = (args) => {
     const dryRun = parseDryRun(args);

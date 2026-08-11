@@ -118,16 +118,21 @@ describe('CLI registration — one handler map, 21 writers', () => {
     //
     //   deep-clean  quality.js  "Remove duplicates, stubs, and trivial
     //               patterns" (oracle.deepClean) is shadowed by
-    //               self-manage.js's SQLite maintenance sweep.
-    //   vacuum      same pair, same direction.
+    //               self-manage.js's SQLite maintenance sweep. Genuinely
+    //               different capabilities sharing one name — awaiting an
+    //               owner ruling, so both are left in place.
     //   verify      versioning.js "Verify pattern integrity" (delegates to
     //               _verifyPublication) is shadowed by verify.js's
-    //               ecosystem truth-spine.
+    //               ecosystem truth-spine. Retiring it would drop a
+    //               documented capability, so it also awaits a ruling.
     //
-    // Which implementation should own each name is a design decision for
-    // the owner, so this test does not pick a winner. It freezes the set:
-    // these three may shrink, and a fourth blocks.
-    const KNOWN = ['deep-clean', 'vacuum', 'verify'];
+    // `vacuum` was here and is gone: quality.js's copy was a strict subset
+    // of self-manage's and had never run, so it was retired 2026-08-11.
+    //
+    // Which implementation should own a contested name is a design
+    // decision, so this test does not pick a winner. It freezes the set:
+    // these may shrink, and a new one blocks.
+    const KNOWN = ['deep-clean', 'verify'];
     const { overwritten } = registerAll();
     const names = [...new Set(overwritten.map((o) => o.name))].sort();
     const fresh = names.filter((n) => !KNOWN.includes(n));

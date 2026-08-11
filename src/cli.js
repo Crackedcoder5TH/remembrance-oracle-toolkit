@@ -338,8 +338,20 @@ async function main() {
   const dep = getDeprecation(cmd);
   if (dep) {
     warnDeprecation(cmd);
-    // Use canonical command's base name for handler lookup
-    effectiveCmd = dep.canonical.split(' ')[0];
+    // Route to the canonical command — INCLUDING the flags that make it
+    // canonical. Taking only `canonical.split(' ')[0]` silently dropped
+    // them, so `smart-search` ran a plain hybrid `search` (losing intent
+    // detection, typo correction and suggestions entirely) and `deep-clean`
+    // ran a plain `prune` rather than `prune --deep`, while the notice on
+    // screen promised otherwise. A flag the user typed always wins over the
+    // canonical default.
+    const [canonicalCmd, ...canonicalArgv] = dep.canonical.split(/\s+/);
+    effectiveCmd = canonicalCmd;
+    const implied = parseArgs([canonicalCmd, ...canonicalArgv]);
+    for (const [k, v] of Object.entries(implied)) {
+      if (k.startsWith('_')) continue;          // positional/meta bookkeeping
+      if (args[k] === undefined) args[k] = v;   // never override an explicit flag
+    }
   }
 
   const handler = handlers[effectiveCmd] || handlers[cmd];

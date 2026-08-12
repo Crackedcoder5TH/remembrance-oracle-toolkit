@@ -19,13 +19,19 @@ describe('generateSecurityHeaders', () => {
 
   it('includes X-Frame-Options DENY', () => {
     const headers = generateSecurityHeaders();
+    // find() returns undefined when the header is absent, and reading .value
+    // off it throws a TypeError — which fails the test with a stack trace
+    // about undefined instead of "the header is missing". Assert presence
+    // first so a regression names itself.
     const xfo = headers.find(h => h.key === 'X-Frame-Options');
+    assert.ok(xfo, 'X-Frame-Options header is present');
     assert.equal(xfo.value, 'DENY');
   });
 
   it('includes CSP with upgrade-insecure-requests', () => {
     const headers = generateSecurityHeaders();
     const csp = headers.find(h => h.key === 'Content-Security-Policy');
+    assert.ok(csp, 'Content-Security-Policy header is present');
     assert.ok(csp.value.includes('upgrade-insecure-requests'));
     assert.ok(csp.value.includes("frame-ancestors 'none'"));
   });
@@ -33,12 +39,14 @@ describe('generateSecurityHeaders', () => {
   it('allows custom connectSrc', () => {
     const headers = generateSecurityHeaders({ connectSrc: 'https://api.example.com' });
     const csp = headers.find(h => h.key === 'Content-Security-Policy');
+    assert.ok(csp, 'Content-Security-Policy header is present');
     assert.ok(csp.value.includes('https://api.example.com'));
   });
 
   it('allows custom hstsMaxAge', () => {
     const headers = generateSecurityHeaders({ hstsMaxAge: 86400 });
     const hsts = headers.find(h => h.key === 'Strict-Transport-Security');
+    assert.ok(hsts, 'Strict-Transport-Security header is present');
     assert.ok(hsts.value.includes('max-age=86400'));
   });
 });

@@ -2,7 +2,7 @@
  * Test runner that concatenates each source+test pair (mimicking isolated sandbox)
  * and runs them via node --test.
  */
-const { execSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -33,7 +33,10 @@ for (const testFile of testFiles) {
   fs.writeFileSync(tmpFile, combined);
 
   try {
-    const output = execSync(`node --test ${tmpFile}`, {
+    // Argument array, not a template literal: tmpFile carries baseName, which
+    // comes from a filename on disk. A file named with a shell metacharacter
+    // would otherwise be interpolated straight into a shell command.
+    const output = execFileSync('node', ['--test', tmpFile], {
       encoding: 'utf8',
       timeout: 30000
     });

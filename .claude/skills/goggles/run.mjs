@@ -149,6 +149,14 @@ if (argv[0] === '--do') {
       console.log('reacted to every read. Full cross-domain field: goggles --do resonance');
       return 0;
     },
+    // THE WHOLE GATE FAMILY, one read. ratchet-battery.js documents itself as
+    // "routed through the goggles as `--do ratchets`" — but the verb was never
+    // added, so the ten gates had no surface here and had to be run by hand
+    // from a path you already had to know. That is the same gap the other
+    // routed verbs below were added to close: a gate nobody can reach from the
+    // one surface is a gate that stops being run.
+    //   goggles --do ratchets [--json]
+    ratchets: () => run('node', [join(toolkit, 'scripts/ratchet-battery.js'), ...rest], toolkit),
     // THE SIZE SURFACE, ratcheted. 70 grandfathered monoliths (>500 lines);
     // the list only shrinks — no new monolith, no grandfathered growth.
     //   goggles --do size [--json | --save-baseline]
@@ -210,6 +218,32 @@ for (const f of files) {
     process.stdout.write(execFileSync('node', [engine, abs], { cwd: toolkit, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
   } catch (e) {
     process.stdout.write((e.stdout || '') + (e.stderr || String(e)) + '\n');
+    failures++;
+  }
+}
+
+// ── THE GATES RIDE WITH THE READ ────────────────────────────────────────────
+//
+// The ten gates existed, held, and ran nowhere: no git hook installed them and
+// no workflow invoked them, so they only fired when someone typed the command
+// by hand — which is the condition under which a gate quietly stops being a
+// gate. Rather than add a SECOND surface (a hook, a workflow) that has to be
+// remembered and installed, the battery rides the read that already happens
+// before a commit: `--diff` IS the pre-commit surface, so the gates run there
+// automatically and the goggles stay the one way through.
+//
+// Scoped to --diff on purpose. A per-file read is a lens you point while
+// working, often many times a minute; running ten gates on each would make the
+// lens too expensive to keep wearing, and a gate people switch off is worse
+// than one that runs at the moment it matters. `--do ratchets` stays for an
+// explicit check, and `--no-gates` is the escape for a read mid-edit.
+if (argv[0] === '--diff' && !argv.includes('--no-gates')) {
+  process.stdout.write('\n');
+  try {
+    execFileSync('node', [join(toolkit, 'scripts/ratchet-battery.js')], { cwd: toolkit, stdio: 'inherit' });
+  } catch (e) {
+    // A gate that opens must fail the read it rode in on — otherwise the
+    // commit proceeds and the gate was decorative.
     failures++;
   }
 }

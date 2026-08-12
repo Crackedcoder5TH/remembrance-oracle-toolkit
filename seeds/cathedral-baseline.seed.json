@@ -1,0 +1,15 @@
+{
+  "_comment": "Tracked quality floor for the covenant ratchet. Only ever tightens. The local baseline in .remembrance/diagnostics/ is gitignored; this is what a fresh clone enforces.",
+  "generatedAt": "2026-08-12T20:19:27.535Z",
+  "summary": {
+    "totalFindings": 172,
+    "bySeverity": {
+      "high": 16,
+      "medium": 58,
+      "low": 98
+    },
+    "bySource": {
+      "ast": 11
+    }
+  }
+}

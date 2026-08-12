@@ -31,6 +31,14 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const DIAG_DIR = path.join(REPO_ROOT, '.remembrance', 'diagnostics');
 const LATEST = path.join(DIAG_DIR, 'cathedral-latest.json');
 const BASELINE = path.join(DIAG_DIR, 'cathedral-baseline.json');
+// The tracked floor. `.remembrance/` is gitignored in full, so the baseline
+// lived only on the host that measured it: a fresh clone had no floor, stored
+// whatever it happened to measure as the new one, and a quality level someone
+// worked to reach was silently re-seeded at whatever came next. seeds/ is the
+// same answer traps.seed.json already gives for traps — a tracked floor that
+// ships with the repo, with the local store still winning where it is
+// STRICTER, so a host that has improved further keeps its gain.
+const SEED = path.join(REPO_ROOT, 'seeds', 'cathedral-baseline.seed.json');
 
 function readJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf-8')); }
@@ -49,6 +57,66 @@ function summarize(report) {
   };
 }
 
+/**
+ * The floor actually enforced: the STRICTER of the tracked seed and the local
+ * baseline, metric by metric. A ratchet only tightens, so taking the minimum is
+ * the only merge that cannot loosen the gate — a looser local baseline can
+ * never raise the ceiling above what the repo ships, and a stricter one is kept.
+ *
+ * @returns {{bs: object, source: string}|null} null when neither exists.
+ */
+function effectiveBaseline() {
+  const local = readJson(BASELINE);
+  const seed = readJson(SEED);
+  if (!local && !seed) return null;
+  if (!local) return { bs: summarize(seed), source: 'seed' };
+  if (!seed) return { bs: summarize(local), source: 'local' };
+
+  const l = summarize(local);
+  const s = summarize(seed);
+  const bs = {
+    total: Math.min(l.total, s.total),
+    high: Math.min(l.high, s.high),
+    medium: Math.min(l.medium, s.medium),
+    low: Math.min(l.low, s.low),
+    ast: Math.min(l.ast, s.ast),
+    filesScanned: l.filesScanned || s.filesScanned,
+  };
+  const same = bs.high === s.high && bs.total === s.total && bs.ast === s.ast;
+  return { bs, source: same ? 'seed' : 'local+seed (strictest of each)' };
+}
+
+/**
+ * Tighten the tracked floor — never loosen it. Writing the seed on every save
+ * would let one bad run ship a weaker floor to every future clone, which is the
+ * failure this file exists to prevent.
+ *
+ * @returns {boolean} true when the seed was tightened.
+ */
+function tightenSeed(cur) {
+  const seed = readJson(SEED);
+  const s = seed ? summarize(seed) : null;
+  if (s && !(cur.high < s.high || cur.total < s.total || cur.ast < s.ast)) return false;
+  const next = s
+    ? { total: Math.min(cur.total, s.total), high: Math.min(cur.high, s.high),
+        medium: Math.min(cur.medium, s.medium), low: Math.min(cur.low, s.low),
+        ast: Math.min(cur.ast, s.ast) }
+    : cur;
+  const body = {
+    _comment: 'Tracked quality floor for the covenant ratchet. Only ever tightens. '
+      + 'The local baseline in .remembrance/diagnostics/ is gitignored; this is what a fresh clone enforces.',
+    generatedAt: new Date().toISOString(),
+    summary: {
+      totalFindings: next.total,
+      bySeverity: { high: next.high, medium: next.medium, low: next.low },
+      bySource: { ast: next.ast },
+    },
+  };
+  fs.mkdirSync(path.dirname(SEED), { recursive: true });
+  fs.writeFileSync(SEED, JSON.stringify(body, null, 2) + '\n');
+  return true;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const save = args.includes('--save-baseline');
@@ -65,16 +133,24 @@ function main() {
   }
 
   if (save) {
+    fs.mkdirSync(DIAG_DIR, { recursive: true });
     fs.writeFileSync(BASELINE, fs.readFileSync(LATEST));
     console.log(`[ratchet] baseline saved from current: ${path.relative(REPO_ROOT, BASELINE)}`);
+    // Carry the gain into the tracked floor, so the next fresh clone starts
+    // where this host ended rather than wherever its first run happened to land.
+    if (tightenSeed(summarize(latest))) {
+      console.log(`[ratchet] tracked floor tightened: ${path.relative(REPO_ROOT, SEED)}`);
+    }
     process.exit(0);
   }
 
   const cur = summarize(latest);
-  const base = readJson(BASELINE);
-  if (!base) {
-    // No baseline yet — write the current as the starting baseline.
+  const eff = effectiveBaseline();
+  if (!eff) {
+    // Nothing tracked and nothing local — write both, so this never happens twice.
+    fs.mkdirSync(DIAG_DIR, { recursive: true });
     fs.writeFileSync(BASELINE, fs.readFileSync(LATEST));
+    tightenSeed(cur);
     const msg = 'no baseline existed — current run stored as the initial baseline. Pass after this run.';
     if (asJson) { console.log(JSON.stringify({ ok: true, initialized: true, current: cur })); process.exit(0); }
     console.log(`[ratchet] ${msg}`);
@@ -82,7 +158,7 @@ function main() {
     process.exit(0);
   }
 
-  const bs = summarize(base);
+  const bs = eff.bs;
   const violations = [];
   if (cur.high > bs.high) {
     violations.push(`high severity: ${bs.high} → ${cur.high} (+${cur.high - bs.high})`);
@@ -107,7 +183,7 @@ function main() {
     process.exit(result.ok ? 0 : 1);
   }
 
-  console.log(`[ratchet] baseline: high=${bs.high} total=${bs.total} ast=${bs.ast}`);
+  console.log(`[ratchet] baseline: high=${bs.high} total=${bs.total} ast=${bs.ast} [${eff.source}]`);
   console.log(`[ratchet] current:  high=${cur.high} total=${cur.total} ast=${cur.ast}`);
   if (violations.length === 0) {
     console.log('[ratchet] ✓ covenant holds — quality floor did not drop');

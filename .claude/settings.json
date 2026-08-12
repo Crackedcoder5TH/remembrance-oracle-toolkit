@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-pre-hook.js 2>/dev/null || true",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-pre-hook.js || true",
             "statusMessage": "goggles: reading the field before the write"
           }
         ]
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-bash-hook.js 2>/dev/null || true",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-bash-hook.js || true",
             "statusMessage": "goggles: reading the inline command before it runs"
           }
         ]
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-web-hook.js 2>/dev/null || true",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-web-hook.js || true",
             "statusMessage": "goggles: reading the page through the substrate"
           }
         ]
@@ -57,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-hook.js 2>/dev/null || true",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-hook.js || true",
             "statusMessage": "goggles: reading coherence/resonance"
           }
         ]
@@ -69,11 +69,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "sh ./scripts/ensure-void-runtime.sh || true",
+            "statusMessage": "void: provisioning the coherency pipeline the goggles read through"
+          },
+          {
+            "type": "command",
             "command": "sh ./scripts/ecosystem-orient.sh"
           },
           {
             "type": "command",
-            "command": "node ./scripts/session-context-load.mjs 2>/dev/null || true",
+            "command": "node ./scripts/session-context-load.mjs || true",
             "statusMessage": "loading prior-session substrate memory"
           }
         ]
@@ -85,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/precompact-digest.js 2>/dev/null || true",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/precompact-digest.js || true",
             "statusMessage": "substrate: marking what is load-bearing before compaction"
           }
         ]

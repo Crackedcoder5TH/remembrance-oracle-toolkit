@@ -143,7 +143,6 @@ const INPUT_ERROR = INPUT_CLASS + " border-red-500 bg-red-50/70 focus:border-red
 const SELECT_CLASS = INPUT_CLASS + " appearance-none";
 const LABEL_CLASS = "block text-sm font-semibold text-[#2a2219]";
 const BTN_PRIMARY = "rounded-full bg-[#b58b3b] px-7 py-3 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(82,55,17,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#9f782f] focus-visible:outline-[#f4d58d]";
-const BTN_SECONDARY = "rounded-full border border-[#d9c08a]/55 bg-white/10 px-7 py-3 text-sm font-semibold text-white backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white/15";
 const BTN_BACK = "rounded-full border border-[#d9cdbb] px-6 py-3 text-sm font-semibold text-[#6c5a40] transition-all hover:border-[#b58b3b]";
 const SECTION_LABEL = "mb-4 text-xs font-semibold uppercase tracking-[0.32em] text-[#b58b3b]";
 const SECTION_HEADING = "font-serif text-3xl font-light leading-tight text-[#211a13] md:text-5xl";
@@ -250,7 +249,7 @@ export default function HomePage() {
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#f8ead2] md:text-xl">Life changes in beautiful, unexpected, and meaningful ways. Valor Legacies helps families find life insurance guidance for the moments that matter most.</p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <a href="#protection-path" className={BTN_PRIMARY}>Find My Protection Path</a>
-              <a href="#life-chapters" className={BTN_SECONDARY}>Explore Life Chapters</a>
+              <a href="#life-chapters" className={BTN_PRIMARY}>Explore Life Chapters</a>
             </div>
           </div>
         </div>
@@ -325,9 +324,9 @@ export default function HomePage() {
           <h2 id="how-heading" className={SECTION_HEADING}>You Don’t Have to Figure This Out Alone.</h2>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {[
-              ["Tell us what changed.", "Choose the life event or concern that brought you here."],
-              ["Understand your options.", "We help make life insurance simple, clear, and relatable."],
-              ["Get guidance that fits your life.", "A licensed professional can help review options based on your needs, goals, health, and budget."],
+              ["Tell us what changed.", "Share the milestone, responsibility, or concern that brought you here."],
+              ["Understand the next step", "A licensed professional may help you review available options and considerations."],
+              ["Get guidance that fits your life.", "Ask questions and decide which available option fits your needs."],
             ].map(([title, desc], index) => (
               <div key={title} className="rounded-[1.75rem] bg-white p-8 text-left shadow-[0_20px_70px_rgba(61,43,24,0.08)]">
                 <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-full bg-[#d6b35f] font-bold text-white">{index + 1}</div>

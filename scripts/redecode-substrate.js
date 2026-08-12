@@ -118,6 +118,16 @@ function main() {
     const entry = index[key];
     if (!entry) continue;
 
+    // THE CANONICAL VECTOR LIVES UNDER `composed` — which is what this very
+    // migration writes. Checking only composed_v2/composed_v1 made the pass
+    // blind to its own output: composed_v1 is deliberately LEFT IN PLACE at its
+    // old width (so a width-boundary difference stays tellable from a real
+    // one), so the check saw a narrow vector on every subsequent run and
+    // re-decoded the same entries forever. Measured: a completed --apply of
+    // 2,470 entries reported the identical 2,470 as still needing work.
+    const canon = entry.composed;
+    if (Array.isArray(canon) && canon.length >= width) { already++; continue; }
+
     const cur = entry.composed_v2 || entry.composed_v1;
     if (Array.isArray(cur) && cur.length >= width) { already++; continue; }
 

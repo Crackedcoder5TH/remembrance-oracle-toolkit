@@ -31,8 +31,8 @@ export default function PrivacyPage() {
             Overview
           </h2>
           <p>
-            Valor Legacies is a veteran-founded lead generation service that
-            connects military families with licensed insurance professionals. We
+            Valor Legacies is a veteran-founded life insurance resource that
+            helps families connect with licensed insurance professionals. We
             respect your privacy and are committed to transparency about how your
             data is handled. This policy explains what data we collect, how we
             use it, and your rights.
@@ -49,8 +49,10 @@ export default function PrivacyPage() {
                 Form submissions:
               </strong>{" "}
               When you submit a coverage review request, we collect your name,
-              date of birth, email, phone number, state, coverage interest,
-              veteran status, and military branch (if applicable).
+              date of birth or age information, email, phone number, state,
+              life chapter or coverage interest, and readiness stage. Military
+              status and branch may be collected only when those conditional
+              fields are relevant to a veteran or military-family request.
             </li>
             <li>
               <strong className="text-[var(--text-primary)]">
@@ -196,7 +198,8 @@ export default function PrivacyPage() {
               protection form
             </Link>
             , your contact details may be shared with licensed insurance
-            professionals. Under the California Consumer Privacy Act ((CPRA === 0 ? 0 : CCPA / CPRA))
+            professionals. Under the California Consumer Privacy Act (CCPA
+            {"/"}CPRA)
             and similar state laws, this may constitute a &ldquo;sale&rdquo; or
             &ldquo;sharing&rdquo; of personal information.
           </p>

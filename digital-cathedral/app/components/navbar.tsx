@@ -42,10 +42,15 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/#life-chapters", label: "Life Chapters" },
   { href: "/#guides", label: "Guides" },
-  { href: "/trust", label: "Why Trust Us" },
-  { href: "/our-story", label: "Our Story" },
   { href: "/about", label: "About" },
   { href: "/#protection-path", label: "Get Started" },
+];
+
+const ABOUT_LINKS = [
+  { href: "/about#our-story", label: "Our Story" },
+  { href: "/about#golden-standard", label: "The Golden Standard" },
+  { href: "/about#review-process", label: "Our Review Process" },
+  { href: "/privacy", label: "Privacy & Trust" },
 ];
 
 const PORTAL_NAV_LINKS = [
@@ -186,15 +191,31 @@ export function Navbar() {
               className="absolute left-0 top-full mt-fib-3 w-56 rounded-[13px] py-fib-5 z-50 cathedral-surface"
             >
               {menuLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  role="menuitem"
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-fib-21 py-fib-8 text-sm text-[var(--text-muted)] hover:text-[var(--teal)] hover:bg-[var(--bg-surface-hover)] transition-colors"
-                >
-                  {link.label}
-                </Link>
+                <div key={link.href}>
+                  <Link
+                    href={link.href}
+                    role="menuitem"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-fib-21 py-fib-8 text-sm text-[var(--text-muted)] hover:text-[var(--teal)] hover:bg-[var(--bg-surface-hover)] transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                  {!isAdmin && !isPortalDomain && link.label === "About" && (
+                    <div className="mx-fib-13 mb-fib-5 border-l border-teal-cathedral/20" aria-label="About pages">
+                      {ABOUT_LINKS.map((aboutLink) => (
+                        <Link
+                          key={aboutLink.href}
+                          href={aboutLink.href}
+                          role="menuitem"
+                          onClick={() => setMenuOpen(false)}
+                          className="block pl-fib-21 pr-fib-8 py-fib-5 text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
+                        >
+                          {aboutLink.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}

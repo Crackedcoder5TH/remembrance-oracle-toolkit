@@ -3,13 +3,22 @@ import Link from "next/link";
 import { getAllPosts } from "../lib/blog-posts";
 
 export const metadata: Metadata = {
-  title: "Veteran Life Insurance Resources",
+  title: "Life Insurance Guides",
   description:
-    "Expert guides, tips, and resources on life insurance for veterans, active duty service members, and military families. SGLI, VGLI, VA programs, and private coverage explained.",
+    "Helpful life insurance guides for new parents, homeowners, working families, retirement and legacy planners, veterans, and military families.",
   alternates: {
     canonical: "/blog",
   },
 };
+
+const GUIDE_CATEGORIES = [
+  { label: "New Parents", href: "/guides/new-parent-protection-checklist" },
+  { label: "Homeowners", href: "/guides/homeowner-protection-guide" },
+  { label: "Work Benefits", href: "/guides" },
+  { label: "Final Expense", href: "/guides" },
+  { label: "Retirement & Legacy", href: "/guides" },
+  { label: "Veterans & Military Families", href: "#veterans-military-families" },
+];
 
 const BLOG_FAQS = [
   {
@@ -74,16 +83,41 @@ export default function BlogPage() {
             &larr; Back Home
           </Link>
           <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
-            Veteran Life Insurance Resources
+            Life Insurance Guides
           </h1>
           <p className="text-sm text-[var(--text-muted)] max-w-xl">
-            Expert guides on SGLI, VGLI, VA insurance programs, and private
-            coverage options for service members, veterans, and military families.
+            Clear, thoughtful resources to help you explore protection through
+            life’s biggest moments — from a growing family or new home to
+            retirement, legacy planning, and military transitions.
           </p>
         </header>
 
+        <nav aria-label="Guide categories" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {GUIDE_CATEGORIES.map((category) => (
+            <Link
+              key={category.label}
+              href={category.href}
+              className="cathedral-surface px-4 py-3 text-center text-xs text-[var(--text-primary)] hover:text-teal-cathedral hover:border-teal-cathedral/30 transition-colors"
+            >
+              {category.label}
+            </Link>
+          ))}
+        </nav>
+
+        <section className="space-y-2">
+          <p className="text-teal-cathedral text-xs tracking-[0.2em] uppercase">Helpful Guides for Life’s Biggest Moments</p>
+          <h2 className="text-xl text-[var(--text-primary)] font-light">Explore all life chapters</h2>
+          <p className="text-sm text-[var(--text-muted)]">Start with our broader guide library, or continue below for veteran and military-family resources.</p>
+          <Link href="/guides" className="inline-block text-sm text-teal-cathedral hover:underline">View all guides →</Link>
+        </section>
+
         {/* ─── Post Grid ─── */}
-        <div className="grid gap-6 sm:grid-cols-2">
+        <section id="veterans-military-families" className="scroll-mt-24 space-y-5">
+          <div>
+            <p className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-2">Featured category</p>
+            <h2 className="text-xl text-[var(--text-primary)] font-light">Veterans &amp; Military Families</h2>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2">
           {posts.map((post) => (
             <Link
               key={post.slug}
@@ -125,7 +159,8 @@ export default function BlogPage() {
               </div>
             </Link>
           ))}
-        </div>
+          </div>
+        </section>
 
         {/* ─── FAQ Section ─── */}
         <section className="space-y-6 pt-4">

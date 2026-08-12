@@ -221,4 +221,30 @@ for (const f of files) {
     failures++;
   }
 }
+
+// ── THE GATES RIDE WITH THE READ ────────────────────────────────────────────
+//
+// The ten gates existed, held, and ran nowhere: no git hook installed them and
+// no workflow invoked them, so they only fired when someone typed the command
+// by hand — which is the condition under which a gate quietly stops being a
+// gate. Rather than add a SECOND surface (a hook, a workflow) that has to be
+// remembered and installed, the battery rides the read that already happens
+// before a commit: `--diff` IS the pre-commit surface, so the gates run there
+// automatically and the goggles stay the one way through.
+//
+// Scoped to --diff on purpose. A per-file read is a lens you point while
+// working, often many times a minute; running ten gates on each would make the
+// lens too expensive to keep wearing, and a gate people switch off is worse
+// than one that runs at the moment it matters. `--do ratchets` stays for an
+// explicit check, and `--no-gates` is the escape for a read mid-edit.
+if (argv[0] === '--diff' && !argv.includes('--no-gates')) {
+  process.stdout.write('\n');
+  try {
+    execFileSync('node', [join(toolkit, 'scripts/ratchet-battery.js')], { cwd: toolkit, stdio: 'inherit' });
+  } catch (e) {
+    // A gate that opens must fail the read it rode in on — otherwise the
+    // commit proceeds and the gate was decorative.
+    failures++;
+  }
+}
 process.exit(failures ? 1 : 0);

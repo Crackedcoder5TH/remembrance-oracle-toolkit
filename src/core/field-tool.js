@@ -148,6 +148,15 @@ function _voidCoherencyOf(content) {
   return _voidService.coherencyOf(content, { quiet: true });
 }
 
+/** Which compressor route produced the reading just taken. */
+function _voidReadingSource() {
+  try {
+    const r = _voidService && _voidService.lastReading && _voidService.lastReading();
+    if (r && r.route) return 'void:' + (r.route === 'legacy' ? 'compress' : 'compress_signal');
+  } catch (_) { quiet('core:field-tool:void-route', _); }
+  return 'void:compress_signal';
+}
+
 let _SQLiteStore = null;
 try {
   _SQLiteStore = require('../store/sqlite').SQLiteStore;
@@ -408,7 +417,11 @@ class FieldTool {
     }
 
     const coherency = _voidCoherencyOf(content);
-    layers.coherencySource = coherency === null ? null : 'void:compress_signal';
+    // Name the route that actually served the reading. Hard-coding
+    // 'void:compress_signal' mislabelled every legacy-route read as having come
+    // from an endpoint that generation of the compressor does not even serve —
+    // provenance has to describe what happened, not what was expected.
+    layers.coherencySource = coherency === null ? null : _voidReadingSource();
 
     // 7. Contribute the reading to the field — resonance-weighted. The
     //    contribution's authority over the field is its measured resonance

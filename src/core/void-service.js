@@ -76,16 +76,68 @@ const CACHE_MAX = 5000;
 let _startAttempted = false;
 let _unavailable = false;
 
-function _post(series) {
+// ── ROUTE NEGOTIATION ────────────────────────────────────────────────────
+//
+// Two compressor generations are in the wild and this client has to read
+// through either, because the alternative is what actually happened: a
+// toolkit newer than its Void answered `unknown route /compress_signal` on
+// every read, coherencyOf returned null forever, and the goggles reported
+// "coherency unavailable" for a service that was up, healthy, and holding
+// 77,700 patterns. A missing ROUTE is not a missing INSTRUMENT.
+//
+//   /compress_signal — takes the byte series; reports per-chunk `blends`, so
+//                      self-match provenance can be judged.
+//   /compress        — takes the text; reports avg_coherence with no blend.
+//
+// Negotiated once per process and remembered, so a warm read still pays for
+// exactly one request.
+let _route = null;                     // 'signal' | 'legacy' | null (unknown)
+
+function _curl(path, payload) {
   try {
     return execFileSync('curl', [
       '-s', '--noproxy', '127.0.0.1', '--max-time', '120',
       '-H', 'Content-Type: application/json', '--data-binary', '@-',
-      `http://127.0.0.1:${PORT}/compress_signal`,
-    ], { input: JSON.stringify({ series }), maxBuffer: 1 << 26, encoding: 'utf8' });
+      `http://127.0.0.1:${PORT}${path}`,
+    ], { input: JSON.stringify(payload), maxBuffer: 1 << 26, encoding: 'utf8' });
   } catch (_) {
     return '';
   }
+}
+
+/** The canonical read: byte series in, blend provenance out. */
+function _postSignal(series) { return _curl('/compress_signal', { series }); }
+
+/** The legacy read: text in, avg_coherence out, no blend provenance. */
+function _postLegacy(content) { return _curl('/compress', { input: content }); }
+
+/** True when a body is the service's "this route does not exist" answer. */
+function _isUnknownRoute(raw) {
+  return !!raw && raw.includes('unknown route');
+}
+
+/**
+ * Read through whichever route this compressor serves.
+ * @returns {{raw: string, route: string|null}}
+ */
+function _post(series, content) {
+  if (_route === 'legacy') return { raw: _postLegacy(content), route: 'legacy' };
+
+  const raw = _postSignal(series);
+  if (raw && !_isUnknownRoute(raw)) {
+    // A 500 here is a real failure of a route that EXISTS — surfacing it as
+    // "no reading" is correct, but it must not silently pin the route.
+    if (_route === null) _route = 'signal';
+    return { raw, route: 'signal' };
+  }
+
+  // Either no answer at all, or this generation has no /compress_signal.
+  const legacy = _postLegacy(content);
+  if (legacy && !_isUnknownRoute(legacy)) {
+    _route = 'legacy';
+    return { raw: legacy, route: 'legacy' };
+  }
+  return { raw: '', route: null };
 }
 
 /** Is the service answering right now? */
@@ -175,9 +227,9 @@ function coherencyOf(content, opts = {}) {
   if (bytes.length < 8) return null;          // no signal to read
   const series = Array.from(bytes);
 
-  let raw = _post(series);
+  let { raw, route } = _post(series, content);
   if (!raw && opts.autoStart !== false) {
-    if (ensureUp({ quiet: opts.quiet })) raw = _post(series);
+    if (ensureUp({ quiet: opts.quiet })) ({ raw, route } = _post(series, content));
   }
   if (!raw) {
     _unavailable = true;
@@ -217,15 +269,23 @@ function coherencyOf(content, opts = {}) {
   // replacement would be the same sin. It is DETECTED and reported, and the
   // caller decides. `coherencyOf` keeps returning the reading; `readingOf`
   // returns the reading with its provenance so a caller can refuse it.
-  const selfMatched = _isSelfMatch(blend);
+  // The legacy /compress route reports no blend, so membership CANNOT be
+  // judged from it. Reporting 'artifact-shape' there would assert exactly the
+  // thing this guard exists to detect — absence of provenance is not evidence
+  // of a clean read, so it is named as unknown instead.
+  const provenanceAvailable = blend !== null;
+  const selfMatched = provenanceAvailable ? _isSelfMatch(blend) : null;
   LAST_READING = {
     coherence: value,
     blend,
     selfMatched,
+    route,
     matchedPatterns: _blendNames(blend),
     // A reading that came from matching the content against itself describes
     // the library, not the content.
-    measures: selfMatched ? 'library-membership' : 'artifact-shape',
+    measures: !provenanceAvailable
+      ? 'unknown (no blend provenance on the legacy /compress route)'
+      : (selfMatched ? 'library-membership' : 'artifact-shape'),
   };
 
   if (CACHE.size >= CACHE_MAX) CACHE.clear();
@@ -240,7 +300,16 @@ function _reset() {
   _unavailable = false;
 }
 
-module.exports = { coherencyOf, ensureUp, isUp, _reset };
+/**
+ * Provenance of the most recent reading: which route served it, the blend it
+ * came from, and whether that blend was the content itself. LAST_READING was
+ * being written and never read — a caller that wants to REFUSE a
+ * library-membership reading had no way to see one.
+ * @returns {object|null}
+ */
+function lastReading() { return LAST_READING; }
+
+module.exports = { coherencyOf, ensureUp, isUp, lastReading, _reset };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's

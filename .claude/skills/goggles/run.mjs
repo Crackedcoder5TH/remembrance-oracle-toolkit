@@ -149,6 +149,14 @@ if (argv[0] === '--do') {
       console.log('reacted to every read. Full cross-domain field: goggles --do resonance');
       return 0;
     },
+    // THE WHOLE GATE FAMILY, one read. ratchet-battery.js documents itself as
+    // "routed through the goggles as `--do ratchets`" — but the verb was never
+    // added, so the ten gates had no surface here and had to be run by hand
+    // from a path you already had to know. That is the same gap the other
+    // routed verbs below were added to close: a gate nobody can reach from the
+    // one surface is a gate that stops being run.
+    //   goggles --do ratchets [--json]
+    ratchets: () => run('node', [join(toolkit, 'scripts/ratchet-battery.js'), ...rest], toolkit),
     // THE SIZE SURFACE, ratcheted. 70 grandfathered monoliths (>500 lines);
     // the list only shrinks — no new monolith, no grandfathered growth.
     //   goggles --do size [--json | --save-baseline]

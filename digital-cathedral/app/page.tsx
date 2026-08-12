@@ -83,19 +83,19 @@ const TRUST_PILLARS = [
 ];
 
 const RESOURCE_GUIDES = [
-  ["New Parent Protection Checklist", "A simple guide to protecting your growing family after a new baby arrives."],
-  ["Homeowner Protection Guide", "Understand how life insurance can help protect the place your family calls home."],
-  ["Is Work Life Insurance Enough?", "Learn where employer coverage can help — and where gaps may remain."],
-  ["Final Expense Planning Guide", "A clear overview of funeral, burial, and end-of-life expense planning."],
-  ["Veteran Benefits vs. Private Coverage", "Compare basic benefit conversations with additional family protection options."],
-  ["Life Insurance and Retirement Planning", "See how protection may fit into long-term flexibility and confidence."],
-  ["How Much Coverage Does My Family Need?", "Start thinking through income, debts, home needs, children, and future goals."],
+  ["New Parent Protection Checklist", "A simple guide to protecting your growing family after a new baby arrives.", "/guides/new-parent-protection-checklist"],
+  ["Homeowner Protection Guide", "Understand how life insurance can help protect the place your family calls home.", "/guides/homeowner-protection-guide"],
+  ["Is Work Life Insurance Enough?", "Learn where employer coverage can help — and where gaps may remain.", "/guides/employer-life-insurance"],
+  ["Final Expense Planning Guide", "A clear overview of funeral, burial, and end-of-life expense planning.", "/guides/final-expense-planning"],
+  ["Veteran Benefits vs. Private Coverage", "Compare basic benefit conversations with additional family protection options.", "/guides/veteran-benefits-vs-private-coverage"],
+  ["Life Insurance and Retirement Planning", "See how protection may fit into long-term flexibility and confidence.", "/guides/retirement-life-insurance"],
+  ["How Much Coverage Does My Family Need?", "Start thinking through income, debts, home needs, children, and future goals.", "/guides/how-much-coverage-do-i-need"],
 ];
 
-const TESTIMONIALS = [
-  ["After our daughter was born, we realized we had no real plan. Valor Legacies helped us understand our options without pressure.", "New parent placeholder"],
-  ["When we bought our home, we wanted to make sure my wife wouldn’t be stuck with the mortgage. The process was simple and clear.", "Homeowner placeholder"],
-  ["As a veteran, I thought my benefits were enough. Valor Legacies helped me understand what my family would still be responsible for.", "Veteran family placeholder"],
+const CUSTOMER_EXPECTATIONS = [
+  ["Start with your life", "Share the milestone, responsibility, or question that brought you here."],
+  ["Understand the next step", "A licensed professional may help you review available options and considerations."],
+  ["Choose without pressure", "Ask questions, take your time, and decide whether any available option fits your needs."],
 ];
 
 const PURCHASE_INTENT_OPTIONS = [
@@ -308,8 +308,8 @@ export default function HomePage() {
             <p className="mt-5 text-lg text-[#eadcc7]">Helpful guides for life’s biggest moments.</p>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {RESOURCE_GUIDES.map(([title, desc]) => (
-              <a key={title} href="/resources" className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6 transition-all hover:-translate-y-1 hover:border-[#d6b35f]/60">
+            {RESOURCE_GUIDES.map(([title, desc, href]) => (
+              <a key={title} href={href} className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6 transition-all hover:-translate-y-1 hover:border-[#d6b35f]/60">
                 <h3 className="font-serif text-2xl">{title}</h3>
                 <p className="mt-3 min-h-[78px] text-sm leading-7 text-[#eadcc7]">{desc}</p>
                 <span className="text-sm font-semibold text-[#d6b35f]">Read Guide</span>
@@ -386,7 +386,7 @@ export default function HomePage() {
                 <div className="space-y-2">
                   <label htmlFor="dateOfBirth" className={LABEL_CLASS}>Date of Birth</label>
                   <input id="dateOfBirth" type="date" value={form.dateOfBirth} onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("dateOfBirth", e.target.value)} autoComplete="bday" aria-required="true" aria-invalid={!!errors.dateOfBirth} className={inputClass(!!errors.dateOfBirth)} />
-                  <p className="text-xs text-[#8a6a3a]">Required to route accurate life insurance guidance. You must be at least 18.</p>
+                  <p className="text-xs text-[#8a6a3a]">Helps determine age-based eligibility and available options. You must be at least 18.</p>
                   {errors.dateOfBirth && <p className="text-xs text-red-600" role="alert">{errors.dateOfBirth}</p>}
                 </div>
 
@@ -400,7 +400,7 @@ export default function HomePage() {
                     {errors.state && <p className="text-xs text-red-600" role="alert">{errors.state}</p>}
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="purchaseIntent" className={LABEL_CLASS}>Readiness</label>
+                    <label htmlFor="purchaseIntent" className={LABEL_CLASS}>Where are you in the process?</label>
                     <select id="purchaseIntent" value={form.purchaseIntent} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("purchaseIntent", e.target.value)} aria-required="true" aria-invalid={!!errors.purchaseIntent} className={selectClass(!!errors.purchaseIntent)}>
                       {PURCHASE_INTENT_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
@@ -501,16 +501,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-20 md:px-8 md:py-28" aria-labelledby="testimonials-heading">
+      <section className="bg-white px-4 py-20 md:px-8 md:py-28" aria-labelledby="expectations-heading">
         <div className="mx-auto max-w-7xl">
-          <p className={SECTION_LABEL}>Stories to replace with approved testimonials</p>
-          <h2 id="testimonials-heading" className={SECTION_HEADING}>Families Come Here at Real Moments.</h2>
+          <p className={SECTION_LABEL}>What to expect</p>
+          <h2 id="expectations-heading" className={SECTION_HEADING}>A Clearer, More Personal Starting Point.</h2>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {TESTIMONIALS.map(([quote, label]) => (
-              <figure key={label} className="rounded-[1.5rem] bg-[#fbf7f0] p-6 shadow-[0_18px_60px_rgba(61,43,24,0.08)]">
-                <blockquote className="font-serif text-2xl leading-snug text-[#241d15]">“{quote}”</blockquote>
-                <figcaption className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#9f782f]">{label}</figcaption>
-              </figure>
+            {CUSTOMER_EXPECTATIONS.map(([title, desc]) => (
+              <div key={title} className="rounded-[1.5rem] bg-[#fbf7f0] p-6 shadow-[0_18px_60px_rgba(61,43,24,0.08)]">
+                <h3 className="font-serif text-2xl leading-snug text-[#241d15]">{title}</h3>
+                <p className="mt-5 text-sm leading-7 text-[#6a5c4b]">{desc}</p>
+              </div>
             ))}
           </div>
         </div>

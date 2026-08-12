@@ -29,6 +29,7 @@ const RATCHETS = [
   { name: 'orphan', script: 'scripts/orphan-ratchet.js' },
   { name: 'silent-catch', script: 'scripts/silent-catch-ratchet.js' },
   { name: 'console', script: 'scripts/console-ratchet.js' },
+  { name: 'atomic-drift', script: 'scripts/atomic-drift-ratchet.js' },
 ];
 
 function runOne(r) {

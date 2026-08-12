@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Cloud Sync Server — REST API + WebSocket for remote pattern storage.
  *
@@ -620,7 +621,7 @@ class CloudSyncServer {
       if (Date.now() - ws.lastActivity > WS_IDLE_TIMEOUT) {
         clearInterval(idleCheck);
         this.wsClients.delete(ws);
-        try { ws.socket.end(); } catch (_) {}
+        try { ws.socket.end(); } catch (_) { quiet('cloud:server:clearInterval', _);}
       }
     }, 60000);
 

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Ecosystem Sweep — slots into the oracle's Evolution Cycle as an ecosystem-wide
@@ -90,7 +91,7 @@ function loadPeers() {
         peers = eco.services.map(s => s.repo).filter(Boolean);
       }
       if (peers.length) return peers;
-    } catch {}
+    } catch (_e) { quiet('core:ecosystem-sweep:loadPeers', _e);}
   }
   // Fallback uses canonical GitHub casing so the case-resolution roundtrip
   // is avoided on a fresh checkout. _resolveCanonical still covers any drift.

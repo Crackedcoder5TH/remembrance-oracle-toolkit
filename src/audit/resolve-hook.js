@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Resolve Hook — checks the shape of new code against known bug classes.
@@ -161,7 +162,7 @@ function enhanceResolveWithBugClasses(resolveResult, oracle) {
             amplitude: debugMatches[0].amplitude,
           };
         }
-      } catch (_) {
+      } catch (_) { quiet('audit:resolve-hook:checkResolvedCode', _);
         // Debug search is optional
       }
     }

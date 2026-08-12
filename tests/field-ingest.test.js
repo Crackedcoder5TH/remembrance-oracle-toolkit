@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -11,11 +11,11 @@ const { SQLiteStore } = require('../src/store/sqlite');
 let tmpDir;
 let store;
 
-function freshStore() {
+const freshStore = () => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'field-ingest-'));
   store = new SQLiteStore(tmpDir);
   return store;
-}
+};
 
 describe('field-ingest — pattern library → field', () => {
   beforeEach(() => {
@@ -36,7 +36,7 @@ describe('field-ingest — pattern library → field', () => {
 
   afterEach(() => {
     try { store.db.close(); } catch (_) { /* noop */ }
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) { /* noop */ }
+    try { rmFixture(tmpDir, { recursive: true, force: true }); } catch (_) { /* noop */ }
   });
 
   it('backfills a canonical-dim waveform onto every code pattern', () => {
@@ -106,7 +106,7 @@ describe('field-ingest — full ingest', () => {
 
   afterEach(() => {
     try { store.db.close(); } catch (_) { /* noop */ }
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) { /* noop */ }
+    try { rmFixture(tmpDir, { recursive: true, force: true }); } catch (_) { /* noop */ }
   });
 
   it('ingest() returns both pattern and constant reports', () => {

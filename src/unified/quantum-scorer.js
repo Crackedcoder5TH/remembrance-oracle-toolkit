@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Unified Quantum Scorer — single measurement that fuses Quantum, Fractal, and Audit.
@@ -134,12 +135,12 @@ function unifiedMeasurement(code, options = {}) {
       const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
       for (const __p of [__lre_p1, __lre_p2]) {
         try {
-          const { contribute: __contribute } = require(__p);
-          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency)), source: 'oracle:quantum-scorer:unifiedMeasurement' });
+          const { recordCost: __recordCost } = require(__p);
+          __recordCost({ units: 1, kind: 'work', source: 'oracle:quantum-scorer:unifiedMeasurement' });
           break;
-        } catch (_) { /* try next */ }
+        } catch (_) { quiet('unified:quantum-scorer:__recordCost', _); /* try next */ }
       }
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('unified:quantum-scorer:__recordCost', _); /* best-effort */ }
     return __retVal;
   }
 
@@ -366,7 +367,7 @@ function quickAmplitude(code, options = {}) {
         auditPenalty += AUDIT_DECOHERENCE[w.bugClass] || 0.03;
       }
       auditPenalty = Math.min(0.4, auditPenalty);
-    } catch (_) { /* graceful */ }
+    } catch (_) { quiet('unified:quantum-scorer:_checkResolvedCode', _); /* graceful */ }
   }
 
   const base = computeAmplitude({

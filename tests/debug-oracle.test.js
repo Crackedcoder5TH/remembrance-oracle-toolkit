@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -26,11 +25,11 @@ const {
 const { SQLiteStore, DatabaseSync } = require('../src/store/sqlite');
 const { makeTempDir } = require('./helpers');
 
-function createDebugOracle() {
+const createDebugOracle = () => {
   const baseDir = makeTempDir('debug');
   const store = new SQLiteStore(baseDir);
   return new DebugOracle(store);
-}
+};
 
 describe('Debug Oracle — Quantum Debugging Intelligence', () => {
   if (!DatabaseSync) {

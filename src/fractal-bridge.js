@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./core/quiet');
 
 /**
  * Fractal Bridge — The Universal Connection Layer
@@ -74,14 +75,14 @@ class FractalBridge {
         const { RemembranceOracle } = require('./api/oracle');
         this._oracle = new RemembranceOracle({ autoSeed: true });
         if (typeof this._oracle.init === 'function') await this._oracle.init();
-      } catch {}
+      } catch (_e) { quiet('fractal-bridge:require', _e);}
     }
 
     // Try to load Dialer for cross-service communication
     try {
       const dialer = require('../Remembrance-dialer/src');
       if (dialer) this._dialer = dialer;
-    } catch {
+    } catch (_e) { quiet('fractal-bridge:require', _e);
       // Dialer not available as local module — use HTTP fallback
     }
 
@@ -164,7 +165,7 @@ class FractalBridge {
           const top = validation.patterns[0].coherency;
           validation.decision = top >= 0.68 ? 'PULL' : top >= 0.50 ? 'EVOLVE' : 'GENERATE';
         }
-      } catch {}
+      } catch (_e) { quiet('fractal-bridge:wrapAgent', _e);}
     }
 
     // Void: Cascade existing code for resonance
@@ -177,7 +178,7 @@ class FractalBridge {
           );
           this._stats.cascaded++;
         }
-      } catch {}
+      } catch (_e) { quiet('fractal-bridge:wrapAgent', _e);}
     }
 
     return { ...request, validation };
@@ -208,7 +209,7 @@ class FractalBridge {
           ? this._oracle.computeCoherencyScore(result.code, { language: validated.language })
           : { total: 0.7 };
         result.coherency = scored.total || 0;
-      } catch {}
+      } catch (_e) { quiet('fractal-bridge:c5', _e);}
     }
 
     // PULL: Use proven pattern
@@ -231,7 +232,7 @@ class FractalBridge {
           result.method = generated.decision?.decision?.toLowerCase() || 'generate';
           result.coherency = generated.coherency || 0;
         }
-      } catch {}
+      } catch (_e) { quiet('fractal-bridge:c6', _e);}
     }
 
     // HEAL: If code is below threshold
@@ -253,7 +254,7 @@ class FractalBridge {
           result.whisper = healed.whisper;
           this._stats.healed++;
         }
-      } catch {}
+      } catch (_e) { quiet('fractal-bridge:require', _e);}
     }
 
     // ESCALATE to Swarm if still below threshold
@@ -298,7 +299,7 @@ class FractalBridge {
           output.registered = true;
           this._stats.registered++;
         }
-      } catch {}
+      } catch (_e) { quiet('fractal-bridge:require', _e);}
     }
 
     // Auto-register high-resonance cascade results with Oracle
@@ -313,7 +314,7 @@ class FractalBridge {
           });
           output.registered = true;
         }
-      } catch {}
+      } catch (_e) { quiet('fractal-bridge:c9', _e);}
     }
 
     return output;

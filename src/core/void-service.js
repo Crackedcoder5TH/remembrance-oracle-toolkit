@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * void-service.js — the one way to ask the Void compressor for a coherency.
@@ -130,7 +131,7 @@ function ensureUp(opts = {}) {
 
   const deadline = Date.now() + waitMs;
   while (Date.now() < deadline) {
-    try { execFileSync('sleep', ['3']); } catch (_) { /* pacing only */ }
+    try { execFileSync('sleep', ['3']); } catch (_) { quiet('core:void-service:execFileSync', _); /* pacing only */ }
     if (isUp()) return true;
   }
   if (!opts.quiet) console.error('[void] service did not come up within ' + waitMs + 'ms');
@@ -192,7 +193,7 @@ function coherencyOf(content, opts = {}) {
     }
     // Chunked path reports per-chunk blends; single-shot path reports one.
     blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null) || null;
-  } catch (_) { /* unparseable → no reading */ }
+  } catch (_) { quiet('core:void-service:_post', _); /* unparseable → no reading */ }
 
   // ── SELF-MATCH: the reading that measures library membership ──────────────
   //

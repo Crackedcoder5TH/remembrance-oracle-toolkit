@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Cross-subsystem event reactions.
@@ -198,7 +199,7 @@ function wireReactions(oracle, options = {}) {
  */
 function _off() {
   for (const off of _offHandlers) {
-    try { off && off(); } catch { /* ignore */ }
+    try { off && off(); } catch (_e) { quiet('core:reactions:_off', _e); /* ignore */ }
   }
   _offHandlers = [];
   _wired = false;

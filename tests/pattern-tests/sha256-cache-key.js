@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * SHA-256 Cache Key — Collision Prevention Pattern
  *
@@ -10,9 +9,9 @@
  */
 const crypto = require('crypto');
 
-function cacheKey(text) {
+const cacheKey = (text) => {
   return crypto.createHash('sha256').update(text).digest('hex').slice(0, 24);
-}
+};
 
 class SafeCache {
   constructor(maxSize = 500) {

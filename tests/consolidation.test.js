@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -13,7 +12,7 @@ const {
 
 // ─── Helpers ───
 
-function makePattern(overrides = {}) {
+const makePattern = (overrides = {}) => {
   return {
     id: overrides.id || `p-${Math.random().toString(36).slice(2, 8)}`,
     name: overrides.name || 'test-pattern',
@@ -30,9 +29,9 @@ function makePattern(overrides = {}) {
     description: overrides.description || 'test pattern',
     reliability: overrides.reliability ?? 0.5,
   };
-}
+};
 
-function createMockOracle(patterns = [], candidates = []) {
+const createMockOracle = (patterns = [], candidates = []) => {
   const updates = [];
   const events = [];
   const listeners = [];
@@ -110,7 +109,7 @@ function createMockOracle(patterns = [], candidates = []) {
       return evolve(this, opts);
     },
   };
-}
+};
 
 // ─── consolidateDuplicates ───
 

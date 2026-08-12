@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { observe, detectFluctuation, proposeLexiconEntries, autoApproveIfCoherent, FLUCTUATION_THRESHOLD, SYNERGY_COHERENCY } from '../src/core/lexicon-watcher.js';

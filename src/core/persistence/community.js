@@ -1,3 +1,4 @@
+const { quiet } = require('../quiet');
 // mapper-style organ of the former persistence.js monolith (1,962 lines).
 // Extracted VERBATIM along the file's own section seams; persistence.js
 // remains the façade with a byte-compatible export surface.
@@ -112,7 +113,7 @@ function shareToCommunity(localStore, options = {}) {
   }
 
   if (typeof communityStore.close === 'function') {
-    try { communityStore.close(); } catch (_) {}
+    try { communityStore.close(); } catch (_) { quiet('core:persistence:community:transferPattern', _);}
   }
   return report;
 }
@@ -206,7 +207,7 @@ function pullFromCommunity(localStore, options = {}) {
   }
 
   if (typeof communityStore.close === 'function') {
-    try { communityStore.close(); } catch (_) {}
+    try { communityStore.close(); } catch (_) { quiet('core:persistence:community:transferPattern', _);}
   }
   return report;
 }
@@ -290,10 +291,10 @@ function federatedQuery(localStore, query = {}) {
   return result;
   } finally {
     if (personalStore && typeof personalStore.close === 'function') {
-      try { personalStore.close(); } catch (_) {}
+      try { personalStore.close(); } catch (_) { quiet('core:persistence:community:getCoherency', _);}
     }
     if (communityStore && typeof communityStore.close === 'function') {
-      try { communityStore.close(); } catch (_) {}
+      try { communityStore.close(); } catch (_) { quiet('core:persistence:community:getCoherency', _);}
     }
   }
 }

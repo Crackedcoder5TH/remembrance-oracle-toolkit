@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for the connective-tissue modules that close the remaining
@@ -45,13 +45,13 @@ describe('reflector bridge', () => {
   it('reflectorScanDirectory returns one envelope per matching file', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'refl-scan-'));
     try {
-      fs.writeFileSync(path.join(dir, 'a.js'), 'function a() { return 1; }');
-      fs.writeFileSync(path.join(dir, 'b.js'), 'function b() { return 2; }');
-      fs.writeFileSync(path.join(dir, 'notes.md'), '# README');
+      writeFixture(path.join(dir, 'a.js'), 'function a() { return 1; }');
+      writeFixture(path.join(dir, 'b.js'), 'function b() { return 2; }');
+      writeFixture(path.join(dir, 'notes.md'), '# README');
       const envs = bridge.reflectorScanDirectory(dir);
       assert.equal(envs.length, 2); // md file skipped by extension filter
     } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
+      rmFixture(dir, { recursive: true, force: true });
     }
   });
 
@@ -84,7 +84,7 @@ describe('pattern library secondary indexes', () => {
     lib = new PatternLibrary(dir);
   });
   after(() => {
-    if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+    if (dir && fs.existsSync(dir)) rmFixture(dir, { recursive: true, force: true });
   });
 
   it('findByRuleId reads the rule: tag convention', () => {
@@ -193,7 +193,7 @@ describe('unified history', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-hist-'));
   });
   after(() => {
-    if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true });
+    if (tmp && fs.existsSync(tmp)) rmFixture(tmp, { recursive: true, force: true });
   });
 
   it('captures events emitted on the bus after wireHistory', () => {

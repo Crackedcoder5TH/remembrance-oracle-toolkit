@@ -28,23 +28,35 @@ function formatMap(m) {
   }
   lines.push('');
   lines.push('FIX BUCKETS:');
-  lines.push('  A  components incoherent : ' + m.buckets.A_components_incoherent.length);
+  {
+    const ab = m.buckets.A_components_incoherent;
+    const adjA = ab.filter(o => o.adjudicated).length;
+    lines.push('  A  components incoherent : ' + ab.length
+      + (adjA ? `  (${adjA} adjudicated · ${ab.length - adjA} NEW)` : ''));
+  }
   lines.push('  B  api inconsistent      : ' + m.buckets.B_api_inconsistent.length);
   lines.push('  C  lib drift             : ' + m.buckets.C_lib_drift.length);
   {
     const dp = m.buckets.D_duplicate_pairs;
     const series = dp.filter(p => p.versionSeries).length;
     const linked = dp.filter(p => p.resolvedSymlink).length;
-    const organic = dp.filter(p => !p.versionSeries && !p.resolvedSymlink);
+    const adjudicated = dp.filter(p => p.adjudicated && !p.versionSeries && !p.resolvedSymlink).length;
+    const organic = dp.filter(p => !p.versionSeries && !p.resolvedSymlink && !p.adjudicated);
     const fmtEcho = organic.filter(p => p.payloadIdentical === false).length;
     const trueDup = organic.filter(p => p.payloadIdentical === true).length;
     const unverified = organic.length - fmtEcho - trueDup;
     lines.push('  D  duplicate pairs       : ' + dp.length
-      + (series || linked || fmtEcho || trueDup
-        ? `  (${series} version-series · ${linked} symlink-resolved · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
+      + (series || linked || adjudicated || fmtEcho || trueDup
+        ? `  (${series} version-series · ${linked} symlink-resolved · ${adjudicated} adjudicated · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
         : ''));
   }
-  lines.push('  E  other orphans         : ' + m.buckets.E_other_orphans.length);
+  {
+    const eo = m.buckets.E_other_orphans;
+    const adjudicated = eo.filter(o => o.adjudicated).length;
+    const fresh = eo.length - adjudicated;
+    lines.push('  E  other orphans         : ' + eo.length
+      + (adjudicated ? `  (${adjudicated} adjudicated · ${fresh} NEW)` : ''));
+  }
   lines.push('  TOTAL flagged            : ' +
     (m.buckets.A_components_incoherent.length + m.buckets.B_api_inconsistent.length +
      m.buckets.C_lib_drift.length + m.buckets.D_duplicate_pairs.length + m.buckets.E_other_orphans.length));

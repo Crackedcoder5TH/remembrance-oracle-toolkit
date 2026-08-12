@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
- * @oracle-infrastructure — advisory PostToolUse dev hook; read-only scoring,
  * internal-state-bounded, never user-input-driven.
  *
  * goggles-hook — PostToolUse adapter for ambient structural meta-awareness.
@@ -44,6 +44,7 @@ function out(context) {
     hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: context },
   }));
 }
+out.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 let raw = '';
 try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { process.exit(0); }
@@ -88,6 +89,7 @@ function editPair() {
   }
   return { oldStr: '', newStr: '' };
 }
+editPair.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 const { oldStr, newStr } = editPair();
 
 // Locate the changed lines, then expand to a syntactic whole: pad ±25 lines,
@@ -101,6 +103,7 @@ function lineRangeOf(text, needle) {
   const startLine = text.slice(0, idx).split('\n').length - 1;
   return { startLine, endLine: startLine + needle.split('\n').length - 1 };
 }
+lineRangeOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function regionAt(text, startLine, endLine) {
   const all = text.split('\n');
@@ -119,6 +122,7 @@ function regionAt(text, startLine, endLine) {
   }
   return { text: all.slice(s, e + 1).join('\n'), startLine: s + 1, endLine: e + 1 };
 }
+regionAt.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const postRange = lineRangeOf(content, newStr);
 const sec = postRange ? regionAt(content, postRange.startLine, postRange.endLine) : null;
@@ -131,6 +135,7 @@ function score(text, name) {
     { source: 'goggles:hook', growSubstrate: false, topK: 5 },
   );
 }
+score.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 let r;
 try { r = score(scopeText, base); } catch (_) { process.exit(0); }
@@ -149,7 +154,7 @@ if (sec && postRange) {
     if (preRegion.text !== scopeText) {
       delta = (r.coherence ?? 0) - (score(preRegion.text, `${base}#pre`).coherence ?? 0);
     }
-  } catch (_) { /* delta is optional */ }
+  } catch (_) { quiet('tools:goggles-hook:score', _); /* delta is optional */ }
 }
 
 // ── Pattern resonance (library-fit): drives the verdict + neighbours ───────
@@ -185,7 +190,7 @@ try {
     // Only what this edit touched (or everything, for a whole-file write).
     debugFindings = sec ? found.filter((f) => f.line >= sec.startLine && f.line <= sec.endLine) : found;
   }
-} catch (_) { /* audit layer unavailable — skip */ }
+} catch (_) { quiet('tools:goggles-hook:require', _); /* audit layer unavailable — skip */ }
 
 // ── (6) Learning loop: feed findings through the quantum debug-oracle. It
 // learns which finding classes are worth surfacing (resolved → reinforced,
@@ -196,7 +201,7 @@ try {
   const learning = require(path.join(__dirname, '..', 'debug', 'goggles-learning'));
   const res = learning.processFindings({ filePath: fp, findings: debugFindings, content, language: lang });
   if (res && Array.isArray(res.surface)) debugFindings = res.surface;
-} catch (_) { /* learning optional — surface everything */ }
+} catch (_) { quiet('tools:goggles-hook:require', _); /* learning optional — surface everything */ }
 
 // ── (3) Exception-only: speak when it matters, stay silent otherwise ───────
 // The scored region is brace-balanced (a syntactic whole, pre and post scored

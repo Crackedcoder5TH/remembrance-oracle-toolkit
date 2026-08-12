@@ -26,12 +26,12 @@ const { covenantCheck } = require('../src/core/covenant');
 // join fragments — keeps harm shapes out of this file's raw source
 const h = (...parts) => parts.join('');
 
-function principlesMatching(code) {
+const principlesMatching = (code) => {
   return HARM_PATTERNS.filter(p => {
     p.pattern.lastIndex = 0;
     return p.pattern.test(code);
   }).map(p => p.principle);
-}
+};
 
 test('every harm pattern is a well-formed rule', () => {
   assert.ok(HARM_PATTERNS.length >= 20, 'catalog present');
@@ -53,7 +53,6 @@ test('self-referential immunity is enforced by covenantCheck, not the raw regexe
   // The raw patterns DO match the module's own builder source — the
   // regex fragments look like the shapes they detect. Immunity is not a
   // property of the patterns; it is provided by covenantCheck, which
-  // honors the @oracle-pattern-definitions marker under { trusted: true }
   // and strips comments/strings before matching. Pin BOTH facts so a
   // future refactor can't quietly move the immunity and lose it.
   assert.ok(principlesMatching(src).length > 0,

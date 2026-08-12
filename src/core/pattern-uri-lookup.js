@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Pattern lookup by canonical coh:// URI.
@@ -118,7 +119,7 @@ class PatternUriLookup {
     const counts = {};
     for (const uri of this.listAll()) {
       try { counts[parseUri(uri).repo] = (counts[parseUri(uri).repo] || 0) + 1; }
-      catch { /* skip malformed */ }
+      catch (_e) { quiet('core:pattern-uri-lookup:all', _e); /* skip malformed */ }
     }
     return counts;
   }

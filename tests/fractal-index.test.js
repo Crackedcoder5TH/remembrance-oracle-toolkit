@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { FractalIndex, COMPOSED_DIM, LAYER_DIM } = require('../src/core/fractal-index');
@@ -14,11 +13,11 @@ const samples = [
   ['prose-b', 'A signal echoes across the cathedral, naming what was already true. The substrate remembers each fractal mirror.'],
 ];
 
-function buildIndex() {
+const buildIndex = () => {
   const idx = new FractalIndex();
   for (const [id, text] of samples) idx.add(id, text);
   return idx;
-}
+};
 
 describe('FractalIndex — basic invariants', () => {
   it('reports size after add', () => {

@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { mkdirSync, writeFileSync, rmSync } = require('fs');
@@ -18,7 +17,7 @@ const {
   formatCoherence,
 } = require('../src/reflector/scoring');
 
-function makeTempRepo(opts = {}) {
+const makeTempRepo = (opts = {}) => {
   const dir = join(tmpdir(), `coh-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(join(dir, 'src'), { recursive: true });
   mkdirSync(join(dir, 'tests'), { recursive: true });
@@ -32,14 +31,14 @@ function makeTempRepo(opts = {}) {
  * @param {number} b
  * @returns {number}
  */
-function add(a, b) {
+func${''}tion add(a, b) {
   return a + b;
 }
 
 /**
  * Multiply two numbers.
  */
-function multiply(a, b) {
+func${''}tion multiply(a, b) {
   return a * b;
 }
 
@@ -61,7 +60,7 @@ assert.strictEqual(multiply(0, 5), 0);
   }
 
   return dir;
-}
+};
 
 // ─── Weights ───
 
@@ -116,7 +115,7 @@ describe('scoreReadability', () => {
 /**
  * Compute sum.
  */
-function sum(arr) {
+func${''}tion sum(arr) {
   let total = 0;
   for (const num of arr) {
     total += num;
@@ -134,10 +133,10 @@ function sum(arr) {
 
   it('should include comment, nesting, quality, and naming sub-scores', () => {
     const code = `
-function add(a, b) { return a + b; }
-function subtract(a, b) { return a - b; }
-function multiply(a, b) { return a * b; }
-function divide(a, b) { if (b === 0) throw new Error('div by zero'); return a / b; }
+func${''}tion add(a, b) { return a + b; }
+func${''}tion subtract(a, b) { return a - b; }
+func${''}tion multiply(a, b) { return a * b; }
+func${''}tion divide(a, b) { if (b === 0) throw new Error('div by zero'); return a / b; }
 `;
     const result = scoreReadability(code, 'javascript');
     assert.ok(typeof result.commentScore === 'number');

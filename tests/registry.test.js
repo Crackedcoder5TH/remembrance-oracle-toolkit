@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -171,7 +170,7 @@ describe('CovenantPrincipleRegistry', () => {
 // ─── StorageBackendRegistry ───
 
 describe('StorageBackendRegistry', () => {
-  function makeBackend() {
+  const makeBackend = () => {
     const store = new Map();
     return {
       add: (entry) => { store.set(entry.id, entry); return entry; },
@@ -181,7 +180,7 @@ describe('StorageBackendRegistry', () => {
       search: (q) => Array.from(store.values()).filter(e => (e.description || '').includes(q)),
       summary: () => ({ totalEntries: store.size }),
     };
-  }
+  };
 
   it('registers and retrieves a backend', () => {
     const reg = new StorageBackendRegistry();

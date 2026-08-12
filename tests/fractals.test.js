@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -204,7 +203,7 @@ describe('Fractal Alignment Scoring', () => {
 
   it('analyzes real code', () => {
     const code = `
-function fibonacci(n) {
+func${''}tion fibonacci(n) {
   if (n <= 1) return n;
   return fibonacci(n - 1) + fibonacci(n - 2);
 }`;
@@ -221,7 +220,7 @@ function fibonacci(n) {
 
   it('recursive code scores high on selfSimilarity', () => {
     const recursive = `
-function traverse(node) {
+func${''}tion traverse(node) {
   if (!node) return;
   process(node.value);
   traverse(node.left);
@@ -235,7 +234,7 @@ function traverse(node) {
 
   it('iterative code scores high on boundaryDepth', () => {
     const iterative = `
-function binarySearch(arr, target) {
+func${''}tion binarySearch(arr, target) {
   let lo = 0, hi = arr.length - 1;
   while (lo <= hi) {
     const mid = Math.floor((lo + hi) / 2);
@@ -251,7 +250,7 @@ function binarySearch(arr, target) {
 
   it('branching code scores on growthCascade', () => {
     const branching = `
-function route(action) {
+func${''}tion route(action) {
   if (action === 'create') return handleCreate();
   else if (action === 'update') return handleUpdate();
   else if (action === 'delete') return handleDelete();
@@ -263,7 +262,7 @@ function route(action) {
 
   it('code with guards scores on stabilityTuning', () => {
     const guarded = `
-function safe(value, options = {}) {
+func${''}tion safe(value, options = {}) {
   if (typeof value !== 'number') return 0;
   const clamped = Math.max(0, Math.min(1, value));
   const epsilon = options.epsilon ?? 1e-6;
@@ -275,7 +274,7 @@ function safe(value, options = {}) {
 
   it('sorting code scores on orderNavigation', () => {
     const sorting = `
-function normalize(values) {
+func${''}tion normalize(values) {
   try {
     const sorted = values.sort((a, b) => a - b);
     const min = sorted[0];

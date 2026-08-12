@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -216,7 +217,7 @@ function trackSearch(term, results, options) {
       path.join(dir, 'search-timestamp.json'),
       JSON.stringify({ timestamp: session.lastSearchTimestamp, term }),
     );
-  } catch (_) { /* non-fatal — enforcement degrades gracefully */ }
+  } catch (_) { quiet('core:session-tracker:getSession', _); /* non-fatal — enforcement degrades gracefully */ }
 }
 
 /**
@@ -328,7 +329,7 @@ function saveSession(baseDir) {
 
     // Clean up the active-session crash-recovery file
     const activePath = path.join(dir, 'session-active.json');
-    try { if (fs.existsSync(activePath)) fs.unlinkSync(activePath); } catch (_) { /* best effort */ }
+    try { if (fs.existsSync(activePath)) fs.unlinkSync(activePath); } catch (_) { quiet('core:session-tracker:getSession', _); /* best effort */ }
 
     return filePath;
   } catch (e) {
@@ -453,7 +454,7 @@ function wasSearchRecent(thresholdMs = 10 * 60 * 1000) {
         }
       }
     }
-  } catch (_) {}
+  } catch (_) { quiet('core:session-tracker:getSession', _);}
   return false;
 }
 

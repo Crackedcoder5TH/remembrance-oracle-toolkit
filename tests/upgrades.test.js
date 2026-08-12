@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -31,7 +31,7 @@ describe('Pattern Analytics', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('generates analytics for empty library', () => {
@@ -139,7 +139,7 @@ describe('Git Hooks', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('generates pre-commit script', () => {
@@ -199,7 +199,7 @@ describe('Git Hooks', () => {
   it('runs pre-commit check on files', () => {
     const { runPreCommitCheck } = require('../src/ci/hooks');
     const testFile = path.join(tmpDir, 'safe.js');
-    fs.writeFileSync(testFile, 'function safeCode() { return 42; }');
+    writeFixture(testFile, 'function safeCode() { return 42; }');
 
     const result = runPreCommitCheck([testFile]);
     assert.equal(result.passed, true);
@@ -210,7 +210,7 @@ describe('Git Hooks', () => {
   it('blocks harmful code in pre-commit', () => {
     const { runPreCommitCheck } = require('../src/ci/hooks');
     const testFile = path.join(tmpDir, 'bad.js');
-    fs.writeFileSync(testFile, `
+    writeFixture(testFile, `
       const child_process = require('child_process');
       child_process.exec(\`rm -rf \${userInput}\`);
     `);

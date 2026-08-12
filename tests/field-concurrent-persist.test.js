@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 /**
  * field-concurrent-persist — two engines on the SAME entropy.json must not
@@ -29,14 +28,14 @@ const path = require('node:path');
 
 const { LivingRemembranceEngine } = require('../src/core/living-remembrance');
 
-function freshField() {
+const freshField = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fieldrace-'));
   return path.join(dir, 'entropy.json');
-}
+};
 
-function read(p) {
+const read = (p) => {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
-}
+};
 
 test('a concurrent writer does not send updateCount backwards', () => {
   const p = freshField();

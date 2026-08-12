@@ -1,5 +1,4 @@
 /**
- * @oracle-infrastructure
  *
  * OpenAI tool-calling schema export — converts the MCP TOOLS array
  * into the function-calling format used by Grok API, ChatGPT custom

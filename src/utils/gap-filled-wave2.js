@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Gap-Filled Utilities — Wave 2
@@ -351,7 +352,7 @@ function reactiveFilter(emitter, event, predicate) {
   const filtered = new EventEmitter();
   emitter.on(event, (...args) => {
     try { if (predicate(...args)) filtered.emit(event, ...args); }
-    catch { /* swallow predicate errors in stream */ }
+    catch (_e) { quiet('utils:gap-filled-wave2:predicate', _e); /* swallow predicate errors in stream */ }
   });
   filtered._source = emitter;
   filtered._event = event;

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * ChromaDB Bridge — Node.js interface to the Python ChromaDB search engine.
@@ -165,7 +166,7 @@ class ChromaDBBridge {
               const result = JSON.parse(stdout.trim());
               resolve(result);
               return;
-            } catch (e) {
+            } catch (e) { quiet('search:chromadb:bridge:resolve', e);
               // Fall through to error handling
             }
           }
@@ -205,7 +206,7 @@ function _parseTags(tags) {
     try {
       const parsed = JSON.parse(tags);
       if (Array.isArray(parsed)) return parsed.map(t => _sanitizeTag(t));
-    } catch {
+    } catch (_e) { quiet('search:chromadb:bridge:_parseTags', _e);
       // comma-separated fallback
     }
     return tags.split(',').map(t => _sanitizeTag(t.trim())).filter(Boolean);

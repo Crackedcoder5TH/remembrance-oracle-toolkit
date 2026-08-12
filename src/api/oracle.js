@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * The Oracle API — the main interface for AIs and humans.
  *
@@ -102,7 +103,7 @@ class RemembranceOracle {
     // Initialise audit logging
     try {
       initAuditLog(require('path').dirname(storeDir));
-    } catch (_) {
+    } catch (_) { quiet('api:oracle:require', _);
       // Audit init failures are non-fatal
     }
 
@@ -152,10 +153,10 @@ class RemembranceOracle {
       try {
         const { seedLibrary, seedExtendedLibrary, seedNativeLibrary, seedProductionLibrary3, seedProductionLibrary4 } = require('../patterns/seed-helpers');
         seedLibrary(this);
-        try { seedExtendedLibrary(this, {}); } catch (_) {}
-        try { seedNativeLibrary(this, {}); } catch (_) {}
-        try { seedProductionLibrary3(this, {}); } catch (_) {}
-        try { seedProductionLibrary4(this, {}); } catch (_) {}
+        try { seedExtendedLibrary(this, {}); } catch (_) { quiet('api:oracle:seedExtendedLibrary', _);}
+        try { seedNativeLibrary(this, {}); } catch (_) { quiet('api:oracle:seedNativeLibrary', _);}
+        try { seedProductionLibrary3(this, {}); } catch (_) { quiet('api:oracle:seedProductionLibrary3', _);}
+        try { seedProductionLibrary4(this, {}); } catch (_) { quiet('api:oracle:seedProductionLibrary4', _);}
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle] auto-seed failed:', e.message);
       }
@@ -267,7 +268,7 @@ class RemembranceOracle {
             parentPattern: seedPattern.name,
           });
           if (stored?.id) childIds.push(stored.id);
-        } catch (_e) { /* per-candidate failures don't block siblings */ }
+        } catch (_e) { quiet('api:oracle:String', _e); /* per-candidate failures don't block siblings */ }
       }
 
       // Sibling entanglement — spawned variants know about each other.
@@ -276,7 +277,7 @@ class RemembranceOracle {
       if (childIds.length > 1) {
         for (let i = 0; i < childIds.length; i++) {
           for (let j = i + 1; j < childIds.length; j++) {
-            try { this._quantumField.entangle('candidates', childIds[i], childIds[j]); } catch (_e) { /* best-effort */ }
+            try { this._quantumField.entangle('candidates', childIds[i], childIds[j]); } catch (_e) { quiet('api:oracle:c7', _e); /* best-effort */ }
           }
         }
       }
@@ -312,7 +313,7 @@ class RemembranceOracle {
           const storeDir = this.store?.storeDir || require('path').join(process.cwd(), '.remembrance');
           saveSession(storeDir);
         }
-      } catch (_) { /* must never throw in exit handler */ }
+      } catch (_) { quiet('api:oracle:saveSession', _); /* must never throw in exit handler */ }
 
       try {
         // Persist lifecycle counters and history
@@ -320,7 +321,7 @@ class RemembranceOracle {
           this._lifecycle._persistCounters();
           this._lifecycle._persistHistory();
         }
-      } catch (_) { /* must never throw in exit handler */ }
+      } catch (_) { quiet('api:oracle:saveSession', _); /* must never throw in exit handler */ }
     };
 
     // 'beforeExit' fires when the event loop drains (not on SIGTERM/SIGINT)

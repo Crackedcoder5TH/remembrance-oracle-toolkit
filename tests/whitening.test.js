@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // ZCA whitening: the numerical core (symmetric eigensolver) + the property
 // that whitening raises a low-rank cloud's effective dimensionality.
 const { test } = require('node:test');
@@ -20,7 +19,7 @@ test('Jacobi eigensolver: correct eigenvalues, orthonormal vectors', () => {
 
 test('whitening raises the effective dimensionality of a low-rank cloud', () => {
   // 8-D vectors that live near a 2-D subspace (a narrow cone)
-  function mb(s){let a=s>>>0;return()=>{a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+  const mb = (s) => {let a=s>>>0;return()=>{a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};};
   const rnd = mb(1);
   const X = [];
   for (let i = 0; i < 400; i++) {

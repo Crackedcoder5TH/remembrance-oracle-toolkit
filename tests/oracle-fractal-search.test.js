@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -24,13 +24,13 @@ const SAMPLES = [
     code: JSON.stringify(Array.from({ length: 80 }, (_, i) => +(Math.pow(1.04, i)).toFixed(3))) },
 ];
 
-function makeOracle() {
+const makeOracle = () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-fsearch-'));
   const oracle = new RemembranceOracle({
     baseDir: tmpDir, autoSeed: false, lifecycle: false, autoGrow: false,
   });
   return { oracle, tmpDir };
-}
+};
 
 describe('oracle.fractalSearch — wired native search path', () => {
   let oracle, tmpDir, submitted;
@@ -48,7 +48,7 @@ describe('oracle.fractalSearch — wired native search path', () => {
   });
 
   after(() => {
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+    try { rmFixture(tmpDir, { recursive: true, force: true }); } catch (_) {}
   });
 
   it('initializes the fractal index on construction', () => {
@@ -119,7 +119,7 @@ describe('oracle.exportSignatures — round-trip into field-tool', () => {
       assert.equal(s.vec.length, 232);   // full 8-layer composed signature
       for (const x of s.vec) assert.ok(Number.isFinite(x));
     }
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('field-tool index ingests substrate signatures and returns matching top-K', () => {
@@ -152,7 +152,7 @@ describe('oracle.exportSignatures — round-trip into field-tool', () => {
       assert.ok(Math.abs(oracleTopK[0].score - fieldTopK[0].score) < 1e-12,
         `score drift on ${sig.id}: oracle=${oracleTopK[0].score} field=${fieldTopK[0].score}`);
     }
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('field-tool index rejects malformed signatures rather than corrupting state', () => {

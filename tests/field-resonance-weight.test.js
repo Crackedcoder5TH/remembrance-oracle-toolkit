@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // Resonance-weighted field authority: a contribution moves the field only
 // in proportion to its resonance with the substrate. Legacy callers (no
 // resonance) are unchanged; low-resonance junk is near-powerless.
@@ -11,12 +10,12 @@ const fs = require('node:fs');
 const { LivingRemembranceEngine } = require('../src/core/living-remembrance');
 
 // Isolated engine per call (explicit persistPath ⇒ starts fresh, not canonical).
-function freshEngine() {
+const freshEngine = () => {
   const p = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'rw-')), 'entropy.json');
   const e = new LivingRemembranceEngine({ persistPath: p });
   for (let i = 0; i < 30; i++) e.contribute({ cost: 1, coherence: 0.85 });
   return e;
-}
+};
 
 test('no resonance → full authority (backward compatible)', () => {
   const e = freshEngine();

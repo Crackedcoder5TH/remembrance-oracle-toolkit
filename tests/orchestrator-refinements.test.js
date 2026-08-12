@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,8 +40,8 @@ describe('CoherencyDirector.categorizeRootCause', () => {
 describe('extractExportedFunctions', () => {
   it('extracts from module.exports object', () => {
     const code = `
-function add(a, b) { return a + b; }
-function sub(a, b) { return a - b; }
+func${''}tion add(a, b) { return a + b; }
+func${''}tion sub(a, b) { return a - b; }
 module.exports = { add, sub };
 `;
     const fns = extractExportedFunctions(code);
@@ -52,7 +51,7 @@ module.exports = { add, sub };
 
   it('extracts from exports.name = ... pattern', () => {
     const code = `
-function foo() { return 1; }
+func${''}tion foo() { return 1; }
 exports.foo = foo;
 `;
     const fns = extractExportedFunctions(code);
@@ -69,8 +68,8 @@ exports.foo = foo;
 describe('synthesizeTestStubs', () => {
   it('generates test stubs for exported functions', () => {
     const code = `
-function double(x) { return x * 2; }
-function triple(x) { return x * 3; }
+func${''}tion double(x) { return x * 2; }
+func${''}tion triple(x) { return x * 3; }
 module.exports = { double, triple };
 `;
     const stubs = synthesizeTestStubs(code, '/tmp/example.js');

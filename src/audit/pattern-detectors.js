@@ -68,6 +68,23 @@ const DETECTORS = [
     assumption: 'a dry-run/preview path leaves state untouched',
     fn: require('../patterns/audit-patterns/logic-inconsistency-check').detectLogicInconsistency,
   },
+  {
+    // grounding-semantics' lie-gap audit, wired 2026-08-08 (wire-later
+    // ledger): flags functions whose declared atomic identity contradicts
+    // what the body actually does. Advisory until measured at volume.
+    ruleId: 'pattern/annotation-lie-gap', advisory: true, bugClass: 'integration', severity: 'medium',
+    assumption: 'a function behaves the way its atomic declaration claims',
+    fn: (source) => {
+      const { auditSourceForLies } = require('../atomic/grounding-semantics');
+      const audit = auditSourceForLies(source);
+      return (audit.lies || []).map((l) => ({
+        line: l.line || 0,
+        pattern: l.name,
+        warning: 'declared atomic identity contradicts the body (lie score ' + l.lieScore + ')'
+          + (l.reasons && l.reasons.length ? ': ' + l.reasons.join('; ') : ''),
+      }));
+    },
+  },
 ];
 
 /**

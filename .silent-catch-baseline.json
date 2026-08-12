@@ -1,0 +1,6 @@
+{
+ "note": "silent-catch baseline — catch blocks with zero executable body tokens, per file. Shrink-only: name the failure, never delete the try.",
+ "savedAt": "2026-08-10T16:53:38.922Z",
+ "total": 0,
+ "byFile": {}
+}

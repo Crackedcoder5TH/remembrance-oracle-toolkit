@@ -1,5 +1,5 @@
+const { quiet } = require('../core/quiet');
 /**
- * @oracle-infrastructure — internal analytics/reporting over the oracle's own
  * pattern library and field; bounded to internal state, not user-input-driven,
  * so the covenant-gate semantics don't apply here.
  *
@@ -40,6 +40,7 @@ function generateAnalytics(oracle) {
 
   return report;
 }
+generateAnalytics.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Derive a 0..1 simplicity coherence from the ordinal complexity tiers
 // (atomic=simplest, composite=middle, architectural=most complex — see
@@ -54,8 +55,9 @@ function contributeComplexity(breakdown) {
     // RATIO, not a coherency. Feeding it in as `coherence` averaged a measure
     // of how decomposed the codebase is into a measure of how structured it
     // is — two different questions with the same range.
-  } catch (_) { /* field unreachable — analytics still returns its report */ }
+  } catch (_) { quiet('analytics:analytics:contributeComplexity', _); /* field unreachable — analytics still returns its report */ }
 }
+contributeComplexity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function computeOverview(patterns, entries) {
   const totalPatterns = patterns.length;
@@ -78,6 +80,7 @@ function computeOverview(patterns, entries) {
     qualityRatio: totalPatterns > 0 ? Math.round(highQuality / totalPatterns * 100) : 0,
   };
 }
+computeOverview.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function computeCoherencyDistribution(patterns) {
   const buckets = { '0.0-0.2': 0, '0.2-0.4': 0, '0.4-0.6': 0, '0.6-0.8': 0, '0.8-1.0': 0 };
@@ -91,6 +94,7 @@ function computeCoherencyDistribution(patterns) {
   }
   return buckets;
 }
+computeCoherencyDistribution.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function computeLanguageBreakdown(patterns) {
   const breakdown = {};
@@ -108,6 +112,7 @@ function computeLanguageBreakdown(patterns) {
   }
   return breakdown;
 }
+computeLanguageBreakdown.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function computeTopPatterns(patterns) {
   return [...patterns]
@@ -123,6 +128,7 @@ function computeTopPatterns(patterns) {
       tags: (p.tags || []).slice(0, 5),
     }));
 }
+computeTopPatterns.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function computeComplexityBreakdown(patterns) {
   const breakdown = {};
@@ -133,6 +139,7 @@ function computeComplexityBreakdown(patterns) {
   }
   return breakdown;
 }
+computeComplexityBreakdown.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function computeHealthReport(patterns) {
   const total = patterns.length;
@@ -151,6 +158,7 @@ function computeHealthReport(patterns) {
 
   return { healthy, warning, critical, criticalPatterns };
 }
+computeHealthReport.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function computeRecentActivity(patterns, entries) {
   // Sort by timestamp, most recent first
@@ -167,6 +175,7 @@ function computeRecentActivity(patterns, entries) {
     timestamp: p.timestamp,
   }));
 }
+computeRecentActivity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Compute tag cloud — most common tags with counts.
@@ -183,5 +192,6 @@ function computeTagCloud(patterns) {
     .slice(0, 30)
     .map(([tag, count]) => ({ tag, count }));
 }
+computeTagCloud.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { generateAnalytics, computeTagCloud };

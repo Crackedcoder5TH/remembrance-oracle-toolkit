@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * field-durable-restore — the hub reads the blockchain's committed,
@@ -27,16 +27,16 @@ process.env.LEDGER_PATH = path.join(tmp, 'no-local-ledger.json'); // no live wor
 
 const fm = require('../src/core/field-memory');
 
-function mkState(updateCount, coherence = 0.8) {
+const mkState = (updateCount, coherence = 0.8) => {
   return {
     coherence, coherenceIntegral: 100, globalEntropy: 1.0, cascadeFactor: 2.0,
     updateCount, timestamp: Date.now(),
     sources: { covenant: { count: updateCount, lastCoherence: coherence, lastTimestamp: Date.now() } },
   };
-}
+};
 
 test('_restoreFromSeed reads the committed bootstrap snapshot', () => {
-  fs.writeFileSync(seedPath, JSON.stringify(mkState(4242, 0.873)));
+  writeFixture(seedPath, JSON.stringify(mkState(4242, 0.873)));
   const s = fm._restoreFromSeed();
   assert.ok(s, 'expected a restored state');
   assert.equal(s.updateCount, 4242);
@@ -45,7 +45,7 @@ test('_restoreFromSeed reads the committed bootstrap snapshot', () => {
 });
 
 test('_restoreFromSeed rejects empty / zero-history seeds', () => {
-  fs.writeFileSync(seedPath, JSON.stringify(mkState(0)));
+  writeFixture(seedPath, JSON.stringify(mkState(0)));
   assert.equal(fm._restoreFromSeed(), null);
 });
 
@@ -54,7 +54,7 @@ test('_restoreFromLedger reads _entropy from the committed chain', () => {
     { index: 0, timestamp: 't0', data: { type: 'GENESIS', patternId: null, metadata: {} }, previousHash: '0', hash: 'h0' },
     { index: 1, timestamp: 't1', data: { type: 'CHECKPOINT', patternId: 'field:histogram', metadata: { _entropy: mkState(5150, 0.91) } }, previousHash: 'h0', hash: 'h1' },
   ];
-  fs.writeFileSync(ledgerPath, JSON.stringify(chain));
+  writeFixture(ledgerPath, JSON.stringify(chain));
   const s = fm._restoreFromLedger();
   assert.ok(s);
   assert.equal(s.updateCount, 5150);
@@ -65,8 +65,8 @@ test('restoreLatest includes the committed seed as a witness (max history wins)'
   // An astronomically high updateCount guarantees the seed dominates any
   // oracle.db field-snapshot witness present in this repo, proving the
   // seed is actually consulted by restoreLatest().
-  fs.writeFileSync(seedPath, JSON.stringify(mkState(9_999_999, 0.95)));
-  fs.rmSync(ledgerPath, { force: true });
+  writeFixture(seedPath, JSON.stringify(mkState(9_999_999, 0.95)));
+  rmFixture(ledgerPath, { force: true });
   const s = fm.restoreLatest();
   assert.ok(s);
   assert.equal(s.updateCount, 9_999_999);
@@ -74,12 +74,12 @@ test('restoreLatest includes the committed seed as a witness (max history wins)'
 
 test('committed ledger and seed reconcile to the richer witness', () => {
   // Seed behind, committed ledger ahead → restore must prefer the ledger.
-  fs.writeFileSync(seedPath, JSON.stringify(mkState(100, 0.7)));
+  writeFixture(seedPath, JSON.stringify(mkState(100, 0.7)));
   const chain = [
     { index: 0, timestamp: 't0', data: { type: 'GENESIS', patternId: null, metadata: {} }, previousHash: '0', hash: 'h0' },
     { index: 1, timestamp: 't1', data: { type: 'CHECKPOINT', patternId: 'field:histogram', metadata: { _entropy: mkState(8_888_888, 0.9) } }, previousHash: 'h0', hash: 'h1' },
   ];
-  fs.writeFileSync(ledgerPath, JSON.stringify(chain));
+  writeFixture(ledgerPath, JSON.stringify(chain));
   const s = fm.restoreLatest();
   assert.ok(s);
   assert.equal(s.updateCount, 8_888_888);

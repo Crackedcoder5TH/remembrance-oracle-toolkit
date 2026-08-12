@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -166,7 +167,7 @@ class SelfImprovementEngine {
             proposal.rejectionReason = 'Ecosystem review: ' + review.recommendations.join('; ');
             continue;
           }
-        } catch { /* ecosystem review advisory at this stage */ }
+        } catch (_e) { quiet('orchestrator:self-improvement:require', _e); /* ecosystem review advisory at this stage */ }
         // Auto-incorporate — all gates passed and ecosystem approves
         proposal.status = 'auto-incorporated';
         proposal.decidedAt = new Date().toISOString();
@@ -360,7 +361,7 @@ class SelfImprovementEngine {
       try {
         const { getEmergentCoherency } = require('../unified/emergent-coherency');
         getEmergentCoherency().reset();
-      } catch { /* reset not available */ }
+      } catch (_e) { quiet('orchestrator:self-improvement:getEmergentCoherency', _e); /* reset not available */ }
       votes.push(this._validateElement(code, gap));
     }
     const allPass = votes.every(v => v.passesAllGates);
@@ -410,7 +411,7 @@ class SelfImprovementEngine {
             source: `self-improvement-${proposal.approvalMode}`,
           });
         }
-      } catch { /* registration failed — non-fatal */ }
+      } catch (_e) { quiet('orchestrator:self-improvement:encodeSignature', _e); /* registration failed — non-fatal */ }
     }
 
     proposal.incorporatedAt = new Date().toISOString();
@@ -437,7 +438,7 @@ class SelfImprovementEngine {
         history: this._history,
         savedAt: new Date().toISOString(),
       }, null, 2));
-    } catch { /* best effort */ }
+    } catch (_e) { quiet('orchestrator:self-improvement:encodeSignature', _e); /* best effort */ }
   }
 
   _load() {
@@ -446,7 +447,7 @@ class SelfImprovementEngine {
       const raw = JSON.parse(fs.readFileSync(this._storagePath, 'utf-8'));
       if (raw.proposals) this._proposals = raw.proposals;
       if (raw.history) this._history = raw.history;
-    } catch { /* start fresh */ }
+    } catch (_e) { quiet('orchestrator:self-improvement:encodeSignature', _e); /* start fresh */ }
   }
 }
 

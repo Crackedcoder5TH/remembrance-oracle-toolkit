@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 // Sandbox-compatible test for dynamic FIX_SUGGESTIONS construction
 const assert = require('node:assert/strict');
 const _fb = module.exports;

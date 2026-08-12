@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Method registry: the orchestrator's self-introspection layer.
  * Verifies trigger parsing, condition matching, live state pickup,

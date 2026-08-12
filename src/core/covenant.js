@@ -1,3 +1,4 @@
+const { quiet } = require('./quiet');
 /**
  * The Covenant Filter — The Kingdom's Weave
  *
@@ -195,7 +196,7 @@ function covenantCheck(code, metadata = {}) {
       });
       violatedPrinciples.add(`evolved:${ev.id}`);
     }
-  } catch { /* living covenant not available — founding principles still run */ }
+  } catch (_e) { quiet('core:covenant:require', _e); /* living covenant not available — founding principles still run */ }
 
   const totalPrinciples = COVENANT_PRINCIPLES.length + customPrincipleCount + evolvedPrincipleCount;
   const principlesPassed = totalPrinciples - violatedPrinciples.size;
@@ -240,7 +241,7 @@ function covenantCheck(code, metadata = {}) {
         source: 'void:compress_signal:covenant',
       });
     }
-  } catch (_) { /* field unavailable — best-effort */ }
+  } catch (_) { quiet('core:covenant:contribute', _); /* field unavailable — best-effort */ }
 
   // Cache the result (only for code-only checks)
   if (!hasMeta) {
@@ -365,15 +366,19 @@ function deepSecurityScan(code, options = {}) {
   // so a clean pass contributes coherence=1, a fully-vetoed scan contributes 0.
   // Note: covenantCheck() already contributed independently above; this is
   // the security-scan-specific signal (deep findings + external tools).
+  // PROVENANCE (2026-08-09): the findings ratio was a count ratio and the
+  // veto→0 mapping invented a number — neither came from the compressor.
+  // The scan is WORK sized by findings, verdict in the source bucket; the
+  // scanned code's lawful coherency enters at covenantCheck's own
+  // void:compress_signal doorway above.
   try {
-    const coherence = veto ? 0 : (1 - ((deepFindings.length + externalTools.length) / (totalFindings + 1)));
-    const { contribute } = require('./field-coupling');
-    contribute({
-      cost: Math.max(1, totalFindings + 1),
-      coherence: Math.max(0, Math.min(1, coherence)),
-      source: 'security-scan',
+    const { recordCost } = require('./field-coupling');
+    recordCost({
+      units: Math.max(1, totalFindings + 1),
+      kind: 'audit',
+      source: 'security-scan:' + (veto ? 'veto' : 'pass'),
     });
-  } catch (_) { /* field unavailable — best-effort */ }
+  } catch (_) { quiet('core:covenant:recordCost', _); /* field unavailable — best-effort */ }
 
   return {
     passed: !veto,

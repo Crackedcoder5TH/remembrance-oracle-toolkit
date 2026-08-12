@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * verify.js — `oracle verify`: the ecosystem truth-spine.
@@ -203,7 +204,7 @@ function registerVerifyCommands(handlers, _context) {
         console.log('  ' + c.bold('ecosystem flow: ') + c.cyan(flow.verdict)
           + c.dim(`  (Δcoherence ${sgn(flow.coherenceDelta, 4)} · Δentropy ${sgn(flow.entropyDelta, 2)} · Δcascade ${sgn(flow.cascadeDelta, 2)})`));
       }
-    } catch (_) { /* field unreachable */ }
+    } catch (_) { quiet('cli:commands:verify:branch', _); /* field unreachable */ }
     console.log('');
 
     if (broken) process.exitCode = 1;

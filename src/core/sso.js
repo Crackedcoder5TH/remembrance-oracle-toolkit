@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * SSO / OIDC Integration Foundation
@@ -46,7 +47,7 @@ function loadSsoConfig() {
       const fileConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
       Object.assign(config, fileConfig);
     }
-  } catch {}
+  } catch (_e) { quiet('core:sso:loadSsoConfig', _e);}
 
   config.enabled = !!(config.issuerUrl && config.clientId && config.clientSecret);
   return config;

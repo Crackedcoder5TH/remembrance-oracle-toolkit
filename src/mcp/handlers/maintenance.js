@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * mcp/handlers/maintenance.js — debug, sync, harvest, maintain, healing
@@ -115,7 +116,7 @@ const MAINTENANCE = {
       const fs = require('fs');
       let resolved = path.resolve(source);
       // Resolve symlinks to prevent path traversal via symlinked directories
-      try { resolved = fs.realpathSync(resolved); } catch (_) { /* path may not exist yet */ }
+      try { resolved = fs.realpathSync(resolved); } catch (_) { quiet('mcp:handlers:maintenance:require', _); /* path may not exist yet */ }
       const cwd = process.cwd();
       const home = os.homedir();
       const tmp = os.tmpdir();
@@ -153,6 +154,18 @@ const MAINTENANCE = {
         return oracle.fullOptimizationCycle({
           maxHealsPerRun: args.maxHealsPerRun || 20,
         });
+      // fractal store integrity — check finds orphaned deltas/embeddings
+      // and stale templates; repair removes them. Both existed tested and
+      // uncalled until 2026-08-08 (wire-later ledger). Check is read-only;
+      // repair mutates and therefore requires the explicit action word.
+      case 'fractal-integrity': {
+        const { checkFractalIntegrity } = require('../../compression/fractal-library-bridge');
+        return checkFractalIntegrity(oracle.patterns._sqlite || oracle.store);
+      }
+      case 'fractal-repair': {
+        const { repairFractalIntegrity } = require('../../compression/fractal-library-bridge');
+        return repairFractalIntegrity(oracle.patterns._sqlite || oracle.store);
+      }
       case 'candidates': {
         const filters = {};
         if (args.language) filters.language = args.language;

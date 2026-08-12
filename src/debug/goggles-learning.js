@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * @oracle-infrastructure — meta-debug self-optimisation state, bounded to the
@@ -62,7 +63,7 @@ function loadState() {
   try { return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')); } catch (_) { return {}; }
 }
 function saveState(s) {
-  try { fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true }); fs.writeFileSync(STATE_PATH, JSON.stringify(s)); } catch (_) { /* best-effort */ }
+  try { fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true }); fs.writeFileSync(STATE_PATH, JSON.stringify(s)); } catch (_) { quiet('debug:goggles-learning:saveState', _); /* best-effort */ }
 }
 
 // A finding's identity across edits: bug class + rule + a whitespace-normalised
@@ -120,7 +121,7 @@ function processFindings({ filePath, findings, language, content }) {
     if (!currentFps.has(p.fp)) {
       const rec = state.patterns[p.fp];
       const id = rec && rec.id;
-      if (id) { try { debug.reportOutcome(id, true); resolved += 1; state.resolutions += 1; } catch (_) { /* ignore */ } }
+      if (id) { try { debug.reportOutcome(id, true); resolved += 1; state.resolutions += 1; } catch (_) { quiet('debug:goggles-learning:fingerprint', _); /* ignore */ } }
       // TEACH the resonance channel — but ONLY on a genuine CODE fix. A
       // finding can disappear for three reasons: the code was fixed (teach
       // it — a real defect shape), it was flagged a false positive (never
@@ -140,13 +141,13 @@ function processFindings({ filePath, findings, language, content }) {
             language: rec.language || 'unknown',
             code: rec.block,
           });
-        } catch (_) { /* teaching optional */ }
+        } catch (_) { quiet('debug:goggles-learning:require', _); /* teaching optional */ }
       }
       if (state.falsePositives[p.fp]) {
         delete state.falsePositives[p.fp];
         // It was real after all — restore standing (the flag, manual or auto,
         // had floored the amplitude) so it can surface again next time.
-        if (id) { try { for (let i = 0; i < 6; i++) debug.reportOutcome(id, true); } catch (_) { /* ignore */ } }
+        if (id) { try { for (let i = 0; i < 6; i++) debug.reportOutcome(id, true); } catch (_) { quiet('debug:goggles-learning:require', _); /* ignore */ } }
       }
     }
   }
@@ -179,7 +180,7 @@ function processFindings({ filePath, findings, language, content }) {
           tags: ['goggles', f.bugClass],
         });
         id = cap && cap.pattern && cap.pattern.id;
-      } catch (_) { /* capture optional */ }
+      } catch (_) { quiet('debug:goggles-learning:errorMessageFor', _); /* capture optional */ }
       rec = state.patterns[fp] = { id };
     }
     // Stash the offending block + labels so that IF this finding is later
@@ -192,7 +193,7 @@ function processFindings({ filePath, findings, language, content }) {
       rec.language = language || 'unknown';
     }
     // Past the grace window and still unfixed → a dismissed/false-positive class.
-    if (seen >= PENALIZE_AFTER && rec.id) { try { debug.reportOutcome(rec.id, false); } catch (_) { /* ignore */ } }
+    if (seen >= PENALIZE_AFTER && rec.id) { try { debug.reportOutcome(rec.id, false); } catch (_) { quiet('debug:goggles-learning:errorMessageFor', _); /* ignore */ } }
     // Persisted well past the grace window, never fixed → flag it a false
     // positive: record it in the field histogram and stop surfacing it for good.
     if (seen >= AUTO_FP_AFTER) _recordFalsePositive(state, fp, f, { auto: true });
@@ -207,7 +208,7 @@ function processFindings({ filePath, findings, language, content }) {
 
   // 3. FEED the void library — promote proven fixes (throttled).
   if (state.resolutions >= PROMOTE_EVERY && state.resolutions % PROMOTE_EVERY === 0) {
-    try { promoteToLibrary(debug); } catch (_) { /* promotion optional */ }
+    try { promoteToLibrary(debug); } catch (_) { quiet('debug:goggles-learning:promoteToLibrary', _); /* promotion optional */ }
   }
 
   saveState(state);
@@ -267,7 +268,7 @@ function _recordFalsePositive(state, fp, finding, opts = {}) {
       // A constant cannot vary with what was measured, so contributing one
       // moves the global EMA without carrying any information about it.
     }
-  } catch (_) { /* histogram contribution optional */ }
+  } catch (_) { quiet('debug:goggles-learning:require', _); /* histogram contribution optional */ }
 }
 
 /**
@@ -285,7 +286,7 @@ function flagFalsePositive(findingOrFp, opts = {}) {
   _recordFalsePositive(state, fp, finding, { reason: opts.reason || 'manual', force: true });
   const debug = debugOracle();
   const id = state.patterns[fp] && state.patterns[fp].id;
-  if (debug && id) { try { for (let i = 0; i < 10; i++) debug.reportOutcome(id, false); } catch (_) { /* ignore */ } }
+  if (debug && id) { try { for (let i = 0; i < 10; i++) debug.reportOutcome(id, false); } catch (_) { quiet('debug:goggles-learning:debugOracle', _); /* ignore */ } }
   saveState(state);
   return { fp, flagged: true };
 }

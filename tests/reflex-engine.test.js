@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Reflex engine: actor-side responses to substrate sensors. Each reflex
  * has a cooldown and a triggering threshold. These tests drive each
@@ -24,19 +23,19 @@ const {
   _resetReflexState,
 } = require('../src/orchestrator/reflex-engine');
 
-function mkBatch(prefix, scores) {
+const mkBatch = (prefix, scores) => {
   return scores.map((s, i) => ({
     name: prefix + '-' + i + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
     language: 'js',
     score: s,
   }));
-}
+};
 
-function primeAt(target, spread = 0.05, n = 60) {
+const primeAt = (target, spread = 0.05, n = 60) => {
   for (let i = 0; i < n; i++) {
     fc.contribute({ source: 'reflex-test:prime', coherence: target + (Math.random() * 2 - 1) * spread, cost: 1 });
   }
-}
+};
 
 describe('reflex engine — actor side of the substrate', () => {
 

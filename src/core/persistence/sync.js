@@ -1,3 +1,4 @@
+const { quiet } = require('../quiet');
 // mapper-style organ of the former persistence.js monolith (1,962 lines).
 // Extracted VERBATIM along the file's own section seams; persistence.js
 // remains the façade with a byte-compatible export surface.
@@ -107,7 +108,7 @@ function syncToGlobal(localStore, options = {}) {
   return report;
   } finally {
     if (personalStore && typeof personalStore.close === 'function') {
-      try { personalStore.close(); } catch (_) {}
+      try { personalStore.close(); } catch (_) { quiet('core:persistence:sync:_syncArchivesToPersonal', _);}
     }
   }
 }
@@ -218,7 +219,7 @@ function syncFromGlobal(localStore, options = {}) {
   return report;
   } finally {
     if (personalStore && typeof personalStore.close === 'function') {
-      try { personalStore.close(); } catch (_) {}
+      try { personalStore.close(); } catch (_) { quiet('core:persistence:sync:_syncArchivesFromPersonal', _);}
     }
   }
 }

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * AST-based static checkers — the replacement for the regex-based
@@ -825,12 +826,14 @@ function auditFile(filePath, options = {}) {
   }
   try {
     const source = fs.readFileSync(filePath, 'utf-8');
-    // Route through the process-level envelope cache so a second
-    // analysis of the same file (audit, lint, smell, prior in one
-    // session) hits the same parsed program.
-    const { analyzeCached } = require('../core/analyze');
-    const env = analyzeCached(source, filePath, { language: options.language });
-    const result = auditCode(source, { ...options, filePath, program: env.program });
+    // Route through the process-level program cache so a second analysis
+    // of the same file (audit, lint, smell, prior in one session) hits the
+    // same parsed program. This used to call core/analyze's envelope cache
+    // and read one field off it — but analyze builds its envelope by
+    // calling the checkers, so that made these modules require each other.
+    // The parse is the only shared thing, and it now lives in its own leaf.
+    const { programCached } = require('./program-cache');
+    const result = auditCode(source, { ...options, filePath, program: programCached(source, filePath) });
     return { file: filePath, ...result };
   } catch (e) {
     return { file: filePath, findings: [], summary: { total: 0, byClass: {}, bySeverity: {} }, error: e.message };
@@ -838,11 +841,21 @@ function auditFile(filePath, options = {}) {
 }
 
 function auditFiles(files, options = {}) {
+  // .oracle-ignore support — compiled glob matcher from suppressions.js,
+  // written and tested but never called until 2026-08-08 (wire-later
+  // ledger). Opt-in via options.repoRoot; a missing/empty ignore file
+  // matches nothing, so behavior without one is byte-identical.
+  let ignore = null;
+  if (options.repoRoot) {
+    try { ignore = require('./suppressions').loadIgnoreFile(options.repoRoot); }
+    catch (_) { ignore = null; }
+  }
   const results = [];
   let totalFindings = 0;
   const byClass = {};
   const bySeverity = {};
   for (const file of files || []) {
+    if (ignore && ignore.shouldIgnore && ignore.shouldIgnore(file)) continue;
     const r = auditFile(file, options);
     if (r.findings && r.findings.length > 0) {
       results.push(r);
@@ -869,7 +882,7 @@ function auditFiles(files, options = {}) {
     });
     // entropy side: severity-weighted findings are disorder — route as cost.
     if (weighted > 0) recordCost({ units: weighted, source: 'audit:findings', kind: 'disorder' });
-  } catch (_) { /* field unavailable — best-effort */ }
+  } catch (_) { quiet('audit:ast-checkers:contribute', _); /* field unavailable — best-effort */ }
 
   return {
     files: results,

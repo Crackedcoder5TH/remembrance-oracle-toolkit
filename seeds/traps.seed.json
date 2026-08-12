@@ -373,6 +373,70 @@
    "truth": "sqlite updateVoterReputation() sat fully implemented (+0.05/-0.03 reputation, capped [0.1,3.0]) with ZERO callers; the test asserting it hid behind if(!patternId) return and passed vacuously for its whole life. Reputation could never move. Found 2026-08-07 while clearing the perpetual red test.",
    "tell": "grep for the function name returns only its definition (and maybe a comment). A test guard like if(!fixture) return that can silently skip every assertion. A feature whose observable output never changes from its default.",
    "correct": "Count callers before trusting any capability: rg \"\\bNAME\\s*\\(\" outside the defining file. Zero src callers = unwired — wire it through the real consumer path or delete it. Never let a test early-return on missing fixtures; fail loudly instead."
+  },
+  {
+   "match": [
+    "audit-field-contributions",
+    "contribute site",
+    "write surface",
+    "census",
+    "matcher",
+    "field source"
+   ],
+   "severity": "high",
+   "wrong": "Trusting a census because it runs — the field-contribution audit was believed to see every contribute({coherence}) site in src/.",
+   "truth": "Its matcher required the literal key order cost:, coherence:, source: on ONE line. Any hand-written site with a different key order, or a call formatted across lines, was invisible. Found 2026-08-09 while building the field-source ratchet: the widened order-independent matcher revealed 68 sites where the audit reported 29 — 39 write sites had never been audited, and 22 of the 68 carry non-coherency quantities awaiting adjudication.",
+   "tell": "A census whose regex encodes a spelling (argument order, one-line formatting, a specific quote style). Verifying a gate by only feeding it inputs shaped like the ones it already counts.",
+   "correct": "Adversarially test every census with a syntactically-valid variant it should catch but formatted differently (reordered keys, multi-line, renamed receiver). If the count does not move, the census has a spelling requirement — widen extraction (balanced parens, order-independent fields), never narrow the input."
+  },
+  {
+   "match": [
+    "cycle-ratchet",
+    "require cycle",
+    "lexical",
+    "load-time",
+    "lazy require",
+    "SCC",
+    "62-file"
+   ],
+   "severity": "high",
+   "wrong": "Measuring lexical require mentions and calling them cycles — then planning 8 lazy-require cuts to untangle a 62-file knot.",
+   "truth": "A require inside a function body or expression-bodied arrow runs at CALL time and cannot deadlock module init. Position-aware measurement (tokenizer, fn-body + expression-arrow contexts) showed the load-time require graph of src/ was ALREADY ACYCLIC — every cycle-participating edge was already lazy, largely thanks to prior decompositions and report-lazy. The planned cuts would have converted already-lazy edges while the lexical census read 62 unchanged: execution theater against a misread instrument. Found 2026-08-09 while executing the cut plan with byte-level precision.",
+   "tell": "A remediation plan whose success metric is read from an instrument that cannot distinguish the cure from the disease (lazy vs top-level require, demonstration vs instance, mention vs call). The first cut appearing to change nothing.",
+   "correct": "Before executing a graph-surgery plan, measure the graph the failure mode actually lives on (load order for init deadlock; lexical for coupling). The ratchet now censuses BOTH: load-time gated at zero, lexical shrink-only through real decomposition."
+  },
+  {
+   "match": [
+    "exemption shed",
+    "@oracle-infrastructure",
+    "fractalAudit",
+    "covenantCheck",
+    "SQL identifier",
+    "quantum-field",
+    "load-bearing exemption"
+   ],
+   "severity": "high",
+   "wrong": "Deciding an @oracle-infrastructure exemption is sheddable because fractalAudit (byte+atomic) reads clean once the blocking findings are resolved.",
+   "truth": "The exemption tag relieves a file from MORE than one scanner. quantum-field.js reached byte:0 atomic:0 after atomic annotation, but its tag was load-bearing for the COVENANT SQL-identifier rule (principle 11) — its  DDL interpolations are identifiers SQL cannot parameterise, and the file header says so. Removing the tag left fractalAudit green but covenantCheck BROKEN; the pre-commit gate would have blocked it. Found 2026-08-09 shedding the src exemption tranche — a file-modification note surfaced the header just in time to check covenantCheck before trusting the shed.",
+   "tell": "A file whose header EXPLAINS why it is exempt (SQL identifiers, dense code, a scoped security-rule exemption) — that prose is the load-bearing reason, and it names a scanner fractalAudit does not run.",
+   "correct": "Before shedding any exemption, run BOTH covenantCheck (covenant.js — SQL/harm/injection, principle 11) AND fractalAudit (covenant-fractal.js — byte mutations + atomic properties). An exemption is only sheddable when both read clean. Read the file header first: if it argues for its own exemption, that argument is usually the second gate."
+  },
+  {
+   "match": [
+    "silent-catch",
+    "swallowed",
+    "rg count",
+    "template literal",
+    "tokenizer",
+    "false alarm",
+    "backtick parity",
+    "census blind spot"
+   ],
+   "severity": "high",
+   "wrong": "Concluding a census is blind — and alarming that a gate lied — because a raw rg count of try/catch clauses exceeds the tokenizer count, then trusting the rg number.",
+   "truth": "Files that GENERATE code (hooks.js emits pre-commit/post-commit/pre-push shell+JS via template literals; explain.js/debug-seeds.js hold code examples) contain try/catch as STRING content inside template literals. rg counts that string content; the substrate tokenizer correctly excludes it. hooks.js: rg saw 32 catch clauses, the tokenizer saw the 2 real ones — and was RIGHT. The 30 others were inside three script-generating templates (lines 39-336, 343-573, 583-643). Verified 2026-08-09: token SPANS place every extra catch inside a string/template/comment; the real-code regions have 2 catches, both handled; 0 real swallows. The 462 to 0 claim held. The re-check that called it a lie was itself the error — worsened by a backtick-parity heuristic that shell command-substitution backticks inside the generated scripts defeated.",
+   "tell": "A raw-text (grep/rg) structural count that disagrees with the parser, on a file that builds strings of code. A parity/brace/quote heuristic applied to a file containing generated shell or JS. Alarm rising faster than verification.",
+   "correct": "Classify each raw match by the parser token SPAN it falls in (string/template/comment vs real code) before trusting it — token spans are reliable even when the tokenizer.line labels drift. scripts/silent-catch-ratchet.js --verify does exactly this and shows its work. Never trust raw grep over token spans for structural claims about code that generates code; never trust backtick/quote parity on a file that emits shell."
   }
  ]
 }

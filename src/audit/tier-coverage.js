@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Tier-coverage check — architectural self-similarity enforcement.
@@ -298,7 +299,7 @@ function checkFile(filePath, options = {}) {
   try {
     const { registerTierCoverageSignal } = require('../unified/emergent-coherency');
     registerTierCoverageSignal(touched.length, totalTiers);
-  } catch { /* emergent module not available */ }
+  } catch (_e) { quiet('audit:tier-coverage:registerTierCoverageSignal', _e); /* emergent module not available */ }
 
   // If the file meets the coverage minimum, it passes.
   if (touched.length >= minCoverage) {

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * MCP Feedback Tracker — auto-infers feedback from tool usage patterns.
@@ -35,7 +36,7 @@ function inferFeedbackFromActivity(oracle) {
       try {
         oracle.feedback(id, true); // infer success
         inferred.push({ id, name: info.name, decision: info.decision });
-      } catch (e) { /* non-fatal */ }
+      } catch (e) { quiet('mcp:feedback-tracker:inferFeedbackFromActivity', e); /* non-fatal */ }
     }
   }
   _pendingPulls.clear();

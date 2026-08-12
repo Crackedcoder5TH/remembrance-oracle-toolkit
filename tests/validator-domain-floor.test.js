@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -69,9 +68,15 @@ describe('validator — domain floor → LRE field contribution', () => {
 
     validateCode(GOOD_CODE, { language: 'javascript', domain: 'security' });
 
+    // Provenance purge 2026-08-09: the validation event rides recordCost
+    // with the verdict in the source bucket (validator:domain:security:valid
+    // / :rejected) — no heuristic score and no invented zero enters the
+    // coherence channel.
     const after = peekField();
-    const newKey = 'validator:domain:security';
-    assert.ok(after.sources[newKey] || beforeKeys.has(newKey), 'expected validator:domain:security in histogram');
+    const bucketed = Object.keys(after.sources || {})
+      .some((k) => k.startsWith('validator:domain:security:'));
+    const hadBucketed = [...beforeKeys].some((k) => k.startsWith('validator:domain:security:'));
+    assert.ok(bucketed || hadBucketed, 'expected validator:domain:security:<verdict> in histogram');
   });
 
   it('emits an additional ratchet event when floor lifts the threshold', () => {

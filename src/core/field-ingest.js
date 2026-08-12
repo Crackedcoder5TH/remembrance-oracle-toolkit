@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * field-ingest — pull the existing ecosystem INTO the field.
@@ -50,7 +51,8 @@ function _contribute() {
 function ingestPatterns(store, opts = {}) {
   const report = { total: 0, encoded: 0, contributed: 0, skipped: 0 };
   if (!store || !store.db) return report;
-  const contribute = _contribute();
+  let contribute = null;
+  try { ({ recordCost: contribute } = require('./field-coupling')); } catch (_) { quiet('core:field-ingest:require', _); /* best-effort */ }
   try {
     let sql = 'SELECT id, name, code, language, coherency_total, coherency_json FROM patterns';
     if (opts.limit) sql += ` LIMIT ${Math.max(1, parseInt(opts.limit, 10))}`;
@@ -75,22 +77,24 @@ function ingestPatterns(store, opts = {}) {
           report.encoded += 1;
         }
 
-        // Contribute the pattern to the field. coherency_total is the
-        // pattern's own measured coherency — its standing in the field.
-        // Grouped source (library:<language>) keeps the histogram a
-        // bounded compass even at 80k+ patterns; per-pattern granularity
-        // lives in the field-memory mesh, not the histogram.
+        // Count the pattern into the field as an ingestion event. The
+        // stored coherency_total is the submit-time heuristic aggregate
+        // with an invented ||0 fallback — not a compressor reading — so
+        // it left the coherence channel (provenance purge 2026-08-09).
+        // A pattern's lawful coherency enters at its witness/replay
+        // doorway, where the compressor read its bytes. Grouped source
+        // (library:<language>) keeps the histogram a bounded compass.
         if (contribute) {
           contribute({
-            cost: 1,
-            coherence: Math.max(0, Math.min(1, Number(p.coherency_total) || 0)),
+            units: 1,
+            kind: 'ingestion',
             source: `library:${p.language || 'unknown'}`,
           });
           report.contributed += 1;
         }
-      } catch (_) { /* one pattern failing never aborts the pass */ }
+      } catch (_) { quiet('core:field-ingest:contribute', _); /* one pattern failing never aborts the pass */ }
     }
-  } catch (_) { /* store unreadable — return what we have */ }
+  } catch (_) { quiet('core:field-ingest:contribute', _); /* store unreadable — return what we have */ }
   return report;
 }
 
@@ -103,17 +107,24 @@ function ingestPatterns(store, opts = {}) {
  */
 function ingestConstants() {
   const report = { total: 0, contributed: 0 };
-  const contribute = _contribute();
-  if (!contribute) return report;
+  let recordCost = null;
+  try { ({ recordCost } = require('./field-coupling')); } catch (_) { quiet('core:field-ingest:require', _); /* best-effort */ }
+  if (!recordCost) return report;
 
   const buckets = [];
-  try { buckets.push(['thresholds', require('../constants/thresholds')]); } catch (_) { /* skip */ }
-  try { buckets.push(['quantum', require('../quantum/quantum-core')]); } catch (_) { /* skip */ }
+  try { buckets.push(['thresholds', require('../constants/thresholds')]); } catch (_) { quiet('core:field-ingest:require', _); /* skip */ }
+  try { buckets.push(['quantum', require('../quantum/quantum-core')]); } catch (_) { quiet('core:field-ingest:require', _); /* skip */ }
 
   // Flatten: walk each module's exports, emit one observation per number.
-  // Source is grouped at the module level (constant:<module>) — the
-  // histogram stays a bounded compass; each constant's value still
-  // enters the field (moves coherence, is counted).
+  // Source is grouped at the module level (constant:<module>) so the
+  // histogram stays a bounded compass.
+  //
+  // PROVENANCE (2026-08-09): a declared constant is a DECLARATION, not a
+  // measurement — no compressor ever emitted it, so its value no longer
+  // enters the coherence channel. Each constant is counted as a
+  // declaration event through recordCost (which passes through the
+  // field's own coherence — nothing invented); the census memory the
+  // histogram carries is unchanged.
   const walk = (prefix, obj, depth) => {
     if (depth > 3 || obj == null) return;
     const moduleKey = prefix.split(':')[0];
@@ -121,13 +132,9 @@ function ingestConstants() {
       if (typeof val === 'number' && isFinite(val)) {
         report.total += 1;
         try {
-          contribute({
-            cost: 1,
-            coherence: Math.max(0, Math.min(1, val)),
-            source: `constant:${moduleKey}`,
-          });
+          recordCost({ units: 1, source: `constant:${moduleKey}`, kind: 'declaration' });
           report.contributed += 1;
-        } catch (_) { /* best-effort */ }
+        } catch (_) { quiet('core:field-ingest:recordCost', _); /* best-effort */ }
       } else if (val && typeof val === 'object' && !Array.isArray(val)) {
         walk(`${prefix}:${key}`, val, depth + 1);
       }

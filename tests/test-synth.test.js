@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -18,11 +17,11 @@ const {
 } = require('../src/evolution/test-synth');
 const { RemembranceOracle } = require('../src/api/oracle');
 
-function makeTempDir() {
+const makeTempDir = () => {
   const dir = path.join(os.tmpdir(), `synth-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
-}
+};
 
 describe('Test Synthesizer', () => {
   describe('extractSignature', () => {

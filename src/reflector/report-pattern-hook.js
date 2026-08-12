@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Remembrance Reflector BOT — Pattern Hook Sub-Module
  *
@@ -124,12 +125,12 @@ function queryPatternsForFile(code, filePath, options = {}) {
       const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
       for (const __p of [__lre_p1, __lre_p2]) {
         try {
-          const { contribute: __contribute } = require(__p);
-          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency)), source: 'oracle:report-pattern-hook:queryPatternsForFile' });
+          const { recordCost: __recordCost } = require(__p);
+          __recordCost({ units: 1, kind: 'work', source: 'oracle:report-pattern-hook:queryPatternsForFile' });
           break;
-        } catch (_) { /* try next */ }
+        } catch (_) { quiet('reflector:report-pattern-hook:__recordCost', _); /* try next */ }
       }
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('reflector:report-pattern-hook:__recordCost', _); /* best-effort */ }
     return __retVal;
   })
     .filter(s => s.relevance >= minScore)

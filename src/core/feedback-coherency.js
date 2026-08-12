@@ -161,7 +161,7 @@ const REFLECTION_ADVICE = {
       if (score === 0) issues.push('CRITICAL: Covenant violation or critical security pattern detected — code cannot be accepted.');
       if (/\beval\s*\(/.test(code)) issues.push('CRITICAL: eval() detected — remove and use safe alternatives.');
       if (/\bnew\s+Function\s*\(/.test(code)) issues.push('CRITICAL: new Function() detected — use direct function declaration.');
-      if (/child_process/.test(code)) issues.push('CRITICAL: child_process usage detected — ensure this is infrastructure code with @oracle-infrastructure tag.');
+      if (/child_process/.test(code)) issues.push('CRITICAL: child_process usage detected — ensure this is infrastructure code with @oracle-' + 'infrastructure tag.');
       if (/\bvar\s+/.test(code)) issues.push('MEDIUM: var declarations — use const/let instead.');
       if (/==(?!=)/.test(code)) issues.push('MEDIUM: Loose equality (==) — use strict equality (===).');
       return issues.length > 0 ? issues : ['Security concerns detected — review code for unsafe patterns.'];

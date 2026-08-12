@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Work-queue poller — turns a node into a worker.
@@ -34,7 +35,7 @@ function _resolveNodeId() {
   try {
     const id = require('./entangle').status().nodeId; // share one node identity
     if (id) { _nodeId = id; return _nodeId; }
-  } catch (_) { /* fall through */ }
+  } catch (_) { quiet('core:field-workqueue-poller:require', _); /* fall through */ }
   const os = require('os');
   const crypto = require('crypto');
   _nodeId = crypto.createHash('sha256')
@@ -85,7 +86,7 @@ async function _tick() {
       catch (e) { result = { error: `executor failed: ${e.message}` }; }
     }
     wq.submitResult(item.id, _resolveNodeId(), result);
-  } catch (_) {
+  } catch (_) { quiet('core:field-workqueue-poller:_resolveNodeId', _);
     /* best-effort — a poll failure never crashes the host */
   } finally {
     _busy = false;
@@ -100,6 +101,11 @@ function engage(opts = {}) {
     ? opts.intervalMs : POLL_INTERVAL_MS;
   _timer = setInterval(() => { _tick(); }, interval);
   if (_timer.unref) _timer.unref();
+  // Hand the queue our nudge so offload() can wake us the moment work is
+  // posted, instead of the queue requiring this module by name (which made
+  // the two require each other). Registered for exactly the engaged
+  // lifetime — which is also when _tick() stops being a no-op.
+  try { wq.setNudge(_tick); } catch (_) { quiet('core:field-workqueue-poller:setNudge', _); /* nudge optional */ }
   return { engaged: true, nodeId: _resolveNodeId(), intervalMs: interval };
 }
 
@@ -107,6 +113,7 @@ function engage(opts = {}) {
 function disengage() {
   if (_timer) { clearInterval(_timer); _timer = null; }
   _engaged = false;
+  try { wq.setNudge(null); } catch (_) { quiet('core:field-workqueue-poller:setNudge', _); /* nudge optional */ }
   return { engaged: false };
 }
 

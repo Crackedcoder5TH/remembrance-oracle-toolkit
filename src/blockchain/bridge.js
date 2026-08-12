@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Blockchain Bridge — connects oracle-toolkit to REMEMBRANCE-BLOCKCHAIN.
  * Resolves the blockchain publisher from multiple possible locations.
@@ -36,7 +37,7 @@ function resolveBlockchainRoot() {
       if (fs.existsSync(publisherPath) || fs.existsSync(publisherPath + '.js')) {
         return candidate;
       }
-    } catch (_) {
+    } catch (_) { quiet('blockchain:bridge:resolveBlockchainRoot', _);
       // skip inaccessible paths
     }
   }

@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for src/quality/planner.js — stage 1 of the anti-hallucination
@@ -18,11 +18,11 @@ const os = require('os');
 
 const { planFromIntent, verifySymbol, scanForDefinition } = require('../src/quality/planner');
 
-function makeTempRepo() {
+const makeTempRepo = () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'planner-test-'));
   fs.mkdirSync(path.join(root, 'src'), { recursive: true });
   return root;
-}
+};
 
 describe('verifySymbol — tier 1 (built-ins)', () => {
   it('classifies JS built-ins as status=builtin', () => {
@@ -111,7 +111,7 @@ describe('verifySymbol — tier 4 (repo scan)', () => {
   it('finds function declarations via grep-style scan', () => {
     const root = makeTempRepo();
     try {
-      fs.writeFileSync(path.join(root, 'src', 'helpers.js'),
+      writeFixture(path.join(root, 'src', 'helpers.js'),
         'function thingWeNeed(x) { return x + 1; }\nmodule.exports = { thingWeNeed };');
       const r = verifySymbol('thingWeNeed', {
         knownIdentifiers: new Set(),
@@ -120,35 +120,35 @@ describe('verifySymbol — tier 4 (repo scan)', () => {
       assert.equal(r.status, 'found');
       assert.equal(r.source, 'repo scan');
       assert.ok(r.evidence.file.includes('helpers.js'));
-    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    } finally { rmFixture(root, { recursive: true, force: true }); }
   });
 
   it('finds const/let/var bindings', () => {
     const root = makeTempRepo();
     try {
-      fs.writeFileSync(path.join(root, 'src', 'lib.js'),
+      writeFixture(path.join(root, 'src', 'lib.js'),
         'const coolThing = (x) => x * 2;\nmodule.exports = { coolThing };');
       const r = verifySymbol('coolThing', { knownIdentifiers: new Set(), repoRoot: root });
       assert.equal(r.status, 'found');
-    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    } finally { rmFixture(root, { recursive: true, force: true }); }
   });
 
   it('finds class declarations', () => {
     const root = makeTempRepo();
     try {
-      fs.writeFileSync(path.join(root, 'src', 'svc.js'), 'class MyService {}');
+      writeFixture(path.join(root, 'src', 'svc.js'), 'class MyService {}');
       const r = verifySymbol('MyService', { knownIdentifiers: new Set(), repoRoot: root });
       assert.equal(r.status, 'found');
-    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    } finally { rmFixture(root, { recursive: true, force: true }); }
   });
 
   it('returns missing when no definition exists anywhere', () => {
     const root = makeTempRepo();
     try {
-      fs.writeFileSync(path.join(root, 'src', 'other.js'), 'const unrelated = 1;');
+      writeFixture(path.join(root, 'src', 'other.js'), 'const unrelated = 1;');
       const r = verifySymbol('totallyFabricated', { knownIdentifiers: new Set(), repoRoot: root });
       assert.equal(r.status, 'missing');
-    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    } finally { rmFixture(root, { recursive: true, force: true }); }
   });
 });
 
@@ -183,7 +183,7 @@ describe('planFromIntent — integration', () => {
   it('includes summary.byStatus breakdown of verified symbols', () => {
     const root = makeTempRepo();
     try {
-      fs.writeFileSync(path.join(root, 'src', 'h.js'), 'function localThing() {}');
+      writeFixture(path.join(root, 'src', 'h.js'), 'function localThing() {}');
       const plan = planFromIntent({
         intent: 'mixed tiers',
         symbols: ['parseInt', 'localThing', 'fabricated'],
@@ -192,7 +192,7 @@ describe('planFromIntent — integration', () => {
       assert.equal(plan.summary.byStatus.builtin, 1);
       assert.equal(plan.summary.byStatus.found, 1);
       assert.equal(plan.missing.length, 1);
-    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    } finally { rmFixture(root, { recursive: true, force: true }); }
   });
 });
 
@@ -207,13 +207,13 @@ describe('scanForDefinition', () => {
     try {
       // Write 3 files, only look at first 1
       for (let i = 0; i < 3; i++) {
-        fs.writeFileSync(path.join(root, 'src', `f${i}.js`), `function foo${i}() {}`);
+        writeFixture(path.join(root, 'src', `f${i}.js`), `function foo${i}() {}`);
       }
       // Budget 1 file — will only find foo0 or similar, should NOT find foo2
       // (ordering is directory-order dependent; this is a weak test)
       const r = scanForDefinition(path.join(root, 'src'), 'foo2', 1);
       // Either found foo2 (if it was the first scanned) or returned null
       assert.ok(r === null || r.file.includes('f2.js'));
-    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+    } finally { rmFixture(root, { recursive: true, force: true }); }
   });
 });

@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { mkdirSync, rmSync, existsSync, readFileSync } = require('fs');
@@ -20,13 +19,13 @@ const {
 
 // ─── Helpers ───
 
-function createTmpDir() {
+const createTmpDir = () => {
   const dir = join(tmpdir(), `history-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir, { recursive: true });
   return dir;
-}
+};
 
-function makeMockReport(avgCoherence, filesHealed, improvement) {
+const makeMockReport = (avgCoherence, filesHealed, improvement) => {
   return {
     snapshot: {
       totalFiles: 10,
@@ -56,7 +55,7 @@ function makeMockReport(avgCoherence, filesHealed, improvement) {
       overallHealth: avgCoherence >= 0.8 ? 'healthy' : 'stable',
     },
   };
-}
+};
 
 // ─── History Storage Tests ───
 

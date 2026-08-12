@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 /**
  * pattern-detectors-wiring.test.js — the ten audit-pattern detectors must

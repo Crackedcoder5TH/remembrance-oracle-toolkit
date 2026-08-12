@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const {
@@ -13,17 +12,17 @@ const {
 
 // ─── Mock helpers ───
 
-function mockReq(headers = {}, url = '/api/test') {
+const mockReq = (headers = {}, url = '/api/test') => {
   return { headers, url };
-}
+};
 
-function mockRes() {
+const mockRes = () => {
   const res = { statusCode: 200, headers: {}, body: '' };
   res.setHeader = (k, v) => { res.headers[k] = v; };
   res.writeHead = (code) => { res.statusCode = code; };
   res.end = (body) => { res.body = body; };
   return res;
-}
+};
 
 // ─── AuthManager ───
 

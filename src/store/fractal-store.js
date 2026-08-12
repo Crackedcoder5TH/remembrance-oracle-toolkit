@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * FractalStore — Storage middleware that wraps SQLiteStore with automatic
@@ -147,7 +148,7 @@ class FractalStore {
       this._sqlite.db.exec('RELEASE remove_pattern');
       return true;
     } catch (e) {
-      try { this._sqlite.db.exec('ROLLBACK TO remove_pattern'); } catch (_) {}
+      try { this._sqlite.db.exec('ROLLBACK TO remove_pattern'); } catch (_) { quiet('store:fractal-store:constructor', _);}
       throw e;
     }
   }

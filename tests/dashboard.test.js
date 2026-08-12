@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
@@ -8,7 +8,7 @@ const path = require('path');
 const { createDashboardServer, getDashboardHTML } = require('../src/dashboard/server');
 const { RemembranceOracle } = require('../src/api/oracle');
 
-function fetch(url) {
+const fetch = (url) => {
   return new Promise((resolve, reject) => {
     http.get(url, (res) => {
       let data = '';
@@ -16,7 +16,7 @@ function fetch(url) {
       res.on('end', () => resolve({ status: res.statusCode, data, headers: res.headers }));
     }).on('error', reject);
   });
-}
+};
 
 describe('Dashboard', () => {
   let server;
@@ -32,7 +32,7 @@ describe('Dashboard', () => {
       if (server.wsServer) server.wsServer.close?.();
       server.close();
     }
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('starts server and serves HTML', async () => {
@@ -136,7 +136,7 @@ describe('Dashboard server features', () => {
       if (server.wsServer) server.wsServer.close?.();
       server.close();
     }
-    fs.rmSync(tmpDir2, { recursive: true, force: true });
+    rmFixture(tmpDir2, { recursive: true, force: true });
   });
 
   it('has broadcast method', () => {

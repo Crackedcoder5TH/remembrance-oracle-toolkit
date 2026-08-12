@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Pattern Insights — Deep analytics for the pattern library.
  *
@@ -231,12 +232,12 @@ function stalePatterns(oracle, maxDays = 90, limit = 20) {
       require('path').join(__dirname, '../core/field-coupling')];
     for (const __p of __lre_enginePaths) {
       try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency)), source: 'oracle:insights:stalePatterns' });
+        const { recordCost: __recordCost } = require(__p);
+        __recordCost({ units: 1, kind: 'work', source: 'oracle:insights:stalePatterns' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('analytics:insights:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('analytics:insights:__recordCost', _); /* best-effort */ }
       return __retVal;
     })
     .filter(p => p.isStale)

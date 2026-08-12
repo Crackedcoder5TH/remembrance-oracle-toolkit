@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Self-Referential Prevention Pattern
  *
@@ -20,7 +19,7 @@
  * before scanning for harmful keywords. This prevents false positives
  * from keywords appearing in documentation or string definitions.
  */
-function stripNonExecutableContent(code) {
+const stripNonExecutableContent = (code) => {
   let stripped = code;
   stripped = stripped.replace(/\/\/.*$/gm, '');
   stripped = stripped.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -28,43 +27,43 @@ function stripNonExecutableContent(code) {
   stripped = stripped.replace(/'(?:[^'\\]|\\.)*'/g, "''");
   stripped = stripped.replace(/"(?:[^"\\]|\\.)*"/g, '""');
   return stripped;
-}
+};
 
 /**
  * Build a keyword detection pattern at runtime.
  * Keywords are split so they never appear contiguously in source.
  */
-function buildKeywordPattern(splitTerms) {
+const buildKeywordPattern = (splitTerms) => {
   const terms = splitTerms.map(parts => parts.join(''));
   return new RegExp('\\b(' + terms.join('|') + ')\\b', 'i');
-}
+};
 
 /**
  * Build a pattern that references module names at runtime.
  * Prevents the module name from appearing as a contiguous string.
  */
-function buildModulePattern(moduleParts, restPattern) {
+const buildModulePattern = (moduleParts, restPattern) => {
   const moduleName = moduleParts.join('');
   return new RegExp(moduleName + restPattern, 'i');
-}
+};
 
 /**
  * Build a marker detection regex (for completeness checking).
  * Marker words are split to avoid self-detection.
  */
-function buildMarkerRegex(splitMarkers) {
+const buildMarkerRegex = (splitMarkers) => {
   const markers = splitMarkers.map(parts => parts.join(''));
   return new RegExp('\\b(' + markers.join('|') + ')\\b');
-}
+};
 
 /**
  * Build a language detection regex at runtime.
  * Prevents language keywords from being detected in the scanner's own source.
  */
-function buildLanguageDetector(langName, splitPatterns) {
+const buildLanguageDetector = (langName, splitPatterns) => {
   const patterns = splitPatterns.map(parts => parts.join(''));
   return new RegExp(patterns.join('|'));
-}
+};
 
 module.exports = {
   stripNonExecutableContent,

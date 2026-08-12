@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * @oracle-infrastructure — internal schema migration on a FIXED table
@@ -384,7 +385,7 @@ class QuantumField {
             .run(updated, now, linkedId);
           propagated++;
           break; // Found in this table, skip remaining tables
-        } catch (e) {
+        } catch (e) { quiet('quantum:quantum-field:safeParse', e);
           // Table might not exist or column might be missing — skip
         }
       }
@@ -462,23 +463,27 @@ class QuantumField {
     //     reflects post-sweep amplitude (drift correlates with aging).
     // Both best-effort — sweep results never fail because field is down.
     try {
-      const { contribute } = require('../core/field-coupling');
+      // PROVENANCE (2026-08-09): avgAmplitude was both an AVERAGE and a
+      // quantum-layer number no compressor ever emitted — a double
+      // violation (no-averaging law + provenance law). The sweeps are
+      // maintenance WORK sized by what they touched; the amplitudes stay
+      // in the sweep report.
+      const { recordCost } = require('../core/field-coupling');
       if (amplitudeCount > 0) {
-        const avgAmplitude = amplitudeSum / amplitudeCount;
-        contribute({
-          cost: amplitudeCount,
-          coherence: avgAmplitude,
+        recordCost({
+          units: amplitudeCount,
+          kind: 'maintenance',
           source: 'quantum:decoherence-sweep',
         });
         if ((report.totalPhaseDrifted || 0) > 0) {
-          contribute({
-            cost: report.totalPhaseDrifted,
-            coherence: avgAmplitude,
+          recordCost({
+            units: report.totalPhaseDrifted,
+            kind: 'maintenance',
             source: 'quantum:phase-drift-sweep',
           });
         }
       }
-    } catch (_) { /* best-effort */ }
+    } catch (_) { quiet('quantum:quantum-field:recordCost', _); /* best-effort */ }
 
     return report;
   }
@@ -645,7 +650,7 @@ class QuantumField {
             walk(linkedId, currentDepth + 1);
           }
           break; // Found in this table
-        } catch (e) { /* table might not have the right columns yet */ }
+        } catch (e) { quiet('quantum:quantum-field:walk', e); /* table might not have the right columns yet */ }
       }
     };
 

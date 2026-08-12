@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * decoder-stack.js — registry + depth-aware composer for the
@@ -195,7 +196,7 @@ function composedAtDepth(input, depth) {
   // minted at output time binds the digest of every vector this stack
   // produced, so numbers derived from unsealed reads cannot be reported as
   // substrate reads. (Harvested from the audit-remembrance-ecosystem branch.)
-  try { require('./void-seal').record(out, k); } catch (_) { /* seal module absent: engine-only */ }
+  try { require('./void-seal').record(out, k); } catch (_) { quiet('core:decoder-stack:require', _); /* seal module absent: engine-only */ }
   return out;
 }
 

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -158,7 +159,7 @@ function readDebugPatterns(oracle) {
   // Try oracle.debug.getAll()
   const debug = oracle.debug || oracle.debugOracle || null;
   if (debug && typeof debug.getAll === 'function') {
-    try { return debug.getAll() || []; } catch { /* ignore */ }
+    try { return debug.getAll() || []; } catch (_e) { quiet('audit:prior-promoter:readDebugPatterns', _e); /* ignore */ }
   }
   // Try oracle.store-backed sqlite directly
   try {
@@ -166,7 +167,7 @@ function readDebugPatterns(oracle) {
     if (sqliteStore && typeof sqliteStore.getAllDebugPatterns === 'function') {
       return sqliteStore.getAllDebugPatterns() || [];
     }
-  } catch { /* ignore */ }
+  } catch (_e) { quiet('audit:prior-promoter:readDebugPatterns', _e); /* ignore */ }
   return [];
 }
 

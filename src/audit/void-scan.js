@@ -120,12 +120,27 @@ async function voidScanFile(filePath, options = {}) {
   const sorted = windows.slice().sort((a, b) => a.coherence - b.coherence);
   const candidates = sorted.slice(0, topN);
 
+  // Opt-in hidden-identifier pass (wired 2026-08-08, wire-later ledger):
+  // void-indirection's detector compresses identifier-substituted variants
+  // through a subprocess — heavy (up to 30s), so it runs only when the
+  // caller asks via options.hiddenIdentifiers.
+  let hiddenIdentifiers = null;
+  if (options.hiddenIdentifiers) {
+    try {
+      const { detectHiddenIdentifiers } = require('./void-indirection');
+      hiddenIdentifiers = detectHiddenIdentifiers(source, options);
+    } catch (e) {
+      hiddenIdentifiers = { error: e.message };
+    }
+  }
+
   return {
     file: filePath,
     totalLines: lines.length,
     windowsScored: windows.length,
     windows,
     candidates,
+    ...(hiddenIdentifiers ? { hiddenIdentifiers } : {}),
   };
 }
 

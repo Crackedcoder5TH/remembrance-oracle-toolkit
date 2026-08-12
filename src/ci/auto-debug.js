@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Auto-Debug Module — Automatic debug pattern capture and healed code forwarding.
  *
@@ -62,7 +63,7 @@ function captureResolveDebug(oracle, resolveResult, request = {}) {
         // Mark it as already resolved once (the healing itself is proof)
         try {
           debug.reportOutcome(result.pattern.id, true);
-        } catch (_) { /* best effort */ }
+        } catch (_) { quiet('ci:auto-debug:captureResolveDebug', _); /* best effort */ }
       }
     }
 
@@ -114,16 +115,23 @@ function captureFeedbackDebug(oracle, id, entry, healResult) {
     const code = entry?.code || '';
     const language = entry?.language || 'javascript';
 
-    // Capture the failure as a debug pattern
+    // Capture the failure as a debug pattern. classifyDebugFix (wired
+    // 2026-08-08, wire-later ledger) tags the capture with its bug class
+    // so downstream cross-referencing can group by failure species.
     if (code) {
       const errorMessage = `Pattern "${name}" reported as failing (id: ${id})`;
+      let bugClassTag = null;
+      try {
+        const { classifyDebugFix } = require('../audit/resolve-hook');
+        bugClassTag = classifyDebugFix({ errorMessage, fixCode: code });
+      } catch (_) { quiet('ci:auto-debug:classifyDebugFix', _); /* classification is best-effort */ }
       const captureResult = debug.capture({
         errorMessage,
         stackTrace: '',
         fixCode: code,
         fixDescription: `Original code from failed pattern "${name}" — needs investigation or healing`,
         language,
-        tags: ['auto-debug', 'feedback-failure'],
+        tags: ['auto-debug', 'feedback-failure'].concat(bugClassTag ? [bugClassTag] : []),
       });
 
       if (captureResult.captured) {
@@ -150,7 +158,7 @@ function captureFeedbackDebug(oracle, id, entry, healResult) {
           // Mark as resolved since healing proved it works
           try {
             debug.reportOutcome(forwardResult.pattern.id, true);
-          } catch (_) { /* best effort */ }
+          } catch (_) { quiet('ci:auto-debug:classifyDebugFix', _); /* best effort */ }
         }
       }
     }

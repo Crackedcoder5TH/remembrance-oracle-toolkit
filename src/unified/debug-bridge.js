@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Debug Bridge — connects debug patterns and main patterns.
@@ -255,7 +256,7 @@ function _findExistingPattern(oracle, code, language) {
       const sim = jaccardSimilarity(code || '', p.code || '');
       if (sim > 0.9) return p;
     }
-  } catch (_) { /* similarity module not available */ }
+  } catch (_) { quiet('unified:debug-bridge:jaccardSimilarity', _); /* similarity module not available */ }
   return null;
 }
 

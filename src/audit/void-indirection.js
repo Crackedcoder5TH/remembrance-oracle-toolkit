@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -123,7 +124,7 @@ function measureRatio(content, options = {}) {
       if (fs.existsSync(tmpFile)) {
         fs.unlinkSync(tmpFile);
       }
-    } catch (_) {
+    } catch (_) { quiet('audit:void-indirection:parseFloat', _);
       // Ignore cleanup errors
     }
   }

@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -15,12 +14,12 @@ const {
 const { SQLiteStore, DatabaseSync } = require('../src/store/sqlite');
 const { makeTempDir } = require('./helpers');
 
-function createStore(label) {
+const createStore = (label) => {
   const base = makeTempDir(label);
   return new SQLiteStore(base);
-}
+};
 
-function addPattern(store, name, opts = {}) {
+const addPattern = (store, name, opts = {}) => {
   store.addPattern({
     name,
     code: opts.code || `function ${name.replace(/[^a-zA-Z0-9]/g, '_')}() { return 1; }`,
@@ -30,9 +29,9 @@ function addPattern(store, name, opts = {}) {
     testCode: opts.testCode || null,
     patternType: opts.patternType || 'utility',
   });
-}
+};
 
-function addCandidate(store, name, opts = {}) {
+const addCandidate = (store, name, opts = {}) => {
   const crypto = require('crypto');
   const id = opts.id || crypto.randomUUID().replace(/-/g, '').slice(0, 16);
   const now = new Date().toISOString();
@@ -48,9 +47,9 @@ function addCandidate(store, name, opts = {}) {
     null, 'variant', opts.promoted_at || null, now, now
   );
   return id;
-}
+};
 
-function ensureCandidatesTable(store) {
+const ensureCandidatesTable = (store) => {
   store.db.exec(`
     CREATE TABLE IF NOT EXISTS candidates (
       id TEXT PRIMARY KEY,
@@ -71,9 +70,9 @@ function ensureCandidatesTable(store) {
       updated_at TEXT NOT NULL
     )
   `);
-}
+};
 
-function ensureArchiveTable(store) {
+const ensureArchiveTable = (store) => {
   store.db.exec(`
     CREATE TABLE IF NOT EXISTS pattern_archive (
       id TEXT NOT NULL,
@@ -91,7 +90,7 @@ function ensureArchiveTable(store) {
       full_row_json TEXT
     )
   `);
-}
+};
 
 describe('Storage Tier Audit', () => {
   if (!DatabaseSync) {

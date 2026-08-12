@@ -1,3 +1,4 @@
+const { quiet } = require('./quiet');
 /**
  * Reflection Loop — the iterative refinement engine.
  * Generates candidates, scores them, selects winners, and repeats.
@@ -265,12 +266,14 @@ function reflectionLoop(code, options = {}) {
   const iAmValues = history.map(h => h.coherence);
   const iAmAverage = iAmValues.reduce((s, v) => s + v, 0) / iAmValues.length;
 
-  // Contribute this reflection to the LivingRemembranceEngine field.
-  // cost = loops (work units), coherence = final composite (alignment).
+  // Field: the reflection loops are WORK. The composite is a scorer
+  // aggregate, not a compressor reading, so it left the coherence channel
+  // (provenance purge 2026-08-09) — the reflection scorers already feed
+  // their lawful void:compress_signal readings per dimension.
   try {
-    const { contribute } = require('./field-coupling');
-    contribute({ cost: loops, coherence: current.coherence, source: 'reflect' });
-  } catch (_) { /* field unavailable — best-effort */ }
+    const { recordCost } = require('./field-coupling');
+    recordCost({ units: loops, kind: 'work', source: 'reflect' });
+  } catch (_) { quiet('core:reflection-loop:recordCost', _); /* field unavailable — best-effort */ }
 
   return {
     code: current.code, coherence: current.coherence, fullCoherency: current.fullCoherency,

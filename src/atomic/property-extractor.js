@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Atomic Property Extractor — analyzes code and produces atomic
@@ -48,9 +49,9 @@ function extractAtomicProperties(code, options = {}) {
         // here as a comment because the weighting was a considered choice worth
         // preserving if it is ever wanted under its own name.
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('atomic:property-extractor:require', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('atomic:property-extractor:require', _); /* best-effort */ }
   return __retVal;
 }
 

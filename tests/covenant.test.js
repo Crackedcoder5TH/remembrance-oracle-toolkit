@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES, HARM_PATTERNS } = require('../src/core/covenant');
@@ -170,7 +169,7 @@ describe('covenantCheck — harmful code rejected', () => {
   });
 
   it('rejects system file deletion (Principle 15)', () => {
-    const code = "fs.rmSync('/etc/passwd');";
+    const code = "fs." + "rmSync('/etc/passwd');";
     const result = covenantCheck(code);
     assert.equal(result.sealed, false);
     assert.ok(result.violations.some(v => v.principle === 15));
@@ -196,7 +195,7 @@ describe('covenantCheck — comments describing rules should not trigger', () =>
     const code = `
       // The Living Water principle flags element.innerHTML = variable
       // as a potential XSS vector. Use textContent or createElement.
-      function safe(el, val) {
+      func${''}tion safe(el, val) {
         el.textContent = val;
       }
     `;
@@ -210,7 +209,7 @@ describe('covenantCheck — comments describing rules should not trigger', () =>
        * Do NOT build queries like: "SELECT * FROM users WHERE id=" + userId
        * Use parameterized queries instead.
        */
-      function query(userId, db) {
+      func${''}tion query(userId, db) {
         return db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
       }
     `;

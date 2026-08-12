@@ -1,7 +1,7 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
- * @oracle-infrastructure — this file IS the security detector. It must contain
  * the very patterns it looks for: SQL keywords adjacent to interpolation, exec
  * with template arguments, secret-comparison shapes. The covenant scanner
  * matches across line boundaries, so those detector regexes read as the
@@ -203,6 +203,7 @@ function literalOnlyIdents(code) {
   }
   return lits;
 }
+literalOnlyIdents.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Does this text guard `v` against null?
@@ -236,12 +237,14 @@ function assignmentNeutralisesNull(line, v) {
   if (new RegExp(`\\b${e}\\s*=[^=].*\\)\\s*!\\s*;?\\s*$`).test(line)) return true;  // TS non-null assertion
   return false;
 }
+assignmentNeutralisesNull.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // A `.has(key)` immediately before a `.get(key)` is the idiomatic guard.
 function precededByHasCheck(lines, i) {
   const win = lines.slice(Math.max(0, i - 3), i + 1).join('\n');
   return /\.\s*has\s*\(/.test(win);
 }
+precededByHasCheck.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function guardsVar(text, v) {
   const e = String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -257,6 +260,7 @@ function guardsVar(text, v) {
     + `|\\bexpect\\s*\\(\\s*${e}\\s*\\)`,
   ).test(text);
 }
+guardsVar.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function checkSecurity(code, lines) {
   const findings = [];
@@ -814,7 +818,7 @@ function auditCode(code, options = {}) {
   try {
     const { registerAuditSignal } = require('../unified/emergent-coherency');
     registerAuditSignal(findings.length);
-  } catch { /* emergent module not available — no-op */ }
+  } catch (_e) { quiet('audit:static-checkers:registerAuditSignal', _e); /* emergent module not available — no-op */ }
 
   return {
     findings,

@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * Oracle Patterns — Diff, import, and export.
  */
@@ -38,12 +39,12 @@ module.exports = {
       require('path').join(__dirname, '../core/field-coupling')];
     for (const __p of __lre_enginePaths) {
       try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, (Number(__retVal.b && __retVal.b.coherency)))), source: 'oracle:oracle-patterns-export:diff' });
+        const { recordCost: __recordCost } = require(__p);
+        __recordCost({ units: 1, kind: 'work', source: 'oracle:oracle-patterns-export:diff' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('api:oracle-patterns-export:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('api:oracle-patterns-export:__recordCost', _); /* best-effort */ }
     return __retVal;
   },
 

@@ -1,3 +1,4 @@
+const { quiet } = require('./quiet');
 /**
  * Reflection Dimension Scorers — Hybrid Coherency Formula.
  *
@@ -647,7 +648,7 @@ function observeCoherence(code, metadata = {}) {
         source: 'void:compress_signal:reflection-scorer',
       });
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:reflection-scorers:contribute', _); /* best-effort */ }
 
   // Classify into acceptance zones — three-tier decision
   let zone;

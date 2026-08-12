@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 /**
  * Verifies the case-mismatch fallback in `gh()`: on 404, the helper resolves
@@ -26,7 +25,7 @@ describe('ecosystem-sweep — canonical repo casing recovery', () => {
     originalFetch = global.fetch;
   });
 
-  function installFakeFetch(routes) {
+  const installFakeFetch = (routes) => {
     global.fetch = async (url, opts = {}) => {
       calls.push({ url, method: opts.method || 'GET' });
       const u = new URL(url);
@@ -34,9 +33,9 @@ describe('ecosystem-sweep — canonical repo casing recovery', () => {
       if (!handler) return { ok: false, status: 404, json: async () => ({}), text: async () => 'no route' };
       return handler();
     };
-  }
+  };
 
-  function restoreFetch() { global.fetch = originalFetch; }
+  const restoreFetch = () => { global.fetch = originalFetch; };
 
   it('returns data without retry when the path is already canonical', async () => {
     installFakeFetch({

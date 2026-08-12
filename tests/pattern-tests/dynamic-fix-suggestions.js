@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 /**
  * Dynamic Fix Suggestion Builder Pattern
  *
@@ -11,7 +10,7 @@
  * Tags: feedback, validation, self-referential-prevention, fix-suggestions
  */
 
-function buildFixSuggestions() {
+const buildFixSuggestions = () => {
   const suggestions = {};
   const add = (key, val) => { suggestions[key] = val; };
 
@@ -72,12 +71,12 @@ function buildFixSuggestions() {
     'Use targeted deletion on specific paths. Add confirmation and safeguards.');
 
   return suggestions;
-}
+};
 
 /**
  * Find the line number where a regex pattern matches in code.
  */
-function findPatternLocation(code, pattern) {
+const findPatternLocation = (code, pattern) => {
   const lines = code.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const match = lines[i].match(pattern);
@@ -92,7 +91,7 @@ function findPatternLocation(code, pattern) {
     return { lineNumber, line: code.split('\n')[lineNumber - 1]?.trim() || '', column: 1 };
   }
   return null;
-}
+};
 
 const FIX_SUGGESTIONS = buildFixSuggestions();
 

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * evaluate.js — observation-driven tool dispatcher.
@@ -27,7 +28,7 @@
 
 const { inspectFractalWaveform, fractalCoherency, toFractalWaveform } =
   require('../core/fractal-waveform');
-const { contribute, peekField } = require('../core/field-coupling');
+const { contribute, peekField, recordCost } = require('../core/field-coupling');
 const { scoreResonance, libraryStatus } = require('./pattern-resonance');
 const { verifyExecution } = require('./exec-verify');
 const { covenantCheck } = require('../core/covenant');
@@ -197,12 +198,15 @@ async function evaluate(input, opts = {}) {
   // names where the observation came from (so the field's per-source
   // histogram tells you what the evaluator has been looking at).
   try {
-    contribute({
-      cost: 1,
-      coherence: Math.max(0, Math.min(1, verdict.score)),
+    // PROVENANCE (2026-08-09): the verdict score is an evaluator
+    // heuristic, not a compressor reading — it left the coherence
+    // channel. The evaluation is work; the verdict stays in the return.
+    recordCost({
+      units: 1,
+      kind: 'evaluation',
       source: 'evaluate:' + (opts.language || (observation.looksLikeCode ? 'code' : 'text')),
     });
-  } catch (_e) { /* best-effort */ }
+  } catch (_e) { quiet('scoring:evaluate:recordCost', _e); /* best-effort */ }
 
   return {
     observation: {

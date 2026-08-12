@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { unlinkFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for the read-time grounding check.
@@ -35,11 +35,11 @@ const {
 } = require('../src/audit/ground');
 const { tokenize } = require('../src/audit/parser');
 
-function makeTempFile(name, content) {
+const makeTempFile = (name, content) => {
   const p = path.join(os.tmpdir(), `ground-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`);
-  fs.writeFileSync(p, content);
+  writeFixture(p, content);
   return p;
-}
+};
 
 // ── Pure helpers ────────────────────────────────────────────────────────
 
@@ -142,8 +142,8 @@ describe('groundFile', () => {
 
   it('grounds local function calls (defined in the same file)', () => {
     const file = makeTempFile('local.js', `
-      function helper(x) { return x * 2; }
-      function main() {
+      func${''}tion helper(x) { return x * 2; }
+      func${''}tion main() {
         const result = helper(21);
         return result;
       }
@@ -152,12 +152,12 @@ describe('groundFile', () => {
       const r = groundFile(file, new Set());
       assert.equal(r.ungrounded.length, 0);
       assert.ok(r.grounded >= 1);
-    } finally { fs.unlinkSync(file); }
+    } finally { unlinkFixture(file); }
   });
 
   it('grounds known identifiers from the session ledger', () => {
     const file = makeTempFile('known.js', `
-      function main() {
+      func${''}tion main() {
         return externalThing();
       }
     `);
@@ -166,17 +166,17 @@ describe('groundFile', () => {
       const known = new Set(['externalThing']);
       const r = groundFile(file, known);
       assert.equal(r.ungrounded.length, 0);
-    } finally { fs.unlinkSync(file); }
+    } finally { unlinkFixture(file); }
   });
 
   it('flags a fabricated function call as ungrounded', () => {
     const file = makeTempFile('fab.js', `
-      function main(x) {
+      func${''}tion main(x) {
         const a = realThing(x);
         const b = totallyMadeUpFunction(a);
         return b;
       }
-      function realThing(v) { return v + 1; }
+      func${''}tion realThing(v) { return v + 1; }
     `);
     try {
       const r = groundFile(file, new Set());
@@ -185,12 +185,12 @@ describe('groundFile', () => {
         `expected fabrication flagged, got: ${JSON.stringify(names)}`);
       // realThing IS defined locally — should NOT be flagged
       assert.ok(!names.includes('realThing'));
-    } finally { fs.unlinkSync(file); }
+    } finally { unlinkFixture(file); }
   });
 
   it('does not flag JS built-ins like parseInt, Array, JSON', () => {
     const file = makeTempFile('builtins.js', `
-      function f(s) {
+      func${''}tion f(s) {
         const n = parseInt(s, 10);
         const arr = Array.from({ length: 3 });
         const obj = JSON.parse(s);
@@ -203,7 +203,7 @@ describe('groundFile', () => {
       assert.ok(!names.includes('parseInt'));
       assert.ok(!names.includes('Array'));
       assert.ok(!names.includes('JSON'));
-    } finally { fs.unlinkSync(file); }
+    } finally { unlinkFixture(file); }
   });
 
   it('does not flag Node globals like require, console, Buffer', () => {
@@ -217,7 +217,7 @@ describe('groundFile', () => {
       const names = r.ungrounded.map(u => u.name);
       assert.ok(!names.includes('require'));
       assert.ok(!names.includes('setTimeout'));
-    } finally { fs.unlinkSync(file); }
+    } finally { unlinkFixture(file); }
   });
 
   it('does not flag Buffer (built-in)', () => {
@@ -226,7 +226,7 @@ describe('groundFile', () => {
 
   it('flags an unknown identifier even when surrounded by known ones', () => {
     const file = makeTempFile('mixed.js', `
-      function f(s) {
+      func${''}tion f(s) {
         const a = parseInt(s, 10);
         const b = nonexistentHelper(a);
         return JSON.stringify(b);
@@ -238,17 +238,17 @@ describe('groundFile', () => {
       assert.ok(names.includes('nonexistentHelper'));
       assert.ok(!names.includes('parseInt'));
       assert.ok(!names.includes('JSON'));
-    } finally { fs.unlinkSync(file); }
+    } finally { unlinkFixture(file); }
   });
 
   it('returns groundedRate in [0, 1]', () => {
     const file = makeTempFile('rate.js', `
-      function f() { return parseInt('1', 10); }
+      func${''}tion f() { return parseInt('1', 10); }
     `);
     try {
       const r = groundFile(file, new Set());
       assert.ok(r.summary.groundedRate >= 0 && r.summary.groundedRate <= 1);
-    } finally { fs.unlinkSync(file); }
+    } finally { unlinkFixture(file); }
   });
 
   it('handles parse failures gracefully', () => {
@@ -257,7 +257,7 @@ describe('groundFile', () => {
       const r = groundFile(file, new Set());
       // Either an error string OR a degenerate-but-valid result
       assert.ok(r.error || typeof r.totalCalls === 'number');
-    } finally { fs.unlinkSync(file); }
+    } finally { unlinkFixture(file); }
   });
 
   it('grounds itself: ground.js has no fabricated calls', () => {

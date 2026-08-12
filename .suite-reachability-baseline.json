@@ -1,0 +1,5 @@
+{
+ "note": "suite-reachability baseline — tracked *.test.js the runner glob cannot reach. Shrink-only; each entry needs a verdict to stay.",
+ "savedAt": "2026-08-09T06:49:36.808Z",
+ "unreachable": []
+}

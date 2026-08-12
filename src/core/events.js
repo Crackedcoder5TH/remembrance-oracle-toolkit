@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * Oracle event bus.
@@ -126,7 +127,7 @@ class OracleEventBus {
         if (r && typeof r.then === 'function') results.push(r.catch(e => _reportError(event, e)));
       } catch (e) { _reportError(event, e); }
     }
-    if (results.length > 0) { try { await Promise.all(results); } catch { /* already reported */ } }
+    if (results.length > 0) { try { await Promise.all(results); } catch (_e) { quiet('core:events:_reportError', _e); /* already reported */ } }
     return handlers.length;
   }
 

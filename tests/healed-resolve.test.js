@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -70,7 +70,7 @@ setTimeout(() => { if (count !== 1) throw new Error('should debounce'); }, 50);`
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   describe('healedCode', () => {
@@ -167,7 +167,7 @@ setTimeout(() => { if (count !== 1) throw new Error('should debounce'); }, 50);`
       const result = solo.resolve({ description: 'solo pattern' });
       // With only one pattern, candidateNotes should be null (no alternatives to compare against)
       assert.equal(result.candidateNotes, null, 'no alternatives means no candidate notes');
-      fs.rmSync(tmpDir2, { recursive: true, force: true });
+      rmFixture(tmpDir2, { recursive: true, force: true });
     });
   });
 

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * mcp/handlers/field.js — the Remembrance Field (LRE) MCP surface, one
@@ -352,7 +353,7 @@ const FIELD = {
         ];
         let Publisher = null;
         for (const p of enginePaths) {
-          try { ({ Publisher } = require(p)); break; } catch (_) { /* try next */ }
+          try { ({ Publisher } = require(p)); break; } catch (_) { quiet('mcp:handlers:field:require', _); /* try next */ }
         }
         if (!Publisher) {
           return {

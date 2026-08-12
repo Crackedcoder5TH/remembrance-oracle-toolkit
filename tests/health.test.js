@@ -1,10 +1,9 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const { health, metrics, coherencyDistribution, checkDatabase, checkPatterns, checkCoherency, getVersion } = require('../src/health/monitor');
 
 // ─── Mock oracle for testing ───
-function createMockOracle(opts = {}) {
+const createMockOracle = (opts = {}) => {
   const patterns = opts.patterns || [
     { id: '1', name: 'a', coherencyScore: { total: 0.85 }, usageCount: 10, successCount: 8, language: 'javascript' },
     { id: '2', name: 'b', coherencyScore: { total: 0.72 }, usageCount: 5, successCount: 3, language: 'typescript' },
@@ -23,7 +22,7 @@ function createMockOracle(opts = {}) {
     },
     candidateStats: () => ({ total: opts.candidates || 5, byMethod: { variant: 3, 'iterative-refine': 2 } }),
   };
-}
+};
 
 describe('health()', () => {
   it('returns healthy status with valid oracle', () => {

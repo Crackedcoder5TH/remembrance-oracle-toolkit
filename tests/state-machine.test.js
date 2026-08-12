@@ -1,10 +1,9 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { createStateMachine } = require('../seeds/code/state-machine');
 
 describe('state-machine', () => {
-  function trafficLight() {
+  const trafficLight = () => {
     return createStateMachine({
       initial: 'green',
       states: {
@@ -13,7 +12,7 @@ describe('state-machine', () => {
         red:    { on: { TIMER: 'green' } },
       },
     });
-  }
+  };
 
   it('should start in initial state', () => {
     const sm = trafficLight();

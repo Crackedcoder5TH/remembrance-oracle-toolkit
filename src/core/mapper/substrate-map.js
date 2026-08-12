@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../quiet');
 
 /**
  * mapper/substrate-map.js — the substrate-native map: read the
@@ -22,7 +23,7 @@ const {
 const { DEFAULT_CATEGORIZER, _walk, substrateSelfNames } = require('./config');
 const { namespaceFromIndexNames } = require('./namespace');
 const { _pairwiseFlow } = require('./flow');
-const { _dedupePairs, _annotateDataPairs } = require('./pairs');
+const { _dedupePairs, _annotateDataPairs, _annotateOrphans } = require('./pairs');
 
 /**
  * Build the macro coherency map from the substrate's existing vectors.
@@ -228,27 +229,29 @@ function mapFromSubstrate(projectPath, opts = {}) {
   }
 
   const buckets = {
-    A_components_incoherent: results.filter(r => r.category === 'components' && !r.flags.includes('WELL-FORMED')),
+    A_components_incoherent: _annotateOrphans(results.filter(r => r.category === 'components' && !r.flags.includes('WELL-FORMED')), projectPath),
     B_api_inconsistent: results.filter(r => r.category.startsWith('api/') && r.flags.includes('INCONSISTENT')),
     C_lib_drift: results.filter(r => r.category === 'lib' && r.flags.includes('ORPHAN')),
     D_duplicate_pairs: _annotateDataPairs(_dedupePairs(results), projectPath),
-    E_other_orphans: results.filter(r =>
+    E_other_orphans: _annotateOrphans(results.filter(r =>
       r.flags.includes('ORPHAN')
       && !['components', 'lib'].includes(r.category)
       && !r.category.startsWith('api/')
-    ),
+    ), projectPath),
   };
 
-  // 7. Field contribution — only what the vectors honestly witness.
+  // 7. Field contribution — only what the vectors honestly witness. The
+  // duplication level is a count ratio, not a compressor reading, so it
+  // rides recordCost as a diagnostic (provenance purge 2026-08-09).
   let contributionsCount = 0;
   try {
-    fc.contribute({
-      cost: 1.0,
-      coherence: 1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2),
-      source: 'coherency-map:' + namespace + ':non-duplication',
+    fc.recordCost({
+      units: Math.max(1, buckets.D_duplicate_pairs.length),
+      kind: 'diagnostic',
+      source: 'coherency-map:' + namespace + ':duplicate-pairs',
     });
     contributionsCount++;
-  } catch { /* best-effort */ }
+  } catch (_e) { quiet('core:mapper:substrate-map:_annotateOrphans', _e); /* best-effort */ }
 
   for (const r of results) delete r._vecIdx;
 

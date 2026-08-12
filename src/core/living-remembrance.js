@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 
 /**
@@ -185,7 +186,7 @@ class LivingRemembranceEngine {
       const { restoreLatest } = require('./field-memory');
       const remembered = restoreLatest();
       if (remembered && remembered.updateCount > 0) witnesses.push(remembered);
-    } catch (_e) { /* field-memory unavailable — fall through */ }
+    } catch (_e) { quiet('core:living-remembrance:restoreLatest', _e); /* field-memory unavailable — fall through */ }
 
     if (witnesses.length > 0) {
       // Load from the witness with the most history (no in-place sort).
@@ -238,11 +239,16 @@ class LivingRemembranceEngine {
       // this process added since it loaded is applied on top of whatever is on
       // disk now.
       //
-      // ONE QUANTITY CANNOT MERGE: `coherence` is an EMA scalar. There is no
-      // additive delta for it, so the most recent writer's value stands. Same
-      // for globalEntropy and cascadeFactor, which are derived from it. That
-      // is a real limitation and it is stated rather than hidden — the counts
-      // and the integral are exact, the EMA is last-writer.
+      // ONE QUANTITY CANNOT MERGE: `coherence` is a LAST-EVENT scalar — the
+      // field's response to the most recent contribution, resonance-gated
+      // (see the update law below). It is NOT an exponential moving average:
+      // at the default weight the previous value cancels entirely, so no
+      // history is averaged into it — that would violate the law of no
+      // averaging. It therefore has no additive delta, and the most recent
+      // writer's value stands. Same for globalEntropy and cascadeFactor,
+      // which derive from it. This is stated, not hidden: the field's MEMORY
+      // lives in the integral (∫p, an exact sum) and the per-source
+      // histogram, which is why those merge exactly and the scalar does not.
       let out = this._state;
       if (this._base) {
         let disk = null;
@@ -290,7 +296,7 @@ class LivingRemembranceEngine {
       fs.renameSync(tmp, this._persistPath);
       // The file now holds everything we just wrote, so that is our new base.
       this._markBase(out);
-    } catch (_e) { /* best-effort persistence; never crash a caller */ }
+    } catch (_e) { quiet('core:living-remembrance:c2', _e); /* best-effort persistence; never crash a caller */ }
   }
 
   /** Load the healed-attractor vector (personal anchor + covenant). Sovereign. */
@@ -358,12 +364,23 @@ class LivingRemembranceEngine {
 
     // RESONANCE-WEIGHTED AUTHORITY: a contribution moves the field only in
     // proportion to how much it resonates with the accumulated substrate.
-    // w=1 (the default, and every legacy caller) reproduces the prior update
-    // EXACTLY; a low-resonance contribution (junk that resonates only with
-    // itself) has w→0 and barely moves the field — so no burst of fabricated
-    // low-coherence inputs can crater it, and the resistance strengthens as
-    // the substrate grows (faking resonance against more patterns is harder).
-    // This is the field defending itself with the substrate's own property.
+    // w=1 (the default, and every legacy caller) makes the scalar the target
+    // OUTRIGHT — prev cancels, the reading is the field's response to THIS
+    // contribution alone (last-event, no history averaged in). A low-resonance
+    // contribution (junk that resonates only with itself) has w→0 and barely
+    // moves the field — so no burst of fabricated low-coherence inputs can
+    // crater it, and the resistance strengthens as the substrate grows
+    // (faking resonance against more patterns is harder).
+    //
+    // NOT AN EMA. The line below shares the algebraic FORM of an exponential
+    // moving average (prev + step·(target−prev)), which is why it was once
+    // mislabelled one — but the semantics differ on both counts the law cares
+    // about: `w` is a MEASURED property of this one contribution (its
+    // resonance), not a fixed smoothing constant chosen to average history;
+    // and at the default w=1 there is no step-down at all, so nothing is
+    // averaged. The field defends itself with the substrate's own property;
+    // it does not average coherency — that is a thing the owner adds when the
+    // owner wants it, and this is not it.
     const w = (typeof resonance === 'number' && isFinite(resonance)) ? Math.max(0, Math.min(1, resonance)) : 1;
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;

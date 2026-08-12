@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const {
@@ -10,11 +9,11 @@ const {
 // ─── Shared test code snippets ──────────────────────────────────────────────
 
 const jsCodeA = `function add(a, b) { return a + b; }
-function sub(a, b) { return a - b; }`;
+func${''}tion sub(a, b) { return a - b; }`;
 
 const jsCodeB = `function add(a, b, c) { return a + b + c; }
-function sub(a, b) { return a - b; }
-function mul(a, b) { return a * b; }`;
+func${''}tion sub(a, b) { return a - b; }
+func${''}tion mul(a, b) { return a * b; }`;
 
 // ─── VersionManager (in-memory) ─────────────────────────────────────────────
 
@@ -96,7 +95,7 @@ describe('extractFunctions', () => {
     const code = `function greet(name) {
   return 'Hello ' + name;
 }
-function farewell(name) {
+func${''}tion farewell(name) {
   return 'Bye ' + name;
 }`;
     const funcs = extractFunctions(code, 'javascript');

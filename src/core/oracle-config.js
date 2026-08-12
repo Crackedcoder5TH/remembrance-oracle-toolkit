@@ -1,3 +1,4 @@
+const { quiet } = require('./quiet');
 /**
  * Oracle Configuration — persistent toggle and prompt tag management.
  *
@@ -58,7 +59,7 @@ function loadConfig() {
     try {
       const raw = JSON.parse(fs.readFileSync(globalPath, 'utf-8'));
       Object.assign(config, raw);
-    } catch (_) { /* corrupt config — use defaults */ }
+    } catch (_) { quiet('core:oracle-config:configPath', _); /* corrupt config — use defaults */ }
   }
 
   // Local overrides global
@@ -67,7 +68,7 @@ function loadConfig() {
     try {
       const raw = JSON.parse(fs.readFileSync(localPath, 'utf-8'));
       Object.assign(config, raw);
-    } catch (_) { /* corrupt config — use defaults */ }
+    } catch (_) { quiet('core:oracle-config:configPath', _); /* corrupt config — use defaults */ }
   }
 
   return config;

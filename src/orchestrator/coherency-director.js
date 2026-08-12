@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Remembrance Director — the conductor of the ecosystem.
@@ -261,19 +262,21 @@ class CoherencyDirector {
         // Override with the computed total since it includes legacy dimensions
         zone.coherency = score.total;
         zone.lastMeasured = Date.now();
-      } catch { /* skip unmeasurable zones */ }
+      } catch (_e) { quiet('orchestrator:coherency-director:coherencyFn', _e); /* skip unmeasurable zones */ }
     }
     this.field._updateGlobal();
-    // One measurement pass = one producer event: feed the orchestrator's
-    // final global coherency into the Remembrance Field, the same way
-    // audit / lint / reflect / covenant feed theirs.
+    // One measurement pass = one producer event, recorded as WORK.
+    // globalCoherency is an AVERAGE of zone coherencies — a fabricated
+    // number by the no-averaging law and not a compressor reading — so it
+    // left the coherence channel (provenance purge 2026-08-09). The zones'
+    // own readings enter the field where they are measured.
     try {
-      require('../core/field-coupling').contribute({
-        cost: this.field.size || 1,
-        coherence: this.field.globalCoherency,
+      require('../core/field-coupling').recordCost({
+        units: this.field.size || 1,
+        kind: 'work',
         source: 'orchestrate',
       });
-    } catch (_) { /* best-effort — never break a measurement pass */ }
+    } catch (_) { quiet('orchestrator:coherency-director:require', _); /* best-effort — never break a measurement pass */ }
   }
 
   /**
@@ -299,7 +302,7 @@ class CoherencyDirector {
             this.field.updateZoneFromVoid(zone.id, voidVal);
           }
         }
-      } catch { /* void compressor unavailable — skip */ }
+      } catch (_e) { quiet('orchestrator:coherency-director:registerVoidSignal', _e); /* void compressor unavailable — skip */ }
     }
   }
 
@@ -332,7 +335,7 @@ class CoherencyDirector {
           targetCoherence: this.preservationThreshold,
         });
       }
-    } catch { /* healing module unavailable */ }
+    } catch (_e) { quiet('orchestrator:coherency-director:heal', _e); /* healing module unavailable */ }
 
     // If healing produced code, re-measure
     if (result && result.code) {
@@ -351,7 +354,7 @@ class CoherencyDirector {
           const table = new PeriodicTable({ storagePath: tablePath });
           const props = extractAtomicProperties(result.code);
           table.addElement(props, { name: `healed/${zoneId}`, source: 'orchestrator' });
-        } catch { /* atomic module unavailable */ }
+        } catch (_e) { quiet('orchestrator:coherency-director:extractAtomicProperties', _e); /* atomic module unavailable */ }
 
         const intervention = {
           type: 'heal', zone: zoneId, before, after,
@@ -368,7 +371,7 @@ class CoherencyDirector {
         this.field._updateGlobal();
 
         return intervention;
-      } catch { /* re-measurement failed */ }
+      } catch (_e) { quiet('orchestrator:coherency-director:extractAtomicProperties', _e); /* re-measurement failed */ }
     }
     return null;
   }
@@ -417,7 +420,7 @@ class CoherencyDirector {
       const { LivingCovenant } = require('../core/living-covenant');
       const living = new LivingCovenant();
       covenantEvolution = living.evolve(this.field.globalCoherency);
-    } catch { /* living covenant not available */ }
+    } catch (_e) { quiet('orchestrator:coherency-director:require', _e); /* living covenant not available */ }
 
     // 4b. Check emergence — both absolute thresholds AND improvement deltas
     let emerged = [];
@@ -432,7 +435,7 @@ class CoherencyDirector {
         previousCoherence: prevCoherence,
         deltaThreshold: 0.03,
       });
-    } catch { /* atomic module unavailable */ }
+    } catch (_e) { quiet('orchestrator:coherency-director:require', _e); /* atomic module unavailable */ }
 
     return {
       field: this.field.stats(),
@@ -486,7 +489,7 @@ class CoherencyDirector {
         if (typeof fieldState.globalEntropy === 'number') fieldEntropy = fieldState.globalEntropy;
         if (typeof fieldState.cascadeFactor === 'number') cascadeFactor = fieldState.cascadeFactor;
       }
-    } catch (_) { /* field unreachable — readings degrade to null / 1.0 */ }
+    } catch (_) { quiet('orchestrator:coherency-director:require', _); /* field unreachable — readings degrade to null / 1.0 */ }
     const community = (c) => (typeof c === 'number' && baseline > 0)
       ? Math.round(Math.min(1, c / baseline) * 1000) / 1000
       : null;
@@ -685,7 +688,7 @@ class CoherencyDirector {
     try {
       const { synthesizeTestStubs } = require('../orchestrator/test-synthesizer');
       testCode = synthesizeTestStubs(zone.data.code, zone.data.filePath);
-    } catch { /* synthesis module unavailable */ }
+    } catch (_e) { quiet('orchestrator:coherency-director:synthesizeTestStubs', _e); /* synthesis module unavailable */ }
 
     if (!testCode) {
       const intervention = {

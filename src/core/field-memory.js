@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * field-memory — the field's compression + recall layer.
@@ -87,7 +88,7 @@ function _loadCaches(store) {
         _eventWaveforms.push({ id: r.id, waveform: parsed.waveform });
       }
     }
-  } catch (_) { /* fresh store — caches stay empty */ }
+  } catch (_) { quiet('core:field-memory:_loadCaches', _); /* fresh store — caches stay empty */ }
 }
 
 /** Max cosine of `wf` against a cache array. Returns { sim, id }. */
@@ -287,9 +288,9 @@ function maybeSnapshot(fieldState) {
         try {
           const { peekField } = require('./field-coupling');
           snapshot(peekField());
-        } catch (_) { /* best-effort */ }
+        } catch (_) { quiet('core:field-memory:peekField', _); /* best-effort */ }
       });
-    } catch (_) { /* environments without process events */ }
+    } catch (_) { quiet('core:field-memory:peekField', _); /* environments without process events */ }
   }
 
   if (!fieldState || typeof fieldState.updateCount !== 'number') return;
@@ -399,7 +400,7 @@ function query(text, opts = {}) {
       try { parsed = JSON.parse(r.coherency_json || '{}'); } catch (_) { continue; }
       if (!Array.isArray(parsed.waveform)) continue;
       let tags = [];
-      try { tags = JSON.parse(r.tags || '[]'); } catch (_) { /* keep [] */ }
+      try { tags = JSON.parse(r.tags || '[]'); } catch (_) { quiet('core:field-memory:_toWaveform', _); /* keep [] */ }
       if (opts.tag && !tags.includes(opts.tag)) continue;
       ranked.push({
         id: r.id,
@@ -503,7 +504,7 @@ function _committedBlockchainData(file) {
     path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'data', file),
     path.join(__dirname, '..', '..', '..', 'remembrance-blockchain', 'data', file),
   ];
-  for (const c of candidates) { try { if (fs.existsSync(c)) return c; } catch (_) { /* ignore */ } }
+  for (const c of candidates) { try { if (fs.existsSync(c)) return c; } catch (_) { quiet('core:field-memory:_committedBlockchainData', _); /* ignore */ } }
   return candidates[0];
 }
 

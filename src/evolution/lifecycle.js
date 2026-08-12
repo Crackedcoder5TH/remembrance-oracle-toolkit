@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 /**
  * Lifecycle Engine — Always-on automatic pattern management.
@@ -468,7 +469,7 @@ class LifecycleEngine {
       if (store?.storeDir) return store.storeDir;
       const sqliteStore = store?.getSQLiteStore?.();
       if (sqliteStore?.storeDir) return sqliteStore.storeDir;
-    } catch (_) { /* fall through */ }
+    } catch (_) { quiet('evolution:lifecycle:c1', _); /* fall through */ }
     return null;
   }
 

@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { execFileSync } = require('child_process');
@@ -7,7 +6,7 @@ const { join } = require('path');
 const BIN = join(__dirname, '..', 'bin', 'reflector');
 const CWD = join(__dirname, '..');
 
-function run(args, opts = {}) {
+const run = (args, opts = {}) => {
   try {
     return execFileSync(process.execPath, [BIN, ...args], {
       cwd: opts.cwd || CWD,
@@ -18,7 +17,7 @@ function run(args, opts = {}) {
   } catch (err) {
     return err.stdout || err.stderr || err.message;
   }
-}
+};
 
 describe('Reflector CLI — help', () => {
   it('should show help with no args', () => {

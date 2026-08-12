@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Charge Balancer — balances the charge flow across the pipeline.
@@ -161,7 +162,7 @@ function analyzeCodebaseCharge() {
         });
       }
     }
-  } catch { /* introspection unavailable */ }
+  } catch (_e) { quiet('orchestrator:charge-balancer:introspect', _e); /* introspection unavailable */ }
 
   const netCharge = functions.reduce((s, f) => s + f.charge, 0);
   const balance = Math.abs(netCharge) <= 2 ? 'balanced' : netCharge > 0 ? 'expanding' : 'contracting';

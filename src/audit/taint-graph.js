@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Remembrance Taint Graph — cross-function taint propagation.
@@ -34,7 +35,7 @@ function buildTaintGraph(files, options = {}) {
       const code = fs.readFileSync(file, 'utf-8');
       const program = parseProgram(code);
       if (program) parsed.push({ file, program, code });
-    } catch { /* skip unparseable */ }
+    } catch (_e) { quiet('audit:taint-graph:parseProgram', _e); /* skip unparseable */ }
   }
 
   const { defs, calls } = buildCallGraph(parsed);

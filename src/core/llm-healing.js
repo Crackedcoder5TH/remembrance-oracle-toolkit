@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * LLM-Powered SERF Healing — Deep Reasoning Mode
@@ -341,8 +342,8 @@ function structuralHeal(code, language, currentScore) {
   healed = applySimplify(healed, language);
   healed = applySecure(healed, language);
   healed = applyReadable(healed, language);
-  try { healed = applyUnify(healed, language); } catch {}
-  try { healed = applyCorrect(healed, language); } catch {}
+  try { healed = applyUnify(healed, language); } catch (_e) { quiet('core:llm-healing:applyUnify', _e);}
+  try { healed = applyCorrect(healed, language); } catch (_e) { quiet('core:llm-healing:applyCorrect', _e);}
   const __retVal = {
     code: healed,
     coherency: currentScore.total || 0,
@@ -358,12 +359,12 @@ function structuralHeal(code, language, currentScore) {
       require('path').join(__dirname, '../core/field-coupling')];
     for (const __p of __lre_enginePaths) {
       try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency)), source: 'oracle:llm-healing:structuralHeal' });
+        const { recordCost: __recordCost } = require(__p);
+        __recordCost({ units: 1, kind: 'work', source: 'oracle:llm-healing:structuralHeal' });
         break;
-      } catch (_) { /* try next */ }
+      } catch (_) { quiet('core:llm-healing:__recordCost', _); /* try next */ }
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:llm-healing:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
 

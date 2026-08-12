@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * File-level bug-probability risk score.
@@ -80,17 +81,18 @@ function computeBugProbability(code, options = {}) {
   };
   const matched = extractFactors(ctx);
 
-  // Contribute this risk reading to the LivingRemembranceEngine field.
-  // cost = cyclomatic complexity (proxy for work),
-  // coherence = 1 - probability (high-risk = low coherence).
+  // Field: the analysis is WORK weighted by cyclomatic complexity. The
+  // model probability is a heuristic, not a compressor reading, so
+  // 1 - probability left the coherence channel (provenance purge
+  // 2026-08-09); the probability itself stays in the return.
   try {
-    const { contribute } = require('../core/field-coupling');
-    contribute({
-      cost: Math.max(1, cyclomatic),
-      coherence: clamp01(1 - probability),
+    const { recordCost } = require('../core/field-coupling');
+    recordCost({
+      units: Math.max(1, cyclomatic),
+      kind: 'work',
       source: 'risk-score',
     });
-  } catch (_) { /* field unavailable — best-effort */ }
+  } catch (_) { quiet('quality:risk-score:recordCost', _); /* field unavailable — best-effort */ }
 
   return {
     probability: round4(probability),

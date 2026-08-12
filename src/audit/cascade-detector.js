@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Cascade Detector — finds assumption mismatches that ripple through callers.
@@ -114,7 +115,7 @@ function findDependents(targetFile, cwd) {
             }
           }
         }
-      } catch (_) {
+      } catch (_) { quiet('audit:cascade-detector:execFileSync', _);
         // grep returns exit 1 when no matches — expected
       }
     }

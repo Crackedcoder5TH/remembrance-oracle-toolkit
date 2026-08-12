@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { mkdirSync, writeFileSync, rmSync } = require('fs');
@@ -19,19 +18,19 @@ const {
 
 // ─── Helpers ───
 
-function createTmpRepo(suffix) {
+const createTmpRepo = (suffix) => {
   const dir = join(tmpdir(), `multi-test-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir, { recursive: true });
   return dir;
-}
+};
 
-function writeFile(dir, name, code) {
+const writeFile = (dir, name, code) => {
   const parts = name.split('/');
   if (parts.length > 1) {
     mkdirSync(join(dir, ...parts.slice(0, -1)), { recursive: true });
   }
   writeFileSync(join(dir, name), code, 'utf-8');
-}
+};
 
 // ─── multiSnapshot Tests ───
 

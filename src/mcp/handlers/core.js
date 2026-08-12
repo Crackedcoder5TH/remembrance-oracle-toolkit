@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * mcp/handlers/core.js — the goggles surface + search, resolve, submit,
@@ -102,7 +103,7 @@ const CORE = {
     try {
       const { trackSearch } = require('../../core/session-tracker');
       trackSearch(args.query || args.description || '', result, { mode, language: args.language });
-    } catch (_) { /* non-fatal */ }
+    } catch (_) { quiet('mcp:handlers:core:trackSearch', _); /* non-fatal */ }
     // Lifecycle: increment pull_count on every pattern that was retrieved.
     // Distinct from usage_count — pulling means "an outside caller saw this",
     // using means "they applied it." Best-effort; never blocks the result.
@@ -115,7 +116,7 @@ const CORE = {
       if (ids.length && oracle.patterns && typeof oracle.patterns.recordPulls === 'function') {
         oracle.patterns.recordPulls(ids);
       }
-    } catch (_) { /* non-fatal — counters are observational, not transactional */ }
+    } catch (_) { quiet('mcp:handlers:core:trackSearch', _); /* non-fatal — counters are observational, not transactional */ }
     return result;
   },
 
@@ -133,7 +134,7 @@ const CORE = {
     try {
       const { trackResolve } = require('../../core/session-tracker');
       trackResolve(result, request);
-    } catch (_) { /* non-fatal */ }
+    } catch (_) { quiet('mcp:handlers:core:trackResolve', _); /* non-fatal */ }
     if (result.pattern && result.pattern.id) {
       trackPull(result.pattern.id, result.pattern.name, result.decision);
     }
@@ -170,7 +171,7 @@ const CORE = {
         description: args.description || '',
         inferredFeedback: inferred.length,
       });
-    } catch (_) { /* non-fatal */ }
+    } catch (_) { quiet('mcp:handlers:core:getSession', _); /* non-fatal */ }
     return out;
   },
 
@@ -209,7 +210,7 @@ const CORE = {
         language: args.language || null,
         inferredFeedback: inferred.length,
       });
-    } catch (_) { /* non-fatal */ }
+    } catch (_) { quiet('mcp:handlers:core:getSession', _); /* non-fatal */ }
     return out;
   },
 
@@ -229,7 +230,7 @@ const CORE = {
     try {
       const { trackFeedback } = require('../../core/session-tracker');
       trackFeedback(args.id);
-    } catch (_) { /* non-fatal */ }
+    } catch (_) { quiet('mcp:handlers:core:trackFeedback', _); /* non-fatal */ }
     return result;
   },
 
@@ -247,7 +248,7 @@ const CORE = {
         const pub = sqliteStore.db.prepare('SELECT COUNT(*) as c FROM patterns WHERE blockchain_tx IS NOT NULL').get();
         publicationStats.published = pub ? pub.c : 0;
       }
-    } catch (_) { /* non-fatal */ }
+    } catch (_) { quiet('mcp:handlers:core:oracle_stats', _); /* non-fatal */ }
     return { store: storeStats, patterns: patternStats, candidates: candidateStats, publications: publicationStats };
   },
 
@@ -258,7 +259,7 @@ const CORE = {
     try {
       const { getPendingFeedback } = require('../../core/session-tracker');
       sessionPending = getPendingFeedback();
-    } catch (_) { /* non-fatal */ }
+    } catch (_) { quiet('mcp:handlers:core:getPendingFeedback', _); /* non-fatal */ }
     return { mcpPending: pending, sessionPending };
   },
 };

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * brief — everything you need to know BEFORE you call it, in one command.
@@ -98,7 +99,7 @@ function trapsFor(target) {
         if (!fs.statSync(base).isFile()) continue;
         hay += '\n' + fs.readFileSync(base, 'utf8').slice(0, 200000).toLowerCase();
         break;
-      } catch { /* not this one */ }
+      } catch (_e) { quiet('tools:brief:String', _e); /* not this one */ }
     }
   }
   return db.traps.filter((x) => (x.match || []).some((m) => hay.includes(m.toLowerCase())));
@@ -194,7 +195,7 @@ function _printLive() {
   try {
     health = execFileSync('curl', ['-s', '--noproxy', '127.0.0.1', '--max-time', '2',
       'http://127.0.0.1:8765/health'], { encoding: 'utf8' });
-  } catch { /* down */ }
+  } catch (_e) { quiet('tools:brief:execFileSync', _e); /* down */ }
   // `health.includes('ok')` is not a guarantee of valid JSON — a truncated
   // body, or anything else on port 8765 answering with the substring, throws
   // here and takes the whole brief with it. That matters more than the
@@ -230,7 +231,7 @@ function _printLive() {
     const s = peekField();
     console.log(`  · field coherence ${Number(s.coherence).toFixed(4)} over `
       + `${Number(s.updateCount).toLocaleString()} updates`);
-  } catch { /* field optional */ }
+  } catch (_e) { quiet('tools:brief:peekField', _e); /* field optional */ }
 }
 
 // ── CAVEATS ────────────────────────────────────────────────────────────
@@ -244,7 +245,7 @@ function _printCaveats(file) {
     const end = out.indexOf('FOCUS', start);
     console.log('\n── THE DOCUMENT\'S OWN WARNINGS ──');
     console.log(out.slice(start, end > 0 ? end : start + 900).split('\n').slice(1).join('\n'));
-  } catch { /* goggles optional */ }
+  } catch (_e) { quiet('tools:brief:execFileSync', _e); /* goggles optional */ }
 }
 
 // ── resolve a target to a file, if one exists ──────────────────────────

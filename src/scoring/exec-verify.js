@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -62,7 +63,7 @@ function _harmScreen(code) {
     try {
       if (hp.pattern.global) hp.pattern.lastIndex = 0;
       if (hp.pattern.test(code)) return hp.reason || 'covenant harm pattern';
-    } catch (_e) { /* skip a bad pattern */ }
+    } catch (_e) { quiet('scoring:exec-verify:_loadHarmPatterns', _e); /* skip a bad pattern */ }
   }
   return '';
 }
@@ -184,7 +185,7 @@ async function verifyExecution(code, opts = {}) {
     _contributeExec(r);
     return r;
   } finally {
-    if (dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { /* best-effort */ } }
+    if (dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { quiet('scoring:exec-verify:_contributeExec', _e); /* best-effort */ } }
   }
 }
 
@@ -196,13 +197,17 @@ async function verifyExecution(code, opts = {}) {
 function _contributeExec(result) {
   if (!result || typeof result.signal !== 'number' || !isFinite(result.signal)) return;
   try {
-    const { contribute } = require('../core/field-coupling');
-    contribute({
-      cost: 1,
-      coherence: Math.max(0, Math.min(1, result.signal)),
+    // PROVENANCE (2026-08-09): the execution signal is a verification
+    // outcome, not a compressor reading — it left the coherence channel.
+    // The run is work, the status lives in the source bucket, the signal
+    // stays in the result.
+    const { recordCost } = require('../core/field-coupling');
+    recordCost({
+      units: 1,
+      kind: 'verification',
       source: 'oracle:exec-verify:' + (result.status || 'unknown'),
     });
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('scoring:exec-verify:recordCost', _); /* best-effort */ }
 }
 
 /**

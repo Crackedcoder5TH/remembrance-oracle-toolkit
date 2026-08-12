@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Gated swarm code generation.
@@ -203,7 +204,7 @@ async function generateWithGate(generatorFn, description, options = {}) {
 
     history.push({ iteration: i + 1, draft, verification });
     if (typeof options.onIteration === 'function') {
-      try { options.onIteration(i + 1, verification); } catch { /* advisory */ }
+      try { options.onIteration(i + 1, verification); } catch (_e) { quiet('swarm:gated-generate:verifyDraft', _e); /* advisory */ }
     }
 
     if (verification.ok) {

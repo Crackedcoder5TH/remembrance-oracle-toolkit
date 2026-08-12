@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -131,7 +132,7 @@ function analyse(file) {
               out.writtenPaths.add(inp.file_path);
               out.bytes.retrievable += size;
             }
-          } catch { /* path unreadable — treat as live */ }
+          } catch (_e) { quiet('tools:precompact-digest:c1', _e); /* path unreadable — treat as live */ }
         }
         if (b.name === 'Bash' && inp.command) {
           const c = inp.command.trim();
@@ -265,7 +266,7 @@ function render(a) {
 
 function main() {
   let payload = {};
-  try { payload = JSON.parse(readStdin() || '{}'); } catch { /* no payload */ }
+  try { payload = JSON.parse(readStdin() || '{}'); } catch (_e) { quiet('tools:precompact-digest:readStdin', _e); /* no payload */ }
   const t = resolveTranscript(payload);
   if (!t) process.exit(0);
 
@@ -286,7 +287,7 @@ function main() {
         writtenPaths: [...a.writtenPaths],
       }, null, 1));
     }
-  } catch { /* durability is best-effort */ }
+  } catch (_e) { quiet('tools:precompact-digest:render', _e); /* durability is best-effort */ }
   process.exit(0);
 }
 

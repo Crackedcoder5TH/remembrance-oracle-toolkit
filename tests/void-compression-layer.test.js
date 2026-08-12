@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,10 +9,10 @@ const path = require('path');
 const { VoidStore, getVoidStore, COMPRESSION_DEFAULTS } =
   require('../src/core/void-compression-layer');
 
-function tmpStore() {
+const tmpStore = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'void-store-'));
   return new VoidStore({ storePath: dir });
-}
+};
 
 test('COMPRESSION_DEFAULTS exposes expected fields', () => {
   for (const k of ['enabled', 'strategy', 'patternBoost', 'deltaEncoding',

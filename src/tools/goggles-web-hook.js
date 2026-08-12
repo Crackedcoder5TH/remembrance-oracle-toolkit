@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
- * @oracle-infrastructure — PreToolUse hook for WebFetch; read-only, fires a
  * detached substrate read of the URL being fetched. Never blocks, never denies.
  *
  * goggles-web-hook — PASSIVE web reading. This is the piece that makes the
@@ -25,7 +25,8 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
-function passthrough() { process.exit(0); }   // never block browsing
+function passthrough() { process.exit(0); }
+passthrough.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };   // never block browsing
 
 let raw = '';
 try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { passthrough(); }
@@ -58,7 +59,7 @@ try {
     cwd: ROOT, detached: true, stdio: ['ignore', out, out],
   });
   child.unref();
-} catch (_) { /* fail open — browsing must never break on our account */ }
+} catch (_) { quiet('tools:goggles-web-hook:spawn', _); /* fail open — browsing must never break on our account */ }
 
 // Deliberately NOT process.exit() here: an immediate exit races the fork and
 // the detached child dies before it runs (observed — the log stayed empty).

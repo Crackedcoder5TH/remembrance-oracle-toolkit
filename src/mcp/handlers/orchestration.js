@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * mcp/handlers/orchestration.js — swarm, forge, diagnostic, ratchet,
@@ -116,7 +117,7 @@ const ORCHESTRATION = {
     const r = spawnSync(process.execPath, scriptArgs, { encoding: 'utf-8' });
     const stdoutTail = (r.stdout || '').split('\n').slice(-12).join('\n');
     let summary = null;
-    try { summary = JSON.parse(fs.readFileSync(reportPath, 'utf-8')); } catch {}
+    try { summary = JSON.parse(fs.readFileSync(reportPath, 'utf-8')); } catch (_e) { quiet('mcp:handlers:orchestration:spawnSync', _e);}
     return {
       action,
       exitCode: r.status,

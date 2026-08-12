@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 
 /**
  * Tests for the stage-5 prediction→outcome feedback store.
@@ -24,7 +24,7 @@ const {
 describe('feedback-store — predictions', () => {
   let root;
   beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-pred-')); });
-  afterEach(() => { if (root && fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { if (root && fs.existsSync(root)) rmFixture(root, { recursive: true, force: true }); });
 
   it('appends a prediction and returns its id', () => {
     const id = recordPrediction({
@@ -60,7 +60,7 @@ describe('feedback-store — predictions', () => {
 describe('feedback-store — outcomes', () => {
   let root;
   beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-out-')); });
-  afterEach(() => { if (root && fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { if (root && fs.existsSync(root)) rmFixture(root, { recursive: true, force: true }); });
 
   it('appends an outcome row', () => {
     recordOutcome({
@@ -83,7 +83,7 @@ describe('feedback-store — outcomes', () => {
 describe('feedback-store — pairing', () => {
   let root;
   beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-pair-')); });
-  afterEach(() => { if (root && fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { if (root && fs.existsSync(root)) rmFixture(root, { recursive: true, force: true }); });
 
   it('joins predictions and outcomes by id', () => {
     const id = recordPrediction({ file: 'a.js', probability: 0.5, riskLevel: 'MEDIUM' }, { repoRoot: root });
@@ -115,7 +115,7 @@ describe('feedback-store — pairing', () => {
 describe('feedback-store — stats', () => {
   let root;
   beforeEach(() => { root = fs.mkdtempSync(path.join(os.tmpdir(), 'fb-stats-')); });
-  afterEach(() => { if (root && fs.existsSync(root)) fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { if (root && fs.existsSync(root)) rmFixture(root, { recursive: true, force: true }); });
 
   it('returns zero stats when nothing has been recorded', () => {
     const stats = loadStats({ repoRoot: root });

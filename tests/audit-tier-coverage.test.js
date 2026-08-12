@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 
 /**
  * Tests for src/audit/tier-coverage.js — architectural self-similarity
@@ -25,16 +25,16 @@ const {
   findOptOut,
 } = require('../src/audit/tier-coverage');
 
-function makeTempRepo() {
+const makeTempRepo = () => {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'tier-coverage-'));
-}
+};
 
-function writeFile(dir, name, content) {
+const writeFile = (dir, name, content) => {
   const full = path.join(dir, name);
   fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, content);
+  writeFixture(full, content);
   return full;
-}
+};
 
 const THREE_TIER_MANIFEST = {
   codebase: 'test-codebase',
@@ -146,7 +146,7 @@ describe('findOptOut', () => {
 describe('loadArchitectureManifest + findManifestForFile', () => {
   let root;
   beforeEach(() => { root = makeTempRepo(); });
-  afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { rmFixture(root, { recursive: true, force: true }); });
 
   it('loads a valid manifest', () => {
     const p = writeFile(root, 'architecture.json', JSON.stringify(THREE_TIER_MANIFEST));
@@ -182,12 +182,12 @@ describe('loadArchitectureManifest + findManifestForFile', () => {
 describe('checkFile — full pipeline', () => {
   let root;
   beforeEach(() => { root = makeTempRepo(); });
-  afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+  afterEach(() => { rmFixture(root, { recursive: true, force: true }); });
 
-  function setupRepo(moduleContent, manifest = THREE_TIER_MANIFEST) {
+  const setupRepo = (moduleContent, manifest = THREE_TIER_MANIFEST) => {
     writeFile(root, 'architecture.json', JSON.stringify(manifest));
     return writeFile(root, 'new_module.py', moduleContent);
-  }
+  };
 
   it('flags a module that touches only L1 when the codebase has L1/L2/L3', () => {
     const modulePath = setupRepo(`

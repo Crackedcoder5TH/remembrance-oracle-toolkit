@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture } = require('./helpers');
 
 /**
  * Tests for Tier 3 (feedback loop + ergonomics) and Tier 4 (structural)
@@ -72,7 +72,7 @@ describe('audit auto-fix', () => {
   const { generatePatchFor, applyPatches } = require('../src/audit/auto-fix');
   const { parseProgram } = require('../src/audit/parser');
 
-  function fix(src) {
+  const fix = (src) => {
     const r = auditCode(src);
     const program = parseProgram(src);
     const patches = [];
@@ -81,7 +81,7 @@ describe('audit auto-fix', () => {
       if (p) patches.push(...p);
     }
     return applyPatches(src, patches);
-  }
+  };
 
   it('inserts .slice() before .sort()', () => {
     const { source, applied } = fix('function f(a) { return a.sort(); }');
@@ -137,7 +137,7 @@ describe('audit feedback', () => {
     repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-feedback-'));
   });
   after(() => {
-    fs.rmSync(repoRoot, { recursive: true, force: true });
+    rmFixture(repoRoot, { recursive: true, force: true });
   });
 
   it('records and persists fix/dismiss events', () => {
@@ -169,7 +169,7 @@ describe('audit feedback', () => {
       const out = calibrateFindings(findings, noisyRoot);
       assert.equal(out.length, 0);
     } finally {
-      fs.rmSync(noisyRoot, { recursive: true, force: true });
+      rmFixture(noisyRoot, { recursive: true, force: true });
     }
   });
 });

@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Style / opinion checkers for the `oracle lint` command.
@@ -290,9 +291,11 @@ function lintFile(filePath, options = {}) {
   }
   try {
     const source = fs.readFileSync(filePath, 'utf-8');
-    const { analyzeCached } = require('../core/analyze');
-    const env = analyzeCached(source, filePath);
-    return { file: filePath, ...lintCode(source, { ...options, program: env.program }) };
+    // ./program-cache, not core/analyze — analyze builds its envelope by
+    // calling lintCode, so requiring it back from here closed a cycle. The
+    // parsed program is the only field this ever used.
+    const { programCached } = require('./program-cache');
+    return { file: filePath, ...lintCode(source, { ...options, program: programCached(source, filePath) }) };
   } catch (e) {
     return { file: filePath, findings: [], summary: { total: 0, byRule: {} }, error: e.message };
   }
@@ -317,12 +320,14 @@ function lintFiles(files, options = {}) {
   //                   so a finding-heavy scan raises globalEntropy, not just
   //                   lowers coherence.
   try {
+    // The cleanliness ratio was a count ratio, not a compressor reading —
+    // removed from the coherence channel (provenance purge 2026-08-09).
+    // Scan size is work, findings are disorder; both ride recordCost.
     const filesScanned = files ? files.length : 0;
-    const coh = Math.max(0, Math.min(1, 1 - (totalFindings / Math.max(1, filesScanned))));
-    const { contribute, recordCost } = require('../core/field-coupling');
-    contribute({ cost: Math.max(1, filesScanned), coherence: coh, source: 'lint' });
+    const { recordCost } = require('../core/field-coupling');
+    recordCost({ units: Math.max(1, filesScanned), source: 'lint:scan', kind: 'work' });
     if (totalFindings > 0) recordCost({ units: totalFindings, source: 'lint:findings', kind: 'disorder' });
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('audit:lint-checkers:recordCost', _); /* best-effort */ }
 
   return {
     files: results,

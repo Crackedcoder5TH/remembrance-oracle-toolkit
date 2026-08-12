@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -12,12 +11,12 @@ let tmpDir;
 let store;
 let field;
 
-function createTestStore() {
+const createTestStore = () => {
   const { SQLiteStore } = require('../src/store/sqlite');
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quantum-field-'));
   store = new SQLiteStore(tmpDir);
   return store;
-}
+};
 
 describe('QuantumField — Migration', () => {
   beforeEach(() => {

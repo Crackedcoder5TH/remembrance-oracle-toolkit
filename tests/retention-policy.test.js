@@ -1,5 +1,5 @@
+const { rmFixture } = require('./helpers');
 /**
- * @oracle-infrastructure — test fixture teardown.
  *
  * This suite clears its own throwaway table between cases
  * (`DELETE FROM pattern_archive` with no WHERE), which is exactly the shape
@@ -26,7 +26,7 @@ describe('Retention Policy', () => {
 
   after(() => {
     store.close();
-    fs.rmSync(testDir, { recursive: true, force: true });
+    rmFixture(testDir, { recursive: true, force: true });
   });
 
   describe('purgeCandidateArchive', () => {

@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { mkdirSync, writeFileSync, existsSync, rmSync } = require('fs');
@@ -9,11 +8,11 @@ const { ensureDir, loadJSON, saveJSON, trimArray } = require('../src/reflector/s
 
 // ── Temp directory helper ──
 
-function makeTempDir() {
+const makeTempDir = () => {
   const dir = join(tmpdir(), `reflector-utils-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir, { recursive: true });
   return dir;
-}
+};
 
 describe('reflector utils — ensureDir', () => {
   it('should create a directory if it does not exist', () => {

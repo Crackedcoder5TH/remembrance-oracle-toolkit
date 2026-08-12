@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -18,15 +17,15 @@ const {
 const { SQLiteStore, DatabaseSync } = require('../src/store/sqlite');
 const { makeTempDir } = require('./helpers');
 
-function createTestStores() {
+const createTestStores = () => {
   const localBase = makeTempDir('local');
   const globalBase = makeTempDir('global');
   const localStore = new SQLiteStore(localBase);
   const globalStore = new SQLiteStore(globalBase);
   return { localStore, globalStore, localBase, globalBase };
-}
+};
 
-function addTestPattern(store, name, opts = {}) {
+const addTestPattern = (store, name, opts = {}) => {
   store.addPattern({
     name,
     code: opts.code || `function ${name.replace(/-/g, '_')}() { return 1; }`,
@@ -35,7 +34,7 @@ function addTestPattern(store, name, opts = {}) {
     tags: opts.tags || ['test'],
     testCode: opts.testCode || null,
   });
-}
+};
 
 describe('Cross-Project Persistence', () => {
   if (!DatabaseSync) {

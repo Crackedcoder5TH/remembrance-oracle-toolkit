@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 /**
  * one-cosine-guard.test.js — nothing outside decoder-stack.js may carry

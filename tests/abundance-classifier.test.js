@@ -1,4 +1,3 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const {
@@ -16,22 +15,22 @@ const { composedAtDepth } = require('../src/core/decoder-stack');
 
 // Monotonic accumulation with heavy tail: one account compounding,
 // mass concentrating — the canonical extraction shape.
-function extractiveSeries() {
+const extractiveSeries = () => {
   const vals = [];
   let x = 1;
   for (let i = 0; i < 200; i++) { x *= 1.06; vals.push(x.toFixed(4)); }
   return JSON.stringify(vals.map(Number));
-}
+};
 
 // Bounded oscillation around a mean: flow goes out and comes back,
 // values diverse, no drift — the canonical circulation shape.
-function abundantSeries() {
+const abundantSeries = () => {
   const vals = [];
   for (let i = 0; i < 200; i++) {
     vals.push((50 + 20 * Math.sin(i / 3) + 7 * Math.sin(i / 1.7)).toFixed(4));
   }
   return JSON.stringify(vals.map(Number));
-}
+};
 
 describe('classifySignature', () => {
   it('rejects vectors that are not depth-4 composed', () => {

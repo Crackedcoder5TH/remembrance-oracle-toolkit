@@ -1,5 +1,5 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, unlinkFixture, writeFixture } = require('./helpers');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
@@ -54,7 +54,7 @@ describe('Swarm configuration', () => {
     assert.equal(loaded.providers.claude.model, 'test-model');
 
     // Cleanup
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('resolveProviders returns empty when no keys set', () => {
@@ -865,11 +865,11 @@ describe('Escalation module', () => {
 describe('Swarm history & feedback loop', () => {
   const fs = require('fs');
 
-  function makeTmpDir() {
+  const makeTmpDir = () => {
     const dir = `/tmp/swarm-hist-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     fs.mkdirSync(require('path').join(dir, '.remembrance'), { recursive: true });
     return dir;
-  }
+  };
 
   it('loadHistory returns empty when no file exists', () => {
     const { loadHistory } = require('../src/swarm/swarm-history');
@@ -907,7 +907,7 @@ describe('Swarm history & feedback loop', () => {
     assert.ok(history.providerStats.openai);
     assert.equal(history.providerStats.openai.wins, 0);
 
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   });
 
   it('recordRun updates reliability over multiple runs', () => {
@@ -935,7 +935,7 @@ describe('Swarm history & feedback loop', () => {
     assert.ok(history.providerStats.claude.reliability > 0.7);
     assert.ok(history.providerStats.openai.reliability < history.providerStats.claude.reliability);
 
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   });
 
   it('recordFeedback adjusts reliability', () => {
@@ -961,7 +961,7 @@ describe('Swarm history & feedback loop', () => {
     const afterReject = loadHistory(dir).providerStats.claude.reliability;
     assert.ok(afterReject < after, 'reliability should decrease on rejection');
 
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   });
 
   it('recordFeedback returns found=false for unknown run', () => {
@@ -989,7 +989,7 @@ describe('Swarm history & feedback loop', () => {
     assert.ok(reliability.has('claude'));
     assert.ok(typeof reliability.get('claude') === 'number');
 
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   });
 
   it('getHistorySummary returns structured summary', () => {
@@ -1015,7 +1015,7 @@ describe('Swarm history & feedback loop', () => {
     assert.ok(summary.providers.length >= 1);
     assert.ok(Array.isArray(summary.recentRuns));
 
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   });
 
   it('barrel export includes history functions', () => {
@@ -1477,7 +1477,7 @@ describe('Remembrance-aware prompt templates', () => {
 describe('Swarm self-refinement', () => {
   const fs = require('fs');
 
-  function makeTmpWithHistory(runs) {
+  const makeTmpWithHistory = (runs) => {
     const dir = `/tmp/swarm-refine-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     fs.mkdirSync(require('path').join(dir, '.remembrance'), { recursive: true });
 
@@ -1487,7 +1487,7 @@ describe('Swarm self-refinement', () => {
       recordRun(r, { userApproved: r._approved }, dir);
     }
     return dir;
-  }
+  };
 
   it('analyzeSwarmPerformance returns insufficient with < 3 runs', () => {
     const { analyzeSwarmPerformance } = require('../src/swarm/self-refinement');
@@ -1511,7 +1511,7 @@ describe('Swarm self-refinement', () => {
     assert.equal(result.sufficient, true);
     assert.equal(result.runsAnalyzed, 5);
     assert.ok(Array.isArray(result.suggestions));
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   });
 
   it('suggestOptimalWeights returns weights with insufficient data', () => {
@@ -1538,7 +1538,7 @@ describe('Swarm self-refinement', () => {
     assert.ok(result.analysis);
     assert.ok(result.weightSuggestion);
     assert.ok(result.weightSuggestion.weights);
-    fs.rmSync(dir, { recursive: true, force: true });
+    rmFixture(dir, { recursive: true, force: true });
   });
 
   it('formatRefinementReport produces readable output', () => {
@@ -1625,10 +1625,10 @@ describe('Voice I/O', () => {
     const { readVoiceInput } = require('../src/swarm/voice-io');
     const fs = require('fs');
     const fp = `/tmp/voice-test-${Date.now()}.txt`;
-    fs.writeFileSync(fp, 'implement debounce function');
+    writeFixture(fp, 'implement debounce function');
     const text = readVoiceInput(fp);
     assert.equal(text, 'implement debounce function');
-    fs.unlinkSync(fp);
+    unlinkFixture(fp);
   });
 
   it('barrel export includes voice functions', () => {
@@ -2077,7 +2077,7 @@ describe('Env Loader', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
     const envPath = path.join(tmpDir, '.env');
     const uniqueKey = '_TEST_ENV_LOADER_' + Date.now();
-    fs.writeFileSync(envPath, `${uniqueKey}=loaded_ok`);
+    writeFixture(envPath, `${uniqueKey}=loaded_ok`);
 
     try {
       const result = loadEnvFile(tmpDir);
@@ -2087,7 +2087,7 @@ describe('Env Loader', () => {
       assert.equal(process.env[uniqueKey], 'loaded_ok');
     } finally {
       delete process.env[uniqueKey];
-      fs.unlinkSync(envPath);
+      unlinkFixture(envPath);
       fs.rmdirSync(tmpDir);
     }
   });
@@ -2097,7 +2097,7 @@ describe('Env Loader', () => {
     const envPath = path.join(tmpDir, '.env');
     const uniqueKey = '_TEST_ENV_NO_OVERRIDE_' + Date.now();
     process.env[uniqueKey] = 'original';
-    fs.writeFileSync(envPath, `${uniqueKey}=overridden`);
+    writeFixture(envPath, `${uniqueKey}=overridden`);
 
     try {
       const result = loadEnvFile(tmpDir);
@@ -2105,7 +2105,7 @@ describe('Env Loader', () => {
       assert.equal(process.env[uniqueKey], 'original');
     } finally {
       delete process.env[uniqueKey];
-      fs.unlinkSync(envPath);
+      unlinkFixture(envPath);
       fs.rmdirSync(tmpDir);
     }
   });
@@ -2115,7 +2115,7 @@ describe('Env Loader', () => {
     const envPath = path.join(tmpDir, '.env');
     const uniqueKey = '_TEST_ENV_FORCE_' + Date.now();
     process.env[uniqueKey] = 'old';
-    fs.writeFileSync(envPath, `${uniqueKey}=new`);
+    writeFixture(envPath, `${uniqueKey}=new`);
 
     try {
       const result = loadEnvFile(tmpDir, { override: true });
@@ -2123,7 +2123,7 @@ describe('Env Loader', () => {
       assert.equal(process.env[uniqueKey], 'new');
     } finally {
       delete process.env[uniqueKey];
-      fs.unlinkSync(envPath);
+      unlinkFixture(envPath);
       fs.rmdirSync(tmpDir);
     }
   });
@@ -2143,7 +2143,7 @@ describe('Env Loader', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
     const envPath = path.join(tmpDir, '.env.local');
     const uniqueKey = '_TEST_ENV_CUSTOM_' + Date.now();
-    fs.writeFileSync(envPath, `${uniqueKey}=custom`);
+    writeFixture(envPath, `${uniqueKey}=custom`);
 
     try {
       const result = loadEnvFile(tmpDir, { filename: '.env.local' });
@@ -2151,7 +2151,7 @@ describe('Env Loader', () => {
       assert.equal(process.env[uniqueKey], 'custom');
     } finally {
       delete process.env[uniqueKey];
-      fs.unlinkSync(envPath);
+      unlinkFixture(envPath);
       fs.rmdirSync(tmpDir);
     }
   });
@@ -2159,13 +2159,13 @@ describe('Env Loader', () => {
   it('findEnvFile finds .env in current directory', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
     const envPath = path.join(tmpDir, '.env');
-    fs.writeFileSync(envPath, 'X=1');
+    writeFixture(envPath, 'X=1');
 
     try {
       const found = findEnvFile(tmpDir);
       assert.equal(found, envPath);
     } finally {
-      fs.unlinkSync(envPath);
+      unlinkFixture(envPath);
       fs.rmdirSync(tmpDir);
     }
   });
@@ -2175,13 +2175,13 @@ describe('Env Loader', () => {
     const subDir = path.join(tmpDir, 'a', 'b', 'c');
     fs.mkdirSync(subDir, { recursive: true });
     const envPath = path.join(tmpDir, '.env');
-    fs.writeFileSync(envPath, 'Y=2');
+    writeFixture(envPath, 'Y=2');
 
     try {
       const found = findEnvFile(subDir);
       assert.equal(found, envPath);
     } finally {
-      fs.unlinkSync(envPath);
+      unlinkFixture(envPath);
       fs.rmdirSync(subDir);
       fs.rmdirSync(path.join(tmpDir, 'a', 'b'));
       fs.rmdirSync(path.join(tmpDir, 'a'));
@@ -2204,7 +2204,7 @@ describe('Env Loader', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
     const envPath = path.join(tmpDir, '.env');
     const uniqueKey = '_TEST_SWARM_CONFIG_ENV_' + Date.now();
-    fs.writeFileSync(envPath, `${uniqueKey}=from_swarm_config`);
+    writeFixture(envPath, `${uniqueKey}=from_swarm_config`);
 
     const { loadSwarmConfig } = require('../src/swarm/swarm-config');
 
@@ -2213,7 +2213,7 @@ describe('Env Loader', () => {
       assert.equal(process.env[uniqueKey], 'from_swarm_config');
     } finally {
       delete process.env[uniqueKey];
-      fs.unlinkSync(envPath);
+      unlinkFixture(envPath);
       fs.rmdirSync(tmpDir);
     }
   });

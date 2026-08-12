@@ -35,15 +35,37 @@ distinguishes the species.
 | `formatMultiPRBody`, `parseCronInterval`, `getCircuitStatus` (reflector) | reflector feature surface behind the public `reflector*` wrappers. |
 | `registerFeedbackSignal`, `unifiedFieldMeasurement`, `quickAmplitude`, `shouldEntangle` | unified/quantum layer surface. |
 
-### WIRE-LATER (8) — real features whose consumer path is a design decision
+### WIRE-LATER — 3 of 8 wired 2026-08-08
+- `maybeAbsorbPattern` → WIRED into all three acceptance sites (submit /
+  register / evolve); first live absorption: both-accept, delta +0.278.
+  `maybeAbsorbBatch` reachable through the same module when a batch
+  caller exists.
+- `loadIgnoreFile` → WIRED into `auditFiles` via `options.repoRoot`
+  (.oracle-ignore support; no-file behavior byte-identical).
+- `checkFractalIntegrity` + `repairFractalIntegrity` → WIRED as
+  `oracle_maintain` actions `fractal-integrity` (read-only) and
+  `fractal-repair` (explicit mutation word required).
+
+### Wired 2026-08-08 (second pass)
+- `auditSourceForLies` → advisory detector `pattern/annotation-lie-gap` in
+  the bridge (flags atomic declarations that contradict the body).
+- `classifyDebugFix` → tags every auto-captured debug pattern with its
+  bug class at the capture site (ci/auto-debug).
+- `detectHiddenIdentifiers` → opt-in `options.hiddenIdentifiers` pass in
+  `voidScanFile` (subprocess-heavy, so never default-on).
+
+### Reclassified / still open (2)
+- `generateWithGate`: KEEP-API — its generatorFn producers live in
+  rmb-swarm; this is cross-repo surface, not an unwired hub feature.
+- `withOfflineQueue`: OPEN — wrapping syncToGlobal needs a design call on
+  which callers should tolerate offline queuing. Honest deferral.
+
+### (historical) Still WIRE-LATER — resolved above
 | item | natural consumer |
 |---|---|
-| `maybeAbsorbPattern` + `maybeAbsorbBatch` (covenant-trust) | the submit/absorb pipeline — field-validated growth is currently reachable only from a diagnostic script. Biggest one here. |
 | `auditSourceForLies` (grounding-semantics) | goggles META-DEBUG / audit engine. |
 | `classifyDebugFix` (resolve-hook) | the resolve-hook pipeline. |
-| `loadIgnoreFile` (suppressions) | `auditFiles` — an `.auditignore` feature, written and unplugged. |
 | `detectHiddenIdentifiers` (void-indirection) | void-scan. |
-| `checkFractalIntegrity` + `repairFractalIntegrity` | `oracle_maintain`. |
 | `withOfflineQueue` (sync-queue) | persistence sync path. |
 | `generateWithGate` (swarm) | swarm generation entry. |
 

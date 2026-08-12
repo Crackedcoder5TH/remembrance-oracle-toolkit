@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 // @oracle-infrastructure — internal machinery whose flagged functions are NESTED helper closures inside its exported functions (AST-parser internals, CLI, daemon, reflector analysis, lifecycle manager) — implementation internals, not module-scope periodic-table elements
 
 /**
@@ -88,10 +89,10 @@ function createPatternLifecycle(store, options = {}) {
 
   function _emit(event) {
     if (onTransition) {
-      try { onTransition(event); } catch (_) { /* never break caller */ }
+      try { onTransition(event); } catch (_) { quiet('evolution:pattern-state-machine:onTransition', _); /* never break caller */ }
     }
     for (const listener of listeners) {
-      try { listener(event); } catch (_) { /* never break caller */ }
+      try { listener(event); } catch (_) { quiet('evolution:pattern-state-machine:listener', _); /* never break caller */ }
     }
   }
 
@@ -272,7 +273,7 @@ function createPatternLifecycle(store, options = {}) {
       store._audit('retire', 'patterns', patternId, { name: row.name });
       store.db.exec('COMMIT');
     } catch (e) {
-      try { store.db.exec('ROLLBACK'); } catch (_) {}
+      try { store.db.exec('ROLLBACK'); } catch (_) { quiet('evolution:pattern-state-machine:_validateTransition', _);}
       return { success: false, reason: `Retirement failed: ${e.message}` };
     }
 
@@ -329,7 +330,7 @@ function createPatternLifecycle(store, options = {}) {
       }
       store.db.exec('COMMIT');
     } catch (e) {
-      try { store.db.exec('ROLLBACK'); } catch (_) {}
+      try { store.db.exec('ROLLBACK'); } catch (_) { quiet('evolution:pattern-state-machine:retireBulk', _);}
       return { retired: 0, remaining: rows.length, events: [], error: e.message };
     }
 
@@ -399,7 +400,7 @@ function createPatternLifecycle(store, options = {}) {
     try {
       const { integratePatternIncremental } = require('../compression/fractal-library-bridge');
       integratePatternIncremental(updated, store);
-    } catch (_) {
+    } catch (_) { quiet('evolution:pattern-state-machine:integratePatternIncremental', _);
       // Non-fatal — embedding update is best-effort
     }
 
@@ -488,7 +489,7 @@ function createPatternLifecycle(store, options = {}) {
 
       store.db.exec('COMMIT');
     } catch (e) {
-      try { store.db.exec('ROLLBACK'); } catch (_) {}
+      try { store.db.exec('ROLLBACK'); } catch (_) { quiet('evolution:pattern-state-machine:_validateTransition', _);}
       return { success: false, reason: `Resurrection failed: ${e.message}` };
     }
 
@@ -567,7 +568,7 @@ function createPatternLifecycle(store, options = {}) {
           reason: `Covenant not sealed — violations: ${violations}`,
         };
       }
-    } catch (_) {
+    } catch (_) { quiet('evolution:pattern-state-machine:covenantCheck', _);
       // If covenant module unavailable, skip this guard
     }
 

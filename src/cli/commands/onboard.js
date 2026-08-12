@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../../core/quiet');
 
 /**
  * onboard.js — `oracle onboard`: the verified front door.
@@ -65,7 +66,7 @@ function _ecosystemPath() {
   // Repo root is three up from src/cli/commands.
   const root = path.resolve(__dirname, '..', '..', '..');
   for (const p of [path.join(root, 'ECOSYSTEM.md'), path.join(process.cwd(), 'ECOSYSTEM.md')]) {
-    try { if (fs.existsSync(p)) return p; } catch (_) { /* ignore */ }
+    try { if (fs.existsSync(p)) return p; } catch (_) { quiet('cli:commands:onboard:_ecosystemPath', _); /* ignore */ }
   }
   return null;
 }

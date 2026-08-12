@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 
 /**
@@ -51,7 +52,7 @@ function loadHistory(rootDir) {
       if (fs.existsSync(bakPath)) {
         const raw = fs.readFileSync(bakPath, 'utf-8');
         const parsed = JSON.parse(raw);
-        try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (_) { /* best effort */ }
+        try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (_) { quiet('swarm:swarm-history:loadHistory', _); /* best effort */ }
         return parsed;
       }
     } catch (bakErr) {
@@ -82,7 +83,7 @@ function saveHistory(rootDir, history) {
   const tmpPath = filePath + '.tmp';
   fs.writeFileSync(tmpPath, json, 'utf-8');
   if (fs.existsSync(filePath)) {
-    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch (_) { /* best effort */ }
+    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch (_) { quiet('swarm:swarm-history:saveHistory', _); /* best effort */ }
   }
   fs.renameSync(tmpPath, filePath);
 }

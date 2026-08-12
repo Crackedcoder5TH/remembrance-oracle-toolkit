@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Unified Variant Generator — single engine for language transpilation.
@@ -208,7 +209,7 @@ function generateLanguageVariants(code, sourceLanguage, targetLanguages) {
         try {
           const { transpileCode } = require('../core/ast-transpiler');
           transpiled = transpileCode(code, lang, targetLang);
-        } catch (_) {
+        } catch (_) { quiet('unified:variants:transpileCode', _);
           // AST transpiler not available — skip this variant
         }
       }

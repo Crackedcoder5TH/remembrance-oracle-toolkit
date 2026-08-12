@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 // @oracle-infrastructure — bounded internal-state writes to internally-constructed paths (ledger/queue/config/cache persistence, validation temp-scratch, CI output, self-created sandbox scaffolding, auto-heal writeback) — not user-input-driven mutations
 
 /**
@@ -13,7 +14,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { findGitHooksDir, HOOK_MARKER } = require('../ci/hooks');
 const { isOracleEnabled } = require('./oracle-config');
 
 const SYNC_STALENESS_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -24,27 +24,11 @@ const BYPASS_COMMANDS = new Set([
   'deploy', 'dashboard', 'plugin', 'preflight',
 ]);
 
-/**
- * Check if git hooks are installed.
- */
-function checkHooksInstalled(cwd = process.cwd()) {
-  const hooksDir = findGitHooksDir(cwd);
-  if (!hooksDir) return { installed: false, reason: 'Not a git repository' };
-
-  const preCommit = path.join(hooksDir, 'pre-commit');
-  const postCommit = path.join(hooksDir, 'post-commit');
-
-  const preOk = fs.existsSync(preCommit) &&
-    fs.readFileSync(preCommit, 'utf-8').includes(HOOK_MARKER);
-  const postOk = fs.existsSync(postCommit) &&
-    fs.readFileSync(postCommit, 'utf-8').includes(HOOK_MARKER);
-
-  if (preOk && postOk) return { installed: true };
-  const missing = [];
-  if (!preOk) missing.push('pre-commit');
-  if (!postOk) missing.push('post-commit');
-  return { installed: false, reason: `Missing hooks: ${missing.join(', ')}` };
-}
+// The filesystem probe itself now lives in ./hooks-probe, a leaf, because
+// compliance needs the same answer and this module needs compliance's ledger
+// (see checkHooksWithLedger below) — which formed a require cycle. Re-exported
+// unchanged at the bottom of this file, so importing it from here still works.
+const { checkHooksInstalled } = require('./hooks-probe');
 
 /**
  * Check when the last sync pull happened.
@@ -71,7 +55,7 @@ function checkLastSync(cwd = process.cwd()) {
         lastPull: data.lastPull,
         reason: `Last sync pull was ${_humanAge(age)} ago (threshold: 24h)`,
       };
-    } catch (_) { /* corrupt file */ }
+    } catch (_) { quiet('core:preflight:require', _); /* corrupt file */ }
   }
 
   // Fallback: check if personal store exists and local store was modified recently
@@ -100,7 +84,7 @@ function recordSyncPull(cwd = process.cwd()) {
     const filePath = path.join(dir, 'sync-timestamp.json');
     const data = { lastPull: new Date().toISOString() };
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (_) { /* best effort */ }
+  } catch (_) { quiet('core:preflight:recordSyncPull', _); /* best effort */ }
 }
 
 /**
@@ -193,7 +177,7 @@ function checkHooksWithLedger(cwd) {
       try {
         recordEvent(session, 'hooks.installed', { source: 'filesystem-heal' });
         saveSession(session, cwd);
-      } catch { /* best-effort */ }
+      } catch (_e) { quiet('core:preflight:saveSession', _e); /* best-effort */ }
     }
     return fs;
   } catch {

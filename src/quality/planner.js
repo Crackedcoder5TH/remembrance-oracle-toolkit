@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * oracle plan <intent> — verified symbol plan before code generation.
@@ -89,16 +90,16 @@ function verifySymbol(symbol, context) {
             const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
             for (const __p of [__lre_p1, __lre_p2]) {
               try {
-                const { contribute: __contribute } = require(__p);
-                __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, (__retVal.evidence && __retVal.evidence.coherency))), source: 'oracle:planner:verifySymbol' });
+                const { recordCost: __recordCost } = require(__p);
+                __recordCost({ units: 1, kind: 'work', source: 'oracle:planner:verifySymbol' });
                 break;
-              } catch (_) { /* try next */ }
+              } catch (_) { quiet('quality:planner:__recordCost', _); /* try next */ }
             }
-          } catch (_) { /* best-effort */ }
+          } catch (_) { quiet('quality:planner:__recordCost', _); /* best-effort */ }
           return __retVal;
         }
       }
-    } catch { /* degrade gracefully */ }
+    } catch (_e) { quiet('quality:planner:__recordCost', _e); /* degrade gracefully */ }
   }
 
   // Tier 4: filesystem scan — look for a definition in the repo's src tree
@@ -224,7 +225,7 @@ function planFromIntent(args) {
   try {
     const { registerPlanSignal } = require('../unified/emergent-coherency');
     registerPlanSignal(missing.length, symbols.length);
-  } catch { /* emergent module not available */ }
+  } catch (_e) { quiet('quality:planner:registerPlanSignal', _e); /* emergent module not available */ }
 
   return {
     intent,

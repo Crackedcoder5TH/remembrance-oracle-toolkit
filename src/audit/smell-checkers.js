@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Architectural smell detectors — the third category alongside bugs
@@ -221,9 +222,11 @@ function smellFile(filePath, options = {}) {
   }
   try {
     const source = fs.readFileSync(filePath, 'utf-8');
-    const { analyzeCached } = require('../core/analyze');
-    const env = analyzeCached(source, filePath);
-    return { file: filePath, ...smellCode(source, { ...options, program: env.program }) };
+    // ./program-cache, not core/analyze — analyze builds its envelope by
+    // calling smellCode, so requiring it back from here closed a cycle. The
+    // parsed program is the only field this ever used.
+    const { programCached } = require('./program-cache');
+    return { file: filePath, ...smellCode(source, { ...options, program: programCached(source, filePath) }) };
   } catch (e) {
     return { file: filePath, findings: [], summary: { total: 0, byRule: {} }, error: e.message };
   }
@@ -242,15 +245,16 @@ function smellFiles(files, options = {}) {
     }
   }
 
-  // Contribute smell outcome to the LRE field.
-  // cost = filesScanned, coherence = 1 - (smells / max(1, files)).
+  // Field: scan size is work, findings are disorder — both recordCost.
+  // The old cleanliness ratio was a count ratio, not a compressor
+  // reading, so it left the coherence channel (provenance purge
+  // 2026-08-09).
   try {
     const filesScanned = files ? files.length : 0;
-    const coh = Math.max(0, Math.min(1, 1 - (totalFindings / Math.max(1, filesScanned))));
-    const { contribute, recordCost } = require('../core/field-coupling');
-    contribute({ cost: Math.max(1, filesScanned), coherence: coh, source: 'smell' });
+    const { recordCost } = require('../core/field-coupling');
+    recordCost({ units: Math.max(1, filesScanned), source: 'smell:scan', kind: 'work' });
     if (totalFindings > 0) recordCost({ units: totalFindings, source: 'smell:findings', kind: 'disorder' });
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('audit:smell-checkers:recordCost', _); /* best-effort */ }
 
   return {
     files: results,

@@ -1,3 +1,4 @@
+const { quiet } = require('./quiet');
 /**
  * Actionable Rejection Feedback — barrel re-export.
  *
@@ -26,7 +27,7 @@ function _contributeValidation(validationResult, passed) {
     require('./field-coupling').contribute({
       cost: 1.0, coherence, source: 'core:feedback:validation-gates',
     });
-  } catch (_) { /* field optional */ }
+  } catch (_) { quiet('core:feedback:_contributeValidation', _); /* field optional */ }
 }
 
 function actionableFeedback(code, validationResult) {

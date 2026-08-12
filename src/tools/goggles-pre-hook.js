@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * @oracle-infrastructure — PreToolUse hook; read-only analysis of the content ABOUT to be
@@ -82,7 +83,7 @@ try {
         try {
           fs.mkdirSync(path.dirname(seenPath), { recursive: true });
           fs.writeFileSync(seenPath, JSON.stringify(seen, null, 1));
-        } catch (_) { /* if we cannot record it, deny once and move on */ }
+        } catch (_) { quiet('tools:goggles-pre-hook:require', _); /* if we cannot record it, deny once and move on */ }
         out('deny',
           'BRIEF REQUIRED — this file carries recorded traps. Read them, then retry '
           + 'the identical edit; it will go through. This is the one-time cost of not '
@@ -92,7 +93,7 @@ try {
       }
     }
   }
-} catch (_) { /* the gate must never break a write on its own account */ }
+} catch (_) { quiet('tools:goggles-pre-hook:require', _); /* the gate must never break a write on its own account */ }
 
 if (!fp || !/\.(js|mjs|cjs|ts|tsx|py)$/.test(fp)) process.exit(0);
 if (!content || content.length < 80) process.exit(0);
@@ -109,7 +110,7 @@ try {
     const list = Array.isArray(r) ? r : (r && r.findings) || [];
     findings = list.filter((f) => String(f.bugClass || f.type || f.class || '').includes('substrate-bypass'));
   }
-} catch (_) { /* checker unavailable — fail open */ }
+} catch (_) { quiet('tools:goggles-pre-hook:require', _); /* checker unavailable — fail open */ }
 // python has no AST checker here; catch the common numpy stand-ins textually
 if (!findings.length && /\.py$/.test(fp)) {
   const pyBypass = [
@@ -156,6 +157,6 @@ try {
       }
     }
   }
-} catch (_) { /* overlay is best-effort */ }
+} catch (_) { quiet('tools:goggles-pre-hook:require', _); /* overlay is best-effort */ }
 if (overlay) outContext(overlay);
 process.exit(0);

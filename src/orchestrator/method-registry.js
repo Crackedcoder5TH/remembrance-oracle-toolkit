@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('../core/quiet');
 
 /**
  * Method Registry — the orchestrator's self-introspection.
@@ -232,12 +233,12 @@ function selectResponseFor() {
     if (ct && ct.variance != null) cognitionVariance = ct.variance;
     const dir = fc.fieldDirection(5);
     if (dir && dir.verdict) direction = dir.verdict;
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('orchestrator:method-registry:require', _); /* best-effort */ }
   try {
     const { consensusHistogram } = require('../core/covenant-trust');
     const h = consensusHistogram();
     if (h && h.total > 0) adversarialRatio = h.ratios['A-yes-B-no'];
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('orchestrator:method-registry:consensusHistogram', _); /* best-effort */ }
 
   const state = { cascade, entropy, coherence, adversarialRatio, cognitionVariance, direction };
   const applicable = methodsFor(state);

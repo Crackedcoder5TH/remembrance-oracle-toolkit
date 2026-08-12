@@ -1,4 +1,4 @@
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
+const { rmFixture, writeFixture } = require('./helpers');
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -7,16 +7,20 @@ const os = require('os');
 const { RemembranceOracle } = require('../src/api/oracle');
 
 /** Read all CLI source files (cli.js + command modules) as a single string for assertion checks. */
-function readCliSources() {
+const readCliSources = () => {
   const cliDir = path.join(__dirname, '..', 'src');
   const mainCli = fs.readFileSync(path.join(cliDir, 'cli.js'), 'utf-8');
   const commandsDir = path.join(cliDir, 'cli', 'commands');
   if (!fs.existsSync(commandsDir)) return mainCli;
-  const modules = fs.readdirSync(commandsDir)
+  // Recurse: command modules now include organs under subdirectories
+  // (admin/, library/, …) created by the façade+organs decompositions.
+  // A flat read missed them, so a string moved into an organ read as
+  // "absent" even though the CLI still ships it.
+  const modules = fs.readdirSync(commandsDir, { recursive: true })
     .filter(f => f.endsWith('.js'))
     .map(f => fs.readFileSync(path.join(commandsDir, f), 'utf-8'));
   return [mainCli, ...modules].join('\n');
-}
+};
 
 // ─── Feature 1: AST-Based Multi-Language Transpiler ───
 
@@ -848,10 +852,10 @@ describe('Feature 10: Package Distribution', () => {
     const storeDir = path.join(tmpDir, '.remembrance');
     if (!fs.existsSync(storeDir)) fs.mkdirSync(storeDir, { recursive: true });
     const claudeMd = path.join(tmpDir, 'CLAUDE.md');
-    if (!fs.existsSync(claudeMd)) fs.writeFileSync(claudeMd, '# Oracle Instructions\n');
+    if (!fs.existsSync(claudeMd)) writeFixture(claudeMd, '# Oracle Instructions\n');
     assert.ok(fs.existsSync(storeDir));
     assert.ok(fs.existsSync(claudeMd));
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 });
 
@@ -888,29 +892,29 @@ describe('Feature 11: MCP Auto-Registration', () => {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     assert.ok(config.mcpServers[SERVER_NAME]);
     assert.equal(config.mcpServers[SERVER_NAME].command, 'node');
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('updateConfigFile preserves existing servers', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-install-'));
     const configPath = path.join(tmpDir, 'mcp.json');
-    fs.writeFileSync(configPath, JSON.stringify({ mcpServers: { 'other-server': { command: 'python', args: ['srv.py'] } } }));
+    writeFixture(configPath, JSON.stringify({ mcpServers: { 'other-server': { command: 'python', args: ['srv.py'] } } }));
     updateConfigFile(configPath, { command: 'node', args: ['test.js'] });
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     assert.ok(config.mcpServers['other-server']);
     assert.ok(config.mcpServers[SERVER_NAME]);
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('removeFromConfig removes server entry', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-install-'));
     const configPath = path.join(tmpDir, 'mcp.json');
-    fs.writeFileSync(configPath, JSON.stringify({ mcpServers: { [SERVER_NAME]: { command: 'node', args: [] } } }));
+    writeFixture(configPath, JSON.stringify({ mcpServers: { [SERVER_NAME]: { command: 'node', args: [] } } }));
     const result = removeFromConfig(configPath);
     assert.ok(result.success);
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     assert.ok(!config.mcpServers[SERVER_NAME]);
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('removeFromConfig skips missing files', () => {
@@ -1110,7 +1114,7 @@ describe('Feature 13: GitHub OAuth Identity', () => {
     gh.removeIdentity('github:sqluser');
     assert.ok(!gh.getIdentity('github:sqluser'));
 
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('oracle API has GitHub identity methods', () => {
@@ -1120,7 +1124,7 @@ describe('Feature 13: GitHub OAuth Identity', () => {
     assert.equal(typeof oracle.startGitHubLogin, 'function');
     assert.equal(typeof oracle.isVerifiedVoter, 'function');
     assert.equal(typeof oracle.listVerifiedIdentities, 'function');
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 
   it('CLI has github command', () => {
@@ -1135,6 +1139,6 @@ describe('Feature 13: GitHub OAuth Identity', () => {
     const tmpOracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
     assert.equal(typeof tmpOracle.verifyGitHubToken, 'function');
     assert.equal(typeof tmpOracle.isVerifiedVoter, 'function');
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    rmFixture(tmpDir, { recursive: true, force: true });
   });
 });

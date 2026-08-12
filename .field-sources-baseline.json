@@ -1,0 +1,69 @@
+{
+ "note": "field-source baseline — every call site allowed to feed contribute({coherence}). New sites are a decision; the grandfathered non-measured list is shrink-only and each entry awaits owner adjudication.",
+ "savedAt": "2026-08-09T04:56:48.654Z",
+ "count": 12,
+ "measured": [
+  {
+   "key": "src/core/covenant.js#void:compress_signal:covenant",
+   "kind": "MEASURED",
+   "why": "coherency (via measured)"
+  },
+  {
+   "key": "src/core/field-coupling/validate.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency (via c)"
+  },
+  {
+   "key": "src/core/field-coupling/verbs.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency (via clamped)"
+  },
+  {
+   "key": "src/core/field-coupling/verbs.js#(unlabeled)#2",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/field-tool.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/living-remembrance.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/core/reflection-scorers.js#void:compress_signal:reflection-scorer",
+   "kind": "MEASURED",
+   "why": "coherency (via measured)"
+  },
+  {
+   "key": "src/mcp/handlers/field.js#(unlabeled)",
+   "kind": "MEASURED",
+   "why": "coherency"
+  },
+  {
+   "key": "src/unified/coherency.js#void:compress_signal:coherency-scorer",
+   "kind": "MEASURED",
+   "why": "coherency (via measured)"
+  }
+ ],
+ "grandfathered": [
+  {
+   "key": "src/core/field-coupling/verbs.js#(unlabeled)#3",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/core/mapper/deep-map.js#(unlabeled)",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  },
+  {
+   "key": "src/orchestrator/entropy-relaxer.js#orchestrator:entropy-relax",
+   "kind": "SUBSTITUTED",
+   "why": "unnamed scalar"
+  }
+ ]
+}

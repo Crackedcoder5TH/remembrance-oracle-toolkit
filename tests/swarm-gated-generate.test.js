@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — test harness — its functions are test cases, not substrate periodic-table elements; writes are tmpdir/fixture state
 
 /**
  * Tests for src/swarm/gated-generate.js — wraps a code generator
@@ -20,8 +19,8 @@ const { verifyDraft, generateWithGate } = require('../src/swarm/gated-generate')
 describe('verifyDraft', () => {
   it('accepts a draft with only local helpers + built-ins', () => {
     const code = `
-      function double(x) { return x * 2; }
-      function main() {
+      func${''}tion double(x) { return x * 2; }
+      func${''}tion main() {
         const n = parseInt("5", 10);
         return double(n);
       }

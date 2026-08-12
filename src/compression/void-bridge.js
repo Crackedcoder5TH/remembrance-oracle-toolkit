@@ -1,3 +1,4 @@
+const { quiet } = require('../core/quiet');
 /**
  * @oracle-infrastructure
  *
@@ -92,7 +93,7 @@ class VoidBridge {
             total += n;
             counted.push(file);
           }
-        } catch (e) {
+        } catch (e) { quiet('compression:void-bridge:constructor', e);
           // Skip unreadable files
         }
       }
@@ -396,7 +397,7 @@ class VoidBridge {
         if (fs.existsSync(outputPath)) {
           existing = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
         }
-      } catch { /* start fresh if corrupt */ }
+      } catch (_e) { quiet('compression:void-bridge:c2', _e); /* start fresh if corrupt */ }
       const existingNames = new Set((existing.patterns || []).map(p => p.name));
       let added = 0;
       for (const p of substratePatterns) {

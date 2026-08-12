@@ -1,4 +1,5 @@
 'use strict';
+const { quiet } = require('./quiet');
 
 /**
  * covenant-trust.js — the covenant's trust-classification layer.
@@ -277,7 +278,7 @@ function maybeAbsorbPattern(pattern, opts = {}) {
       { source: opts.source || 'covenant:absorb', coherence: score, cost: 1 },
       { commit: false }
     );
-  } catch (_) { /* fall through to availability check */ }
+  } catch (_) { quiet('core:covenant-trust:require', _); /* fall through to availability check */ }
 
   if (!projection || !validation) {
     return { absorbed: false, reason: 'oracles unavailable — cannot adjudicate consensus' };
@@ -373,7 +374,7 @@ function maybeAbsorbPattern(pattern, opts = {}) {
         source: opts.source || 'covenant:absorb',
       });
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:covenant-trust:require', _); /* best-effort */ }
 
   return { absorbed: true, ...record };
 }
@@ -479,7 +480,7 @@ function maybeAbsorbBatch(patterns, opts = {}) {
       { source: opts.source || 'covenant:absorb-batch', coherence: scores, cost: 1 },
       { commit: false }
     );
-  } catch (_) { /* fall through */ }
+  } catch (_) { quiet('core:covenant-trust:require', _); /* fall through */ }
 
   if (!projection || !validation) {
     return {
@@ -576,7 +577,7 @@ function maybeAbsorbBatch(patterns, opts = {}) {
         source: opts.source || 'covenant:absorb-batch',
       });
     }
-  } catch (_) { /* best-effort */ }
+  } catch (_) { quiet('core:covenant-trust:require', _); /* best-effort */ }
 
   return { batch: batchInfo, perPattern };
 }

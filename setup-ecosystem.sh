@@ -97,10 +97,12 @@ else
   step "Installing Python dependencies..."
   if command -v pip3 >/dev/null 2>&1 || command -v pip >/dev/null 2>&1; then
     PIP=$(command -v pip3 || command -v pip)
-    if [ -f "Void-Data-Compressor/requirements.txt" ]; then
-      "$PIP" install --quiet -r "Void-Data-Compressor/requirements.txt" 2>/dev/null \
-        && ok "  Void-Data-Compressor: pip deps installed" \
-        || warn "  Void-Data-Compressor: pip install had warnings"
+    # Void python runtime: delegate to the ONE provisioner (also run at
+    # SessionStart) so the install lives in a single place and cannot drift.
+    if [ -f "remembrance-oracle-toolkit/scripts/ensure-void-runtime.sh" ]; then
+      sh "remembrance-oracle-toolkit/scripts/ensure-void-runtime.sh" \
+        && ok "  Void-Data-Compressor: runtime provisioned" \
+        || warn "  Void-Data-Compressor: runtime provisioning had warnings"
     fi
     # ruff enables Python audit in cathedral-diagnostic
     "$PIP" install --quiet ruff 2>/dev/null \

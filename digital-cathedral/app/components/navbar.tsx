@@ -42,6 +42,8 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/#life-chapters", label: "Life Chapters" },
   { href: "/#guides", label: "Guides" },
+  { href: "/trust", label: "Why Trust Us" },
+  { href: "/our-story", label: "Our Story" },
   { href: "/about", label: "About" },
   { href: "/#protection-path", label: "Get Started" },
 ];

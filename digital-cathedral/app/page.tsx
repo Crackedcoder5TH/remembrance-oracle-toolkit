@@ -13,6 +13,7 @@ import { useLeadForm, FIELD_STEP } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
+import { AEOHowTo } from "./components/aeo-schema";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" },
@@ -207,6 +208,11 @@ export default function HomePage() {
 
   return (
     <main className="overflow-hidden bg-[#f6f0e6] text-[#241d15]">
+      {/* Invisible to visitors: the step-by-step schema answer engines read for
+          "how do I get a coverage review". It belongs on this page because these
+          are the steps of the Protection Path form below. The component existed
+          but nothing rendered it, so it had never reached an engine. */}
+      <AEOHowTo />
       <section id="home" className="relative flex min-h-[92vh] items-center px-4 py-24 text-white md:px-8" aria-labelledby="hero-heading">
         {/* Static base — shown while the video loads and for reduced-motion visitors */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(214,179,95,0.34),transparent_28%),linear-gradient(120deg,rgba(19,16,13,0.96),rgba(31,25,19,0.82)_45%,rgba(65,45,24,0.5)),url('/og-image.svg')] bg-cover bg-center" aria-hidden="true" />

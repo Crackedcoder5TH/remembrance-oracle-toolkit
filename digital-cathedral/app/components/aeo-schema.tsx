@@ -182,9 +182,9 @@ export function AEOHowTo() {
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    name: "How to Get a Free Life Insurance Coverage Review for Veterans",
+    name: "How to Get a Free Life Insurance Coverage Review",
     description:
-      "Step-by-step guide to getting a free, no-obligation life insurance coverage review through Valor Legacies. Takes less than 60 seconds.",
+      "Step-by-step guide to requesting a free, no-obligation life insurance coverage review through Valor Legacies, whatever life moment brought you here. Takes less than 60 seconds.",
     totalTime: "PT1M",
     tool: {
       "@type": "HowToTool",

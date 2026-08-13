@@ -88,9 +88,22 @@ const PARAMS = {
     penalizeAfter:      4,     // learning: grace-window edits before a persisting finding decays
     promoteEvery:       8,     // learning: throttle for feeding the void library
     promoteAmplitude:   0.35,  // learning: amplitude to promote a proven fix into the library
-    structureStrong:    0.93,  // intrinsic-coherence verdict bands (measurableOnly scale)
-    structureSolid:     0.80,
-    structureLoose:     0.70,
+    // Coherency scale anchors — the VOID COMPRESSOR's own 0..1 reading of how
+    // well a signal compresses into ITSELF. Measured against the instrument
+    // 2026-08-12: a pure repeat ('AB' x2048) reads 1.0000, a 16-byte cycle
+    // 0.9960, high-entropy random 0.0872. Source code is not self-repeating,
+    // so real src files land 0.098-0.278 (median 0.141 over 28 sampled).
+    //
+    // These were previously 0.93 / 0.80 / 0.70 carried over from the retired
+    // measurableOnly syntax score (median ~0.83). Against a compressor reading
+    // NOTHING clears 0.70 — 0 of 28 files did — so every file printed the same
+    // bottom verdict and the reading carried no information. The anchors below
+    // are the compressor's distribution, not a quality opinion: coherency says
+    // how repetitive a signal is, never whether code is good.
+    coherencyRepeating: 0.90,  // near-pure self-repetition (structured/templated data)
+    coherencyMixed:     0.35,  // partly repeating — some strong internal echo
+    coherencyTypical:   0.10,  // the band ordinary source code lives in
+    // Random/high-entropy sits below coherencyTypical (~0.09).
     resonanceConsonant: 0.90,  // pattern-resonance verdict bands
     resonanceFamiliar:  0.82,
     resonanceDistinct:  0.70,

@@ -154,7 +154,7 @@ export async function sendLeadConfirmationEmail(lead: {
   const text = [
     `Hi ${lead.firstName},`,
     ``,
-    `Thank you for reaching out about ${coverageLabel}. We've received your request and a licensed insurance professional will contact you within 1 business day.`,
+    `Thank you for reaching out about ${coverageLabel}. We've received your request and a licensed insurance professional will contact you within 3 business days.`,
     ``,
     `What happens next:`,
     `1. A licensed agent in your area will review your request`,
@@ -188,7 +188,7 @@ export async function sendLeadConfirmationEmail(lead: {
   <div style="padding: 32px; background-color: #FFFFFF;">
     <p style="font-size: 16px; margin-top: 0;">Hi <strong>${lead.firstName}</strong>,</p>
 
-    <p>Thank you for reaching out about <strong>${coverageLabel}</strong>. We've received your request and a licensed insurance professional will contact you within <strong>1 business day</strong>.</p>
+    <p>Thank you for reaching out about <strong>${coverageLabel}</strong>. We've received your request and a licensed insurance professional will contact you within <strong>3 business days</strong>.</p>
 
     <!-- What happens next -->
     <div style="background: #F0F2F5; border-left: 3px solid #2D8659; padding: 16px 20px; margin: 24px 0; border-radius: 0 6px 6px 0;">

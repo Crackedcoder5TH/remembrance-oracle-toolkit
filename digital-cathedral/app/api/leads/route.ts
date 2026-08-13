@@ -41,7 +41,7 @@ const FALLBACK_CONFIRMATIONS = [
   "Your request has been received. A licensed professional will reach out soon.",
   "Thank you for taking the first step. Someone who understands military coverage will be in touch.",
   "Your information is secure. A licensed insurance professional will contact you shortly.",
-  "We've received your request. Expect a call or email within 1 business day.",
+  "We've received your request. Expect a call or email within 3 business days.",
   "You're one step closer to protecting your family. A professional will reach out soon.",
 ];
 

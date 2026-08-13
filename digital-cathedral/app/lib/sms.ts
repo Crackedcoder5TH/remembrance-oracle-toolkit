@@ -106,7 +106,7 @@ export async function sendLeadSms(lead: {
 
   const body =
     `Hi ${lead.firstName}, thank you for your interest in ${coverageLabel}. ` +
-    `A licensed professional will contact you within 1 business day. ` +
+    `A licensed professional will contact you within 3 business days. ` +
     `Ref: ${lead.leadId} — Valor Legacies`;
 
   try {

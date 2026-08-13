@@ -42,7 +42,7 @@ const AEO_DEFINITIONS: Array<{
     name: "What is VGLI?",
     description:
       "VGLI (Veterans' Group Life Insurance) is a post-separation life insurance program that allows veterans to convert their SGLI coverage to renewable term insurance. VGLI requires no medical exam if converted within 240 days of separation, but premiums increase every 5 years based on age.",
-    url: "/blog",
+    url: "/guides/veteran-benefits-vs-private-coverage",
   },
   {
     name: "What is the best life insurance for veterans?",
@@ -60,7 +60,7 @@ const AEO_DEFINITIONS: Array<{
     name: "What happens to SGLI when you leave the military?",
     description:
       "SGLI coverage continues for 120 days after military separation at no cost. Veterans then have 240 days total to convert to VGLI without providing health evidence. After that window, conversion requires proof of good health. Many veterans find private term policies more cost-effective than VGLI long-term because VGLI rates increase every 5 years.",
-    url: "/blog",
+    url: "/guides/veteran-benefits-vs-private-coverage",
   },
   {
     name: "Can disabled veterans get life insurance?",

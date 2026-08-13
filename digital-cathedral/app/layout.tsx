@@ -32,7 +32,6 @@ export const metadata: Metadata = {
     canonical: "/",
     types: {
       "application/feed+json": "/feed.json",
-      "application/rss+xml": "/feed.xml",
     },
   },
   keywords: [
@@ -126,12 +125,6 @@ const jsonLd = {
         { "@type": "ListItem", position: 1, name: "Home", item: BASE_URL },
         {
           "@type": "ListItem",
-          position: 2,
-          name: "Blog",
-          item: `${BASE_URL}/blog`,
-        },
-        {
-          "@type": "ListItem",
           position: 3,
           name: "Resources",
           item: `${BASE_URL}/resources`,
@@ -206,12 +199,6 @@ export default function RootLayout({
           type="application/feed+json"
           href="/feed.json"
           title="Valor Legacies JSON Feed"
-        />
-        <link
-          rel="alternate"
-          type="application/rss+xml"
-          href="/feed.xml"
-          title="Valor Legacies RSS Feed"
         />
         <script
           type="application/ld+json"

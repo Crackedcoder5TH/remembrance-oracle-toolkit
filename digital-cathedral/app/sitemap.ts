@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { getAllPosts } from "./lib/blog-posts";
 import { GUIDES } from "./guides/data";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -27,7 +26,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }
 
   const baseUrl = isPortal ? `https://${portalDomain}` : leadsBaseUrl;
-  const posts = getAllPosts();
 
   const staticRoutes: MetadataRoute.Sitemap = isPortal
     ? [
@@ -76,12 +74,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
           priority: 0.8,
         },
         {
-          url: `${baseUrl}/blog`,
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.9,
-        },
-        {
           url: `${baseUrl}/privacy`,
           lastModified: new Date(),
           changeFrequency: "monthly",
@@ -94,40 +86,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
           priority: 0.5,
         },
         {
-          url: `${baseUrl}/lp/veteran-life-insurance`,
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.8,
-        },
-        {
-          url: `${baseUrl}/lp/military-family`,
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.8,
-        },
-        {
           url: `${baseUrl}/feed.json`,
           lastModified: new Date(),
           changeFrequency: "weekly",
           priority: 0.5,
         },
-        {
-          url: `${baseUrl}/feed.xml`,
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.5,
-        },
       ];
-
-  // Dynamic blog post routes
-  const blogRoutes: MetadataRoute.Sitemap = isPortal
-    ? []
-    : posts.map((post) => ({
-        url: `${baseUrl}/blog/${post.slug}`,
-        lastModified: new Date(post.dateModified || post.datePublished),
-        changeFrequency: "monthly" as const,
-        priority: 0.7,
-      }));
 
   // Dynamic resource/landing page routes
   const resourceRoutes: MetadataRoute.Sitemap = isPortal
@@ -153,5 +117,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
         })),
       ];
 
-  return [...staticRoutes, ...blogRoutes, ...resourceRoutes];
+  return [...staticRoutes, ...resourceRoutes];
 }

@@ -150,7 +150,6 @@ export default function FaqPage() {
 
         <footer className="pt-8 border-t border-[#e6d9c2] text-center">
           <nav className="flex gap-4 justify-center mb-3">
-            <Link href="/blog" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">Blog</Link>
             <Link href="/resources" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">Guides</Link>
             <Link href="/about" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">About</Link>
             <Link href="/privacy" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">Privacy Policy</Link>

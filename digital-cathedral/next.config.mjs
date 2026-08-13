@@ -42,6 +42,19 @@ const nextConfig = {
         destination: "/guides/veteran-benefits-vs-private-coverage",
         permanent: true,
       })),
+      // The blog was fifteen veteran/military posts and nothing else, so it was
+      // an entirely military section on a site that now speaks to every life
+      // chapter. Retired with the posts pointed at the Resource Center, which
+      // is where a reader arriving from a search result actually wants to land.
+      { source: "/blog", destination: "/resources", permanent: true },
+      { source: "/blog/:slug", destination: "/resources", permanent: true },
+      // feed.xml carried only those posts.
+      { source: "/feed.xml", destination: "/feed.json", permanent: true },
+      // The two campaign landing pages were noindex, so nothing organic points
+      // here; this only catches an old direct link. The /lp shell itself is
+      // kept for the next campaign.
+      { source: "/lp/veteran-life-insurance", destination: "/", permanent: false },
+      { source: "/lp/military-family", destination: "/", permanent: false },
     ];
   },
 

@@ -64,13 +64,18 @@ export default function AboutPage() {
           </section>
 
           <section className="rounded-[1.5rem] border border-[#e6d9c2] bg-white shadow-[0_12px_34px_rgba(61,43,24,0.08)] overflow-hidden grid md:grid-cols-[minmax(260px,0.8fr)_1.2fr]">
-            <div className="relative min-h-80 md:min-h-full">
+            {/* The photograph is 1088x944 — landscape. `fill` + object-cover
+                inside a tall narrow column cropped it to a slice, cutting off
+                both sides of the subject. Intrinsic sizing at its own aspect
+                shows the whole frame, which is the point of a founder portrait. */}
+            <div className="flex items-center justify-center bg-[#f3ece0] p-4">
               <Image
                 src="/assets/valor/founder-andrea-military.jpg"
                 alt="Valor Legacies founder Andrea Golden during her military service"
-                fill
+                width={1088}
+                height={944}
                 sizes="(min-width: 768px) 40vw, 100vw"
-                className="object-cover object-top"
+                className="h-auto w-full rounded-[1rem] object-contain"
               />
             </div>
             <div className="p-7 sm:p-10 space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
@@ -100,7 +105,7 @@ export default function AboutPage() {
           <section className="grid md:grid-cols-2 gap-6">
             <div id="golden-standard" className="scroll-mt-24 rounded-[1.5rem] border border-[#e6d9c2] bg-white shadow-[0_12px_34px_rgba(61,43,24,0.08)] p-7 sm:p-9">
               <h2 className="font-serif text-2xl text-[#211a13] font-light mb-4">The Golden Standard</h2>
-              <p className="text-sm text-[#6a5c4b] leading-relaxed">At Valor Legacies, we believe families deserve more than a quote. They deserve clarity, patience, education, and guidance they can actually understand. The Golden Standard is our commitment to serve people with honesty, care, and purpose — whether they are ready to move forward today or simply trying to understand their options.</p>
+              <p className="text-sm text-[#6a5c4b] leading-relaxed">At Valor Legacies, we believe families deserve more than a quote. They deserve clarity, patience, education, and guidance they can actually understand. The Golden Standard is our commitment to serve people with honesty, care, and purpose, whether they are ready to move forward today or simply trying to understand their options.</p>
             </div>
             <div id="review-process" className="scroll-mt-24 rounded-[1.5rem] border border-[#e6d9c2] bg-white shadow-[0_12px_34px_rgba(61,43,24,0.08)] p-7 sm:p-9">
               <h2 className="font-serif text-2xl text-[#211a13] font-light mb-4">A Thoughtful Review Process</h2>

@@ -33,70 +33,70 @@ const AEO_DEFINITIONS: Array<{
   url: string;
 }> = [
   {
-    name: "What is SGLI?",
+    name: "When should I review my life insurance?",
     description:
-      "SGLI (Servicemembers' Group Life Insurance) is low-cost group life insurance for active duty military members, providing up to $500,000 in coverage. It is administered by Prudential and supervised by the VA. Coverage ends 120 days after separation from service.",
+      "Major life moments are the usual prompts to review protection: welcoming a child, getting married, buying a home, changing jobs, preparing for retirement, supporting aging relatives, or planning for final expenses. A review is also reasonable simply because existing coverage is no longer clear.",
     url: "/faq",
   },
   {
-    name: "What is VGLI?",
+    name: "How much life insurance does my family need?",
     description:
-      "VGLI (Veterans' Group Life Insurance) is a post-separation life insurance program that allows veterans to convert their SGLI coverage to renewable term insurance. VGLI requires no medical exam if converted within 240 days of separation, but premiums increase every 5 years based on age.",
+      "The amount depends on who relies on your income, what debts would remain, whether a mortgage needs covering, how many children are at home, and what future goals matter. A common starting point is several times annual income, adjusted for existing savings and any coverage already in place. A licensed professional can work through the specifics.",
+    url: "/guides/how-much-coverage-do-i-need",
+  },
+  {
+    name: "What life insurance do new parents need?",
+    description:
+      "New parents typically look at replacing income, covering childcare and education costs, and making sure a surviving parent is not forced to choose between work and care. Coverage bought while young and healthy generally costs less, which is why a new baby is a common trigger for a first policy.",
+    url: "/guides/new-parent-protection-checklist",
+  },
+  {
+    name: "What is mortgage protection insurance?",
+    description:
+      "Mortgage protection is life insurance intended to cover the remaining mortgage balance if the policyholder dies, so the household is not forced to sell or refinance. It is often a decreasing term policy whose benefit tracks the declining balance, though level term is also used for the same purpose.",
+    url: "/guides/homeowner-protection-guide",
+  },
+  {
+    name: "Is life insurance through work enough?",
+    description:
+      "Employer coverage is a useful benefit but is usually limited to one or two times salary and generally ends when the job does. Because it is tied to employment and not portable, many households treat it as a foundation and hold personally owned coverage alongside it.",
+    url: "/guides/employer-life-insurance",
+  },
+  {
+    name: "What is final expense insurance?",
+    description:
+      "Final expense insurance is smaller whole life coverage intended for funeral, burial or cremation costs, remaining medical bills, and other end-of-life expenses. Policies are commonly issued between $5,000 and $50,000, and some are available with simplified or guaranteed acceptance.",
+    url: "/guides/final-expense-planning",
+  },
+  {
+    name: "How does life insurance fit into retirement planning?",
+    description:
+      "Protection continues to matter in retirement when a spouse depends on pension or Social Security income, when debts remain, or when the goal is leaving money to family or a cause. Some permanent policies also build cash value that can factor into long-term flexibility, with trade-offs a licensed professional can explain.",
+    url: "/guides/retirement-life-insurance",
+  },
+  {
+    name: "How do veteran benefits compare with private life insurance?",
+    description:
+      "Service-connected programs such as SGLI and VGLI cover a defined need and end or change at separation, so many veteran households compare them against privately owned coverage for the gaps that remain — a mortgage, income replacement, or coverage that stays in place regardless of service status.",
     url: "/guides/veteran-benefits-vs-private-coverage",
-  },
-  {
-    name: "What is the best life insurance for veterans?",
-    description:
-      "The best life insurance for veterans depends on individual needs. Term life insurance is ideal for mortgage protection and income replacement. Whole life insurance suits final expense and legacy planning. Indexed Universal Life (IUL) combines retirement savings with life insurance. Veterans should compare VGLI rates with private market options, as private policies often offer lower locked-in rates.",
-    url: "/faq",
-  },
-  {
-    name: "How much life insurance does a military family need?",
-    description:
-      "Financial advisors recommend 10-12 times annual income in life insurance coverage for military families. This should account for BAH, base pay, special pay, and benefits that stop upon death. SGLI covers up to $500,000, but families with mortgages, children, or a non-working spouse typically need additional private coverage.",
-    url: "/faq",
-  },
-  {
-    name: "What happens to SGLI when you leave the military?",
-    description:
-      "SGLI coverage continues for 120 days after military separation at no cost. Veterans then have 240 days total to convert to VGLI without providing health evidence. After that window, conversion requires proof of good health. Many veterans find private term policies more cost-effective than VGLI long-term because VGLI rates increase every 5 years.",
-    url: "/guides/veteran-benefits-vs-private-coverage",
-  },
-  {
-    name: "Can disabled veterans get life insurance?",
-    description:
-      "Yes. Disabled veterans have several life insurance options. The VA offers Service-Disabled Veterans Life Insurance (S-DVI) and Veterans Affairs Life Insurance (VALife), which provides up to $40,000 in whole life coverage with guaranteed acceptance for any service-connected disability rating. Private guaranteed-issue policies are also available with no medical exam required.",
-    url: "/faq",
   },
   {
     name: "What is Valor Legacies?",
     description:
-      "Valor Legacies is a veteran-founded platform that connects active duty service members, veterans, National Guard, Reserve, and military families with licensed life insurance professionals. It is not an insurance company, agent, or broker. It provides free, no-obligation coverage reviews and supports AI agent integration for automated lead submission.",
+      "Valor Legacies is a veteran-founded, independent life insurance resource for families navigating major life moments — a new baby, a home, marriage, retirement, legacy plans, or final expenses. It is not an insurance company, agent, or broker; it connects consumers with licensed insurance professionals for a free, no-obligation coverage review.",
     url: "/about",
   },
   {
     name: "Does Valor Legacies sell insurance?",
     description:
-      "No. Valor Legacies does not sell insurance, provide quotes, or bind coverage. It connects consumers with licensed insurance professionals who specialize in military-family coverage. The consultation is free with no obligation to purchase.",
+      "No. Valor Legacies does not sell insurance, provide quotes, or bind coverage. It connects consumers with licensed insurance professionals who can review available options. The consultation is free with no obligation to purchase.",
     url: "/faq",
   },
   {
     name: "What states does Valor Legacies serve?",
     description:
-      "Valor Legacies serves all 50 U.S. states, the District of Columbia, and Puerto Rico. Coverage availability varies by state and insurance carrier, but licensed professionals can find options in every state.",
+      "Valor Legacies serves all 50 U.S. states, the District of Columbia, and Puerto Rico. Coverage availability, rates, and approval vary by state, carrier, and underwriting.",
     url: "/faq",
-  },
-  {
-    name: "What is mortgage protection insurance for veterans?",
-    description:
-      "Mortgage protection insurance is a type of life insurance that pays off the remaining mortgage balance if the policyholder dies. For military families, this ensures surviving family members keep their home. It is typically a decreasing term policy where the benefit matches the declining mortgage balance.",
-    url: "/resources",
-  },
-  {
-    name: "What is final expense insurance?",
-    description:
-      "Final expense insurance is affordable whole life insurance that covers funeral costs, burial expenses, medical bills, and other end-of-life expenses. Policies typically range from $5,000 to $50,000. Many plans offer guaranteed acceptance for veterans regardless of health status.",
-    url: "/resources",
   },
 ];
 
@@ -110,9 +110,9 @@ export function AEODefinitions() {
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "Military Life Insurance — Key Questions Answered",
+    name: "Life Insurance — Key Questions Answered",
     description:
-      "Definitive answers to common questions about life insurance for veterans, active duty, and military families.",
+      "Answers to common life insurance questions around the moments that prompt them: a new baby, a home, work benefits, retirement, legacy, final expenses, and veteran benefits.",
     numberOfItems: AEO_DEFINITIONS.length,
     itemListElement: AEO_DEFINITIONS.map((item, i) => ({
       "@type": "ListItem",

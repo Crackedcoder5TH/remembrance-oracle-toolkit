@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AEOSpeakablePage } from "../components/aeo-schema";
+import { AEODefinitions, AEOSpeakablePage } from "../components/aeo-schema";
 import { PAGE } from "../lib/valor/design";
 
 export const metadata: Metadata = {
@@ -96,6 +96,11 @@ export default function FaqPage() {
         url="/faq"
         speakableCssSelectors={["h1", "h2", "p"]}
       />
+      {/* The knowledge-base definitions are served from the FAQ because this is
+          the page answer engines already cite for these questions. The component
+          existed but nothing rendered it, so the definitions never reached an
+          engine at all. */}
+      <AEODefinitions />
 
       <article className="w-full max-w-2xl space-y-8">
         <header>

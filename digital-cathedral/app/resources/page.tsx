@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ServiceSchema } from "../components/schema-markup";
 import { GUIDE_CATEGORIES, getGuidesByCategory } from "../guides/data";
-import { getAllLandingPages } from "../lib/landing-pages";
 
 export const metadata: Metadata = {
   title: "Helpful Guides for Life’s Biggest Moments",
@@ -39,7 +38,6 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 };
 
 export default function ResourcesIndex() {
-  const veteranResources = getAllLandingPages();
 
   return (
     <main className="min-h-screen bg-[#fbf7f0] px-4 py-12 text-[#241d15] md:px-8 md:py-16">
@@ -113,28 +111,6 @@ export default function ResourcesIndex() {
                       </span>
                     </Link>
                   ))}
-
-                  {category === "Veterans & Military Families" &&
-                    veteranResources.map((page) => (
-                      <Link
-                        key={page.slug}
-                        href={`/resources/${page.slug}`}
-                        className="group rounded-[1.5rem] border border-[#decda9] bg-white/75 p-6 transition-all hover:-translate-y-1 hover:border-[#d6b35f]"
-                      >
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9f782f]">
-                          Veteran resource
-                        </p>
-                        <h3 className="mt-3 text-xl font-semibold text-[#241d15] transition-colors group-hover:text-[#9f782f]">
-                          {page.title}
-                        </h3>
-                        <p className="mt-3 text-sm leading-6 text-[#6a5c4b]">
-                          {page.metaDescription}
-                        </p>
-                        <span className="mt-5 inline-flex text-sm font-semibold text-[#9f782f]">
-                          Read Resource &rarr;
-                        </span>
-                      </Link>
-                    ))}
                 </div>
               </section>
             );

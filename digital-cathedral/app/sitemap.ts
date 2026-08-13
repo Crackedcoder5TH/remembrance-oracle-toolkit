@@ -2,7 +2,6 @@ import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { getAllPosts } from "./lib/blog-posts";
 import { GUIDES } from "./guides/data";
-import { getAllLandingPages } from "./lib/landing-pages";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const leadsBaseUrl = (
@@ -29,7 +28,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const baseUrl = isPortal ? `https://${portalDomain}` : leadsBaseUrl;
   const posts = getAllPosts();
-  const resources = getAllLandingPages();
 
   const staticRoutes: MetadataRoute.Sitemap = isPortal
     ? [
@@ -152,12 +150,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
           lastModified: new Date(),
           changeFrequency: "monthly" as const,
           priority: 0.75,
-        })),
-        ...resources.map((page) => ({
-          url: `${baseUrl}/resources/${page.slug}`,
-          lastModified: new Date(),
-          changeFrequency: "monthly" as const,
-          priority: 0.7,
         })),
       ];
 

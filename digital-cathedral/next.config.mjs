@@ -24,6 +24,24 @@ const nextConfig = {
   async redirects() {
     return [
       { source: "/our-story", destination: "/about#our-story", permanent: true },
+      // The eight veteran landing pages under /resources were retired so the
+      // Resource Center carries one consistent set of guides. They were live,
+      // indexed URLs, so they point at the guide that replaced them rather
+      // than 404ing anyone arriving from a search result or an old link.
+      ...[
+        "veteran-final-expense",
+        "military-mortgage-protection",
+        "veteran-iul-retirement",
+        "national-guard-life-insurance",
+        "military-spouse-insurance",
+        "disabled-veteran-life-insurance",
+        "sgli-to-vgli-transition",
+        "veteran-estate-planning",
+      ].map((slug) => ({
+        source: `/resources/${slug}`,
+        destination: "/guides/veteran-benefits-vs-private-coverage",
+        permanent: true,
+      })),
     ];
   },
 

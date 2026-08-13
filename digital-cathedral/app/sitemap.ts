@@ -1,8 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { getAllPosts } from "./lib/blog-posts";
 import { GUIDES } from "./guides/data";
-import { getAllLandingPages } from "./lib/landing-pages";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const leadsBaseUrl = (
@@ -28,8 +26,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }
 
   const baseUrl = isPortal ? `https://${portalDomain}` : leadsBaseUrl;
-  const posts = getAllPosts();
-  const resources = getAllLandingPages();
 
   const staticRoutes: MetadataRoute.Sitemap = isPortal
     ? [
@@ -72,28 +68,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
           priority: 0.7,
         },
         {
-          url: `${baseUrl}/our-story`,
-          lastModified: new Date(),
-          changeFrequency: "monthly",
-          priority: 0.7,
-        },
-        {
-          url: `${baseUrl}/trust`,
-          lastModified: new Date(),
-          changeFrequency: "monthly",
-          priority: 0.7,
-        },
-        {
           url: `${baseUrl}/faq`,
           lastModified: new Date(),
           changeFrequency: "monthly",
           priority: 0.8,
-        },
-        {
-          url: `${baseUrl}/blog`,
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.9,
         },
         {
           url: `${baseUrl}/privacy`,
@@ -108,40 +86,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
           priority: 0.5,
         },
         {
-          url: `${baseUrl}/lp/veteran-life-insurance`,
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.8,
-        },
-        {
-          url: `${baseUrl}/lp/military-family`,
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.8,
-        },
-        {
           url: `${baseUrl}/feed.json`,
           lastModified: new Date(),
           changeFrequency: "weekly",
           priority: 0.5,
         },
-        {
-          url: `${baseUrl}/feed.xml`,
-          lastModified: new Date(),
-          changeFrequency: "weekly",
-          priority: 0.5,
-        },
       ];
-
-  // Dynamic blog post routes
-  const blogRoutes: MetadataRoute.Sitemap = isPortal
-    ? []
-    : posts.map((post) => ({
-        url: `${baseUrl}/blog/${post.slug}`,
-        lastModified: new Date(post.dateModified || post.datePublished),
-        changeFrequency: "monthly" as const,
-        priority: 0.7,
-      }));
 
   // Dynamic resource/landing page routes
   const resourceRoutes: MetadataRoute.Sitemap = isPortal
@@ -165,13 +115,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
           changeFrequency: "monthly" as const,
           priority: 0.75,
         })),
-        ...resources.map((page) => ({
-          url: `${baseUrl}/resources/${page.slug}`,
-          lastModified: new Date(),
-          changeFrequency: "monthly" as const,
-          priority: 0.7,
-        })),
       ];
 
-  return [...staticRoutes, ...blogRoutes, ...resourceRoutes];
+  return [...staticRoutes, ...resourceRoutes];
 }

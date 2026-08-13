@@ -133,7 +133,6 @@ const DISCOVERY_URLS = [
     label: "JSON Feed",
     description: "Machine-readable content feed",
   },
-  { url: "/feed.xml", label: "RSS Feed", description: "RSS 2.0 content feed" },
 ];
 
 export default function DeveloperPortal() {

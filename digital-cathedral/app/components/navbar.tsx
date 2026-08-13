@@ -42,10 +42,15 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/#life-chapters", label: "Life Chapters" },
   { href: "/#guides", label: "Guides" },
-  { href: "/trust", label: "Why Trust Us" },
-  { href: "/our-story", label: "Our Story" },
   { href: "/about", label: "About" },
   { href: "/#protection-path", label: "Get Started" },
+];
+
+const ABOUT_LINKS = [
+  { href: "/about#our-story", label: "Our Story" },
+  { href: "/about#golden-standard", label: "The Golden Standard" },
+  { href: "/about#review-process", label: "Our Review Process" },
+  { href: "/privacy", label: "Privacy & Trust" },
 ];
 
 const PORTAL_NAV_LINKS = [
@@ -62,6 +67,7 @@ export function Navbar() {
   const { isPortal: isPortalDomain, portalBaseUrl } = usePortalDomain();
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -92,6 +98,13 @@ export function Navbar() {
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
+
+  // Collapse the About submenu whenever the menu itself closes, so reopening
+  // always starts from the same collapsed state rather than resuming a shape
+  // the visitor left behind several pages ago.
+  useEffect(() => {
+    if (!menuOpen) setAboutOpen(false);
   }, [menuOpen]);
 
   // Admin-aware navigation. useIsAdmin() recognizes BOTH the legacy
@@ -185,17 +198,73 @@ export function Navbar() {
               aria-label="Main navigation menu"
               className="absolute left-0 top-full mt-fib-3 w-56 rounded-[13px] py-fib-5 z-50 cathedral-surface"
             >
-              {menuLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  role="menuitem"
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-fib-21 py-fib-8 text-sm text-[var(--text-muted)] hover:text-[var(--teal)] hover:bg-[var(--bg-surface-hover)] transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {menuLinks.map((link) => {
+                // About carries a submenu, and it stays CLOSED until its arrow
+                // is used. Rendering the four sub-links inline made the menu
+                // read as nine flat items with no hierarchy, so the top-level
+                // choices were buried by the detail underneath one of them.
+                const hasSubmenu =
+                  !isAdmin && !isPortalDomain && link.label === "About";
+                return (
+                  <div key={link.href}>
+                    <div className="flex items-center">
+                      <Link
+                        href={link.href}
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className="block flex-1 px-fib-21 py-fib-8 text-sm text-[var(--text-muted)] hover:text-[var(--teal)] hover:bg-[var(--bg-surface-hover)] transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                      {hasSubmenu && (
+                        // A separate control, not a wrapper around the link:
+                        // "About" itself must stay clickable, so expanding the
+                        // submenu and navigating to the page are different acts.
+                        <button
+                          type="button"
+                          onClick={() => setAboutOpen((v: boolean) => !v)}
+                          aria-expanded={aboutOpen}
+                          aria-controls="about-submenu"
+                          aria-label={aboutOpen ? "Collapse About menu" : "Expand About menu"}
+                          className="px-fib-13 py-fib-8 text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
+                        >
+                          <svg
+                            width="11"
+                            height="11"
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className={`transition-transform ${aboutOpen ? "rotate-180" : ""}`}
+                            aria-hidden="true"
+                          >
+                            <path d="M3 4.5l3 3 3-3" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                    {hasSubmenu && aboutOpen && (
+                      <div
+                        id="about-submenu"
+                        className="mx-fib-13 mb-fib-5 border-l border-teal-cathedral/20"
+                        aria-label="About pages"
+                      >
+                        {ABOUT_LINKS.map((aboutLink) => (
+                          <Link
+                            key={aboutLink.href}
+                            href={aboutLink.href}
+                            role="menuitem"
+                            onClick={() => setMenuOpen(false)}
+                            className="block pl-fib-21 pr-fib-8 py-fib-5 text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
+                          >
+                            {aboutLink.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

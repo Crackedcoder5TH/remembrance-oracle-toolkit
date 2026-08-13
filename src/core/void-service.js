@@ -75,6 +75,8 @@ const CACHE_MAX = 5000;
 
 let _startAttempted = false;
 let _unavailable = false;
+// Say the silence once per process — loud, but not a scream on every call.
+let _saidUnavailable = false;
 
 // ── ROUTE NEGOTIATION ────────────────────────────────────────────────────
 //
@@ -223,7 +225,18 @@ function coherencyOf(content, opts = {}) {
   if (opts.cachedOnly) return null;
   if (_unavailable) return null;
 
-  const bytes = Buffer.from(content, 'utf8').slice(0, 16384);
+  // THE WHOLE ARTIFACT, NEVER A SLICE.
+  //
+  // This read used to be `.slice(0, 16384)`. A 64 KB file was scored on its
+  // first quarter and the reading was reported as if it described the file —
+  // 25% of src/ is over that cap. A partial read of a whole artifact is not a
+  // cheaper reading of it, it is a reading of something else.
+  //
+  // Nothing is needed to make the full read work: the compressor already
+  // chunks internally (strategy `v4_chunked`, ~482 bytes/chunk, per-chunk
+  // blends) and returns avg_coherence across all of them. The cap was never
+  // buying correctness, only truncation.
+  const bytes = Buffer.from(content, 'utf8');
   if (bytes.length < 8) return null;          // no signal to read
   const series = Array.from(bytes);
 
@@ -232,7 +245,16 @@ function coherencyOf(content, opts = {}) {
     if (ensureUp({ quiet: opts.quiet })) ({ raw, route } = _post(series, content));
   }
   if (!raw) {
+    // NO READING IS A LOUD EVENT. The field must never accumulate while its
+    // one instrument is silent, and a caller must never mistake absence for a
+    // low score. Say it on stderr once per process, then keep returning null.
     _unavailable = true;
+    if (!_saidUnavailable) {
+      _saidUnavailable = true;
+      process.stderr.write('[void] NO COHERENCY READING — the compressor is unreachable on port '
+        + PORT + '. Every coherency in this process reads NULL, not 0, and nothing '
+        + 'downstream may substitute a number for it. Start compressor_service and re-run.\n');
+    }
     return null;
   }
 
@@ -246,6 +268,18 @@ function coherencyOf(content, opts = {}) {
     // Chunked path reports per-chunk blends; single-shot path reports one.
     blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null) || null;
   } catch (_) { quiet('core:void-service:_post', _); /* unparseable → no reading */ }
+
+  // A response that carries no number is an ABSENT reading, not a zero. The
+  // legacy /compress route returns avg_coherence: 0 with blends — reporting
+  // that as a coherency of 0.0 would be a fabricated floor on every artifact.
+  if (typeof value !== 'number' || !isFinite(value)) {
+    if (!_saidUnavailable) {
+      _saidUnavailable = true;
+      process.stderr.write('[void] NO COHERENCY READING — the compressor answered on route "'
+        + (route || 'unknown') + '" without a usable avg_coherence. Reading is NULL, not 0.\n');
+    }
+    return null;
+  }
 
   // ── SELF-MATCH: the reading that measures library membership ──────────────
   //

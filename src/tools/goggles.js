@@ -728,8 +728,6 @@ function bar(x, width = 22) {
  * number told you nothing. Say what the reading IS, and carry the scale with
  * it, so it can never be read as a grade or confused with resonance.
  */
-const COHERENCY_READ_CAP = 16384;   // must track void-service.coherencyOf's slice
-
 function coherencyMeaning(c) {
   if (c >= GOG.coherencyRepeating) return 'near-pure repetition — one pattern restates the whole';
   if (c >= GOG.coherencyMixed) return 'partly repeating — strong internal echo';
@@ -853,21 +851,19 @@ function main() {
   if (r.coherence == null) {
     // Unmeasured must read as unmeasured — never as a number, never as a
     // crash (FIELD-SELF-COMPRESSION: the 0.0000-vs-unmeasured lesson).
-    console.log('    coherency   (unmeasured — compressor unreachable; start compressor_service and re-goggle)');
+    console.log('    coherency   NULL — NO READING TAKEN\n'
+      + '                The compressor did not answer. This is NOT a low score and NOT a\n'
+      + '                zero: nothing was measured. Start compressor_service and re-goggle.');
   } else {
-    // The scale rides WITH the number so it can never be read as a grade, and
-    // void-service reads at most the first 16 KB — a partial read must say so,
-    // since a 64 KB file scored on 16 KB is a reading of a quarter of it. One
+    // The scale rides WITH the number so it can never be read as a grade. One
     // call site: the print surface is ratcheted, and wording is not a reason
-    // to grow it.
-    const _bytes = Buffer.byteLength(content, 'utf8');
+    // to grow it. The whole artifact is always read — the 16 KB cap that once
+    // scored a 64 KB file on its first quarter is gone.
     console.log(
       `    coherency   ${bar(r.coherence)} ${(r.coherence).toFixed(3)}  ${coherencyMeaning(r.coherence)}\n`
       + '                scale: 1.00 = one pattern repeats throughout · ~0.09 = random bytes\n'
-      + '                       source code normally reads 0.10-0.28 — low here is CORRECT'
-      + (_bytes > COHERENCY_READ_CAP
-        ? `\n                PARTIAL: scored on the first ${COHERENCY_READ_CAP} of ${_bytes} bytes`
-        : ''));
+      + '                       source code normally reads 0.10-0.28 — low here is CORRECT\n'
+      + `                read in full: ${Buffer.byteLength(content, 'utf8')} bytes, no slice`);
   }
   console.log('    ⚠ coherency measures SELF-REPETITION — how much of this is one pattern');
   console.log('      restated. It is not a grade, not correctness, not code quality. A');

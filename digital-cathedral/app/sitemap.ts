@@ -72,18 +72,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
           priority: 0.7,
         },
         {
-          url: `${baseUrl}/our-story`,
-          lastModified: new Date(),
-          changeFrequency: "monthly",
-          priority: 0.7,
-        },
-        {
-          url: `${baseUrl}/trust`,
-          lastModified: new Date(),
-          changeFrequency: "monthly",
-          priority: 0.7,
-        },
-        {
           url: `${baseUrl}/faq`,
           lastModified: new Date(),
           changeFrequency: "monthly",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AEOSpeakablePage } from "../components/aeo-schema";
+import { PAGE } from "../lib/valor/design";
 
 export const metadata: Metadata = {
   title: "Frequently Asked Questions",
@@ -84,7 +85,7 @@ const faqJsonLd = {
 
 export default function FaqPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-12">
+    <main className={`${PAGE} flex flex-col items-center px-4 py-16 md:py-24`}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
@@ -100,14 +101,14 @@ export default function FaqPage() {
         <header>
           <Link
             href="/"
-            className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
+            className="text-[#b58b3b] text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
           >
             &larr; Back Home
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
+          <h1 className="font-serif text-2xl sm:text-3xl font-light text-[#211a13] mb-2">
             Frequently Asked Questions
           </h1>
-          <p className="text-sm text-[var(--text-muted)]">
+          <p className="text-sm text-[#6a5c4b]">
             Common questions about planning protection around life’s biggest moments.
           </p>
         </header>
@@ -115,23 +116,23 @@ export default function FaqPage() {
         <div className="space-y-6">
           {FAQS.map((item) => (
             <div key={item.q} className="border-b border-indigo-cathedral/8 pb-5">
-              <h2 className="text-sm font-medium text-[var(--text-primary)] mb-2">
+              <h2 className="font-serif text-sm font-medium text-[#211a13] mb-2">
                 {item.q}
               </h2>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+              <p className="text-sm text-[#6a5c4b] leading-relaxed">
                 {item.a}
               </p>
             </div>
           ))}
         </div>
 
-        <div className="cathedral-surface p-6 text-center">
-          <p className="text-sm text-[var(--text-muted)] mb-4">
+        <div className="rounded-[1.5rem] border border-[#e6d9c2] bg-white shadow-[0_12px_34px_rgba(61,43,24,0.08)] p-6 text-center">
+          <p className="text-sm text-[#6a5c4b] mb-4">
             Have a question not answered here?
           </p>
           <a
             href="mailto:valorlegacies@gmail.com"
-            className="text-teal-cathedral text-sm hover:underline"
+            className="text-[#b58b3b] text-sm hover:underline"
           >
             Contact us
           </a>
@@ -140,22 +141,22 @@ export default function FaqPage() {
         <div className="text-center pt-4">
           <Link
             href="/"
-            className="inline-block px-8 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+            className="inline-block px-8 py-3 rounded-lg font-medium text-sm transition-all bg-[#b58b3b] text-white hover:bg-[#b58b3b]/90"
           >
             Start My Coverage Review
           </Link>
-          <p className="text-xs text-[var(--text-muted)] mt-2">Takes less than 60 seconds.</p>
+          <p className="text-xs text-[#6a5c4b] mt-2">Takes less than 60 seconds.</p>
         </div>
 
-        <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
+        <footer className="pt-8 border-t border-[#e6d9c2] text-center">
           <nav className="flex gap-4 justify-center mb-3">
-            <Link href="/blog" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Blog</Link>
-            <Link href="/resources" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Guides</Link>
-            <Link href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">About</Link>
-            <Link href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Privacy Policy</Link>
-            <Link href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Terms of Service</Link>
+            <Link href="/blog" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">Blog</Link>
+            <Link href="/resources" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">Guides</Link>
+            <Link href="/about" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">About</Link>
+            <Link href="/privacy" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">Privacy Policy</Link>
+            <Link href="/terms" className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs">Terms of Service</Link>
           </nav>
-          <p className="text-xs text-[var(--text-muted)]">
+          <p className="text-xs text-[#6a5c4b]">
             &copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.
           </p>
         </footer>

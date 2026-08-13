@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PAGE } from "../lib/valor/design";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -9,25 +10,25 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-12">
+    <main className={`${PAGE} flex flex-col items-center px-4 py-16 md:py-24`}>
       <article className="w-full max-w-2xl space-y-8">
         <header>
           <Link
             href="/"
-            className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
+            className="text-[#b58b3b] text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
           >
             &larr; Back Home
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
+          <h1 className="font-serif text-2xl sm:text-3xl font-light text-[#211a13] mb-2">
             Privacy Policy
           </h1>
-          <p className="text-sm text-[var(--text-muted)]">
+          <p className="text-sm text-[#6a5c4b]">
             Last updated: March 2026
           </p>
         </header>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Overview
           </h2>
           <p>
@@ -39,13 +40,13 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Data We Collect
           </h2>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              <strong className="text-[var(--text-primary)]">
+              <strong className="text-[#211a13]">
                 Form submissions:
               </strong>{" "}
               When you submit a coverage review request, we collect your name,
@@ -55,14 +56,14 @@ export default function PrivacyPage() {
               fields are relevant to a veteran or military-family request.
             </li>
             <li>
-              <strong className="text-[var(--text-primary)]">
+              <strong className="text-[#211a13]">
                 Consent records:
               </strong>{" "}
               We record your TCPA consent, privacy consent, the timestamp of
               consent, your IP address, and user agent for compliance purposes.
             </li>
             <li>
-              <strong className="text-[var(--text-primary)]">
+              <strong className="text-[#211a13]">
                 UTM parameters:
               </strong>{" "}
               If you arrive via a marketing link, we may capture UTM tracking
@@ -72,8 +73,8 @@ export default function PrivacyPage() {
           </ul>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             How We Use Your Data
           </h2>
           <ul className="list-disc list-inside space-y-2">
@@ -93,8 +94,8 @@ export default function PrivacyPage() {
           </ul>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Data Sharing
           </h2>
           <p>
@@ -105,12 +106,12 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Cookies &amp; Tracking
           </h2>
           <p>
-            Valor Legacies does <strong className="text-[var(--text-primary)]">not</strong> use
+            Valor Legacies does <strong className="text-[#211a13]">not</strong> use
             third-party cookies or advertising pixels. We do not use Google
             Analytics, Facebook Pixel, or any similar tracking service.
           </p>
@@ -120,8 +121,8 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Data Security
           </h2>
           <ul className="list-disc list-inside space-y-2">
@@ -145,8 +146,8 @@ export default function PrivacyPage() {
           </ul>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Data Retention
           </h2>
           <p>
@@ -156,23 +157,23 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Your Rights
           </h2>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              <strong className="text-[var(--text-primary)]">Access:</strong>{" "}
+              <strong className="text-[#211a13]">Access:</strong>{" "}
               You may request a copy of the personal information we hold about
               you.
             </li>
             <li>
-              <strong className="text-[var(--text-primary)]">Delete:</strong>{" "}
+              <strong className="text-[#211a13]">Delete:</strong>{" "}
               You may request deletion of all personal data associated with your
               email address. We process deletion requests within 15 business days.
             </li>
             <li>
-              <strong className="text-[var(--text-primary)]">Correct:</strong>{" "}
+              <strong className="text-[#211a13]">Correct:</strong>{" "}
               You may request correction of inaccurate personal information.
             </li>
           </ul>
@@ -180,7 +181,7 @@ export default function PrivacyPage() {
             To exercise any of these rights, email{" "}
             <a
               href="mailto:valorlegacies@gmail.com"
-              className="text-teal-cathedral hover:underline"
+              className="text-[#b58b3b] hover:underline"
             >
               valorlegacies@gmail.com
             </a>
@@ -188,13 +189,13 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <section id="do-not-sell" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section id="do-not-sell" className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Do Not Sell or Share My Personal Information
           </h2>
           <p>
             If you submitted information through our{" "}
-            <Link href="/" className="text-teal-cathedral hover:underline">
+            <Link href="/" className="text-[#b58b3b] hover:underline">
               protection form
             </Link>
             , your contact details may be shared with licensed insurance
@@ -204,28 +205,28 @@ export default function PrivacyPage() {
             &ldquo;sharing&rdquo; of personal information.
           </p>
           <p>
-            <strong className="text-[var(--text-primary)]">You have the right to opt out.</strong>{" "}
+            <strong className="text-[#211a13]">You have the right to opt out.</strong>{" "}
             To exercise this right:
           </p>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              <strong className="text-[var(--text-primary)]">Email us:</strong>{" "}
+              <strong className="text-[#211a13]">Email us:</strong>{" "}
               Send a request to{" "}
               <a
                 href="mailto:valorlegacies@gmail.com"
-                className="text-teal-cathedral hover:underline"
+                className="text-[#b58b3b] hover:underline"
               >
                 valorlegacies@gmail.com
               </a>{" "}
               with the subject line &ldquo;Do Not Sell or Share.&rdquo;
             </li>
             <li>
-              <strong className="text-[var(--text-primary)]">Right to Delete:</strong>{" "}
+              <strong className="text-[#211a13]">Right to Delete:</strong>{" "}
               You may request deletion of all personal data we hold about you.
               We will process deletion requests within 15 business days.
             </li>
             <li>
-              <strong className="text-[var(--text-primary)]">Right to Know:</strong>{" "}
+              <strong className="text-[#211a13]">Right to Know:</strong>{" "}
               You may request a copy of the personal information we have
               collected about you in the preceding 12 months.
             </li>
@@ -236,19 +237,19 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Third-Party Services
           </h2>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              <strong className="text-[var(--text-primary)]">Vercel:</strong>{" "}
+              <strong className="text-[#211a13]">Vercel:</strong>{" "}
               Hosting platform. See{" "}
               <a
                 href="https://vercel.com/legal/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-teal-cathedral hover:underline"
+                className="text-[#b58b3b] hover:underline"
               >
                 Vercel&apos;s privacy policy
               </a>
@@ -257,28 +258,28 @@ export default function PrivacyPage() {
           </ul>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+        <section className="space-y-4 text-sm text-[#6a5c4b] leading-relaxed">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Contact
           </h2>
           <p>
             For privacy-related questions, email{" "}
             <a
               href="mailto:valorlegacies@gmail.com"
-              className="text-teal-cathedral hover:underline"
+              className="text-[#b58b3b] hover:underline"
             >
               valorlegacies@gmail.com
             </a>{" "}
             or visit our{" "}
-            <Link href="/about" className="text-teal-cathedral hover:underline">
+            <Link href="/about" className="text-[#b58b3b] hover:underline">
               About &amp; Contact
             </Link>{" "}
             page.
           </p>
         </section>
 
-        <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
-          <p className="text-xs text-[var(--text-muted)]">
+        <footer className="pt-8 border-t border-[#e6d9c2] text-center">
+          <p className="text-xs text-[#6a5c4b]">
             &copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.
           </p>
         </footer>

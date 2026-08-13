@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllPosts } from "../lib/blog-posts";
+import { PAGE } from "../lib/valor/design";
 
 export const metadata: Metadata = {
   title: "Life Insurance Guides",
@@ -68,7 +69,7 @@ export default function BlogPage() {
   const posts = getAllPosts();
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-12">
+    <main className={`${PAGE} flex flex-col items-center px-4 py-16 md:py-24`}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
@@ -78,14 +79,14 @@ export default function BlogPage() {
         <header>
           <Link
             href="/"
-            className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
+            className="text-[#b58b3b] text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
           >
             &larr; Back Home
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
+          <h1 className="font-serif text-2xl sm:text-3xl font-light text-[#211a13] mb-2">
             Life Insurance Guides
           </h1>
-          <p className="text-sm text-[var(--text-muted)] max-w-xl">
+          <p className="text-sm text-[#6a5c4b] max-w-xl">
             Clear, thoughtful resources to help you explore protection through
             life’s biggest moments — from a growing family or new home to
             retirement, legacy planning, and military transitions.
@@ -97,7 +98,7 @@ export default function BlogPage() {
             <Link
               key={category.label}
               href={category.href}
-              className="cathedral-surface px-4 py-3 text-center text-xs text-[var(--text-primary)] hover:text-teal-cathedral hover:border-teal-cathedral/30 transition-colors"
+              className="rounded-[1.5rem] border border-[#e6d9c2] bg-white shadow-[0_12px_34px_rgba(61,43,24,0.08)] px-4 py-3 text-center text-xs text-[#211a13] hover:text-[#b58b3b] hover:border-[#d9c08a] transition-colors"
             >
               {category.label}
             </Link>
@@ -105,54 +106,54 @@ export default function BlogPage() {
         </nav>
 
         <section className="space-y-2">
-          <p className="text-teal-cathedral text-xs tracking-[0.2em] uppercase">Helpful Guides for Life’s Biggest Moments</p>
-          <h2 className="text-xl text-[var(--text-primary)] font-light">Explore all life chapters</h2>
-          <p className="text-sm text-[var(--text-muted)]">Start with our broader guide library, or continue below for veteran and military-family resources.</p>
-          <Link href="/guides" className="inline-block text-sm text-teal-cathedral hover:underline">View all guides →</Link>
+          <p className="text-[#b58b3b] text-xs tracking-[0.2em] uppercase">Helpful Guides for Life’s Biggest Moments</p>
+          <h2 className="font-serif text-xl text-[#211a13] font-light">Explore all life chapters</h2>
+          <p className="text-sm text-[#6a5c4b]">Start with our broader guide library, or continue below for veteran and military-family resources.</p>
+          <Link href="/guides" className="inline-block text-sm text-[#b58b3b] hover:underline">View all guides →</Link>
         </section>
 
         {/* ─── Post Grid ─── */}
         <section id="veterans-military-families" className="scroll-mt-24 space-y-5">
           <div>
-            <p className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-2">Featured category</p>
-            <h2 className="text-xl text-[var(--text-primary)] font-light">Veterans &amp; Military Families</h2>
+            <p className="text-[#b58b3b] text-xs tracking-[0.2em] uppercase mb-2">Featured category</p>
+            <h2 className="font-serif text-xl text-[#211a13] font-light">Veterans &amp; Military Families</h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2">
           {posts.map((post) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="cathedral-surface p-5 block hover:border-teal-cathedral/30 transition-colors group"
+              className="rounded-[1.5rem] border border-[#e6d9c2] bg-white shadow-[0_12px_34px_rgba(61,43,24,0.08)] p-5 block hover:border-[#d9c08a] transition-colors group"
             >
               <div className="flex items-center gap-2 mb-3">
                 <time
                   dateTime={post.datePublished}
-                  className="text-xs text-[var(--text-muted)]"
+                  className="text-xs text-[#6a5c4b]"
                 >
                   {formatDate(post.datePublished)}
                 </time>
-                <span className="text-xs text-[var(--text-muted)]">&middot;</span>
-                <span className="text-xs text-[var(--text-muted)]">
+                <span className="text-xs text-[#6a5c4b]">&middot;</span>
+                <span className="text-xs text-[#6a5c4b]">
                   {post.readTime}
                 </span>
               </div>
-              <h2 className="text-sm font-medium text-[var(--text-primary)] mb-2 group-hover:text-teal-cathedral transition-colors leading-snug">
+              <h2 className="font-serif text-sm font-medium text-[#211a13] mb-2 group-hover:text-[#b58b3b] transition-colors leading-snug">
                 {post.title}
               </h2>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3 mb-3">
+              <p className="text-xs text-[#6a5c4b] leading-relaxed line-clamp-3 mb-3">
                 {post.description}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {post.tags.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-teal-cathedral/10 text-teal-cathedral"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-[#f3ece0] text-[#b58b3b]"
                   >
                     {tag}
                   </span>
                 ))}
                 {post.tags.length > 3 && (
-                  <span className="text-[10px] px-2 py-0.5 text-[var(--text-muted)]">
+                  <span className="text-[10px] px-2 py-0.5 text-[#6a5c4b]">
                     +{post.tags.length - 3} more
                   </span>
                 )}
@@ -164,7 +165,7 @@ export default function BlogPage() {
 
         {/* ─── FAQ Section ─── */}
         <section className="space-y-6 pt-4">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+          <h2 className="font-serif text-lg text-[#211a13] font-medium">
             Common Questions
           </h2>
           <div className="space-y-4">
@@ -173,10 +174,10 @@ export default function BlogPage() {
                 key={item.q}
                 className="border-b border-indigo-cathedral/8 pb-4"
               >
-                <h3 className="text-sm font-medium text-[var(--text-primary)] mb-1">
+                <h3 className="text-sm font-medium text-[#211a13] mb-1">
                   {item.q}
                 </h3>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                <p className="text-xs text-[#6a5c4b] leading-relaxed">
                   {item.a}
                 </p>
               </div>
@@ -188,44 +189,44 @@ export default function BlogPage() {
         <div className="text-center pt-4">
           <Link
             href="/"
-            className="inline-block px-8 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+            className="inline-block px-8 py-3 rounded-lg font-medium text-sm transition-all bg-[#b58b3b] text-white hover:bg-[#b58b3b]/90"
           >
             Start My Coverage Review
           </Link>
-          <p className="text-xs text-[var(--text-muted)] mt-2">
+          <p className="text-xs text-[#6a5c4b] mt-2">
             Free, no-obligation review. Takes less than 60 seconds.
           </p>
         </div>
 
         {/* ─── Footer ─── */}
-        <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
+        <footer className="pt-8 border-t border-[#e6d9c2] text-center">
           <nav className="flex gap-4 justify-center mb-3">
             <Link
               href="/about"
-              className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs"
+              className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs"
             >
               About
             </Link>
             <Link
               href="/faq"
-              className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs"
+              className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs"
             >
               FAQ
             </Link>
             <Link
               href="/privacy"
-              className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs"
+              className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs"
             >
               Privacy Policy
             </Link>
             <Link
               href="/terms"
-              className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs"
+              className="text-[#b58b3b]/70 hover:text-[#b58b3b] text-xs"
             >
               Terms of Service
             </Link>
           </nav>
-          <p className="text-xs text-[var(--text-muted)]">
+          <p className="text-xs text-[#6a5c4b]">
             &copy; {new Date().getFullYear()} Valor Legacies. All rights
             reserved.
           </p>

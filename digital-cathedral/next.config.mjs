@@ -15,6 +15,18 @@ const nextConfig = {
   },
 
   // ─── Security Headers (HTTPS everywhere) ───
+  // /our-story was a real page before its content moved into /about. Handling
+  // the move with redirect() inside the page produced a 200 carrying a
+  // meta-refresh — a visible ~1s blank frame for the visitor, and a thin page
+  // search engines keep indexing under the old URL. A config redirect is a real
+  // 308: instant for the visitor, and it transfers the old URL's standing to
+  // the new one instead of stranding it.
+  async redirects() {
+    return [
+      { source: "/our-story", destination: "/about#our-story", permanent: true },
+    ];
+  },
+
   async headers() {
     return [
       {

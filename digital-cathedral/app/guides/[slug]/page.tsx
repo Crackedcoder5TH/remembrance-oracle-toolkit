@@ -129,14 +129,14 @@ export default async function GuidePage({ params }: Props) {
             Start with your life, not insurance jargon.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#eadcc7]">
-            Tell us what changed, and we can help guide the next conversation
-            with a licensed professional.
+            You do not need to know which policy fits. Start with the chapter
+            you’re in, and we’ll help you understand your options.
           </p>
           <Link
             href="/#protection-path"
             className="mt-7 inline-flex rounded-full bg-[#d6b35f] px-8 py-3 text-sm font-semibold text-[#241d15] transition-transform hover:-translate-y-0.5"
           >
-            {guide.cta}
+            Start My Protection Path
           </Link>
         </section>
 

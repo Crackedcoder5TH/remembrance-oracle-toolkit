@@ -199,8 +199,7 @@ export default function PrivacyPage() {
               protection form
             </Link>
             , your contact details may be shared with licensed insurance
-            professionals. Under the California Consumer Privacy Act (CCPA
-            {"/"}CPRA)
+            professionals. Under the California Consumer Privacy Act (CCPA&#47;CPRA)
             and similar state laws, this may constitute a &ldquo;sale&rdquo; or
             &ldquo;sharing&rdquo; of personal information.
           </p>

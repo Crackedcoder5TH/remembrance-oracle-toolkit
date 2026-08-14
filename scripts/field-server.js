@@ -363,10 +363,20 @@ function gogglesRead(code, language) {
   const band = (v, hi, mid, lo, labels) => (v == null ? null
     : v >= hi ? labels[0] : v >= mid ? labels[1] : v >= lo ? labels[2] : labels[3]);
   return {
-    // FOCUS — what you're working at (intrinsic structure, not correctness)
+    // FOCUS — COHERENCY: the compressor's 0..1 reading of how well this signal
+    // compresses INTO ITSELF. Pure repetition reads 1.0, random ~0.09, source
+    // code 0.10-0.28. Not a grade, not correctness — repetition only.
+    //
+    // The bands were 0.93/0.80/0.70 labelled strong/solid/loose/weak, carried
+    // over from the retired measurableOnly syntax score (median ~0.83). On a
+    // compressor reading nothing clears 0.70, so every artifact returned
+    // "weak" and the field said the same thing about everything.
     focus: {
-      coherence,
-      structure: band(coherence, cfg.structureStrong ?? 0.93, cfg.structureSolid ?? 0.80, cfg.structureLoose ?? 0.70, ['strong', 'solid', 'loose', 'weak']),
+      coherency: coherence,
+      coherence,                    // legacy alias — same number, one instrument
+      selfRepetition: band(coherence,
+        cfg.coherencyRepeating ?? 0.90, cfg.coherencyMixed ?? 0.35, cfg.coherencyTypical ?? 0.10,
+        ['near-pure-repetition', 'partly-repeating', 'low-typical-for-code', 'near-random']),
     },
     // META — where it sits in the whole codebase (pattern resonance)
     meta: {

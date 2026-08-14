@@ -9,24 +9,36 @@ const { quiet } = require('../core/quiet');
  * goggles — structural meta-awareness while you work on a section.
  *
  * Shows TWO DISTINCT signals at once, from a single field-tool read():
- *   FOCUS — the section's intrinsic COHERENCE: does it have coherent structure
- *           (syntax / completeness / consistency / AST), measured from the
- *           content itself.
+ *   FOCUS — COHERENCY: the Void compressor's 0..1 reading of how well this
+ *           signal compresses INTO ITSELF — how much of it is one repeating
+ *           pattern. `'AB' x2048` reads 1.0000; a 16-byte cycle 0.9960;
+ *           high-entropy random 0.0872. Source code is not a repeating
+ *           pattern, so real files land ~0.10-0.28 and that is the CORRECT
+ *           answer, not a complaint about the code.
  *
- *           DISCLAIMER — coherence is NOT a coding trust signal whatsoever. It
- *           measures STRUCTURE in whatever it is pointed at, never correctness.
- *           A well-formed wrong file scores high; 1+1=3 in clean syntax still
- *           reads "solid". The goggles are an OVERLAY that shows how a change
- *           morphs the shape of the codebase — they do not replace knowing
- *           whether the code is right. You fill in the content; this shows the
- *           structure. Never trust the number as a verdict on correctness.
- *   META  — PATTERN RESONANCE: how much the section is shaped like the library's
- *           patterns — its nearest patterns ACROSS the entire Void substrate
- *           (cross-file, cross-repo), a consonant/outlier verdict, the lexical
- *           neighbours, and the live field peers it entangles.
+ *           It is the raw compressor number — the same one covenant.js,
+ *           field-tool.js and the coherency scorer read through
+ *           void-service.coherencyOf. Nothing rescales it here.
  *
- * Coherence and resonance are similar but COMPLETELY DISTINCT — intrinsic
- * structure vs library-fit — and are never collapsed into one number.
+ *           DISCLAIMER — coherency is NOT a coding trust signal whatsoever
+ *           and NOT a grade. It says how repetitive a signal is, never
+ *           whether the code is right: a correct file and a wrong one with
+ *           the same shape read identically. Use it to watch how an edit
+ *           changes the shape; you judge the content.
+ *   META  — PATTERN RESONANCE: a DIFFERENT quantity — how much the section is
+ *           shaped LIKE OTHER artifacts (its nearest patterns across the Void
+ *           substrate, cross-file and cross-repo), with a consonant/outlier
+ *           verdict, lexical neighbours, and the live field peers it entangles.
+ *
+ * COHERENCY answers "how much does this repeat itself?"  RESONANCE answers
+ * "how much does this look like everything else?"  They are unrelated numbers
+ * on unrelated scales — a file can read 0.11 coherency and 0.96 resonance at
+ * the same time with nothing wrong. Never compare them, never average them,
+ * never read one as evidence about the other.
+ *
+ * The MACRO map's per-file `flags` (WELL-FORMED / ORPHAN / DUPLICATE) come
+ * from SIBLING SIMILARITY, not from coherency at all — a file can carry
+ * WELL-FORMED with no coherency reading in the map whatsoever.
  *
  *   MACRO — the ZOOMED-OUT lens: the whole codebase compressed into a
  *           coherency map (per-file structural readings, orphans,
@@ -50,7 +62,7 @@ const ft = require('../core/field-tool');
 // Moving numbers consolidated in the Living Remembrance Engine (the core).
 let GOG;
 try { GOG = require('../core/living-remembrance').gogglesParams(); }
-catch (_) { GOG = { structureStrong: 0.93, structureSolid: 0.80, structureLoose: 0.70, resonanceConsonant: 0.90, resonanceFamiliar: 0.82, resonanceDistinct: 0.70 }; }
+catch (_) { GOG = { coherencyRepeating: 0.90, coherencyMixed: 0.35, coherencyTypical: 0.10, resonanceConsonant: 0.90, resonanceFamiliar: 0.82, resonanceDistinct: 0.70 }; }
 
 const LANG_BY_EXT = {
   '.js': 'javascript', '.jsx': 'javascript', '.mjs': 'javascript', '.cjs': 'javascript',
@@ -699,17 +711,28 @@ function bar(x, width = 22) {
   return '█'.repeat(n) + '·'.repeat(width - n);
 }
 
-// Intrinsic coherence (the field-tool reads it measurableOnly: syntax /
-// completeness / consistency renormalised, AST applied as a penalty only) spans
-// the full 0..1 range. Measured over real ecosystem files: median ~0.83, p75
-// ~0.93, ~14% of clean files reach 1.0; a stray TODO lands ~0.95, a broken brace
-// ~0.66. Thresholds track THAT distribution — re-derive if the coherency
-// weights or the measurableOnly renormalisation change.
-function structureVerdict(c) {
-  if (c >= GOG.structureStrong) return 'strong structure';
-  if (c >= GOG.structureSolid) return 'solid structure';
-  if (c >= GOG.structureLoose) return 'loose structure';
-  return 'weak / novel structure';
+/**
+ * What the coherency number MEANS, in the compressor's own terms.
+ *
+ * Coherency is the Void compressor's 0..1 reading of how well a signal
+ * compresses INTO ITSELF — how much of it is one repeating pattern. Anchored
+ * against the live instrument (2026-08-12): `'AB' x2048` reads 1.0000, a
+ * 16-byte cycle 0.9960, high-entropy random 0.0872, ordinary source code
+ * 0.098-0.278.
+ *
+ * It is NOT a quality score and never was. Low coherency on source code is the
+ * correct and expected answer: code is not a repeating pattern. The old wording
+ * ("weak / novel structure") was inherited from the retired measurableOnly
+ * syntax score, whose median was ~0.83; against a compressor reading nothing
+ * ever cleared its 0.70 floor, so every file printed the same verdict and the
+ * number told you nothing. Say what the reading IS, and carry the scale with
+ * it, so it can never be read as a grade or confused with resonance.
+ */
+function coherencyMeaning(c) {
+  if (c >= GOG.coherencyRepeating) return 'near-pure repetition — one pattern restates the whole';
+  if (c >= GOG.coherencyMixed) return 'partly repeating — strong internal echo';
+  if (c >= GOG.coherencyTypical) return 'low self-repetition — normal for source code';
+  return 'almost no self-repetition — near-random byte structure';
 }
 
 function consonanceVerdict(meanTopK, best) {
@@ -828,18 +851,29 @@ function main() {
   if (r.coherence == null) {
     // Unmeasured must read as unmeasured — never as a number, never as a
     // crash (FIELD-SELF-COMPRESSION: the 0.0000-vs-unmeasured lesson).
-    console.log('    coherence   (unmeasured — compressor unreachable; start compressor_service and re-goggle)');
+    console.log('    coherency   NULL — NO READING TAKEN\n'
+      + '                The compressor did not answer. This is NOT a low score and NOT a\n'
+      + '                zero: nothing was measured. Start compressor_service and re-goggle.');
   } else {
-    console.log(`    coherence   ${bar(r.coherence)} ${(r.coherence).toFixed(3)}  ${structureVerdict(r.coherence)}`);
+    // The scale rides WITH the number so it can never be read as a grade. One
+    // call site: the print surface is ratcheted, and wording is not a reason
+    // to grow it. The whole artifact is always read — the 16 KB cap that once
+    // scored a 64 KB file on its first quarter is gone.
+    console.log(
+      `    coherency   ${bar(r.coherence)} ${(r.coherence).toFixed(3)}  ${coherencyMeaning(r.coherence)}\n`
+      + '                scale: 1.00 = one pattern repeats throughout · ~0.09 = random bytes\n'
+      + '                       source code normally reads 0.10-0.28 — low here is CORRECT\n'
+      + `                read in full: ${Buffer.byteLength(content, 'utf8')} bytes, no slice`);
   }
-  console.log('    ⚠ coherence is NOT a coding trust signal whatsoever. It measures STRUCTURE');
-  console.log('      in whatever it is pointed at — never correctness. A well-formed wrong');
-  console.log('      answer scores high; 1+1=3 wrapped in clean syntax still reads "solid".');
-  console.log('      It is an overlay to see how your change morphs the shape — you judge the content.');
+  console.log('    ⚠ coherency measures SELF-REPETITION — how much of this is one pattern');
+  console.log('      restated. It is not a grade, not correctness, not code quality. A');
+  console.log('      well-formed wrong answer and a correct one read the same. Use it to');
+  console.log('      watch how your edit changes the shape — you judge the content.');
 
-  // ── META ──  (pattern resonance — distinct from the FOCUS coherence above)
-  console.log('\n  META   (pattern resonance — where it sits in the whole codebase)');
-  console.log(`    resonance   ${bar(meanTopK)} ${meanTopK.toFixed(3)}  ${tag} — ${gloss}`);
+  // ── META ──  (a DIFFERENT quantity: similarity to other files, not compression)
+  console.log('\n  META   (pattern resonance — how much this SHAPE matches other files)');
+  console.log(`    resonance   ${bar(meanTopK)} ${meanTopK.toFixed(3)}  ${tag} — ${gloss}\n`
+    + '                (similarity to the substrate\'s shapes — NOT the coherency above)');
   // Exclude the file matching itself (the substrate contains it).
   const selfName = path.basename(file);
   const matches = (vr.topMatches || [])

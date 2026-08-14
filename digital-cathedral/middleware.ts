@@ -242,6 +242,30 @@ export async function middleware(request: NextRequest) {
   // On portal domain, redirect marketing pages to the agent portal.
   const domainType = getDomainType(hostname);
 
+  // ─── Discovery documents are per-audience, not per-file ───────────────────
+  //
+  // public/.well-known/* and llms*.txt are STATIC, so one file is served on
+  // every domain. Rewriting the consumer site's copies to drop the API contract
+  // therefore dropped it from the portal too — and the portal's own developer
+  // pages link to /.well-known/agent.json as the integration path, so an agent
+  // following the documented route would have landed on a consumer brochure
+  // with no endpoint, auth or consent-flow details. Same file, two audiences.
+  //
+  // The portal keeps the technical originals under public/portal/, reached by
+  // rewriting here (the URL a developer sees is unchanged). The consumer site
+  // keeps the family-facing copies at the public root.
+  if (domainType === "portal") {
+    const isDiscoveryPath =
+      pathname.startsWith("/.well-known/") ||
+      pathname === "/llms.txt" ||
+      pathname === "/llms-full.txt";
+    if (isDiscoveryPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/portal${pathname}`;
+      return NextResponse.rewrite(url);
+    }
+  }
+
   // ─── Viral-Lattice Funnel ───
   // On any viral-lattice domain (e.g. *.xyz), every inbound request — no
   // matter what link was clicked — collapses to the primary home page where

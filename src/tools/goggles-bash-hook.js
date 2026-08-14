@@ -46,7 +46,7 @@ if (!cmd || cmd.length < 40) process.exit(0);
 //    believes they used the instrument. Measured: an entire session of
 //    `node src/tools/goggles.js <file>` while `--do` was never available on
 //    that path at all.
-const RAW_GOGGLES = /\bnode\s+\S*src\/tools\/goggles(?:-fp)?\.js\b/;
+const RAW_GOGGLES = /\bnode\s+\S*src\/(?:tools\/goggles(?:-fp)?|cli)\.js\b/;
 if (RAW_GOGGLES.test(cmd)) {
   out('deny',
     'GOGGLES — RAW TOOL PATH refused\n' +
@@ -69,8 +69,13 @@ const scratch = cmd.match(SCRATCH_RUN);
 if (scratch) {
   let body = '';
   try { body = fs.readFileSync(scratch[1], 'utf8'); } catch (_) { body = ''; }
+  // Match the ECOSYSTEM PATH anywhere in the body, not only inside a require().
+  // Found by immediately violating this rule while writing it: a scratch script
+  // that shells out — execSync('node src/tools/…') — names the module as a
+  // STRING, so a require-only check reads it as an honest codemod and lets it
+  // through. Shelling out is the same bypass wearing a different quote.
   const REACHES_ECOSYSTEM =
-    /require\s*\(\s*['"`][^'"`]*(?:src\/(?:core|tools|audit|atomic|compression|patterns)\/|scripts\/[a-z-]*ratchet)[^'"`]*['"`]\s*\)/.test(body)
+    /['"`][^'"`]*(?:src\/(?:core|tools|audit|atomic|compression|patterns)\/|scripts\/[a-z-]*ratchet)[^'"`]*['"`]/.test(body)
     || /\b(?:import|from)\s+(?:fractal_decoder|void_compressor(?:_v\d)?|coherency_v\d|living_remembrance|resonance_detector|compressor_service)\b/.test(body);
   if (REACHES_ECOSYSTEM) {
     out('deny',

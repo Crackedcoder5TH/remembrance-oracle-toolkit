@@ -7,7 +7,8 @@ export type GuideCategory =
   | "Work Benefits"
   | "Final Expense"
   | "Retirement & Legacy"
-  | "Veterans & Military Families";
+  | "Veterans & Military Families"
+  | "Coverage Basics";
 
 export interface GuideSource {
   label: string;
@@ -42,7 +43,7 @@ export const GUIDES: GuideData[] = [
     purpose:
       "Help new parents understand why having a baby is a major time to review life insurance.",
     intro:
-      "A new baby changes the way you think about time, money, and responsibility. This guide helps you start with the practical questions families often face after welcoming a child, without needing to know policy terminology first.",
+      "Your baby does not just depend on your love. They depend on your income, your care, your stability, and the plan you leave behind. A new baby means more people depending on the life you are building, so this chapter is a meaningful time to review protection.",
     helps: [
       "Why a growing family may need a fresh look at protection",
       "How income replacement can support people who depend on you",
@@ -50,6 +51,18 @@ export const GUIDES: GuideData[] = [
       "Why employer coverage can be helpful but may not be the whole plan",
     ],
     sections: [
+      {
+        heading: "A hidden gap for growing families",
+        body: [
+          "A family may plan for diapers and childcare without calculating how income, unpaid caregiving, housing, debt, and future education would be supported if a parent died.",
+        ],
+      },
+      {
+        heading: "A common assumption to reconsider",
+        body: [
+          "“My work coverage is enough” is a common starting assumption. Employer coverage may be useful, but its amount and connection to a job can leave needs uncovered.",
+        ],
+      },
       {
         heading: "Why a new baby changes your protection needs",
         body: [
@@ -102,6 +115,7 @@ export const GUIDES: GuideData[] = [
       "Who would care for my child, and what would that cost?",
       "Do I want coverage for temporary needs, lifelong needs, or both?",
       "What can I comfortably afford each month?",
+      "Which future goal would be hardest for my family to fund without me?",
     ],
     cta: "Start My Protection Path",
     sources: [
@@ -117,6 +131,10 @@ export const GUIDES: GuideData[] = [
         label: "Life Happens: How much life insurance do I need?",
         href: "https://lifehappens.org/life-insurance-101/how-much-life-insurance-do-i-need/",
       },
+      {
+        label: "U.S. Census Bureau: Rising Child Care Costs",
+        href: "https://www.census.gov/library/stories/2024/01/rising-child-care-cost.html",
+      },
     ],
     metaDescription:
       "A simple life insurance checklist for new parents reviewing income replacement, childcare, mortgage or rent, debt, education, and family protection needs.",
@@ -128,7 +146,7 @@ export const GUIDES: GuideData[] = [
     purpose:
       "Help homeowners understand how life insurance can help protect the home if something happens to an income earner.",
     intro:
-      "Buying a home is more than signing mortgage documents. It creates a place where your family builds daily life, memories, and stability. This guide explains how life insurance may help protect that responsibility.",
+      "Your home is more than a mortgage. It is where your family’s life is being built. Homeowners often protect the house itself but overlook the income that keeps the mortgage and everyday household costs paid.",
     helps: [
       "Why homeownership often triggers a coverage review",
       "What mortgage protection means in plain English",
@@ -136,6 +154,18 @@ export const GUIDES: GuideData[] = [
       "Which questions to ask before choosing coverage",
     ],
     sections: [
+      {
+        heading: "The hidden gap behind the front door",
+        body: [
+          "Homeowners usually insure the property because the lender requires it. The overlooked gap is often the income that pays the mortgage, utilities, repairs, taxes, and daily family expenses.",
+        ],
+      },
+      {
+        heading: "A common assumption to reconsider",
+        body: [
+          "“Mortgage insurance protects my family” can be misleading. Mortgage insurance generally protects the lender; personally owned life insurance generally pays a chosen beneficiary, based on policy terms.",
+        ],
+      },
       {
         heading: "Why buying a home creates a new responsibility",
         body: [
@@ -185,6 +215,7 @@ export const GUIDES: GuideData[] = [
       "Would my beneficiary need a lump sum, monthly flexibility, or both?",
       "Do I already have coverage that could help protect the home?",
       "How long do I expect this home-related need to last?",
+      "Which non-mortgage household costs would still need support?",
     ],
     cta: "Protect My Home",
     sources: [
@@ -195,6 +226,10 @@ export const GUIDES: GuideData[] = [
       {
         label: "Life Happens Life Insurance Needs Calculator",
         href: "https://lifehappens.org/life-insurance-needs-calculator/",
+      },
+      {
+        label: "CFPB: What is mortgage insurance?",
+        href: "https://www.consumerfinance.gov/ask-cfpb/what-is-mortgage-insurance-and-how-does-it-work-en-1953/",
       },
     ],
     metaDescription:
@@ -207,7 +242,7 @@ export const GUIDES: GuideData[] = [
     purpose:
       "Help people understand the difference between work/group coverage and personally owned coverage.",
     intro:
-      "Work life insurance can be a helpful benefit, but it is worth understanding what it does and does not do. This guide explains group coverage in simple terms and helps you identify possible gaps.",
+      "Work coverage is a good start. But your family’s protection should not depend only on where you work. Group coverage may be tied to employment, and its benefit may not match your family’s longer-term needs.",
     helps: [
       "What employer life insurance usually means",
       "Why group coverage can be a good starting point",
@@ -215,6 +250,18 @@ export const GUIDES: GuideData[] = [
       "What questions to ask your employer or benefits team",
     ],
     sections: [
+      {
+        heading: "The hidden gap in a workplace benefit",
+        body: [
+          "A benefit shown during enrollment may feel complete, yet the amount may cover only a portion of income, housing, childcare, debt, final costs, and the time a family needs to adjust.",
+        ],
+      },
+      {
+        heading: "A common assumption to reconsider",
+        body: [
+          "“I have insurance at work, so I am covered” leaves two questions unanswered: whether the amount is enough and whether the coverage continues or can be converted when employment changes.",
+        ],
+      },
       {
         heading: "What employer life insurance usually is",
         body: [
@@ -258,9 +305,14 @@ export const GUIDES: GuideData[] = [
       "Would that amount cover my family’s major needs?",
       "Is my work coverage portable or convertible?",
       "Do I want coverage that I control outside of my employer?",
+      "What would my family need beyond the benefit I have today?",
     ],
     cta: "Review My Coverage",
     sources: [
+      {
+        label: "BLS: Employee Benefits, Life Insurance",
+        href: "https://www.bls.gov/news.release/ebs2.t05.htm",
+      },
       {
         label: "IRS Group-Term Life Insurance",
         href: "https://www.irs.gov/government-entities/federal-state-local-governments/group-term-life-insurance",
@@ -284,7 +336,7 @@ export const GUIDES: GuideData[] = [
     purpose:
       "Educate families on funeral, cremation, burial, and final expense planning without fear-based language.",
     intro:
-      "Final expense planning is about kindness and clarity. A plan can help loved ones understand your wishes and reduce the number of financial decisions they need to make during an emotional time.",
+      "Final expense planning is not about death. It is about love, dignity, and not leaving your family with a bill during one of the hardest moments of their lives. A clear plan can reduce both uncertainty and financial strain.",
     helps: [
       "What final expense planning includes",
       "Common costs families may need to prepare for",
@@ -292,6 +344,18 @@ export const GUIDES: GuideData[] = [
       "Why planning ahead can make things easier for loved ones",
     ],
     sections: [
+      {
+        heading: "The hidden gap in final expense benefits",
+        body: [
+          "Funeral, cremation, burial, travel, medical bills, and ongoing household costs can arrive together. Public or veteran benefits may help eligible families but may be limited in amount, timing, or covered expenses.",
+        ],
+      },
+      {
+        heading: "A common assumption to reconsider",
+        body: [
+          "“Social Security or veteran benefits will cover everything” may leave a shortfall. Eligibility and benefit amounts vary, so families should compare available benefits with likely costs.",
+        ],
+      },
       {
         heading: "What final expense planning means",
         body: [
@@ -335,6 +399,7 @@ export const GUIDES: GuideData[] = [
       "Who would be responsible for arrangements?",
       "What benefits or savings may already be available?",
       "Would a final expense policy help reduce stress for my family?",
+      "Could my family access funds when bills are due?",
     ],
     cta: "Plan Final Expenses",
     sources: [
@@ -369,7 +434,7 @@ export const GUIDES: GuideData[] = [
     purpose:
       "Help veterans and military families understand what military/VA benefits may offer and where private coverage may still matter.",
     intro:
-      "Military and VA benefits can be meaningful, but families may still have questions about whether benefits alone fit their needs. This guide explains common benefits in simple terms and where private coverage may still be worth reviewing.",
+      "Your service earned benefits. But benefits and a full protection plan are not always the same thing. Military and VA benefits may help, while a family may still need protection for income, housing, debt, and time to adjust.",
     helps: [
       "SGLI and VGLI in plain English",
       "How burial benefits may help eligible families",
@@ -377,6 +442,18 @@ export const GUIDES: GuideData[] = [
       "Questions veterans and military families can prepare before a coverage review",
     ],
     sections: [
+      {
+        heading: "The hidden gap between benefits and a family plan",
+        body: [
+          "A benefit can be valuable without covering every responsibility. Income replacement, mortgage or rent, childcare, debt, education, final expenses, and transition time may extend beyond a program’s scope or amount.",
+        ],
+      },
+      {
+        heading: "A common assumption to reconsider",
+        body: [
+          "“VA or military benefits cover everything” can keep families from reviewing what changes after service and what their survivors would actually need.",
+        ],
+      },
       {
         heading: "SGLI in simple terms",
         body: [
@@ -413,6 +490,7 @@ export const GUIDES: GuideData[] = [
       "Would my family still need income replacement or mortgage support?",
       "How much coverage would help my family feel stable?",
       "Do I want coverage I personally own outside of work or military benefits?",
+      "Which expenses are not addressed by my current benefits?",
     ],
     cta: "Review Veteran Options",
     sources: [
@@ -447,7 +525,7 @@ export const GUIDES: GuideData[] = [
     purpose:
       "Explain how life insurance may be part of retirement conversations without overpromising.",
     intro:
-      "Retirement planning is about flexibility, protection, and making thoughtful decisions. Life insurance may be part of that conversation for some families, depending on the policy, funding, goals, and guidance received.",
+      "Retirement should not only be about how long your money lasts. It should also be about what happens to the people you love if plans change. Protection needs may shift toward spouse support, final costs, preserving assets, and legacy goals.",
     helps: [
       "Why retirement can change protection needs",
       "Permanent life insurance and cash value basics",
@@ -455,6 +533,18 @@ export const GUIDES: GuideData[] = [
       "Why reviewing options with a licensed professional is important",
     ],
     sections: [
+      {
+        heading: "The hidden gap in a retirement plan",
+        body: [
+          "Savings may be designed for two people and a particular timeline. A death, final costs, debt, or a change in income can affect spouse support, assets, and legacy goals.",
+        ],
+      },
+      {
+        heading: "A common assumption to reconsider",
+        body: [
+          "“I already have savings, so insurance no longer matters” may overlook how quickly needs and timing can change. Life insurance is not right for everyone, but remaining protection needs deserve a review.",
+        ],
+      },
       {
         heading: "Why retirement changes protection needs",
         body: [
@@ -491,6 +581,7 @@ export const GUIDES: GuideData[] = [
       "Do I understand the policy costs and risks?",
       "Could accessing policy value reduce benefits or create consequences?",
       "How does this fit with savings, retirement accounts, and other income sources?",
+      "What support would my spouse need if retirement plans changed?",
     ],
     cta: "Plan With Confidence",
     sources: [
@@ -513,11 +604,11 @@ export const GUIDES: GuideData[] = [
   {
     slug: "how-much-coverage-do-i-need",
     title: "How Much Coverage Does My Family Need?",
-    category: "Retirement & Legacy",
+    category: "Coverage Basics",
     purpose:
       "Help families think through coverage needs in a simple, non-intimidating way.",
     intro:
-      "There is no perfect one-size-fits-all coverage number. A thoughtful estimate starts with the people who depend on you, the responsibilities you carry, and the resources your family already has.",
+      "The right amount of coverage is not a guess. It should be based on who depends on you, what you owe, what you earn, and what you want protected. A thoughtful estimate starts with your real responsibilities and existing resources.",
     helps: [
       "How to think about coverage without guessing",
       "Which expenses families commonly include",
@@ -525,6 +616,18 @@ export const GUIDES: GuideData[] = [
       "What to prepare before speaking with a licensed professional",
     ],
     sections: [
+      {
+        heading: "The hidden gap behind a round number",
+        body: [
+          "Choosing a benefit because it sounds substantial can overlook income, housing, debt, childcare, education, final expenses, spouse support, and how long loved ones would need to adjust.",
+        ],
+      },
+      {
+        heading: "A common assumption to reconsider",
+        body: [
+          "“Any coverage is enough” or “my savings will handle it” can replace a calculation with a guess. Existing resources matter, but they should be compared with the full list of needs.",
+        ],
+      },
       {
         heading: "Why there is no one-size-fits-all number",
         body: [
@@ -577,6 +680,10 @@ export const GUIDES: GuideData[] = [
         label: "NAIC Life Insurance Consumer Guide",
         href: "https://content.naic.org/consumer/life-insurance.htm",
       },
+      {
+        label: "Federal Reserve: Economic Well-Being of U.S. Households in 2024",
+        href: "https://www.federalreserve.gov/publications/2025-economic-well-being-of-us-households-in-2024-savings-and-investments.htm",
+      },
     ],
     metaDescription:
       "A simple guide to estimating family life insurance coverage needs, including income replacement, mortgage or rent, debts, childcare, education, final expenses, and existing coverage.",
@@ -590,6 +697,7 @@ export const GUIDE_CATEGORIES: GuideCategory[] = [
   "Final Expense",
   "Retirement & Legacy",
   "Veterans & Military Families",
+  "Coverage Basics",
 ];
 
 export function getGuideBySlug(slug: string): GuideData | undefined {

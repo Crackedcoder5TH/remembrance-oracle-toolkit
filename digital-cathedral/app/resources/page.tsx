@@ -4,7 +4,7 @@ import { ServiceSchema } from "../components/schema-markup";
 import { GUIDE_CATEGORIES, getGuidesByCategory } from "../guides/data";
 
 export const metadata: Metadata = {
-  title: "Helpful Guides for Life’s Biggest Moments",
+  title: "Life Insurance Guides",
   description:
     "Explore consumer-friendly life insurance guides for new parents, homeowners, work benefits, final expense planning, retirement, legacy planning, and veteran families.",
   keywords: [
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     "veteran life insurance benefits",
   ],
   openGraph: {
-    title: "Helpful Guides for Life’s Biggest Moments",
+    title: "Life Insurance Guides",
     description:
       "Consumer-friendly Valor Legacies guides for life insurance decisions around family, home, work benefits, retirement, final expenses, and veteran benefits.",
     type: "website",
@@ -35,6 +35,8 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
     "Careful education for retirement, legacy, and coverage amount conversations.",
   "Veterans & Military Families":
     "Military and veteran benefit resources, plus private coverage considerations.",
+  "Coverage Basics":
+    "Straightforward help estimating needs and preparing for a coverage conversation.",
 };
 
 export default function ResourcesIndex() {
@@ -55,12 +57,13 @@ export default function ResourcesIndex() {
             Resource Center
           </p>
           <h1 className="mt-4 max-w-4xl font-serif text-4xl font-light leading-tight md:text-6xl">
-            Helpful Guides for Life’s Biggest Moments
+            Life Insurance Guides
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-[#eadcc7]">
-            Start with the moment that brought you here. These guides are
-            written for families, not insurance insiders, and each one points to
-            reliable references for deeper reading.
+            Life insurance can feel confusing, but the right guidance starts
+            with the chapter you are in. These guides are designed to help
+            families understand what may be missing, what questions to ask, and
+            how protection may help.
           </p>
         </header>
 

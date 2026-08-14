@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "Common questions about Valor Legacies, life insurance for major life moments, and how our no-cost coverage review works.",
 };
 
-const FAQS = [
+const GENERAL_FAQS = [
   {
     q: "What does Valor Legacies do?",
     a: "Valor Legacies helps families understand and explore life insurance options for the chapter they are in. We review your request and may connect you with a licensed insurance professional who can explain available options based on your needs, goals, budget, and eligibility.",
@@ -54,6 +54,9 @@ const FAQS = [
     q: "What if I want to leave a legacy?",
     a: "Legacy planning may include providing for loved ones, supporting a cause, or creating financial stability for the next generation. A review can help you explore how life insurance may fit within those broader goals.",
   },
+];
+
+const VETERAN_FAQS = [
   {
     q: "What if I am a veteran or military family member?",
     a: "Valor Legacies is veteran-founded and proudly serves veterans, service members, and military families alongside families from every walk of life. A review can include questions about existing military benefits and private coverage options.",
@@ -62,11 +65,16 @@ const FAQS = [
     q: "Is Valor Legacies affiliated with the VA, DoD, or government?",
     a: "No. Valor Legacies is independently operated and is not affiliated with the U.S. Department of Veterans Affairs, the Department of Defense, or any government agency.",
   },
+];
+
+const PRIVACY_FAQS = [
   {
     q: "How is my information protected?",
     a: "Your information is handled with care, protected using appropriate safeguards, and shared with licensed insurance professionals only as described in our Privacy Policy and your consent. You may contact us to exercise applicable privacy rights.",
   },
 ];
+
+const FAQS = [...GENERAL_FAQS, ...VETERAN_FAQS, ...PRIVACY_FAQS];
 
 // Schema.org FAQPage structured data — makes content available to AI crawlers
 // and enables Google FAQ rich results
@@ -119,7 +127,7 @@ export default function FaqPage() {
         </header>
 
         <div className="space-y-6">
-          {FAQS.map((item) => (
+          {GENERAL_FAQS.map((item) => (
             <div key={item.q} className="border-b border-indigo-cathedral/8 pb-5">
               <h2 className="font-serif text-sm font-medium text-[#211a13] mb-2">
                 {item.q}
@@ -127,6 +135,32 @@ export default function FaqPage() {
               <p className="text-sm text-[#6a5c4b] leading-relaxed">
                 {item.a}
               </p>
+            </div>
+          ))}
+        </div>
+
+        <section className="space-y-6" aria-labelledby="veteran-faq-heading">
+          <div className="border-b border-[#e6d9c2] pb-3">
+            <p className="text-[#b58b3b] text-xs tracking-[0.2em] uppercase mb-2">
+              Additional guidance
+            </p>
+            <h2 id="veteran-faq-heading" className="font-serif text-xl font-light text-[#211a13]">
+              Veterans &amp; Military Families
+            </h2>
+          </div>
+          {VETERAN_FAQS.map((item) => (
+            <div key={item.q} className="border-b border-indigo-cathedral/8 pb-5">
+              <h3 className="font-serif text-sm font-medium text-[#211a13] mb-2">{item.q}</h3>
+              <p className="text-sm text-[#6a5c4b] leading-relaxed">{item.a}</p>
+            </div>
+          ))}
+        </section>
+
+        <div className="space-y-6">
+          {PRIVACY_FAQS.map((item) => (
+            <div key={item.q} className="border-b border-indigo-cathedral/8 pb-5">
+              <h2 className="font-serif text-sm font-medium text-[#211a13] mb-2">{item.q}</h2>
+              <p className="text-sm text-[#6a5c4b] leading-relaxed">{item.a}</p>
             </div>
           ))}
         </div>

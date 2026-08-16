@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PAGE } from "../lib/valor/design";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Valor Legacies",
@@ -7,23 +8,24 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen px-4 py-12 max-w-3xl mx-auto">
+    <main className={`${PAGE} flex flex-col items-center px-4 py-16 md:py-24`}>
+      <div className="w-full max-w-3xl">
       <header className="mb-10">
-        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+        <div className="text-[#b58b3b] text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Terms of Service
         </div>
-        <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
+        <h1 className="font-serif text-3xl font-light text-[#211a13] mb-2">
           Terms of Service
         </h1>
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[#6a5c4b]">
           Last Updated: March 8, 2026 &mdash; Effective: March 8, 2026
         </p>
       </header>
 
-      <div className="cathedral-surface p-6 md:p-8 space-y-8 text-sm text-[var(--text-muted)] leading-relaxed">
+      <div className="rounded-[1.5rem] border border-[#e6d9c2] bg-white shadow-[0_12px_34px_rgba(61,43,24,0.08)] p-6 md:p-8 space-y-8 text-sm text-[#6a5c4b] leading-relaxed">
         {/* 1. Agreement */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">1. Agreement to Terms</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">1. Agreement to Terms</h2>
           <p>
             By accessing or using the website located at valorlegacies.com (the &ldquo;Site&rdquo;),
             operated by Valor Legacies (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;),
@@ -34,9 +36,9 @@ export default function TermsPage() {
 
         {/* 2. Nature of Service */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">2. Nature of Our Service</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">2. Nature of Our Service</h2>
           <p className="mb-3">
-            <strong className="text-[var(--text-primary)]">We are NOT an insurance company, insurance agent, or insurance broker.</strong>
+            <strong className="text-[#211a13]">We are NOT an insurance company, insurance agent, or insurance broker.</strong>
           </p>
           <p className="mb-3">
             Our Site provides a platform for consumers to express interest in learning about life insurance
@@ -54,7 +56,7 @@ export default function TermsPage() {
 
         {/* 3. Eligibility */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">3. Eligibility</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">3. Eligibility</h2>
           <p>
             You must be at least 18 years of age and a resident of the United States to use our Site and
             submit information through our lead form. By using the Site, you represent and warrant that
@@ -64,7 +66,7 @@ export default function TermsPage() {
 
         {/* 4. Information You Provide */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">4. Information You Provide</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">4. Information You Provide</h2>
           <p>
             You agree to provide accurate, current, and complete information when submitting our form. You
             are solely responsible for the accuracy of the information you provide. Submitting false,
@@ -74,7 +76,7 @@ export default function TermsPage() {
 
         {/* 5. Communications Consent */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">5. Communications Consent</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">5. Communications Consent</h2>
           <p className="mb-3">
             By checking the TCPA consent checkbox and submitting our form, you provide your prior express
             written consent for the specific company identified in (or === 0 ? 0 : the consent disclosure to contact you
@@ -86,7 +88,7 @@ export default function TermsPage() {
             <li>Email communications.</li>
           </ul>
           <p className="mt-3">
-            <strong className="text-[var(--text-primary)]">This consent is not a condition of purchasing any product or service.</strong> You
+            <strong className="text-[#211a13]">This consent is not a condition of purchasing any product or service.</strong> You
             may revoke consent at any time by contacting us at valorlegacies@gmail.com, replying STOP to any text
             message, or using the opt-out mechanism in any email. Standard message and data rates may apply.
           </p>
@@ -94,7 +96,7 @@ export default function TermsPage() {
 
         {/* 6. Third-Party Relationships */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">6. Third-Party Relationships</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">6. Third-Party Relationships</h2>
           <p>
             Licensed insurance professionals who contact you are independent third parties, not employees
             or agents of Valor Legacies. We are not responsible for their actions, advice, products, or
@@ -105,7 +107,7 @@ export default function TermsPage() {
 
         {/* 7. No Guarantees */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">7. No Guarantees</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">7. No Guarantees</h2>
           <p>
             We make no guarantees that: (a) you will be contacted by a licensed professional; (b) you will
             qualify for any insurance product; (c) any specific rates or premiums will be available to you;
@@ -116,7 +118,7 @@ export default function TermsPage() {
 
         {/* 8. Intellectual Property */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">8. Intellectual Property</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">8. Intellectual Property</h2>
           <p>
             All content on this Site, including text, graphics, logos, and software, is the property of
             Valor Legacies or its licensors and is protected by applicable intellectual property laws.
@@ -127,7 +129,7 @@ export default function TermsPage() {
 
         {/* 9. Disclaimer of Warranties */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">9. Disclaimer of Warranties</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">9. Disclaimer of Warranties</h2>
           <p>
             THE SITE IS PROVIDED &ldquo;AS IS&rdquo; AND &ldquo;AS AVAILABLE&rdquo; WITHOUT WARRANTIES
             OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF
@@ -138,7 +140,7 @@ export default function TermsPage() {
 
         {/* 10. Limitation of Liability */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">10. Limitation of Liability</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">10. Limitation of Liability</h2>
           <p>
             TO THE MAXIMUM EXTENT PERMITTED BY LAW, VALOR LEGACIES SHALL NOT BE LIABLE FOR ANY INDIRECT,
             INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR
@@ -149,7 +151,7 @@ export default function TermsPage() {
 
         {/* 11. Indemnification */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">11. Indemnification</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">11. Indemnification</h2>
           <p>
             You agree to indemnify and hold harmless Valor Legacies, its officers, directors, employees,
             and agents from any claims, losses, damages, liabilities, and expenses (including reasonable
@@ -160,7 +162,7 @@ export default function TermsPage() {
 
         {/* 12. Governing Law */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">12. Governing Law &amp; Disputes</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">12. Governing Law &amp; Disputes</h2>
           <p>
             These Terms are governed by the laws of the State of California, without regard to conflict of
             law principles. Any disputes arising from these Terms or your use of the Site shall be
@@ -172,7 +174,7 @@ export default function TermsPage() {
 
         {/* 13. Changes */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">13. Changes to These Terms</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">13. Changes to These Terms</h2>
           <p>
             We may modify these Terms at any time. The &ldquo;Last Updated&rdquo; date indicates the most
             recent revision. Your continued use of the Site after changes constitutes acceptance of the
@@ -182,7 +184,7 @@ export default function TermsPage() {
 
         {/* 14. Contact */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">14. Contact Us</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#211a13] mb-3">14. Contact Us</h2>
           <p>
             For questions about these Terms, contact us at:
           </p>
@@ -194,14 +196,15 @@ export default function TermsPage() {
       </div>
 
       {/* Footer */}
-      <footer className="mt-12 text-center text-xs text-[var(--text-muted)] space-y-2">
+      <footer className="mt-12 text-center text-xs text-[#6a5c4b] space-y-2">
         <nav className="flex gap-4 justify-center">
-          <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Get Protected</a>
-          <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
-          <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Home</a>
+          <a href="/" className="text-[#b58b3b]/70 hover:text-[#b58b3b]">Get Protected</a>
+          <a href="/privacy" className="text-[#b58b3b]/70 hover:text-[#b58b3b]">Privacy Policy</a>
+          <a href="/" className="text-[#b58b3b]/70 hover:text-[#b58b3b]">Home</a>
         </nav>
         <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
       </footer>
+      </div>
     </main>
   );
 }

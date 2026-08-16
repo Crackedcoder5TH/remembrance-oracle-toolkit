@@ -13,6 +13,7 @@ import { useLeadForm, FIELD_STEP } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
+import { AEOHowTo } from "./components/aeo-schema";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" },
@@ -64,38 +65,23 @@ const LIFE_CHAPTERS: { icon: string; title: string; desc: string; cta: string; v
   { icon: "✦", title: "Just Had a Baby", desc: "Your family just grew. Now is the time to protect the future they’re just beginning.", cta: "Protect My Growing Family", value: "new-baby", video: "newborn-parents.mp4" },
   { icon: "⌂", title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s life is being built.", cta: "Protect My Home", value: "bought-home", video: "new-home.mp4" },
   { icon: "∞", title: "Recently Married", desc: "You’re building a future together. Protection helps keep that future secure.", cta: "Start Planning Together", value: "recently-married", video: "newly-married.mp4" },
-  { icon: "❤", title: "Protecting My Spouse", desc: "If someone depends on your income, love means having a plan.", cta: "Protect My Person", value: "protect-spouse-family", video: "protect-spouse.mp4" },
-  { icon: "$", title: "Protecting My Income", desc: "Your income supports your life. Protecting it protects the people who rely on you.", cta: "Review Income Protection", value: "income-replacement", video: "protect-income.mp4" },
+  { icon: "❤", title: "Protecting My Spouse", desc: "If your spouse depends on your love, support, or income, protection helps make sure they are cared for no matter what.", cta: "Protect My Person", value: "protect-spouse-family", video: "protect-spouse.mp4" },
+  { icon: "$", title: "Protecting My Income", desc: "Your income supports more than bills. It supports the people who count on you every day.", cta: "Review Income Protection", value: "income-replacement", video: "protect-income.mp4" },
   { icon: "◈", title: "Preparing for College", desc: "Plan for tomorrow’s dreams while protecting today’s responsibilities.", cta: "Explore Education Planning", value: "college-planning", video: "preparing-college.mp4" },
   { icon: "☼", title: "Planning Retirement", desc: "Retirement should come with confidence, flexibility, and peace of mind.", cta: "Plan With Confidence", value: "retirement-planning", video: "planning-retirement.mp4" },
-  { icon: "✧", title: "Leaving a Legacy", desc: "Leave more than memories. Leave love, direction, and protection.", cta: "Build My Legacy", value: "legacy", video: "leaving-legacy.mp4" },
+  { icon: "✧", title: "Leaving a Legacy", desc: "Leave more than memories. Leave love, direction, and protection for the people who matter most.", cta: "Build My Legacy", value: "legacy", video: "leaving-legacy.mp4" },
   { icon: "☾", title: "Final Expense Planning", desc: "Protect your family from the financial weight of funeral and final expenses.", cta: "Plan Final Expenses", value: "final-expense", video: "final-expense.mp4" },
   { icon: "★", title: "Veteran & Military Family Protection", desc: "Your service protected others. Now let’s help protect the people you love most.", cta: "Review Veteran Options", value: "veteran-military-family", video: "military-family.mp4" },
 ];
 
-const TRUST_PILLARS = [
-  ["Veteran-Founded", "Rooted in service, protection, and responsibility."],
-  ["Family-Focused", "Every conversation begins with the people you love most."],
-  ["Independent", "We are not limited to one insurance company."],
-  ["Multiple Highly Rated Carriers", "Options may be reviewed from trusted life insurance providers."],
-  ["No-Pressure Guidance", "Education first. Decisions second."],
-  ["Privacy-Minded Process", "Your information is handled with care and respect."],
-];
-
 const RESOURCE_GUIDES = [
-  ["New Parent Protection Checklist", "A simple guide to protecting your growing family after a new baby arrives."],
-  ["Homeowner Protection Guide", "Understand how life insurance can help protect the place your family calls home."],
-  ["Is Work Life Insurance Enough?", "Learn where employer coverage can help — and where gaps may remain."],
-  ["Final Expense Planning Guide", "A clear overview of funeral, burial, and end-of-life expense planning."],
-  ["Veteran Benefits vs. Private Coverage", "Compare basic benefit conversations with additional family protection options."],
-  ["Life Insurance and Retirement Planning", "See how protection may fit into long-term flexibility and confidence."],
-  ["How Much Coverage Does My Family Need?", "Start thinking through income, debts, home needs, children, and future goals."],
-];
-
-const TESTIMONIALS = [
-  ["After our daughter was born, we realized we had no real plan. Valor Legacies helped us understand our options without pressure.", "New parent placeholder"],
-  ["When we bought our home, we wanted to make sure my wife wouldn’t be stuck with the mortgage. The process was simple and clear.", "Homeowner placeholder"],
-  ["As a veteran, I thought my benefits were enough. Valor Legacies helped me understand what my family would still be responsible for.", "Veteran family placeholder"],
+  ["New Parent Protection Checklist", "A simple guide to protecting your growing family after a new baby arrives.", "/guides/new-parent-protection-checklist"],
+  ["Homeowner Protection Guide", "Understand how life insurance can help protect the place your family calls home.", "/guides/homeowner-protection-guide"],
+  ["Is Work Life Insurance Enough?", "Learn where employer coverage can help — and where gaps may remain.", "/guides/employer-life-insurance"],
+  ["Final Expense Planning Guide", "A clear overview of funeral, burial, and end-of-life expense planning.", "/guides/final-expense-planning"],
+  ["Veteran Benefits vs. Private Coverage", "Compare basic benefit conversations with additional family protection options.", "/guides/veteran-benefits-vs-private-coverage"],
+  ["Life Insurance and Retirement Planning", "See how protection may fit into long-term flexibility and confidence.", "/guides/retirement-life-insurance"],
+  ["How Much Coverage Does My Family Need?", "Start thinking through income, debts, home needs, children, and future goals.", "/guides/how-much-coverage-do-i-need"],
 ];
 
 const PURCHASE_INTENT_OPTIONS = [
@@ -143,7 +129,6 @@ const INPUT_ERROR = INPUT_CLASS + " border-red-500 bg-red-50/70 focus:border-red
 const SELECT_CLASS = INPUT_CLASS + " appearance-none";
 const LABEL_CLASS = "block text-sm font-semibold text-[#2a2219]";
 const BTN_PRIMARY = "rounded-full bg-[#b58b3b] px-7 py-3 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(82,55,17,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#9f782f] focus-visible:outline-[#f4d58d]";
-const BTN_SECONDARY = "rounded-full border border-[#d9c08a]/55 bg-white/10 px-7 py-3 text-sm font-semibold text-white backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white/15";
 const BTN_BACK = "rounded-full border border-[#d9cdbb] px-6 py-3 text-sm font-semibold text-[#6c5a40] transition-all hover:border-[#b58b3b]";
 const SECTION_LABEL = "mb-4 text-xs font-semibold uppercase tracking-[0.32em] text-[#b58b3b]";
 const SECTION_HEADING = "font-serif text-3xl font-light leading-tight text-[#211a13] md:text-5xl";
@@ -223,6 +208,11 @@ export default function HomePage() {
 
   return (
     <main className="overflow-hidden bg-[#f6f0e6] text-[#241d15]">
+      {/* Invisible to visitors: the step-by-step schema answer engines read for
+          "how do I get a coverage review". It belongs on this page because these
+          are the steps of the Protection Path form below. The component existed
+          but nothing rendered it, so it had never reached an engine. */}
+      <AEOHowTo />
       <section id="home" className="relative flex min-h-[92vh] items-center px-4 py-24 text-white md:px-8" aria-labelledby="hero-heading">
         {/* Static base — shown while the video loads and for reduced-motion visitors */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(214,179,95,0.34),transparent_28%),linear-gradient(120deg,rgba(19,16,13,0.96),rgba(31,25,19,0.82)_45%,rgba(65,45,24,0.5)),url('/og-image.svg')] bg-cover bg-center" aria-hidden="true" />
@@ -250,7 +240,7 @@ export default function HomePage() {
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#f8ead2] md:text-xl">Life changes in beautiful, unexpected, and meaningful ways. Valor Legacies helps families find life insurance guidance for the moments that matter most.</p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <a href="#protection-path" className={BTN_PRIMARY}>Find My Protection Path</a>
-              <a href="#life-chapters" className={BTN_SECONDARY}>Explore Life Chapters</a>
+              <a href="#life-chapters" className={BTN_PRIMARY}>Explore Life Chapters</a>
             </div>
           </div>
         </div>
@@ -283,23 +273,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-gradient-to-b from-[#e4e6ea] to-[#33363d] px-4 py-20 md:px-8 md:py-28" aria-labelledby="trust-heading">
-        <div className="mx-auto max-w-7xl">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className={SECTION_LABEL}>Trust pillars</p>
-            <h2 id="trust-heading" className={SECTION_HEADING}>Guided by Service. Built on Trust.</h2>
-          </div>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {TRUST_PILLARS.map(([title, desc]) => (
-              <div key={title} className="rounded-[1.5rem] border border-white/60 bg-white p-6 shadow-[0_12px_34px_rgba(0,0,0,0.12)]">
-                <h3 className="font-serif text-2xl text-[#241d15]">{title}</h3>
-                <p className="mt-3 leading-7 text-[#6a5c4b]">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section id="guides" className="bg-[#211a13] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="guides-heading">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-3xl">
@@ -308,8 +281,8 @@ export default function HomePage() {
             <p className="mt-5 text-lg text-[#eadcc7]">Helpful guides for life’s biggest moments.</p>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {RESOURCE_GUIDES.map(([title, desc]) => (
-              <a key={title} href="/resources" className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6 transition-all hover:-translate-y-1 hover:border-[#d6b35f]/60">
+            {RESOURCE_GUIDES.map(([title, desc, href]) => (
+              <a key={title} href={href} className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6 transition-all hover:-translate-y-1 hover:border-[#d6b35f]/60">
                 <h3 className="font-serif text-2xl">{title}</h3>
                 <p className="mt-3 min-h-[78px] text-sm leading-7 text-[#eadcc7]">{desc}</p>
                 <span className="text-sm font-semibold text-[#d6b35f]">Read Guide</span>
@@ -325,9 +298,9 @@ export default function HomePage() {
           <h2 id="how-heading" className={SECTION_HEADING}>You Don’t Have to Figure This Out Alone.</h2>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {[
-              ["Tell us what changed.", "Choose the life event or concern that brought you here."],
-              ["Understand your options.", "We help make life insurance simple, clear, and relatable."],
-              ["Get guidance that fits your life.", "A licensed professional can help review options based on your needs, goals, health, and budget."],
+              ["Tell us what changed.", "Share the milestone, responsibility, or concern that brought you here."],
+              ["Understand the next step.", "A licensed professional may help you review available options and considerations."],
+              ["Get guidance that fits your life.", "Ask questions and decide which available option fits your needs."],
             ].map(([title, desc], index) => (
               <div key={title} className="rounded-[1.75rem] bg-white p-8 text-left shadow-[0_20px_70px_rgba(61,43,24,0.08)]">
                 <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-full bg-[#d6b35f] font-bold text-white">{index + 1}</div>
@@ -386,7 +359,7 @@ export default function HomePage() {
                 <div className="space-y-2">
                   <label htmlFor="dateOfBirth" className={LABEL_CLASS}>Date of Birth</label>
                   <input id="dateOfBirth" type="date" value={form.dateOfBirth} onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("dateOfBirth", e.target.value)} autoComplete="bday" aria-required="true" aria-invalid={!!errors.dateOfBirth} className={inputClass(!!errors.dateOfBirth)} />
-                  <p className="text-xs text-[#8a6a3a]">Required to route accurate life insurance guidance. You must be at least 18.</p>
+                  <p className="text-xs text-[#8a6a3a]">Helps determine age-based eligibility and available options. You must be at least 18.</p>
                   {errors.dateOfBirth && <p className="text-xs text-red-600" role="alert">{errors.dateOfBirth}</p>}
                 </div>
 
@@ -400,7 +373,7 @@ export default function HomePage() {
                     {errors.state && <p className="text-xs text-red-600" role="alert">{errors.state}</p>}
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="purchaseIntent" className={LABEL_CLASS}>Readiness</label>
+                    <label htmlFor="purchaseIntent" className={LABEL_CLASS}>Where are you in the process?</label>
                     <select id="purchaseIntent" value={form.purchaseIntent} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("purchaseIntent", e.target.value)} aria-required="true" aria-invalid={!!errors.purchaseIntent} className={selectClass(!!errors.purchaseIntent)}>
                       {PURCHASE_INTENT_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
@@ -498,41 +471,6 @@ export default function HomePage() {
               </div>
             )}
           </form>
-        </div>
-      </section>
-
-      <section className="bg-white px-4 py-20 md:px-8 md:py-28" aria-labelledby="testimonials-heading">
-        <div className="mx-auto max-w-7xl">
-          <p className={SECTION_LABEL}>Stories to replace with approved testimonials</p>
-          <h2 id="testimonials-heading" className={SECTION_HEADING}>Families Come Here at Real Moments.</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {TESTIMONIALS.map(([quote, label]) => (
-              <figure key={label} className="rounded-[1.5rem] bg-[#fbf7f0] p-6 shadow-[0_18px_60px_rgba(61,43,24,0.08)]">
-                <blockquote className="font-serif text-2xl leading-snug text-[#241d15]">“{quote}”</blockquote>
-                <figcaption className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#9f782f]">{label}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="about" className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="about-heading">
-        <div className="mx-auto grid max-w-7xl gap-10 rounded-[2rem] bg-[#241d15] p-8 text-white md:p-12 lg:grid-cols-[1fr_0.7fr] lg:items-center">
-          <div>
-            <p className={SECTION_LABEL}>Our story</p>
-            <h2 id="about-heading" className="font-serif text-4xl font-light md:text-6xl">Veteran-Founded. Family-Focused. Independent.</h2>
-            <p className="mt-6 text-lg leading-8 text-[#eadcc7]">Valor Legacies was created for the families who are building, growing, planning, grieving, dreaming, and trying to make the right decisions for the people they love most.</p>
-            <p className="mt-5 text-lg leading-8 text-[#eadcc7]">As a veteran, service has always meant more to me than a title. It means showing up with purpose. It means protecting others. It means doing the right thing even when no one is watching. That same spirit is the foundation of Valor Legacies. I didn’t build this brand to make life insurance feel complicated or intimidating. I built it to make protection feel personal, understandable, and rooted in real life. Whether someone just had a baby, bought a home, got married, started thinking about retirement, or simply wants to make sure their family is not left with a financial burden, Valor Legacies exists to help them take the next step with confidence.</p>
-            <p className="mt-6 font-serif text-2xl leading-snug text-[#d6b35f]">For the life you live, and the love you leave, this is why Valor Legacies exists.</p>
-            <a href="/about" className="mt-8 inline-flex rounded-full bg-[#d6b35f] px-7 py-3 text-sm font-semibold text-[#241d15]">Our Story</a>
-          </div>
-          <figure className="overflow-hidden rounded-[1.5rem] border border-[#d6b35f]/40 bg-gradient-to-br from-[#f6e5c4]/15 to-[#b58b3b]/10 p-3 shadow-[0_30px_90px_rgba(0,0,0,0.35)]">
-            <img src="/assets/valor/founder-andrea-military.jpg" alt="Andrea Golden, veteran and founder of Valor Legacies" className="w-full rounded-[1.15rem]" loading="lazy" />
-            <figcaption className="px-2 pb-1 pt-4 text-center">
-              <p className="font-serif text-2xl text-[#f6e5c4]">Andrea Golden</p>
-              <p className="mt-1 text-xs uppercase tracking-[0.24em] text-[#d6b35f]">Founder · Veteran</p>
-            </figcaption>
-          </figure>
         </div>
       </section>
 

@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ServiceSchema } from "../components/schema-markup";
 import { GUIDE_CATEGORIES, getGuidesByCategory } from "../guides/data";
-import { getAllLandingPages } from "../lib/landing-pages";
 
 export const metadata: Metadata = {
-  title: "Helpful Guides for Life’s Biggest Moments",
+  title: "Life Insurance Guides",
   description:
     "Explore consumer-friendly life insurance guides for new parents, homeowners, work benefits, final expense planning, retirement, legacy planning, and veteran families.",
   keywords: [
@@ -17,7 +16,7 @@ export const metadata: Metadata = {
     "veteran life insurance benefits",
   ],
   openGraph: {
-    title: "Helpful Guides for Life’s Biggest Moments",
+    title: "Life Insurance Guides",
     description:
       "Consumer-friendly Valor Legacies guides for life insurance decisions around family, home, work benefits, retirement, final expenses, and veteran benefits.",
     type: "website",
@@ -36,10 +35,11 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
     "Careful education for retirement, legacy, and coverage amount conversations.",
   "Veterans & Military Families":
     "Military and veteran benefit resources, plus private coverage considerations.",
+  "Coverage Basics":
+    "Straightforward help estimating needs and preparing for a coverage conversation.",
 };
 
 export default function ResourcesIndex() {
-  const veteranResources = getAllLandingPages();
 
   return (
     <main className="min-h-screen bg-[#fbf7f0] px-4 py-12 text-[#241d15] md:px-8 md:py-16">
@@ -57,12 +57,13 @@ export default function ResourcesIndex() {
             Resource Center
           </p>
           <h1 className="mt-4 max-w-4xl font-serif text-4xl font-light leading-tight md:text-6xl">
-            Helpful Guides for Life’s Biggest Moments
+            Life Insurance Guides
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-[#eadcc7]">
-            Start with the moment that brought you here. These guides are
-            written for families, not insurance insiders, and each one points to
-            reliable references for deeper reading.
+            Life insurance can feel confusing, but the right guidance starts
+            with the chapter you are in. These guides are designed to help
+            families understand what may be missing, what questions to ask, and
+            how protection may help.
           </p>
         </header>
 
@@ -113,28 +114,6 @@ export default function ResourcesIndex() {
                       </span>
                     </Link>
                   ))}
-
-                  {category === "Veterans & Military Families" &&
-                    veteranResources.map((page) => (
-                      <Link
-                        key={page.slug}
-                        href={`/resources/${page.slug}`}
-                        className="group rounded-[1.5rem] border border-[#decda9] bg-white/75 p-6 transition-all hover:-translate-y-1 hover:border-[#d6b35f]"
-                      >
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9f782f]">
-                          Veteran resource
-                        </p>
-                        <h3 className="mt-3 text-xl font-semibold text-[#241d15] transition-colors group-hover:text-[#9f782f]">
-                          {page.title}
-                        </h3>
-                        <p className="mt-3 text-sm leading-6 text-[#6a5c4b]">
-                          {page.metaDescription}
-                        </p>
-                        <span className="mt-5 inline-flex text-sm font-semibold text-[#9f782f]">
-                          Read Resource &rarr;
-                        </span>
-                      </Link>
-                    ))}
                 </div>
               </section>
             );

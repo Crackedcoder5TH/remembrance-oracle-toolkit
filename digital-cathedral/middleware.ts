@@ -118,6 +118,7 @@ const CONSUMER_TO_PORTAL_REDIRECTS: Record<string, string> = {
 /** Routes that must only be served on the portal domain. */
 const PORTAL_ONLY_PREFIXES = [
   "/admin",
+  "/agent",
   "/portal",
   "/developers",
   "/api/admin",
@@ -319,6 +320,7 @@ export async function middleware(request: NextRequest) {
       pathname === "/" ||
       pathname === "/portal" ||
       pathname.startsWith("/portal/") ||
+      pathname.startsWith("/agent/") ||
       pathname.startsWith("/admin") ||
       pathname.startsWith("/developers") ||
       pathname.startsWith("/api/") ||
@@ -390,6 +392,15 @@ export async function middleware(request: NextRequest) {
     if (!(await hasAdminSession(request))) {
       const loginUrl = new URL("/admin/login", request.url);
       return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // Agent pages require an unexpired portal session at the route boundary.
+  // API handlers continue to verify the HMAC and ownership server-side.
+  if (pathname.startsWith("/agent")) {
+    const portalSession = request.cookies.get("__portal_session")?.value;
+    if (!portalSession || !isSessionLikelyValid(portalSession)) {
+      return NextResponse.redirect(new URL("/portal/login", request.url));
     }
   }
 

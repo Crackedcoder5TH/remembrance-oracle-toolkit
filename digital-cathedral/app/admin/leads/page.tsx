@@ -111,7 +111,7 @@ export default function AdminLeadsPage() {
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name or email…"
+          placeholder="Search name, email, phone, or lead ID…"
           className="flex-1 min-w-[200px] bg-black/20 border border-teal-cathedral/20 rounded px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-teal-cathedral outline-none"
         />
         <select
@@ -139,27 +139,25 @@ export default function AdminLeadsPage() {
           <thead>
             <tr className="text-left text-[var(--text-muted)] border-b border-teal-cathedral/10">
               <th className="px-3 py-2 font-normal">Name</th>
-              <th className="px-3 py-2 font-normal">Email</th>
-              <th className="px-3 py-2 font-normal">Phone</th>
               <th className="px-3 py-2 font-normal">State</th>
               <th className="px-3 py-2 font-normal">Coverage</th>
               <th className="px-3 py-2 font-normal">Veteran</th>
               <th className="px-3 py-2 font-normal">Tier</th>
               <th className="px-3 py-2 font-normal">Archetype</th>
               <th className="px-3 py-2 font-normal">Submitted</th>
+              <th className="px-3 py-2 font-normal">Consent</th>
+              <th className="px-3 py-2 font-normal">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading && leads.length === 0 ? (
               <tr><td colSpan={9} className="px-3 py-6 text-center text-[var(--text-muted)]">Loading…</td></tr>
             ) : leads.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-6 text-center text-[var(--text-muted)]">No leads found.</td></tr>
+              <tr><td colSpan={9} className="px-3 py-10 text-center text-[var(--text-muted)]"><b className="block text-[var(--text-primary)]">No leads have been submitted yet.</b>Once customers complete the Protection Path form, they’ll appear here for review.</td></tr>
             ) : (
               leads.map((l) => (
                 <tr key={l.leadId} className="border-b border-teal-cathedral/5 hover:bg-black/20">
                   <td className="px-3 py-2 text-[var(--text-primary)] whitespace-nowrap">{l.firstName} {l.lastName}</td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">{l.email}</td>
-                  <td className="px-3 py-2 text-[var(--text-muted)] whitespace-nowrap">{l.phone}</td>
                   <td className="px-3 py-2">{l.state}</td>
                   <td className="px-3 py-2 text-[var(--text-muted)]">{l.coverageInterest}</td>
                   <td className="px-3 py-2 text-[var(--text-muted)]">{l.veteranStatus}</td>
@@ -171,6 +169,8 @@ export default function AdminLeadsPage() {
                   <td className="px-3 py-2 text-[var(--text-muted)] whitespace-nowrap">
                     {l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—"}
                   </td>
+                  <td className="px-3 py-2 text-emerald-300">Recorded</td>
+                  <td className="px-3 py-2"><a href={`/admin/leads/${l.leadId}`} className="rounded border border-teal-cathedral/30 px-2 py-1 text-teal-cathedral">View</a></td>
                 </tr>
               ))
             )}

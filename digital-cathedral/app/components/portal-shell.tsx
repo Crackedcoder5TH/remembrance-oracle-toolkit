@@ -21,7 +21,7 @@ const NAVIGATION: Record<PortalRole, { label: string; href: string }[]> = {
   ],
   agent: [
     { label: "Dashboard", href: "/agent/dashboard" },
-    { label: "Buy Leads", href: "/portal/marketplace" },
+    { label: "Buy Leads", href: "/agent/buy-leads" },
     { label: "My Leads", href: "/agent/leads" },
     { label: "Pipeline", href: "/agent/pipeline" },
     { label: "Appointments / Tasks", href: "/agent/tasks" },

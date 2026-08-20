@@ -94,7 +94,7 @@ export default function LoginContent({ googleEnabled, publicSiteUrl }: LoginCont
 
       const data = await res.json();
       if (res.ok && data.success) {
-        router.push("/admin");
+        router.push("/admin/dashboard");
       } else {
         setError(data.message || "Authentication failed.");
       }

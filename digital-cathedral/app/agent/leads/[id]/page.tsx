@@ -1,123 +1,20 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { PortalShell } from "../../../components/portal-shell";
+import { Panel, PortalShell } from "../../../components/portal-shell";
 
-type Lead = {
-  leadId: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
-  state: string;
-  dateOfBirth: string;
-  coverageInterest: string;
-  purchaseIntent: string;
-  veteranStatus: string;
-  createdAt: string;
-  consentSummary: string;
-};
-
-// A first-line script tuned to the reason the family reached out. Placeholder
-// [Agent] is filled by the operator; the point is a warm, compliant opener.
-const opener = (l: Lead) =>
-  l.coverageInterest === "final-expense"
-    ? `Hi ${l.firstName}, this is [Agent]. I’m following up because you requested information about final expense planning. My goal is to help you understand simple options that may help keep that burden off your family.`
-    : l.coverageInterest.includes("mortgage")
-      ? `Hi ${l.firstName}, this is [Agent]. I’m following up on your request about protecting your home. I’ll keep this simple and help you understand your options.`
-      : l.veteranStatus?.includes("veteran")
-        ? `Hi ${l.firstName}, this is [Agent]. I’m following up because you requested guidance as a veteran or military family member. My goal is to help you understand what benefits may cover and where private protection may help fill the gap.`
-        : `Hi ${l.firstName}, this is [Agent]. I’m following up on your request for guidance. My job is to help you understand what protection may fit this chapter.`;
-
-export default function LeadDetail({ params }: { params: { id: string } }) {
-  const [lead, setLead] = useState<Lead | null>(null);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch(`/api/client/leads/${encodeURIComponent(params.id)}`)
-      .then(async (r) => {
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.message);
-        setLead(d.lead);
-      })
-      .catch((e) => setError(e.message));
-  }, [params.id]);
-
-  const body = () => {
-    if (error)
-      return <p className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</p>;
-    if (!lead) return <p className="text-sm text-[#8a8175]">Loading authorized lead…</p>;
-    return (
-      <>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm text-[#176b65]">New · {lead.leadId}</p>
-            <h2 className="font-serif text-3xl text-[#211d18]">
-              {lead.firstName} {lead.lastName}
-            </h2>
-            <p className="text-[#8a8175]">
-              {lead.state} · {lead.coverageInterest}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <a href={`tel:${lead.phone}`} className="rounded-xl bg-[#176b65] px-4 py-3 text-sm text-white">
-              Call
-            </a>
-            <a href={`sms:${lead.phone}`} className="rounded-xl border border-[#e2d9c9] px-4 py-3 text-sm">
-              Text
-            </a>
-            <a href={`mailto:${lead.email}`} className="rounded-xl border border-[#e2d9c9] px-4 py-3 text-sm">
-              Email
-            </a>
-          </div>
-        </div>
-
-        <div className="mt-7 grid gap-5 md:grid-cols-2">
-          <section className="rounded-2xl border border-[#e2d9c9] bg-white p-5">
-            <h3 className="font-semibold text-[#211d18]">Contact &amp; request</h3>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div><dt className="text-[#776e61]">Phone</dt><dd>{lead.phone}</dd></div>
-              <div><dt className="text-[#776e61]">Email</dt><dd>{lead.email}</dd></div>
-              <div><dt className="text-[#776e61]">DOB</dt><dd>{lead.dateOfBirth || "Not provided"}</dd></div>
-              <div><dt className="text-[#776e61]">Readiness</dt><dd>{lead.purchaseIntent || "Exploring"}</dd></div>
-              <div><dt className="text-[#776e61]">Submitted</dt><dd>{new Date(lead.createdAt).toLocaleString()}</dd></div>
-            </dl>
-          </section>
-          <section className="rounded-2xl border border-[#e2d9c9] bg-white p-5">
-            <h3 className="font-semibold text-[#211d18]">Suggested opener</h3>
-            <p className="mt-3 text-sm leading-6 text-[#4a4238]">“{opener(lead)}”</p>
-          </section>
-          <section className="rounded-2xl border border-[#e2d9c9] bg-white p-5">
-            <h3 className="font-semibold text-[#211d18]">Consent proof</h3>
-            <p className="mt-3 text-sm">{lead.consentSummary}</p>
-            <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-              Honor contact preferences, identify yourself clearly, and stop outreach immediately after an opt-out.
-            </p>
-          </section>
-          <section className="rounded-2xl border border-[#e2d9c9] bg-white p-5">
-            <h3 className="font-semibold text-[#211d18]">Activity &amp; follow-up</h3>
-            <p className="mt-3 text-sm text-[#8a8175]">
-              Purchase recorded. CRM notes, appointments, and status persistence require the Phase 3 operations fields.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button className="rounded-lg border border-[#e2d9c9] px-3 py-2 text-sm">Add note</button>
-              <button className="rounded-lg border border-[#e2d9c9] px-3 py-2 text-sm">Set follow-up</button>
-              <button className="rounded-lg border border-[#e2d9c9] px-3 py-2 text-sm">Update status</button>
-            </div>
-          </section>
-        </div>
-      </>
-    );
-  };
-
-  return (
-    <PortalShell
-      role="agent"
-      eyebrow="My Leads"
-      title="Lead detail"
-      description="Work this lead to the next step. Contact actions and consent are shown; CRM persistence arrives in Phase 3."
-    >
-      {body()}
-    </PortalShell>
-  );
-}
+type Note={id:number;actorRole:string;body:string;createdAt:string}; type Event={id:number;eventLabel:string;createdAt:string};
+type Lead={leadId:string;firstName:string;lastName:string;phone:string;email:string;state:string;dateOfBirth:string;coverageInterest:string;purchaseIntent:string;createdAt:string;consentSummary:string;status:string;nextFollowUpAt:string|null;appointmentAt:string|null;lastContactedAt:string|null;notes:Note[];activity:Event[]};
+const statuses=["New","Contacted","Follow-Up","Appointment Set","Application Started","Submitted","Won","Lost","Bad Lead / Dispute Requested","Do Not Contact"];
+export default function LeadDetail({params}:{params:{id:string}}){const[lead,setLead]=useState<Lead|null>(null);const[error,setError]=useState("");const[note,setNote]=useState("");const[busy,setBusy]=useState(false);
+const load=()=>fetch(`/api/client/leads/${encodeURIComponent(params.id)}`,{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.message);setLead(d.lead)}).catch(e=>setError(e.message));useEffect(()=>{load()},[params.id]);
+async function patch(body:Record<string,unknown>){setBusy(true);setError("");try{const r=await fetch(`/api/agent/leads/${encodeURIComponent(params.id)}/operations`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.message);setLead(l=>l?{...l,...d.operations}:l);setNote("")}catch(e){setError(e instanceof Error?e.message:"Unable to save") }finally{setBusy(false)}}
+function track(eventType:string){void patch({eventType})} if(error&&!lead)return <PortalShell role="agent" eyebrow="My Leads" title="Lead detail" description="Authorized lead workspace."><p className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700">{error}</p></PortalShell>;if(!lead)return <PortalShell role="agent" eyebrow="My Leads" title="Lead detail" description="Authorized lead workspace."><p>Loading authorized lead…</p></PortalShell>;
+return <PortalShell role="agent" eyebrow="My Leads" title={`${lead.firstName} ${lead.lastName}`} description="Contact the lead, record each next step, and keep follow-ups visible.">
+{error&&<p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}<div className="flex flex-wrap gap-2"><a onClick={()=>track("call_clicked")} href={`tel:${lead.phone}`} className="rounded-xl bg-[#176b65] px-5 py-3 text-white">Call</a><a onClick={()=>track("text_clicked")} href={`sms:${lead.phone}`} className="rounded-xl border border-[#e2d9c9] bg-white px-5 py-3">Text</a><a onClick={()=>track("email_clicked")} href={`mailto:${lead.email}`} className="rounded-xl border border-[#e2d9c9] bg-white px-5 py-3">Email</a><button disabled={busy} onClick={()=>patch({contacted:true,status:"Contacted"})} className="rounded-xl border border-[#e2d9c9] bg-white px-5 py-3">Mark contacted</button></div>
+<div className="mt-6 grid gap-5 lg:grid-cols-2"><Panel title="Contact & request"><dl className="space-y-2 text-sm"><Row k="Status" v={lead.status}/><Row k="Phone" v={lead.phone}/><Row k="Email" v={lead.email}/><Row k="State" v={lead.state}/><Row k="Coverage" v={lead.coverageInterest}/><Row k="Last contacted" v={lead.lastContactedAt?new Date(lead.lastContactedAt).toLocaleString():"Not yet"}/><Row k="Consent" v={lead.consentSummary}/></dl></Panel>
+<Panel title="Update status"><select value={lead.status} disabled={busy} onChange={e=>patch({status:e.target.value})} className="w-full rounded-lg border border-[#e2d9c9] bg-white p-3">{statuses.map(s=><option key={s}>{s}</option>)}</select></Panel>
+<Panel title="Follow-up reminder"><p className="mb-3 text-sm text-[#8a8175]">{lead.nextFollowUpAt?new Date(lead.nextFollowUpAt).toLocaleString():"No follow-up set. Add one so this lead does not slip through the cracks."}</p><input type="datetime-local" className="rounded-lg border border-[#e2d9c9] p-3" onChange={e=>patch({nextFollowUpAt:e.target.value?new Date(e.target.value).toISOString():null})}/><button onClick={()=>patch({nextFollowUpAt:null})} className="ml-2 text-sm text-[#176b65]">Clear</button></Panel>
+<Panel title="Appointment"><p className="mb-3 text-sm text-[#8a8175]">{lead.appointmentAt?new Date(lead.appointmentAt).toLocaleString():"No appointment scheduled."}</p><input type="datetime-local" className="rounded-lg border border-[#e2d9c9] p-3" onChange={e=>patch({appointmentAt:e.target.value?new Date(e.target.value).toISOString():null})}/><button onClick={()=>patch({appointmentAt:null})} className="ml-2 text-sm text-[#176b65]">Cancel</button></Panel>
+<Panel title="Notes"><textarea value={note} onChange={e=>setNote(e.target.value)} maxLength={4000} placeholder="Add a contact or follow-up note" className="min-h-24 w-full rounded-lg border border-[#e2d9c9] p-3"/><button disabled={busy||!note.trim()} onClick={()=>patch({note})} className="mt-2 rounded-lg bg-[#176b65] px-4 py-2 text-white disabled:opacity-50">Add note</button><div className="mt-5 space-y-3">{lead.notes.length?lead.notes.map(n=><div key={n.id} className="rounded-lg bg-[#f4efe5] p-3 text-sm"><p>{n.body}</p><p className="mt-2 text-xs text-[#8a8175]">{n.actorRole} · {new Date(n.createdAt).toLocaleString()}</p></div>):<p className="text-sm text-[#8a8175]">No notes yet. Add a note after your first contact or follow-up.</p>}</div></Panel>
+<Panel title="Activity timeline"><div className="space-y-3">{lead.activity.length?lead.activity.map(a=><div key={a.id} className="border-l-2 border-[#c9a75f] pl-3 text-sm"><p>{a.eventLabel}</p><p className="text-xs text-[#8a8175]">{new Date(a.createdAt).toLocaleString()}</p></div>):<p className="text-sm text-[#8a8175]">No CRM activity recorded yet.</p>}</div></Panel></div></PortalShell>}
+function Row({k,v}:{k:string;v:string}){return <div className="grid grid-cols-[8rem_1fr] gap-2"><dt className="text-[#776e61]">{k}</dt><dd className="break-all">{v||"—"}</dd></div>}

@@ -107,7 +107,7 @@ function getDomainType(hostname: string): DomainType {
 /** Consumer-visible technical/operator pages that belong on the .xyz portal. */
 const CONSUMER_TO_PORTAL_REDIRECTS: Record<string, string> = {
   "/admin": "/admin",
-  "/agent": "/portal",
+  "/agent": "/agent",
   "/agent-login": "/portal/login",
   "/developers": "/developers",
   "/api-docs": "/developers",
@@ -432,6 +432,7 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith("/api") &&
     !pathname.startsWith("/admin") &&
     !pathname.startsWith("/portal") &&
+    !pathname.startsWith("/agent") &&
     !pathname.startsWith("/developers") &&
     !pathname.startsWith("/_next") &&
     !pathname.startsWith("/.well-known") &&
@@ -622,6 +623,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/admin") ||
     pathname.startsWith("/portal") ||
+    pathname.startsWith("/agent") ||
     pathname.startsWith("/api/admin") ||
     pathname.startsWith("/api/portal") ||
     pathname.startsWith("/api/client") ||

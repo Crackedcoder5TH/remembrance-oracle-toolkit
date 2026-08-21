@@ -19,7 +19,7 @@ export default function ClientLoginPage() {
   // Auto-redirect if already authenticated
   useEffect(() => {
     fetch("/api/portal/session").then((res) => {
-      if (res.ok) router.push("/portal/dashboard");
+      if (res.ok) router.push("/agent/dashboard");
     }).catch(() => {});
   }, [router]);
 
@@ -58,7 +58,7 @@ export default function ClientLoginPage() {
       const data = await res.json();
 
       if (data.success || res.ok) {
-        router.push("/portal/dashboard");
+        router.push("/agent/dashboard");
       } else {
         setError(data.error || data.message || "Login failed.");
       }

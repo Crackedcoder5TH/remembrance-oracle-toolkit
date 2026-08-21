@@ -107,7 +107,7 @@ function getDomainType(hostname: string): DomainType {
 /** Consumer-visible technical/operator pages that belong on the .xyz portal. */
 const CONSUMER_TO_PORTAL_REDIRECTS: Record<string, string> = {
   "/admin": "/admin",
-  "/agent": "/portal",
+  "/agent": "/agent",
   "/agent-login": "/portal/login",
   "/developers": "/developers",
   "/api-docs": "/developers",
@@ -118,6 +118,7 @@ const CONSUMER_TO_PORTAL_REDIRECTS: Record<string, string> = {
 /** Routes that must only be served on the portal domain. */
 const PORTAL_ONLY_PREFIXES = [
   "/admin",
+  "/agent",
   "/portal",
   "/developers",
   "/api/admin",
@@ -319,6 +320,7 @@ export async function middleware(request: NextRequest) {
       pathname === "/" ||
       pathname === "/portal" ||
       pathname.startsWith("/portal/") ||
+      pathname.startsWith("/agent/") ||
       pathname.startsWith("/admin") ||
       pathname.startsWith("/developers") ||
       pathname.startsWith("/api/") ||
@@ -393,6 +395,15 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Agent pages require an unexpired portal session at the route boundary.
+  // API handlers continue to verify the HMAC and ownership server-side.
+  if (pathname.startsWith("/agent")) {
+    const portalSession = request.cookies.get("__portal_session")?.value;
+    if (!portalSession || !isSessionLikelyValid(portalSession)) {
+      return NextResponse.redirect(new URL("/portal/login", request.url));
+    }
+  }
+
   // ─── AI Crawler Telemetry ───
   const userAgent = request.headers.get("user-agent") || "";
   const crawler = detectAICrawler(userAgent);
@@ -421,6 +432,7 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith("/api") &&
     !pathname.startsWith("/admin") &&
     !pathname.startsWith("/portal") &&
+    !pathname.startsWith("/agent") &&
     !pathname.startsWith("/developers") &&
     !pathname.startsWith("/_next") &&
     !pathname.startsWith("/.well-known") &&
@@ -611,6 +623,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/admin") ||
     pathname.startsWith("/portal") ||
+    pathname.startsWith("/agent") ||
     pathname.startsWith("/api/admin") ||
     pathname.startsWith("/api/portal") ||
     pathname.startsWith("/api/client") ||

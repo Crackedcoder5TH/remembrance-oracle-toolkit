@@ -44,7 +44,7 @@ export default function AdminLoginPage({
   // when an explicit ?error= is present (e.g. AccessDenied from the OAuth
   // callback) so the form can still render that message.
   if (!searchParams?.error && isAlreadyAdmin()) {
-    redirect("/admin");
+    redirect("/admin/dashboard");
   }
 
   const googleEnabled = Boolean(

@@ -6,6 +6,7 @@ import { PortalShell } from "../../../components/portal-shell";
 type Detail = {
   lead: Record<string, string | boolean | null>;
   purchases: Array<{ purchaseId: string; clientId: string; pricePaid: number; purchasedAt: string; status: string }>;
+  operations: { status: string; lastContactedAt: string | null; nextFollowUpAt: string | null; appointmentAt: string | null; doNotContact: boolean; disputeStatus: string | null; notes: Array<{id:number;body:string;actorRole:string;visibility:string;createdAt:string}>; activity: Array<{id:number;eventLabel:string;actorRole:string;createdAt:string}> };
 };
 
 export default function AdminLeadDetail({ params }: { params: { id: string } }) {
@@ -90,11 +91,11 @@ export default function AdminLeadDetail({ params }: { params: { id: string } }) 
             )}
           </Card>
           <Card title="Activity & internal notes">
-            <p className="text-sm text-[#8a8175]">
-              Submission and purchase events are shown from existing records. Operational status, notes, assignments, and
-              follow-up fields are not yet present in the database.
-            </p>
-            <button className="mt-4 rounded-lg border border-[#e2d9c9] px-3 py-2 text-sm">Add internal note</button>
+            <Row k="Agent status" v={data.operations.status} /><Row k="Last contacted" v={data.operations.lastContactedAt} /><Row k="Follow-up" v={data.operations.nextFollowUpAt} /><Row k="Appointment" v={data.operations.appointmentAt} /><Row k="Dispute" v={data.operations.disputeStatus} /><Row k="Do not contact" v={data.operations.doNotContact ? "Yes" : "No"} />
+            <div className="mt-4 space-y-2">{data.operations.notes.length ? data.operations.notes.map(n=><div key={n.id} className="rounded-lg bg-[#f4efe5] p-3 text-sm"><p>{n.body}</p><p className="mt-1 text-xs text-[#8a8175]">{n.actorRole} · {n.visibility} · {new Date(n.createdAt).toLocaleString()}</p></div>) : <p className="text-sm text-[#8a8175]">No notes recorded.</p>}</div>
+          </Card>
+          <Card title="Activity timeline">
+            <div className="space-y-3">{data.operations.activity.length ? data.operations.activity.map(a=><div key={a.id} className="border-l-2 border-[#c9a75f] pl-3 text-sm"><p>{a.eventLabel}</p><p className="text-xs text-[#8a8175]">{a.actorRole} · {new Date(a.createdAt).toLocaleString()}</p></div>) : <p className="text-sm text-[#8a8175]">No operational activity recorded yet.</p>}</div>
           </Card>
         </div>
       </>
@@ -106,7 +107,7 @@ export default function AdminLeadDetail({ params }: { params: { id: string } }) 
       role="admin"
       eyebrow="Leads"
       title="Lead detail"
-      description="Full contact, source, and compliance record with purchase history. Operational fields arrive in Phase 3."
+      description="Full contact, compliance, purchase history, and persisted operational activity."
     >
       {body()}
     </PortalShell>

@@ -13,22 +13,43 @@ const schema = `
   CREATE INDEX IF NOT EXISTS idx_lead_notes_lead ON lead_notes(lead_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_lead_activity_lead ON lead_activity(lead_id, created_at);`;
 
-async function sqlite() {
+// One shared sqlite handle per process (local-dev fallback). Reused, never
+// reopened per call — reopening churned the file handle on every lead read.
+let sqliteDb: import("better-sqlite3").Database | null = null;
+function sqlite() {
+  if (sqliteDb) return sqliteDb;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Database = require("better-sqlite3");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const fs = require("fs");
   const dir = process.env.VERCEL ? path.join("/tmp", ".cathedral") : path.join(process.cwd(), ".cathedral");
   fs.mkdirSync(dir, { recursive: true });
-  const db = new Database(path.join(dir, "leads.db")); db.exec(schema); return db;
+  const db = new Database(path.join(dir, "leads.db"));
+  db.exec(schema);
+  sqliteDb = db;
+  return db;
 }
 
-async function pg() {
-  const { Pool } = await import("pg");
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined });
-  // Postgres has no implicit int→bool cast, so the boolean column needs a boolean default (not `0`).
-  await pool.query(schema.replaceAll("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY").replace("do_not_contact INTEGER NOT NULL DEFAULT 0", "do_not_contact BOOLEAN NOT NULL DEFAULT FALSE"));
-  return pool;
+// One shared pg Pool per process, mirroring database.ts. The schema DDL runs
+// exactly once (guarded by poolReady) rather than on every request — the old
+// code created a fresh Pool and re-ran CREATE TABLE per call, so a marketplace
+// page (Promise.all over purchased leads) opened N concurrent pools and could
+// exhaust the Postgres connection limit.
+let pool: import("pg").Pool | null = null;
+let poolReady: Promise<import("pg").Pool> | null = null;
+function pg(): Promise<import("pg").Pool> {
+  if (pool) return Promise.resolve(pool);
+  if (!poolReady) {
+    poolReady = (async () => {
+      const { Pool } = await import("pg");
+      const created = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined });
+      // Postgres has no implicit int→bool cast, so the boolean column needs a boolean default (not `0`).
+      await created.query(schema.replaceAll("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY").replace("do_not_contact INTEGER NOT NULL DEFAULT 0", "do_not_contact BOOLEAN NOT NULL DEFAULT FALSE"));
+      pool = created;
+      return created;
+    })();
+  }
+  return poolReady;
 }
 
 const mapOps = (row: Record<string, unknown> | undefined, notes: Record<string, unknown>[], activity: Record<string, unknown>[], includeInternal: boolean): LeadOperations => ({
@@ -40,8 +61,13 @@ const mapOps = (row: Record<string, unknown> | undefined, notes: Record<string, 
 });
 
 export async function getLeadOperations(leadId: string, includeInternal = false): Promise<LeadOperations> {
-  if (process.env.DATABASE_URL) { const db = await pg(); try { const [o,n,a] = await Promise.all([db.query("SELECT * FROM lead_operations WHERE lead_id=$1",[leadId]),db.query("SELECT * FROM lead_notes WHERE lead_id=$1 ORDER BY created_at DESC",[leadId]),db.query("SELECT * FROM lead_activity WHERE lead_id=$1 ORDER BY created_at DESC",[leadId])]); return mapOps(o.rows[0],n.rows,a.rows,includeInternal); } finally { await db.end(); } }
-  const db = await sqlite(); try { return mapOps(db.prepare("SELECT * FROM lead_operations WHERE lead_id=?").get(leadId),db.prepare("SELECT * FROM lead_notes WHERE lead_id=? ORDER BY created_at DESC").all(leadId),db.prepare("SELECT * FROM lead_activity WHERE lead_id=? ORDER BY created_at DESC").all(leadId),includeInternal); } finally { db.close(); }
+  if (process.env.DATABASE_URL) {
+    const db = await pg();
+    const [o, n, a] = await Promise.all([db.query("SELECT * FROM lead_operations WHERE lead_id=$1", [leadId]), db.query("SELECT * FROM lead_notes WHERE lead_id=$1 ORDER BY created_at DESC", [leadId]), db.query("SELECT * FROM lead_activity WHERE lead_id=$1 ORDER BY created_at DESC", [leadId])]);
+    return mapOps(o.rows[0], n.rows, a.rows, includeInternal);
+  }
+  const db = sqlite();
+  return mapOps(db.prepare("SELECT * FROM lead_operations WHERE lead_id=?").get(leadId) as Record<string, unknown> | undefined, db.prepare("SELECT * FROM lead_notes WHERE lead_id=? ORDER BY created_at DESC").all(leadId) as Record<string, unknown>[], db.prepare("SELECT * FROM lead_activity WHERE lead_id=? ORDER BY created_at DESC").all(leadId) as Record<string, unknown>[], includeInternal);
 }
 
 type Update = { status?: AgentStatus; nextFollowUpAt?: string | null; appointmentAt?: string | null; contacted?: boolean; note?: string; visibility?: "agent" | "internal"; eventType?: "call_clicked" | "text_clicked" | "email_clicked" };
@@ -61,7 +87,34 @@ export async function updateLeadOperations(leadId: string, actorId: string, acto
   // values array, sqlite uses ? placeholders with .run(...) bind args. No value
   // is interpolated into SQL, so leadId/note/etc. cannot inject. (Taint scanners
   // that key on the db.query identifier flag these as a false positive.)
-  if (process.env.DATABASE_URL) { const db=await pg(); try { await db.query("BEGIN"); await db.query(`INSERT INTO lead_operations (lead_id,updated_at) VALUES ($1,$2) ON CONFLICT (lead_id) DO UPDATE SET updated_at=$2`,[leadId,now]); if(status) await db.query("UPDATE lead_operations SET agent_status=$1, do_not_contact=$2, dispute_status=COALESCE($3,dispute_status) WHERE lead_id=$4",[status,doNotContact,dispute,leadId]); if(update.nextFollowUpAt!==undefined) await db.query("UPDATE lead_operations SET next_follow_up_at=$1 WHERE lead_id=$2",[update.nextFollowUpAt,leadId]); if(update.appointmentAt!==undefined) await db.query("UPDATE lead_operations SET appointment_at=$1 WHERE lead_id=$2",[update.appointmentAt,leadId]); if(update.contacted) await db.query("UPDATE lead_operations SET last_contacted_at=$1 WHERE lead_id=$2",[now,leadId]); if(update.note?.trim()) await db.query("INSERT INTO lead_notes (lead_id,actor_id,actor_role,body,visibility,created_at) VALUES ($1,$2,$3,$4,$5,$6)",[leadId,actorId,actorRole,update.note.trim(),update.visibility||"agent",now]); for(const e of events) await db.query("INSERT INTO lead_activity (lead_id,actor_id,actor_role,event_type,event_label,created_at) VALUES ($1,$2,$3,$4,$5,$6)",[leadId,actorId,actorRole,e[0],e[1],now]); await db.query("COMMIT"); } catch(e){await db.query("ROLLBACK");throw e;} finally{await db.end();} }
-  else { const db=await sqlite(); try { const tx=db.transaction(()=>{ db.prepare("INSERT INTO lead_operations (lead_id,updated_at) VALUES (?,?) ON CONFLICT(lead_id) DO UPDATE SET updated_at=excluded.updated_at").run(leadId,now); if(status) db.prepare("UPDATE lead_operations SET agent_status=?,do_not_contact=?,dispute_status=COALESCE(?,dispute_status) WHERE lead_id=?").run(status,doNotContact?1:0,dispute,leadId); if(update.nextFollowUpAt!==undefined) db.prepare("UPDATE lead_operations SET next_follow_up_at=? WHERE lead_id=?").run(update.nextFollowUpAt,leadId); if(update.appointmentAt!==undefined) db.prepare("UPDATE lead_operations SET appointment_at=? WHERE lead_id=?").run(update.appointmentAt,leadId); if(update.contacted) db.prepare("UPDATE lead_operations SET last_contacted_at=? WHERE lead_id=?").run(now,leadId); if(update.note?.trim()) db.prepare("INSERT INTO lead_notes (lead_id,actor_id,actor_role,body,visibility,created_at) VALUES (?,?,?,?,?,?)").run(leadId,actorId,actorRole,update.note.trim(),update.visibility||"agent",now); for(const e of events) db.prepare("INSERT INTO lead_activity (lead_id,actor_id,actor_role,event_type,event_label,created_at) VALUES (?,?,?,?,?,?)").run(leadId,actorId,actorRole,e[0],e[1],now); }); tx(); } finally { db.close(); } }
+  if (process.env.DATABASE_URL) {
+    // Check out ONE dedicated connection so BEGIN…COMMIT stays on it. On a shared
+    // pool, pool.query() can hand each statement a different connection, which
+    // would scatter the transaction across connections.
+    const db = await (await pg()).connect();
+    try {
+      await db.query("BEGIN");
+      await db.query(`INSERT INTO lead_operations (lead_id,updated_at) VALUES ($1,$2) ON CONFLICT (lead_id) DO UPDATE SET updated_at=$2`, [leadId, now]);
+      if (status) await db.query("UPDATE lead_operations SET agent_status=$1, do_not_contact=$2, dispute_status=COALESCE($3,dispute_status) WHERE lead_id=$4", [status, doNotContact, dispute, leadId]);
+      if (update.nextFollowUpAt !== undefined) await db.query("UPDATE lead_operations SET next_follow_up_at=$1 WHERE lead_id=$2", [update.nextFollowUpAt, leadId]);
+      if (update.appointmentAt !== undefined) await db.query("UPDATE lead_operations SET appointment_at=$1 WHERE lead_id=$2", [update.appointmentAt, leadId]);
+      if (update.contacted) await db.query("UPDATE lead_operations SET last_contacted_at=$1 WHERE lead_id=$2", [now, leadId]);
+      if (update.note?.trim()) await db.query("INSERT INTO lead_notes (lead_id,actor_id,actor_role,body,visibility,created_at) VALUES ($1,$2,$3,$4,$5,$6)", [leadId, actorId, actorRole, update.note.trim(), update.visibility || "agent", now]);
+      for (const e of events) await db.query("INSERT INTO lead_activity (lead_id,actor_id,actor_role,event_type,event_label,created_at) VALUES ($1,$2,$3,$4,$5,$6)", [leadId, actorId, actorRole, e[0], e[1], now]);
+      await db.query("COMMIT");
+    } catch (e) { await db.query("ROLLBACK"); throw e; } finally { db.release(); }
+  } else {
+    const db = sqlite();
+    const tx = db.transaction(() => {
+      db.prepare("INSERT INTO lead_operations (lead_id,updated_at) VALUES (?,?) ON CONFLICT(lead_id) DO UPDATE SET updated_at=excluded.updated_at").run(leadId, now);
+      if (status) db.prepare("UPDATE lead_operations SET agent_status=?,do_not_contact=?,dispute_status=COALESCE(?,dispute_status) WHERE lead_id=?").run(status, doNotContact ? 1 : 0, dispute, leadId);
+      if (update.nextFollowUpAt !== undefined) db.prepare("UPDATE lead_operations SET next_follow_up_at=? WHERE lead_id=?").run(update.nextFollowUpAt, leadId);
+      if (update.appointmentAt !== undefined) db.prepare("UPDATE lead_operations SET appointment_at=? WHERE lead_id=?").run(update.appointmentAt, leadId);
+      if (update.contacted) db.prepare("UPDATE lead_operations SET last_contacted_at=? WHERE lead_id=?").run(now, leadId);
+      if (update.note?.trim()) db.prepare("INSERT INTO lead_notes (lead_id,actor_id,actor_role,body,visibility,created_at) VALUES (?,?,?,?,?,?)").run(leadId, actorId, actorRole, update.note.trim(), update.visibility || "agent", now);
+      for (const e of events) db.prepare("INSERT INTO lead_activity (lead_id,actor_id,actor_role,event_type,event_label,created_at) VALUES (?,?,?,?,?,?)").run(leadId, actorId, actorRole, e[0], e[1], now);
+    });
+    tx();
+  }
   return getLeadOperations(leadId, actorRole === "admin");
 }

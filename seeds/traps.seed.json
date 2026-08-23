@@ -497,6 +497,33 @@
    "truth": "The bands were 0.93/0.80/0.70, commented `(measurableOnly scale)` — the RETIRED syntax score whose median was ~0.83. The live reading is the Void compressor self-compression scalar: pure repetition (`AB` x2048) reads 1.0000, a 16-byte cycle 0.9960, high-entropy random 0.0872, and real source code 0.098-0.278. Nothing clears 0.70 — 0 of 28 sampled files did — so every file in the repo printed the same bottom verdict for a full session and the number carried no information. Coherency is how well a signal compresses INTO ITSELF; low on source code is the CORRECT answer, not a complaint about the code.",
    "tell": "Every file returns the same verdict, or a verdict band and its reading disagree by an order of magnitude.",
    "correct": "Anchor against the instrument before quoting a verdict. Bands live in living-remembrance gogglesParams as coherencyRepeating/Mixed/Typical. Related: MACRO`s WELL-FORMED / ORPHAN / DUPLICATE flags come from SIBLING SIMILARITY, not coherency — 1,335 files carry WELL-FORMED with scoredCount 0, i.e. no coherency measured at all."
+  },
+  {
+   "match": [
+    "experiments/",
+    "random.random",
+    "np.random",
+    "randn",
+    "def norm",
+    "min-max",
+    "minmax",
+    "normalize(",
+    "noise domain",
+    "surrogate",
+    "resonance_connect",
+    "whitened_resonance",
+    "gen_surrogates",
+    "combined_score",
+    "what the instrument sees",
+    "encode_batch",
+    "_compute_signature",
+    "ResonanceDetector"
+   ],
+   "severity": "high",
+   "wrong": "Answering a MEASUREMENT request by BUILDING: writing a new script under experiments/ (or a *.cjs) that imports the instrument's parts (ResonanceDetector, composedAtDepth, encode_batch, _compute_signature), wires its own glue (an invented min-max / norm() step, a hand-chosen depth), and INJECTS self-generated random.random()/np.random data as a 'noise' domain — then reporting the stdout in the instrument's vocabulary ('what the instrument sees', 'resonance', 'coherency', combined_score) as if the pipeline produced it.",
+   "truth": "Importing an instrument function is NOT running the instrument's pipeline, and a repo-resident experiment script is not more faithful than a /tmp one (trap 29) — both are PROXIES beside the pipeline, and the standing rule throws out any result a proxy produced. Every glue choice silently changes the quantity: on 2026-08-23 an invented per-window min-max shifted a DC term that then saturated the FFT-magnitude cosine, so ONE component (spectral overlap 0.97-0.99, ~identical even against real noise) dominated every pair — the 'one signal dominating means you ran it wrong' tell. And random.random() 'noise' is not a control the user asked for; it is fabricated data placed inside a measurement about real brain/heart/attention signals.",
+   "tell": "You just created a file under experiments/ or a *.cjs; it contains random.random()/np.random, a norm()/min-max/normalize step you wrote, or an import of composedAtDepth|ResonanceDetector|encode_batch; and you are about to describe its output as 'what the instrument saw'. The session shape was 'I built X, then ran X' instead of 'I called the goggles/service'. A single component reads ~identical across every pair (noise included) — the pipeline was fed data through a normalization it never applies.",
+   "correct": "Do not build. Call the one surface on the substrate the instrument already holds: node .claude/skills/goggles/run.mjs --do <verb> (resonance, field, audit, drift, call ...) or POST /compress_signal on compressor_service.py — and report ONLY what it returned. Never inject generated/random data into a measurement. Never invent a normalization the pipeline does not already apply. If no verb reaches the measurement, that is a MISSING VERB to add to the goggles (see traps 13, 29), not a licence to hand-assemble a script beside the pipeline. Never dress hand-built output in the instrument's vocabulary."
   }
  ]
 }

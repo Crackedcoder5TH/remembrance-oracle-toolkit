@@ -3,6 +3,12 @@ import { SUBSTRATE_LEAD_OPS, substrateGetLeadOperations, substrateUpdateLeadOper
 
 export const AGENT_STATUSES = ["New", "Contacted", "Follow-Up", "Appointment Set", "Application Started", "Submitted", "Won", "Lost", "Bad Lead / Dispute Requested", "Do Not Contact"] as const;
 export type AgentStatus = typeof AGENT_STATUSES[number];
+// The only event types a client may record via the operations PATCH. Anything
+// else is rejected at the route AND ignored by deriveOpsMutation, so an
+// arbitrary or non-string eventType can neither pollute the activity log nor
+// crash the writer (eventType.replaceAll on a number would throw a 500).
+export const AGENT_EVENT_TYPES = ["call_clicked", "text_clicked", "email_clicked"] as const;
+export type AgentEventType = typeof AGENT_EVENT_TYPES[number];
 export type LeadNote = { id: number; leadId: string; actorId: string; actorRole: "agent" | "admin"; body: string; visibility: "agent" | "internal"; createdAt: string };
 export type LeadActivity = { id: number; eventType: string; eventLabel: string; actorRole: string; createdAt: string };
 export type LeadOperations = { status: AgentStatus; lastContactedAt: string | null; nextFollowUpAt: string | null; appointmentAt: string | null; doNotContact: boolean; disputeStatus: string | null; notes: LeadNote[]; activity: LeadActivity[] };
@@ -74,6 +80,26 @@ export async function getLeadOperations(leadId: string, includeInternal = false)
   return mapOps(db.prepare("SELECT * FROM lead_operations WHERE lead_id=?").get(leadId) as Record<string, unknown> | undefined, db.prepare("SELECT * FROM lead_notes WHERE lead_id=? ORDER BY created_at DESC").all(leadId) as Record<string, unknown>[], db.prepare("SELECT * FROM lead_activity WHERE lead_id=? ORDER BY created_at DESC").all(leadId) as Record<string, unknown>[], includeInternal);
 }
 
+export type LeadOperationsSummary = Omit<LeadOperations, "notes" | "activity">;
+
+// The lead-list views (My Leads, marketplace) render status + follow-up +
+// appointment, never notes or the activity timeline. getLeadOperations fires
+// THREE queries per lead (ops + notes + activity) and ships both arrays over
+// the wire; called once per purchased lead in /api/client/leads that was an
+// N×3 query fan-out plus a large over-fetch. This reads the single ops row and
+// nothing else — one query, no arrays — so a list costs N queries, not 3N.
+export async function getLeadOperationsSummary(leadId: string): Promise<LeadOperationsSummary> {
+  if (SUBSTRATE_LEAD_OPS) {
+    const { notes: _n, activity: _a, ...summary } = await substrateGetLeadOperations(leadId);
+    return summary;
+  }
+  const row = process.env.DATABASE_URL
+    ? (await (await pg()).query("SELECT * FROM lead_operations WHERE lead_id=$1", [leadId])).rows[0]
+    : (sqlite().prepare("SELECT * FROM lead_operations WHERE lead_id=?").get(leadId) as Record<string, unknown> | undefined);
+  const { notes: _n, activity: _a, ...summary } = mapOps(row, [], [], false);
+  return summary;
+}
+
 export type Update = { status?: AgentStatus; nextFollowUpAt?: string | null; appointmentAt?: string | null; contacted?: boolean; note?: string; visibility?: "agent" | "internal"; eventType?: "call_clicked" | "text_clicked" | "email_clicked" };
 export type OpsMutation = { status?: AgentStatus; doNotContact: boolean; dispute: string | null; events: [string, string][] };
 
@@ -90,7 +116,7 @@ export function deriveOpsMutation(update: Update, actorRole: "agent" | "admin"):
   if (update.appointmentAt !== undefined) events.push(["appointment_set", update.appointmentAt ? "Appointment scheduled or updated" : "Appointment canceled"]);
   if (update.contacted) events.push(["contacted", "Lead marked contacted"]);
   if (update.note?.trim()) events.push(["note_added", actorRole === "admin" ? "Admin note added" : "Agent note added"]);
-  if (update.eventType) events.push([update.eventType, update.eventType.replaceAll("_", " ")]);
+  if (update.eventType && (AGENT_EVENT_TYPES as readonly string[]).includes(update.eventType)) events.push([update.eventType, update.eventType.replaceAll("_", " ")]);
   return { status, doNotContact, dispute, events };
 }
 

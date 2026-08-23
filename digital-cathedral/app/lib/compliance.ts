@@ -18,16 +18,21 @@ CREATE TABLE IF NOT EXISTS compliance_reviews (lead_id TEXT PRIMARY KEY, reviewe
 CREATE INDEX IF NOT EXISTS idx_compliance_audit_created ON compliance_audit(created_at);
 CREATE INDEX IF NOT EXISTS idx_privacy_status ON privacy_requests(status);`;
 
-let sqliteDb: import("better-sqlite3").Database | null = null;
+// Local-dev fallback store. Uses Node's built-in node:sqlite (DatabaseSync) —
+// the same driver the field-server's SQLiteStore uses — so there is no
+// better-sqlite3 native dependency to install (it was never in package.json;
+// requiring it threw MODULE_NOT_FOUND on any box without DATABASE_URL). The
+// sqlite path only runs in local dev; production sets DATABASE_URL and uses pg.
+let sqliteDb: import("node:sqlite").DatabaseSync | null = null;
 function sqlite() {
   if (sqliteDb) return sqliteDb;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const Database = require("better-sqlite3");
+  const { DatabaseSync } = require("node:sqlite");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const fs = require("fs");
   const dir = process.env.VERCEL ? path.join("/tmp", ".cathedral") : path.join(process.cwd(), ".cathedral");
   fs.mkdirSync(dir, { recursive: true });
-  sqliteDb = new Database(path.join(dir, "leads.db"));
+  sqliteDb = new DatabaseSync(path.join(dir, "leads.db"));
   sqliteDb!.exec(sqliteSchema);
   return sqliteDb!;
 }
@@ -43,26 +48,39 @@ async function pg() {
   return poolReady;
 }
 
-const hashValue = (value: string) => require("crypto").createHash("sha256").update(value.trim().toLowerCase()).digest("hex") as string;
+// A contact must hash to the same digest regardless of formatting, or an opt-out
+// recorded as "555-123-4567" would never match the same lead stored as
+// "(555) 123-4567" and a suppressed consumer could still be purchased/contacted.
+// Phones normalize to digits only; emails to trimmed lowercase.
+function normalizeContact(kind: "phone" | "email", value: string): string {
+  const v = (value || "").trim();
+  return kind === "phone" ? v.replace(/\D/g, "") : v.toLowerCase();
+}
+const hashValue = (kind: "phone" | "email", value: string) => require("crypto").createHash("sha256").update(normalizeContact(kind, value)).digest("hex") as string;
 export function maskContact(value: string) { const v = value.trim(); return v.includes("@") ? `${v.slice(0, 2)}•••@${v.split("@")[1]}` : `•••${v.replace(/\D/g, "").slice(-4)}`; }
 const bool = (value: unknown) => value === true || value === 1;
 
+// Audit logging is best-effort: an audit write must NEVER fail the action it
+// records (a failed insert here previously 500'd the admin lead view and made a
+// successful operations PATCH return an error after it had already committed).
 export async function recordAudit(input: Omit<AuditEvent, "id" | "createdAt">) {
-  const now = new Date().toISOString();
-  const values = [now, input.actorId, input.actorRole, input.eventType, input.targetType, input.targetId, input.summary, input.ip, input.userAgent];
-  if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO compliance_audit (created_at,actor_id,actor_role,event_type,target_type,target_id,summary,ip,user_agent) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", values);
-  else sqlite().prepare("INSERT INTO compliance_audit (created_at,actor_id,actor_role,event_type,target_type,target_id,summary,ip,user_agent) VALUES (?,?,?,?,?,?,?,?,?)").run(...values);
+  try {
+    const now = new Date().toISOString();
+    const values = [now, input.actorId, input.actorRole, input.eventType, input.targetType, input.targetId, input.summary, input.ip, input.userAgent];
+    if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO compliance_audit (created_at,actor_id,actor_role,event_type,target_type,target_id,summary,ip,user_agent) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", values);
+    else sqlite().prepare("INSERT INTO compliance_audit (created_at,actor_id,actor_role,event_type,target_type,target_id,summary,ip,user_agent) VALUES (?,?,?,?,?,?,?,?,?)").run(...values);
+  } catch { /* best-effort: never throw from the audit path */ }
 }
 
 export async function addSuppression(kind: "phone" | "email", value: string, reason: string, source: string, actorId: string) {
-  const hash = hashValue(value), masked = maskContact(value), now = new Date().toISOString();
+  const hash = hashValue(kind, value), masked = maskContact(value), now = new Date().toISOString();
   if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO compliance_suppressions (kind,value_hash,value_masked,reason,source,active,created_by,created_at) VALUES ($1,$2,$3,$4,$5,TRUE,$6,$7) ON CONFLICT(kind,value_hash) DO UPDATE SET active=TRUE,reason=$4,source=$5", [kind,hash,masked,reason,source,actorId,now]);
   else sqlite().prepare("INSERT INTO compliance_suppressions (kind,value_hash,value_masked,reason,source,active,created_by,created_at) VALUES (?,?,?,?,?,1,?,?) ON CONFLICT(kind,value_hash) DO UPDATE SET active=1,reason=excluded.reason,source=excluded.source").run(kind,hash,masked,reason,source,actorId,now);
   await recordAudit({ actorId, actorRole: actorId === "admin" ? "admin" : "agent", eventType: "suppression_added", targetType: kind, targetId: hash.slice(0, 12), summary: `${kind} suppression added`, ip: null, userAgent: null });
 }
 
 export async function isSuppressed(phone: string, email: string) {
-  const hashes = [hashValue(phone), hashValue(email)];
+  const hashes = [hashValue("phone", phone), hashValue("email", email)];
   if (process.env.DATABASE_URL) return Number((await (await pg()).query("SELECT COUNT(*) n FROM compliance_suppressions WHERE active=TRUE AND value_hash=ANY($1)", [hashes])).rows[0].n) > 0;
   return (sqlite().prepare("SELECT COUNT(*) n FROM compliance_suppressions WHERE active=1 AND value_hash IN (?,?)").get(...hashes) as {n:number}).n > 0;
 }
@@ -98,6 +116,26 @@ export async function markComplianceReviewed(leadId: string, actorId: string) {
   if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO compliance_reviews (lead_id,reviewed_at,reviewed_by) VALUES ($1,$2,$3) ON CONFLICT(lead_id) DO UPDATE SET reviewed_at=$2,reviewed_by=$3", [leadId,now,actorId]);
   else sqlite().prepare("INSERT INTO compliance_reviews (lead_id,reviewed_at,reviewed_by) VALUES (?,?,?) ON CONFLICT(lead_id) DO UPDATE SET reviewed_at=excluded.reviewed_at,reviewed_by=excluded.reviewed_by").run(leadId,now,actorId);
   await recordAudit({ actorId,actorRole:"admin",eventType:"compliance_reviewed",targetType:"lead",targetId:leadId,summary:"Lead compliance record reviewed",ip:null,userAgent:null });
+}
+
+// Targeted per-lead compliance view for the lead-detail page. The detail route
+// previously called getComplianceData() — five up-to-100-row scans — just to
+// derive three facts about ONE lead. These are three indexed lookups instead.
+export async function getLeadComplianceView(leadId: string, phone: string, email: string) {
+  const [suppressed, reviewedRow, privacyRows] = await Promise.all([
+    isSuppressed(phone, email),
+    process.env.DATABASE_URL
+      ? (await (await pg()).query("SELECT 1 FROM compliance_reviews WHERE lead_id=$1", [leadId])).rows[0]
+      : sqlite().prepare("SELECT 1 AS one FROM compliance_reviews WHERE lead_id=?").get(leadId),
+    process.env.DATABASE_URL
+      ? (await (await pg()).query("SELECT id,request_type,status FROM privacy_requests WHERE lead_id=$1 ORDER BY created_at DESC", [leadId])).rows
+      : sqlite().prepare("SELECT id,request_type,status FROM privacy_requests WHERE lead_id=? ORDER BY created_at DESC").all(leadId) as Record<string, unknown>[],
+  ]);
+  return {
+    suppressed,
+    reviewed: !!reviewedRow,
+    privacyRequests: (privacyRows as Record<string, unknown>[]).map(r => ({ id: Number(r.id), requestType: r.request_type as string, status: r.status as string })),
+  };
 }
 
 export async function getComplianceData() {

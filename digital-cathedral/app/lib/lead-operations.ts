@@ -22,16 +22,19 @@ const schema = `
 
 // One shared sqlite handle per process (local-dev fallback). Reused, never
 // reopened per call — reopening churned the file handle on every lead read.
-let sqliteDb: import("better-sqlite3").Database | null = null;
+// Uses Node's built-in node:sqlite (DatabaseSync), like the field-server's
+// SQLiteStore — no better-sqlite3 native dependency (it was never declared, so
+// requiring it threw MODULE_NOT_FOUND without DATABASE_URL). Prod uses pg.
+let sqliteDb: import("node:sqlite").DatabaseSync | null = null;
 function sqlite() {
   if (sqliteDb) return sqliteDb;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const Database = require("better-sqlite3");
+  const { DatabaseSync } = require("node:sqlite");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const fs = require("fs");
   const dir = process.env.VERCEL ? path.join("/tmp", ".cathedral") : path.join(process.cwd(), ".cathedral");
   fs.mkdirSync(dir, { recursive: true });
-  const db = new Database(path.join(dir, "leads.db"));
+  const db = new DatabaseSync(path.join(dir, "leads.db"));
   db.exec(schema);
   sqliteDb = db;
   return db;
@@ -147,8 +150,12 @@ export async function updateLeadOperations(leadId: string, actorId: string, acto
       await db.query("COMMIT");
     } catch (e) { await db.query("ROLLBACK"); throw e; } finally { db.release(); }
   } else {
+    // node:sqlite has no .transaction() helper, so drive BEGIN/COMMIT explicitly
+    // (all statements run on the one shared synchronous handle, so the txn stays
+    // whole); ROLLBACK on any failure, then rethrow.
     const db = sqlite();
-    const tx = db.transaction(() => {
+    db.exec("BEGIN");
+    try {
       db.prepare("INSERT INTO lead_operations (lead_id,updated_at) VALUES (?,?) ON CONFLICT(lead_id) DO UPDATE SET updated_at=excluded.updated_at").run(leadId, now);
       if (status) db.prepare("UPDATE lead_operations SET agent_status=?,do_not_contact=?,dispute_status=COALESCE(?,dispute_status) WHERE lead_id=?").run(status, doNotContact ? 1 : 0, dispute, leadId);
       if (update.nextFollowUpAt !== undefined) db.prepare("UPDATE lead_operations SET next_follow_up_at=? WHERE lead_id=?").run(update.nextFollowUpAt, leadId);
@@ -156,8 +163,8 @@ export async function updateLeadOperations(leadId: string, actorId: string, acto
       if (update.contacted) db.prepare("UPDATE lead_operations SET last_contacted_at=? WHERE lead_id=?").run(now, leadId);
       if (update.note?.trim()) db.prepare("INSERT INTO lead_notes (lead_id,actor_id,actor_role,body,visibility,created_at) VALUES (?,?,?,?,?,?)").run(leadId, actorId, actorRole, update.note.trim(), update.visibility || "agent", now);
       for (const e of events) db.prepare("INSERT INTO lead_activity (lead_id,actor_id,actor_role,event_type,event_label,created_at) VALUES (?,?,?,?,?,?)").run(leadId, actorId, actorRole, e[0], e[1], now);
-    });
-    tx();
+      db.exec("COMMIT");
+    } catch (e) { db.exec("ROLLBACK"); throw e; }
   }
   return getLeadOperations(leadId, actorRole === "admin");
 }

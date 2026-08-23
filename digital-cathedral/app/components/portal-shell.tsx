@@ -14,6 +14,7 @@ const NAVIGATION: Record<PortalRole, { label: string; href: string }[]> = {
     { label: "Lead Marketplace", href: "/portal/marketplace" },
     { label: "Orders & Payments", href: "/admin/payments" },
     { label: "Compliance", href: "/admin/compliance" },
+    { label: "Training", href: "/admin/training" },
     { label: "Analytics", href: "/admin/analytics" },
     { label: "Content / Campaigns", href: "/admin" },
     { label: "Support / Disputes", href: "/admin/disputes" },

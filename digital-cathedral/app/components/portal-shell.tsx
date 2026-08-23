@@ -28,6 +28,7 @@ const NAVIGATION: Record<PortalRole, { label: string; href: string }[]> = {
     { label: "Scripts & Training", href: "/agent/training" },
     { label: "Billing / Credits", href: "/agent/billing" },
     { label: "Performance", href: "/agent/performance" },
+    { label: "Compliance", href: "/agent/compliance" },
     { label: "Support", href: "/agent/support" },
   ],
   developer: [

@@ -70,7 +70,7 @@ export async function getLeadOperations(leadId: string, includeInternal = false)
   return mapOps(db.prepare("SELECT * FROM lead_operations WHERE lead_id=?").get(leadId) as Record<string, unknown> | undefined, db.prepare("SELECT * FROM lead_notes WHERE lead_id=? ORDER BY created_at DESC").all(leadId) as Record<string, unknown>[], db.prepare("SELECT * FROM lead_activity WHERE lead_id=? ORDER BY created_at DESC").all(leadId) as Record<string, unknown>[], includeInternal);
 }
 
-type Update = { status?: AgentStatus; nextFollowUpAt?: string | null; appointmentAt?: string | null; contacted?: boolean; note?: string; visibility?: "agent" | "internal"; eventType?: "call_clicked" | "text_clicked" | "email_clicked" };
+type Update = { status?: AgentStatus; nextFollowUpAt?: string | null; appointmentAt?: string | null; contacted?: boolean; note?: string; visibility?: "agent" | "internal"; eventType?: "call_clicked" | "text_clicked" | "email_clicked" | "calendar_exported" };
 export async function updateLeadOperations(leadId: string, actorId: string, actorRole: "agent" | "admin", update: Update) {
   const now = new Date().toISOString();
   const status = update.status;

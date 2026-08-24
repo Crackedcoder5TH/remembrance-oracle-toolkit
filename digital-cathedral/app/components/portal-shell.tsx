@@ -15,6 +15,9 @@ const NAVIGATION: Record<PortalRole, { label: string; href: string }[]> = {
     { label: "Orders & Payments", href: "/admin/payments" },
     { label: "Compliance", href: "/admin/compliance" },
     { label: "Analytics", href: "/admin/analytics" },
+    { label: "Notifications", href: "/admin/notifications" },
+    { label: "Integrations", href: "/admin/integrations" },
+    { label: "Automations", href: "/admin/automations" },
     { label: "Content / Campaigns", href: "/admin" },
     { label: "Support / Disputes", href: "/admin/disputes" },
     { label: "Settings", href: "/admin/ops" },
@@ -28,6 +31,8 @@ const NAVIGATION: Record<PortalRole, { label: string; href: string }[]> = {
     { label: "Scripts & Training", href: "/agent/training" },
     { label: "Billing / Credits", href: "/agent/billing" },
     { label: "Performance", href: "/agent/performance" },
+    { label: "Notifications", href: "/agent/notifications" },
+    { label: "Integrations", href: "/agent/integrations" },
     { label: "Support", href: "/agent/support" },
   ],
   developer: [

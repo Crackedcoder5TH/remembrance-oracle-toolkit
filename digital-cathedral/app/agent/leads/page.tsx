@@ -18,6 +18,7 @@ type Lead = {
   status?: string;
   nextFollowUpAt?: string | null;
   appointmentAt?: string | null;
+  doNotContact?: boolean;
 };
 
 export default function MyLeads() {
@@ -102,10 +103,10 @@ export default function MyLeads() {
                     <p className="mt-1 text-xs text-[#8a8175]">Follow-up: {l.nextFollowUpAt ? new Date(l.nextFollowUpAt).toLocaleString() : "Not set"} · Appointment: {l.appointmentAt ? new Date(l.appointmentAt).toLocaleString() : "Not set"}</p>
                   </div>
                   <div className="flex gap-2">
-                    <a className={`rounded-lg border border-[#e2d9c9] px-4 py-3 text-sm ${!l.phone ? "pointer-events-none opacity-50" : ""}`} href={l.phone ? `tel:${l.phone}` : undefined} aria-disabled={!l.phone} title={!l.phone ? "No phone number available" : undefined}>
+                    <a className={`rounded-lg border border-[#e2d9c9] px-4 py-3 text-sm ${!l.phone || l.doNotContact || l.status === "Do Not Contact" ? "pointer-events-none opacity-50" : ""}`} href={l.phone && !l.doNotContact && l.status !== "Do Not Contact" ? `tel:${l.phone}` : undefined} aria-disabled={!l.phone || l.doNotContact || l.status === "Do Not Contact"} title={l.doNotContact || l.status === "Do Not Contact" ? "Do Not Contact — outreach blocked" : !l.phone ? "No phone number available" : undefined}>
                       Call
                     </a>
-                    <a className={`rounded-lg border border-[#e2d9c9] px-4 py-3 text-sm ${!l.phone ? "pointer-events-none opacity-50" : ""}`} href={l.phone ? `sms:${l.phone}` : undefined} aria-disabled={!l.phone} title={!l.phone ? "No phone number available" : undefined}>
+                    <a className={`rounded-lg border border-[#e2d9c9] px-4 py-3 text-sm ${!l.phone || l.doNotContact || l.status === "Do Not Contact" ? "pointer-events-none opacity-50" : ""}`} href={l.phone && !l.doNotContact && l.status !== "Do Not Contact" ? `sms:${l.phone}` : undefined} aria-disabled={!l.phone || l.doNotContact || l.status === "Do Not Contact"} title={l.doNotContact || l.status === "Do Not Contact" ? "Do Not Contact — outreach blocked" : !l.phone ? "No phone number available" : undefined}>
                       Text
                     </a>
                     <Link

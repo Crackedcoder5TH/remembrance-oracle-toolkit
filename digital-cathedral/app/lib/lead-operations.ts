@@ -7,7 +7,7 @@ export type AgentStatus = typeof AGENT_STATUSES[number];
 // else is rejected at the route AND ignored by deriveOpsMutation, so an
 // arbitrary or non-string eventType can neither pollute the activity log nor
 // crash the writer (eventType.replaceAll on a number would throw a 500).
-export const AGENT_EVENT_TYPES = ["call_clicked", "text_clicked", "email_clicked"] as const;
+export const AGENT_EVENT_TYPES = ["call_clicked", "text_clicked", "email_clicked", "calendar_exported"] as const;
 export type AgentEventType = typeof AGENT_EVENT_TYPES[number];
 export type LeadNote = { id: number; leadId: string; actorId: string; actorRole: "agent" | "admin"; body: string; visibility: "agent" | "internal"; createdAt: string };
 export type LeadActivity = { id: number; eventType: string; eventLabel: string; actorRole: string; createdAt: string };

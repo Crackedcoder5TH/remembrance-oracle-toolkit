@@ -1,6 +1,7 @@
-> **CANONICAL** — this is the one copy of the ecosystem protocol. Peer repos
-> carry a pointer stub, not a duplicate; nine byte-identical copies were
-> collapsed here (measured by the goggles as one document said nine times).
+> **CANONICAL** — the oracle-toolkit holds the source of truth for this
+> protocol; every repo carries a **byte-identical copy** of it, kept in sync by
+> contract **C-50** (`verify_capabilities.py`) and the CI drift workflow, which
+> fail on any pairwise drift. Edit it here in the toolkit, then re-sync the peers.
 
 # Remembrance Ecosystem — Agent Protocol
 

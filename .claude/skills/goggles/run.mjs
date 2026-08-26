@@ -111,6 +111,20 @@ if (argv[0] === '--do') {
     // nearest-neighbour scan over composed vectors.
     //   goggles --do resonance [--top N] [--domain <d>]
     resonance: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'resonance-report.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // ONE CALL FROM "HERE IS MY DATA" TO A REAL READING. Numeric series go
+    // through /compress_signal (the canonical quantised path); anything else
+    // is read as artifact BYTES through the same endpoint. Output carries
+    // via:'void:compress_signal' — the label that separates a real reading
+    // from every look-alike number. Coherency only, honestly: no nearest-
+    // pattern endpoint exists yet, so this verb doesn't fake one.
+    //   goggles --do read <file> [--json]   |   --do read --series '[1,2,..]'
+    read: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'read-signal.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE SERVICE'S LIFECYCLE, WITH NO SILENT STATES. status is always one
+    // of HEALTHY / LOADING / DOWN / ZOMBIE with the evidence; start/stop are
+    // idempotent in every direction (no duplicate spawns, no error on no-op).
+    // Truth comes from the process table + the port, never a pidfile.
+    //   goggles --do service [status|start|stop|restart] [--wait]
+    service: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'service-ctl.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
     // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
     // measures nothing: no reading is recomputed and no time dimension added.
     //   goggles --do merge [--apply]
@@ -149,14 +163,6 @@ if (argv[0] === '--do') {
       console.log('reacted to every read. Full cross-domain field: goggles --do resonance');
       return 0;
     },
-    // THE WHOLE GATE FAMILY, one read. ratchet-battery.js documents itself as
-    // "routed through the goggles as `--do ratchets`" — but the verb was never
-    // added, so the ten gates had no surface here and had to be run by hand
-    // from a path you already had to know. That is the same gap the other
-    // routed verbs below were added to close: a gate nobody can reach from the
-    // one surface is a gate that stops being run.
-    //   goggles --do ratchets [--json]
-    ratchets: () => run('node', [join(toolkit, 'scripts/ratchet-battery.js'), ...rest], toolkit),
     // THE SIZE SURFACE, ratcheted. 70 grandfathered monoliths (>500 lines);
     // the list only shrinks — no new monolith, no grandfathered growth.
     //   goggles --do size [--json | --save-baseline]
@@ -168,6 +174,19 @@ if (argv[0] === '--do') {
     // reading into the field: the entropy cost of widening the surface.
     //   goggles --do exemptions [--json | --save-baseline]
     exemptions: () => run('node', [join(toolkit, 'scripts/exemption-ratchet.js'), ...rest], toolkit),
+    // THE WHOLE GATE FAMILY, one read. Eight ratchets in check mode —
+    // covenant, exemption, size, cycle, suite-reachability, field-source,
+    // ledger-append, orphan — one verdict line each. Check-only: no
+    // baseline saved, nothing written, nothing fed to the field.
+    //   goggles --do ratchets [--json]
+    ratchets: () => run('node', [join(toolkit, 'scripts/ratchet-battery.js'), ...rest], toolkit),
+    // THE TWO COVENANT GATES, ENTANGLED, over a file. Runs the fractal
+    // audit (byte + atomic) AND the covenant scanner (SQL / injection /
+    // harm) and reports CLEAN only when both pass — the shed-decision
+    // surface, so an exemption is never judged sheddable from one gate
+    // alone (trap 27). Read-only.
+    //   goggles --do covenant <file> [<file> ...]
+    covenant: () => run('node', [join(toolkit, 'scripts/covenant-audit.js'), ...rest], toolkit),
     // READ THE WEB through the substrate: fetch a URL, compress + score it,
     // contribute the reading to the field. Browsing was the last blind spot
     // (WebFetch matches no hook, so a fetched page was never witnessed).
@@ -218,32 +237,6 @@ for (const f of files) {
     process.stdout.write(execFileSync('node', [engine, abs], { cwd: toolkit, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
   } catch (e) {
     process.stdout.write((e.stdout || '') + (e.stderr || String(e)) + '\n');
-    failures++;
-  }
-}
-
-// ── THE GATES RIDE WITH THE READ ────────────────────────────────────────────
-//
-// The ten gates existed, held, and ran nowhere: no git hook installed them and
-// no workflow invoked them, so they only fired when someone typed the command
-// by hand — which is the condition under which a gate quietly stops being a
-// gate. Rather than add a SECOND surface (a hook, a workflow) that has to be
-// remembered and installed, the battery rides the read that already happens
-// before a commit: `--diff` IS the pre-commit surface, so the gates run there
-// automatically and the goggles stay the one way through.
-//
-// Scoped to --diff on purpose. A per-file read is a lens you point while
-// working, often many times a minute; running ten gates on each would make the
-// lens too expensive to keep wearing, and a gate people switch off is worse
-// than one that runs at the moment it matters. `--do ratchets` stays for an
-// explicit check, and `--no-gates` is the escape for a read mid-edit.
-if (argv[0] === '--diff' && !argv.includes('--no-gates')) {
-  process.stdout.write('\n');
-  try {
-    execFileSync('node', [join(toolkit, 'scripts/ratchet-battery.js')], { cwd: toolkit, stdio: 'inherit' });
-  } catch (e) {
-    // A gate that opens must fail the read it rode in on — otherwise the
-    // commit proceeds and the gate was decorative.
     failures++;
   }
 }

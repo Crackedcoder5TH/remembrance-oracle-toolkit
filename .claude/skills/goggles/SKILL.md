@@ -52,6 +52,8 @@ SEE it; `--do <verb>` runs the substrate's operations, each routed to its
 canonical script across the ecosystem so you never need to know where the
 operation physically lives:
 
+    run.mjs --do read <file|--series>  # ONE CALL: your data → a labeled reading
+    run.mjs --do service [status|start|stop]   # lifecycle — no silent states
     run.mjs --do field                 # peek the Living Remembrance field state
     run.mjs --do drift [repo|all]      # substrate drift check (no encoding)
     run.mjs --do harvest [repo|all]    # witness files (sanitized at the doorway)

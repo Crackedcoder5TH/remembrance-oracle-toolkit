@@ -31,6 +31,65 @@ let input; try { input = JSON.parse(raw || '{}'); } catch (_) { process.exit(0);
 const cmd = (input.tool_input || {}).command || '';
 if (!cmd || cmd.length < 40) process.exit(0);
 
+// ── CHECKS THAT APPLY TO EVERY COMMAND ──────────────────────────────────────
+//
+// These run BEFORE the inline gate below, because the inline gate is exactly
+// how this hook was walked around for a whole working session (2026-08-12).
+// It refused `node -e "require('./src/core/void-service')…"` correctly — so
+// the bypass simply moved: write the same logic to a file in a scratch dir,
+// then run the file. Not inline, so the hook exited at the gate and never
+// looked. A gate that watches one doorway is a gate with a wall next to it.
+
+// 1. THE RAW TOOL PATH. The goggles are ONE surface: `run.mjs`. Invoking the
+//    underlying script directly gets a plausible-looking read with none of the
+//    routed verbs (--do ratchets / call / field / drift …) — the reader then
+//    believes they used the instrument. Measured: an entire session of
+//    `node src/tools/goggles.js <file>` while `--do` was never available on
+//    that path at all.
+const RAW_GOGGLES = /\bnode\s+\S*src\/(?:tools\/goggles(?:-fp)?|cli)\.js\b/;
+if (RAW_GOGGLES.test(cmd)) {
+  out('deny',
+    'GOGGLES — RAW TOOL PATH refused\n' +
+    '  src/tools/goggles.js is the implementation, not the surface. It has no --do verbs,\n' +
+    '  so a read taken this way silently misses everything the goggles can actually drive.\n' +
+    '  Use:  node .claude/skills/goggles/run.mjs <file>        (focused read)\n' +
+    '        node .claude/skills/goggles/run.mjs --map          (macro map)\n' +
+    '        node .claude/skills/goggles/run.mjs --diff         (changed vs HEAD)\n' +
+    '        node .claude/skills/goggles/run.mjs --do <verb>    (drive the substrate)');
+}
+
+// 2. THE SCRATCH SCRIPT. A measurement written to a temp file and executed is
+//    the same bypass as an inline one, minus the enforcement — and it is the
+//    shape an assistant reaches for most naturally, because writing code is
+//    cheaper than finding the verb that already does it. Only DENY when the
+//    script actually reaches into the ecosystem: a pure codemod over fs/path
+//    is honest work and stays allowed.
+const SCRATCH_RUN = /\b(?:node|python3?)\s+((?:\/tmp\/|\/var\/tmp\/)\S+\.(?:js|mjs|cjs|py))/;
+const scratch = cmd.match(SCRATCH_RUN);
+if (scratch) {
+  let body = '';
+  try { body = fs.readFileSync(scratch[1], 'utf8'); } catch (_) { body = ''; }
+  // Match the ECOSYSTEM PATH anywhere in the body, not only inside a require().
+  // Found by immediately violating this rule while writing it: a scratch script
+  // that shells out — execSync('node src/tools/…') — names the module as a
+  // STRING, so a require-only check reads it as an honest codemod and lets it
+  // through. Shelling out is the same bypass wearing a different quote.
+  const REACHES_ECOSYSTEM =
+    /['"`][^'"`]*(?:src\/(?:core|tools|audit|atomic|compression|patterns)\/|scripts\/[a-z-]*ratchet)[^'"`]*['"`]/.test(body)
+    || /\b(?:import|from)\s+(?:fractal_decoder|void_compressor(?:_v\d)?|coherency_v\d|living_remembrance|resonance_detector|compressor_service)\b/.test(body);
+  if (REACHES_ECOSYSTEM) {
+    out('deny',
+      'GOGGLES — SCRATCH-SCRIPT BYPASS refused\n' +
+      '  ' + scratch[1] + ' reaches into ecosystem modules and is being run outside the goggles.\n' +
+      '  Writing the measurement is not cheaper than finding it: the substrate already owns\n' +
+      '  these readings, and one taken this way is invisible to everything that tracks them.\n' +
+      '  Use:  node .claude/skills/goggles/run.mjs --do <verb>\n' +
+      '        node .claude/skills/goggles/run.mjs --do call <repo>/<path>#<fn> [jsonArg …]\n' +
+      '  If no verb or export reaches what you need, that is a MISSING VERB to report — not a bypass.\n' +
+      '  (A scratch script that only uses fs/path — a codemod, a fixture — is fine and not denied.)');
+  }
+}
+
 // only look at commands that actually run inline code (a bare heredoc into
 // cat/tee is document-writing, not execution — the literal word 'heredoc'
 // in the first cut matched prose and denied documentation commands)

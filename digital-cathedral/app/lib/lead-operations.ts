@@ -168,3 +168,58 @@ export async function updateLeadOperations(leadId: string, actorId: string, acto
   }
   return getLeadOperations(leadId, actorRole === "admin");
 }
+
+/**
+ * Bulk operations snapshot for analytics/reporting. Replaces the per-lead
+ * getLeadOperations() fan-out (3 queries × N leads) with a fixed set of
+ * set-based queries. Pass `leadIds` to scope to a specific set (e.g. one
+ * agent's purchased leads); omit for a store-wide snapshot. An empty array
+ * short-circuits to an empty dataset.
+ */
+export type OperationsRow = { leadId: string; status: AgentStatus; lastContactedAt: string | null; nextFollowUpAt: string | null; appointmentAt: string | null; doNotContact: boolean };
+export interface OperationsDataset { ops: OperationsRow[]; activityCounts: Record<string, number>; firstAgentActionByLead: Record<string, string> }
+
+const emptyDataset = (): OperationsDataset => ({ ops: [], activityCounts: {}, firstAgentActionByLead: {} });
+const mapOpsRow = (r: Record<string, unknown>): OperationsRow => ({
+  leadId: r.lead_id as string,
+  status: ((r.agent_status as AgentStatus) || "New"),
+  lastContactedAt: (r.last_contacted_at as string) || null,
+  nextFollowUpAt: (r.next_follow_up_at as string) || null,
+  appointmentAt: (r.appointment_at as string) || null,
+  doNotContact: r.do_not_contact === true || r.do_not_contact === 1,
+});
+
+export async function getOperationsDataset(leadIds?: string[]): Promise<OperationsDataset> {
+  const scoped = Array.isArray(leadIds);
+  if (scoped && leadIds!.length === 0) return emptyDataset();
+
+  if (process.env.DATABASE_URL) {
+    const db = await pg();
+    const where = scoped ? `WHERE lead_id IN (${leadIds!.map((_, i) => `$${i + 1}`).join(",")})` : "";
+    const andWhere = scoped ? `AND lead_id IN (${leadIds!.map((_, i) => `$${i + 1}`).join(",")})` : "";
+    const args = scoped ? leadIds! : [];
+    const [opsRes, actRes, faRes] = await Promise.all([
+      db.query(`SELECT lead_id, agent_status, last_contacted_at, next_follow_up_at, appointment_at, do_not_contact FROM lead_operations ${where}`, args),
+      db.query(`SELECT event_type, COUNT(*)::int AS c FROM lead_activity ${where} GROUP BY event_type`, args),
+      db.query(`SELECT lead_id, MIN(created_at) AS m FROM lead_activity WHERE actor_role = 'agent' ${andWhere} GROUP BY lead_id`, args),
+    ]);
+    return {
+      ops: opsRes.rows.map(mapOpsRow),
+      activityCounts: Object.fromEntries(actRes.rows.map((r: Record<string, unknown>) => [r.event_type as string, Number(r.c)])),
+      firstAgentActionByLead: Object.fromEntries(faRes.rows.map((r: Record<string, unknown>) => [r.lead_id as string, r.m as string])),
+    };
+  }
+
+  const db = sqlite();
+  const where = scoped ? `WHERE lead_id IN (${leadIds!.map(() => "?").join(",")})` : "";
+  const andWhere = scoped ? `AND lead_id IN (${leadIds!.map(() => "?").join(",")})` : "";
+  const args = scoped ? leadIds! : [];
+  const opsRows = db.prepare(`SELECT lead_id, agent_status, last_contacted_at, next_follow_up_at, appointment_at, do_not_contact FROM lead_operations ${where}`).all(...args) as Record<string, unknown>[];
+  const actRows = db.prepare(`SELECT event_type, COUNT(*) AS c FROM lead_activity ${where} GROUP BY event_type`).all(...args) as Record<string, unknown>[];
+  const faRows = db.prepare(`SELECT lead_id, MIN(created_at) AS m FROM lead_activity WHERE actor_role = 'agent' ${andWhere} GROUP BY lead_id`).all(...args) as Record<string, unknown>[];
+  return {
+    ops: opsRows.map(mapOpsRow),
+    activityCounts: Object.fromEntries(actRows.map((r) => [r.event_type as string, Number(r.c)])),
+    firstAgentActionByLead: Object.fromEntries(faRows.map((r) => [r.lead_id as string, r.m as string])),
+  };
+}

@@ -106,6 +106,7 @@ interface DbAdapter {
   initialize(): Promise<void>;
   insertLead(lead: LeadRecord): Promise<Result<{ id: number; leadId: string }, string>>;
   getLeadById(leadId: string): Promise<Result<LeadRecord | null, string>>;
+  getLeadsByIds(leadIds: string[]): Promise<Result<LeadRecord[], string>>;
   getLeadsByEmail(email: string): Promise<Result<LeadRecord[], string>>;
   getRecentLeads(limit: number): Promise<Result<LeadRecord[], string>>;
   getLeadCount(): Promise<Result<number, string>>;
@@ -395,6 +396,19 @@ class PostgresAdapter implements DbAdapter {
       const result = await pool.query("SELECT * FROM leads WHERE lead_id = $1", [leadId]);
       if (result.rows.length === 0) return Ok(null);
       return Ok(rowToLead(result.rows[0]));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async getLeadsByIds(leadIds: string[]): Promise<Result<LeadRecord[], string>> {
+    try {
+      if (leadIds.length === 0) return Ok([]);
+      await this.initialize();
+      const pool = await this.getPool();
+      const placeholders = leadIds.map((_, i) => `$${i + 1}`).join(",");
+      const result = await pool.query(`SELECT * FROM leads WHERE lead_id IN (${placeholders})`, leadIds);
+      return Ok(result.rows.map(rowToLead));
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Query failed");
     }
@@ -908,6 +922,19 @@ class SqliteAdapter implements DbAdapter {
     }
   }
 
+  async getLeadsByIds(leadIds: string[]): Promise<Result<LeadRecord[], string>> {
+    try {
+      if (leadIds.length === 0) return Ok([]);
+      const db = this.getDb();
+      await this.initialize();
+      const placeholders = leadIds.map(() => "?").join(",");
+      const rows = db.prepare(`SELECT * FROM leads WHERE lead_id IN (${placeholders})`).all(...leadIds) as Record<string, unknown>[];
+      return Ok(rows.map(rowToLead));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
   async getLeadsByEmail(email: string): Promise<Result<LeadRecord[], string>> {
     try {
       const db = this.getDb();
@@ -1196,6 +1223,11 @@ class NoopAdapter implements DbAdapter {
     return Ok(lead);
   }
 
+  async getLeadsByIds(leadIds: string[]): Promise<Result<LeadRecord[], string>> {
+    const { DEMO_LEADS } = await import("./demo-leads");
+    return Ok(DEMO_LEADS.filter((l) => leadIds.includes(l.leadId)));
+  }
+
   async getLeadsByEmail(email: string): Promise<Result<LeadRecord[], string>> {
     const { DEMO_LEADS } = await import("./demo-leads");
     return Ok(DEMO_LEADS.filter((l) => l.email === email));
@@ -1318,6 +1350,20 @@ export async function insertLead(lead: LeadRecord): Promise<Result<{ id: number;
 export async function getLeadById(leadId: string): Promise<Result<LeadRecord | null, string>> {
   if (SUBSTRATE_LEADS) return substrateGetLeadById(leadId);
   return getAdapter().getLeadById(leadId);
+}
+
+export async function getLeadsByIds(leadIds: string[]): Promise<Result<LeadRecord[], string>> {
+  if (leadIds.length === 0) return Ok([]);
+  if (SUBSTRATE_LEADS) {
+    const results = await Promise.all(leadIds.map(substrateGetLeadById));
+    const leads: LeadRecord[] = [];
+    for (const r of results) {
+      if (!r.ok) return r;
+      if (r.value) leads.push(r.value);
+    }
+    return Ok(leads);
+  }
+  return getAdapter().getLeadsByIds(leadIds);
 }
 
 export async function getLeadsByEmail(email: string): Promise<Result<LeadRecord[], string>> {

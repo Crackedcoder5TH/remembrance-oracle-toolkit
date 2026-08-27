@@ -125,6 +125,15 @@ if (argv[0] === '--do') {
     // Truth comes from the process table + the port, never a pidfile.
     //   goggles --do service [status|start|stop|restart] [--wait]
     service: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'service-ctl.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE WALL'S OWN LEDGER. Every hook denial is one JSON line (ts · rule ·
+    // command) — the continuous leak map. A recurring rule is a weld working;
+    // a novel command shape is the next verb to build; silence across fresh
+    // sessions means the surface is closed.
+    //   goggles --do denials [N]     (last N lines, default 40)
+    denials: () => run('sh', ['-c',
+      'F=' + JSON.stringify(join(HOME, 'remembrance-oracle-toolkit', '.remembrance', 'goggles-denials.jsonl')) +
+      '; if [ -f "$F" ]; then echo "denials logged: $(wc -l < "$F")"; tail -' + (parseInt(rest[0], 10) || 40) + ' "$F"; ' +
+      'else echo "no denials logged yet — the wall has not been hit on this host"; fi']),
     // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
     // measures nothing: no reading is recomputed and no time dimension added.
     //   goggles --do merge [--apply]

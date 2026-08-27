@@ -17,8 +17,27 @@
  * Fails open on any internal error.
  */
 const fs = require('node:fs');
+const { quiet } = require('../core/quiet');
 
 function out(decision, reason) {
+  // THE DENIAL LOG (leak map: "the measurement that makes this durable").
+  // Every deny is appended as one JSON line — timestamp, the rule's first
+  // line, the command (truncated). The stream IS the ongoing leak map: a
+  // recurring denial is a Class-A weld working; a novel one is the next
+  // verb to build. When it goes quiet across fresh sessions, the surface
+  // is closed. Read it: goggles --do denials. Best-effort, never blocks.
+  if (decision === 'deny') {
+    try {
+      const path = require('node:path');
+      const dir = path.join(__dirname, '..', '..', '.remembrance');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.appendFileSync(path.join(dir, 'goggles-denials.jsonl'), JSON.stringify({
+        ts: new Date().toISOString(),
+        rule: String(reason).split('\n')[0].trim(),
+        cmd: String(cmd).slice(0, 300),
+      }) + '\n');
+    } catch (e) { quiet('tools:goggles-bash-hook:denial-log', e); }
+  }
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: decision, permissionDecisionReason: reason },
   }));

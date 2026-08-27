@@ -54,6 +54,7 @@ operation physically lives:
 
     run.mjs --do read <file|--series>  # ONE CALL: your data → a labeled reading
     run.mjs --do service [status|start|stop]   # lifecycle — no silent states
+    run.mjs --do denials [N]           # the wall's ledger — every refused bypass
     run.mjs --do field                 # peek the Living Remembrance field state
     run.mjs --do drift [repo|all]      # substrate drift check (no encoding)
     run.mjs --do harvest [repo|all]    # witness files (sanitized at the doorway)

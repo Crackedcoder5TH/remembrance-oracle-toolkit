@@ -1,100 +1,105 @@
 {
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "permissions": {
-    "allow": [
-      "Bash(git *)",
-      "Bash(npm run *)",
-      "Bash(node scripts/*)",
-      "Bash(node --check *)",
-      "Bash(grep *)",
-      "Bash(ls *)"
-    ],
-    "deny": [
-      "Bash(git reset --hard*)",
-      "Bash(git push --force*)",
-      "Bash(git push -f*)",
-      "Bash(git clean*)",
-      "Bash(rm -rf*)",
-      "Bash(rm -fr*)"
+ "$schema": "https://json.schemastore.org/claude-code-settings.json",
+ "permissions": {
+  "allow": [
+   "Bash(git *)",
+   "Bash(npm run *)",
+   "Bash(node scripts/*)",
+   "Bash(node --check *)",
+   "Bash(grep *)",
+   "Bash(ls *)"
+  ],
+  "deny": [
+   "Bash(git reset --hard*)",
+   "Bash(git push --force*)",
+   "Bash(git push -f*)",
+   "Bash(git clean*)",
+   "Bash(rm -rf*)",
+   "Bash(rm -fr*)"
+  ]
+ },
+ "hooks": {
+  "PreToolUse": [
+   {
+    "matcher": "Edit|Write|MultiEdit",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-pre-hook.js || true",
+      "statusMessage": "goggles: reading the field before the write"
+     }
     ]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-pre-hook.js || true",
-            "statusMessage": "goggles: reading the field before the write"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-bash-hook.js || true",
-            "statusMessage": "goggles: reading the inline command before it runs"
-          }
-        ]
-      },
-      {
-        "matcher": "WebFetch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-web-hook.js || true",
-            "statusMessage": "goggles: reading the page through the substrate"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-hook.js || true",
-            "statusMessage": "goggles: reading coherence/resonance"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh ./scripts/ensure-void-runtime.sh || true",
-            "statusMessage": "void: provisioning the coherency pipeline the goggles read through"
-          },
-          {
-            "type": "command",
-            "command": "sh ./scripts/ecosystem-orient.sh"
-          },
-          {
-            "type": "command",
-            "command": "node ./scripts/session-context-load.mjs || true",
-            "statusMessage": "loading prior-session substrate memory"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/precompact-digest.js || true",
-            "statusMessage": "substrate: marking what is load-bearing before compaction"
-          }
-        ]
-      }
+   },
+   {
+    "matcher": "Bash",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-bash-hook.js || true",
+      "statusMessage": "goggles: reading the inline command before it runs"
+     }
     ]
-  }
+   },
+   {
+    "matcher": "WebFetch",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-web-hook.js || true",
+      "statusMessage": "goggles: reading the page through the substrate"
+     }
+    ]
+   }
+  ],
+  "PostToolUse": [
+   {
+    "matcher": "Edit|Write|MultiEdit",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-hook.js || true",
+      "statusMessage": "goggles: reading coherence/resonance"
+     }
+    ]
+   }
+  ],
+  "SessionStart": [
+   {
+    "matcher": "",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "sh ./scripts/ensure-void-runtime.sh || true",
+      "statusMessage": "void: provisioning the coherency pipeline the goggles read through"
+     },
+     {
+      "type": "command",
+      "command": "sh ./scripts/ecosystem-orient.sh"
+     },
+     {
+      "type": "command",
+      "command": "node ./scripts/session-context-load.mjs || true",
+      "statusMessage": "loading prior-session substrate memory"
+     },
+     {
+      "type": "command",
+      "command": "sh -c 'F=/home/user/remembrance-oracle-toolkit/.remembrance/goggles-denials.jsonl; [ -f \"$F\" ] && echo \"wall: $(wc -l < \"$F\") denial(s) on the ledger \u2014 review: goggles --do denials\" || true'",
+      "statusMessage": "wall: checking the denial ledger"
+     }
+    ]
+   }
+  ],
+  "PreCompact": [
+   {
+    "matcher": "",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "node /home/user/remembrance-oracle-toolkit/src/tools/precompact-digest.js || true",
+      "statusMessage": "substrate: marking what is load-bearing before compaction"
+     }
+    ]
+   }
+  ]
+ }
 }

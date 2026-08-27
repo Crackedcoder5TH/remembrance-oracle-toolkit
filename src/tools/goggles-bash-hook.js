@@ -43,7 +43,7 @@ function out(decision, reason) {
   }));
   process.exit(0);
 }
-out.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+out.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "degrading", intention: "neutral", domain: "utility" };
 let raw = '';
 try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { process.exit(0); }
 let input; try { input = JSON.parse(raw || '{}'); } catch (_) { process.exit(0); }

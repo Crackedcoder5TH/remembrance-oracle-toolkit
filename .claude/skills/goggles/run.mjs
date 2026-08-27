@@ -125,6 +125,15 @@ if (argv[0] === '--do') {
     // Truth comes from the process table + the port, never a pidfile.
     //   goggles --do service [status|start|stop|restart] [--wait]
     service: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'service-ctl.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE COMMIT SEAL — the one wall an agent cannot edit around. Reads every
+    // declared input (seal.spec.json) THROUGH the reading surface and pins the
+    // derived coherency into seal.lock.json, bound to the input bytes and the
+    // substrate state. `--verify` re-derives and refuses on mismatch; CI runs
+    // exactly that as a required check, so a bypassed-but-wrong number is
+    // refused at GitHub's door, not the agent's. No key to forge: CI does not
+    // trust the number, it recomputes it.
+    //   goggles --do seal            (mint)     |   --do seal --verify   (check)
+    seal: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'seal_commit.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
     // THE WALL'S OWN LEDGER. Every hook denial is one JSON line (ts · rule ·
     // command) — the continuous leak map. A recurring rule is a weld working;
     // a novel command shape is the next verb to build; silence across fresh

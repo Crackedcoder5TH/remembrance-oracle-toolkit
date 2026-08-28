@@ -25,6 +25,16 @@ const path = require('node:path');
 
 const VOID = process.env.VOID_ROOT || path.resolve(__dirname, '..', '..', 'Void-Data-Compressor');
 const SVC_PORT = parseInt(process.env.VOID_SERVICE_PORT, 10) || 8765;
+// Front-door token (see FRONT-DOOR WALL in compressor_service.py); '' fails open.
+let _gwTok = null;
+function _goggleToken() {
+  if (_gwTok !== null) return _gwTok;
+  try {
+    _gwTok = require('node:fs').readFileSync(
+      path.join(VOID, '.remembrance', 'goggles-token'), 'utf8').trim();
+  } catch (e) { require('../src/core/quiet').quiet('scripts:goggle-web:goggleToken', e); _gwTok = ''; }
+  return _gwTok;
+}
 const argv = process.argv.slice(2);
 const url = argv.find((a) => !a.startsWith('--'));
 const asJson = argv.includes('--json');
@@ -119,7 +129,8 @@ function readThroughVoid(series) {
   const body = JSON.stringify({ series });
   const post = () => execFileSync('curl', [
     '-s', '--noproxy', '127.0.0.1', '--max-time', '120',
-    '-H', 'Content-Type: application/json', '--data-binary', '@-',
+    '-H', 'Content-Type: application/json',
+    '-H', 'x-goggles-token: ' + _goggleToken(), '--data-binary', '@-',
     `http://127.0.0.1:${SVC_PORT}/compress_signal`,
   ], { input: body, maxBuffer: 1 << 26, encoding: 'utf8' });
 

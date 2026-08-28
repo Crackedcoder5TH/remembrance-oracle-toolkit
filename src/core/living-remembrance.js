@@ -133,6 +133,14 @@ const PARAMS = {
   },
 };
 
+// Structural check that a contribution carries the Void compressor's seal
+// (the cryptographic HMAC check lives in the commit seal, where the key is).
+function _isValidVoidSeal(seal) {
+  return !!(seal && typeof seal === 'object'
+    && seal.via === 'void_compressor_v5.compress'
+    && typeof seal.sig === 'string' && seal.sig.length > 0);
+}
+
 class LivingRemembranceEngine {
   constructor(opts = {}) {
     const { persistPath, params = {} } = opts;
@@ -396,19 +404,11 @@ class LivingRemembranceEngine {
     // owner wants it, and this is not it.
     const w = (typeof resonance === 'number' && isFinite(resonance)) ? Math.max(0, Math.min(1, resonance)) : 1;
 
-    // FIELD TOKEN GATE (additive). A contribution may carry the void
-    // compressor's own seal — the same token --do read emits and the commit
-    // seal verifies. A PRESENT-but-invalid token is junk: it cannot move the
-    // field (wEff = 0), so a forged or malformed seal is inert. A contribution
-    // with NO seal keeps the legacy behaviour (every existing MEASURED caller
-    // is unchanged) but is RECORDED as untokened, so the field-source ratchet
-    // can drive the write surface toward fully-tokened over time. This is the
-    // runtime half of "a reading is not a reading without the compressor's
-    // token": the commit seal guards what enters the codebase, this guards what
-    // enters the field — which remembers a shape independent of the code.
-    const tokened = !!(seal && typeof seal === 'object'
-      && seal.via === 'void_compressor_v5.compress'
-      && typeof seal.sig === 'string' && seal.sig.length > 0);
+    // FIELD TOKEN GATE (additive): a PRESENT-but-invalid void seal is inert
+    // (wEff=0) — a forged token cannot move the field. No seal = legacy
+    // behaviour, recorded as untokened for the field-source ratchet. Runtime
+    // half of the commit seal: that guards the codebase, this guards the field.
+    const tokened = _isValidVoidSeal(seal);
     const wEff = (seal != null && !tokened) ? 0 : w;
 
     const target = p + r_eff * 0.1 + delta_void * 0.15;

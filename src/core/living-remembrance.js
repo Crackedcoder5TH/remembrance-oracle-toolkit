@@ -344,7 +344,7 @@ class LivingRemembranceEngine {
    * @param {string} [obs.source]  — caller name for the audit trail
    * @returns {object} new state snapshot
    */
-  contribute({ cost = 1.0, coherence = null, source = null, resonance = null, void: voidTerm = null } = {}) {
+  contribute({ cost = 1.0, coherence = null, source = null, resonance = null, void: voidTerm = null, seal = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
     const { r0, alpha, delta0, cascadeTau, epsilon } = this._params;
 
@@ -395,6 +395,22 @@ class LivingRemembranceEngine {
     // it does not average coherency — that is a thing the owner adds when the
     // owner wants it, and this is not it.
     const w = (typeof resonance === 'number' && isFinite(resonance)) ? Math.max(0, Math.min(1, resonance)) : 1;
+
+    // FIELD TOKEN GATE (additive). A contribution may carry the void
+    // compressor's own seal — the same token --do read emits and the commit
+    // seal verifies. A PRESENT-but-invalid token is junk: it cannot move the
+    // field (wEff = 0), so a forged or malformed seal is inert. A contribution
+    // with NO seal keeps the legacy behaviour (every existing MEASURED caller
+    // is unchanged) but is RECORDED as untokened, so the field-source ratchet
+    // can drive the write surface toward fully-tokened over time. This is the
+    // runtime half of "a reading is not a reading without the compressor's
+    // token": the commit seal guards what enters the codebase, this guards what
+    // enters the field — which remembers a shape independent of the code.
+    const tokened = !!(seal && typeof seal === 'object'
+      && seal.via === 'void_compressor_v5.compress'
+      && typeof seal.sig === 'string' && seal.sig.length > 0);
+    const wEff = (seal != null && !tokened) ? 0 : w;
+
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;
     // THE LAW OF COHERENCY. A coherency reading lives in [0, 1] — always,
@@ -421,7 +437,7 @@ class LivingRemembranceEngine {
     // a coherency allowed past 1 lets the field drive its own entropy toward
     // zero by inflating the denominator — improvement reported no matter what
     // was fed in. The bound is what keeps the field's own readings honest.
-    const newCoherence = Math.max(0, Math.min(0.999, prev + (target - prev) * w));
+    const newCoherence = Math.max(0, Math.min(0.999, prev + (target - prev) * wEff));
 
     // cascadeFactor is a recent-load gauge, not a running tally. It
     // relaxes toward the 1.0 baseline as time passes since the last
@@ -479,6 +495,10 @@ class LivingRemembranceEngine {
         lastCoherence: newCoherence,
         lastInput: (typeof p === 'number' && isFinite(p)) ? p : null,
         lastTimestamp: now,
+        // Provenance: did this source's last contribution carry a valid void
+        // compressor token? The field-source ratchet reads this to drive the
+        // write surface toward fully-tokened.
+        lastSealed: tokened,
       };
     }
 
@@ -493,7 +513,7 @@ class LivingRemembranceEngine {
       coherence:         newCoherence,
       // ∫p accumulates the input coherence p(t) per the master equation,
       // not the post-update newCoherence.
-      coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost * w,
+      coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost * wEff,
       globalEntropy:     cost / (newCoherence + epsilon),
       cascadeFactor,
       meanIntervalMs,
@@ -512,6 +532,10 @@ class LivingRemembranceEngine {
       void_source,
       p,
       source: source || null,
+      // Whether this contribution carried a valid void-compressor token, and
+      // whether it was gated to inert (a present-but-invalid seal).
+      sealed: tokened,
+      seal_gated: (seal != null && !tokened),
     };
   }
 

@@ -39,5 +39,8 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
+      - name: Build the cathedral diagnostic (the covenant ratchet reads it)
+        run: node scripts/cathedral-diagnostic.js
+
       - name: Run the full ratchet battery
         run: node scripts/ratchet-battery.js

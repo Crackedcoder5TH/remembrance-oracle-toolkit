@@ -1,0 +1,43 @@
+name: ratchet-battery
+
+# The full ratchet battery, run on GitHub's runner — the server-side mirror of
+# the local pre-commit gates. This exists to make `git commit --no-verify`
+# POWERLESS: the flag skips the local hook, but it cannot skip a required CI
+# check. A commit that breaks any gate — covenant, exemption, size, cycle,
+# suite-reachability, field-source, ledger-append, silent-catch, console,
+# orphan, atomic-drift — can be made with --no-verify, but it cannot be merged
+# once this is a required status check. Bypass stops being a door: you can walk
+# out of the local room, but the building's exit is still locked.
+#
+# Make this REQUIRED in branch protection to arm it.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ratchet-battery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Run the full ratchet battery
+        run: node scripts/ratchet-battery.js

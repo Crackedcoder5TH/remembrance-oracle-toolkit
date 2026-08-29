@@ -242,17 +242,29 @@ class VoidLibrary {
     this._loadAttempted = true;
 
     try {
-      if (!fs.existsSync(this.indexPath)) {
-        this._loadError = 'pattern_index_fractal.json missing — run /tmp/encode-void-fractal.js to build it';
+      // Point at the LIVE store. `--do merge` unifies the substrate into
+      // substrate.json (top-level `entries`, each carrying the canonical
+      // `composed` vector); pattern_index_fractal.json (top-level `index`,
+      // separate `fractal`) is the legacy shape. Prefer the live store and
+      // fall back to the legacy file — the loader must read whatever the
+      // instrument currently holds, not a file frozen at one moment.
+      const livePath = path.join(this.voidRoot, 'substrate.json');
+      const storePath = fs.existsSync(livePath) ? livePath : this.indexPath;
+      this.indexPath = storePath;
+      if (!fs.existsSync(storePath)) {
+        this._loadError = 'void substrate store missing (substrate.json / pattern_index_fractal.json)';
         return null;
       }
-      const data = JSON.parse(fs.readFileSync(this.indexPath, 'utf8'));
-      if (!data || !data.index) {
-        this._loadError = 'fractal index malformed';
+      const data = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+      // The unified store keys entries under `entries`; the legacy file under
+      // `index`. Read whichever this store uses.
+      const store = (data && (data.entries || data.index)) || null;
+      if (!store) {
+        this._loadError = 'void substrate store malformed (no entries/index)';
         return null;
       }
       this._meta = {
-        spec_version: data.spec_version,
+        spec_version: data.spec_version || data.version,
         encoder: data.encoder,
         generated_at: data.generated_at,
         total_patterns: data.total_patterns,
@@ -261,22 +273,31 @@ class VoidLibrary {
       };
       const fractals = new Map();
       const composed = new Map();
-      for (const [name, entry] of Object.entries(data.index)) {
-        if (entry && Array.isArray(entry.fractal) && entry.fractal.length === 29) {
-          fractals.set(name, Float64Array.from(entry.fractal));
-        }
-        // Load the DEEPEST available composed signature per pattern:
-        // composed_v4 (203-D, full 7-layer) > composed_v2 (145-D) > composed_v1
-        // (116-D). A re-encoded pattern (composed_v4[0:116] === composed_v1
-        // exactly — verified) lights up L5-L7; the rest keep their identical
-        // 116-D base. Each is compared at its OWN real depth (fractal-index
-        // searchFlow), so shallow patterns score exactly as before and deep
-        // ones fold in the residual layers — no mixing bias.
-        const deep = entry && (
-          (Array.isArray(entry.composed_v4) && entry.composed_v4.length % 29 === 0 && entry.composed_v4)
+      for (const [name, entry] of Object.entries(store)) {
+        if (!entry) continue;
+        // The DEEPEST available composed signature, whatever the store names
+        // it: `composed` (unified store, depth-8 232-D) or the legacy
+        // composed_v4 (203-D) > composed_v2 (145-D) > composed_v1 (116-D).
+        // Each is compared at its OWN real depth (fractal-index searchFlow).
+        const deep = (
+          (Array.isArray(entry.composed) && entry.composed.length % 29 === 0 && entry.composed)
+          || (Array.isArray(entry.composed_v4) && entry.composed_v4.length % 29 === 0 && entry.composed_v4)
           || (Array.isArray(entry.composed_v2) && entry.composed_v2.length % 29 === 0 && entry.composed_v2)
           || (Array.isArray(entry.composed_v1) && entry.composed_v1.length >= 29 && entry.composed_v1)
         );
+        // The 29-D fractal is L1. A pattern carries it either as its own
+        // `fractal` field or as the first 29-D block of its composed vector —
+        // composed[:29] IS the L1 fractal (see score()/scoreWithFlow). Read it
+        // from whichever the pattern actually has, so every materialized
+        // pattern the instrument holds is counted — the population is whatever
+        // the store currently contains, and grows with it.
+        let fractal = null;
+        if (Array.isArray(entry.fractal) && entry.fractal.length === 29) {
+          fractal = entry.fractal;
+        } else if (deep && deep.length >= 29) {
+          fractal = deep.slice(0, 29);
+        }
+        if (fractal) fractals.set(name, Float64Array.from(fractal));
         if (deep) composed.set(name, Float64Array.from(deep));
       }
       this._fractals = fractals;

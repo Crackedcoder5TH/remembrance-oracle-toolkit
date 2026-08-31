@@ -5,8 +5,8 @@ const { quiet } = require('./quiet');
  * field-memory — the field's compression + recall layer.
  *
  * Every observation that enters the LivingRemembranceEngine field is
- * also compressed by the canonical void encoder (codeToWaveform) into
- * a 256-sample waveform and offered to the pattern library. The
+ * also compressed by the canonical fractal encoder (codeToWaveform) into
+ * a fractal vector and offered to the pattern library. The
  * pattern compressor's similarity gate decides what survives: a
  * waveform that is within NOVELTY_THRESHOLD cosine of one already in
  * the library is redundant — dropped by design. Only genuinely new

@@ -212,15 +212,28 @@ function belowFloor(absFile) {
 //
 // Only the coherency changes; the fractal/composed vectors and the ledger
 // sequence are untouched, so nothing downstream re-indexes.
-function restamp(targets, idx, index) {
-  let done = 0, gone = 0, floored = 0, unread = 0;
+function restamp(targets, idx, index, opts = {}) {
+  let done = 0, gone = 0, floored = 0, unread = 0, kept = 0;
   const before = [], after = [];
+  // RESUMABLE. A restamp over the whole substrate is ~2,500 compressor reads
+  // at ~1.4 s each; it used to write the index once, at the very end, so a
+  // killed run kept nothing. Now: entries that already carry a compressor
+  // reading are kept (re-read only with --force), and the index is written
+  // every CHECKPOINT_EVERY re-reads — an interrupted run keeps its readings
+  // and the next run picks up where it stopped.
+  const CHECKPOINT_EVERY = Number(process.env.HARVEST_CHECKPOINT_EVERY || 200);
+  const write = () => {
+    const tmp = INDEX_PATH + '.restamp.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(idx));
+    fs.renameSync(tmp, INDEX_PATH);
+  };
   for (const { ns, dir } of targets) {
     if (!fs.existsSync(dir)) { console.error('  skip (missing): ' + dir); continue; }
     for (const f of walk(dir)) {
       const key = ns + '/' + path.relative(dir, f);
       const entry = index[key];
       if (!entry) continue;
+      if (!opts.force && entry.coherence_source === 'void:compress_signal' && typeof entry.coherence === 'number') { kept++; continue; }
       let content;
       try { content = fs.readFileSync(f, 'utf8').slice(0, CONTENT_CAP); } catch { gone++; continue; }
       if (content.length < MIN_CHARS) { floored++; continue; }
@@ -231,10 +244,12 @@ function restamp(targets, idx, index) {
       entry.coherence_source = 'void:compress_signal';
       after.push(entry.coherence);
       done++;
-      if (done % 250 === 0) console.log(`    …${done} re-read`);
+      if (done % 50 === 0) console.log(`    …${done} re-read`);
+      if (done % CHECKPOINT_EVERY === 0) { write(); console.log(`    checkpoint: ${done} readings on disk`); }
     }
   }
-  console.log(`restamp: ${done} entries re-read through the compressor`);
+  console.log(`restamp: ${done} entries re-read through the compressor`
+    + (kept ? ` · ${kept} already carried a compressor reading (kept; --force re-reads them)` : ''));
   if (gone) console.log(`  ${gone} indexed file(s) no longer on disk — left as-is`);
   if (floored) console.log(`  ${floored} below floor — left as-is`);
   if (unread) console.log(`  ${unread} unread (service down) — left as-is, NOT zeroed`);
@@ -254,9 +269,7 @@ function restamp(targets, idx, index) {
       targets: targets.map((t) => t.ns), tool: 'harvest-repo-to-substrate --restamp',
       note: 'coherency re-read off the Void compressor (was seriesCoherence on the fractal feature vector)',
     });
-    const tmp = INDEX_PATH + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(idx));
-    fs.renameSync(tmp, INDEX_PATH);
+    write();
     console.log(`  written → ${INDEX_PATH}`);
   }
   process.exit(0);
@@ -322,7 +335,7 @@ function main() {
   catch (e) { console.error(`cannot read substrate index at ${INDEX_PATH}: ${e.message}`); process.exit(1); }
   const index = idx.index;
   if (check) return checkDrift(targets, index, maxDrift);
-  if (doRestamp) return restamp(targets, idx, index);
+  if (doRestamp) return restamp(targets, idx, index, { force: args.includes('--force') });
   const now = new Date().toISOString();
   const beforeTotal = Object.keys(index).length;
 

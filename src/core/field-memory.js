@@ -518,6 +518,32 @@ function _seedPath() {
   return process.env.FIELD_SEED_PATH || _committedBlockchainData('field-histogram.seed.json');
 }
 
+/**
+ * The recovery coin's field — a third durable witness. The git-history coin
+ * (REMEMBRANCE-BLOCKCHAIN data/git-history-coin.json) carries the whole
+ * field state gzipped at data/data-plane/field.json.gz, sha256-anchored in
+ * the coin body. It was minted precisely so the field survives a container,
+ * and nothing read it back until now. The digest is checked against the
+ * coin before the state is trusted; a mismatch is not a witness.
+ */
+function _restoreFromCoin() {
+  try {
+    const coinPath = process.env.FIELD_COIN_PATH || _committedBlockchainData('git-history-coin.json');
+    if (!fs.existsSync(coinPath)) return null;
+    const coin = JSON.parse(fs.readFileSync(coinPath, 'utf8'));
+    const entry = (coin.dataPlane || []).find((d) => d && d.name === 'field');
+    if (!entry || !entry.file) return null;
+    const gz = path.join(path.dirname(coinPath), '..', entry.file);
+    if (!fs.existsSync(gz)) return null;
+    const bytes = fs.readFileSync(gz);
+    const sha = require('node:crypto').createHash('sha256').update(bytes).digest('hex');
+    if (sha !== entry.sha256) return null;
+    return _coerceFieldState(JSON.parse(require('node:zlib').gunzipSync(bytes).toString('utf8')));
+  } catch (_) {
+    return null;
+  }
+}
+
 /** Coerce any raw field-state-shaped object into a defensive, complete state. */
 function _coerceFieldState(e) {
   if (!e || typeof e !== 'object' || typeof e.updateCount !== 'number' || e.updateCount <= 0) return null;
@@ -598,6 +624,8 @@ function restoreLatest() {
   if (ledger) candidates.push(ledger);
   const seed = _restoreFromSeed();
   if (seed) candidates.push(seed);
+  const coin = _restoreFromCoin();
+  if (coin) candidates.push(coin);
   if (candidates.length === 0) return null;
   // Pick the witness carrying the most history without mutating the
   // array (Array.sort is in-place) — mirrors living-remembrance._loadOrInit.
@@ -629,6 +657,7 @@ module.exports = {
   // for diagnostics and tests; not part of the stable field-memory API.
   _restoreFromSeed,
   _restoreFromLedger,
+  _restoreFromCoin,
   _seedPath,
   _committedLedgerPath,
 };

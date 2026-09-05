@@ -24,7 +24,7 @@
 
 const path = require('path');
 const { SQLiteStore } = require('../src/store/sqlite');
-const { codeToWaveform, waveformCosine, digestWaveform, TARGET_LEN, BYTE_TARGET_LEN } =
+const { codeToWaveform, waveformCosine, digestWaveform, TARGET_LEN, RETIRED_BYTE_LEN } =
   require('../src/core/code-to-waveform');
 
 function parseArgs(argv) {
@@ -69,7 +69,7 @@ function main() {
 
     if (!Array.isArray(cj.waveform)) { stats.noWaveform++; continue; }
     if (cj.waveform.length === TARGET_LEN) { stats.alreadyFractal++; continue; }
-    if (cj.waveform.length !== BYTE_TARGET_LEN) { stats.other++; continue; }
+    if (cj.waveform.length !== RETIRED_BYTE_LEN) { stats.other++; continue; }
 
     stats.legacyByte++;
 

@@ -5,9 +5,8 @@
  *
  * As of fractal-waveform v0.1, `codeToWaveform` and `waveformCosine` ARE
  * the structural fractal versions from ./fractal-waveform. The byte-stretch
- * (the original 256-D linear-interpolated UTF-8) is preserved under
- * `byteCodeToWaveform` / `byteWaveformCosine` for callers that genuinely
- * want raw-byte similarity on binary / non-text inputs.
+ * (the original 256-D linear-interpolated UTF-8) is RETIRED and removed —
+ * see RETIRED_BYTE_LEN below. Nothing in the ecosystem encodes to 256-D.
  *
  * Why: byte-stretch could not discriminate code from prose — a JS source
  * file and a markdown README scored 0.86 cosine, higher than several real
@@ -25,8 +24,7 @@
  * Cross-language parity: Void's legacy `to_waveform.py` was DELETED
  * (2026-07, ECOSYSTEM §7) — Python reaches the canonical fractal stack
  * through Void's `fractal_encoder.py` node bridge, so JS↔Python parity
- * now holds for the canonical encoder itself. `byteCodeToWaveform`
- * below remains only for raw-byte similarity on binary inputs.
+ * now holds for the canonical encoder itself.
  */
 
 const {
@@ -35,58 +33,17 @@ const {
   fractalCoherency,
 } = require('./fractal-waveform');
 
-// ─── Legacy byte-stretch (binary / non-text inputs) ──────────────────────
-
-const BYTE_TARGET_LEN = 256;
-
-function _linearInterp(fp, targetLen) {
-  const n = fp.length;
-  const out = new Float64Array(targetLen);
-  if (n === 0) return out;
-  if (n === 1) { out.fill(fp[0]); return out; }
-  const step = (n - 1) / (targetLen - 1);
-  for (let i = 0; i < targetLen; i++) {
-    const x = i * step;
-    const j = Math.floor(x);
-    if (j >= n - 1) { out[i] = fp[n - 1]; }
-    else { const t = x - j; out[i] = fp[j] + t * (fp[j + 1] - fp[j]); }
-  }
-  return out;
-}
-
-function byteCodeToWaveform(code) {
-  if (typeof code !== 'string' || code.length === 0) {
-    return new Float64Array(BYTE_TARGET_LEN);
-  }
-  const bytes = Buffer.from(code, 'utf8');
-  const fp = new Float64Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) fp[i] = bytes[i];
-  const wf = _linearInterp(fp, BYTE_TARGET_LEN);
-  let lo = wf[0], hi = wf[0];
-  for (let i = 1; i < BYTE_TARGET_LEN; i++) {
-    if (wf[i] < lo) lo = wf[i]; if (wf[i] > hi) hi = wf[i];
-  }
-  if (hi - lo < 1e-10) {
-    const flat = new Float64Array(BYTE_TARGET_LEN); flat.fill(0.5); return flat;
-  }
-  const span = hi - lo;
-  for (let i = 0; i < BYTE_TARGET_LEN; i++) wf[i] = (wf[i] - lo) / span;
-  return wf;
-}
-
-/** Cosine over byte waveforms. Length-mismatch returns 0 — never silently
- * compare vectors from different encoders. */
-function byteWaveformCosine(a, b) {
-  if (!a || !b || a.length === 0 || b.length === 0) return 0;
-  if (a.length !== b.length) return 0;
-  let dot = 0, na = 0, nb = 0;
-  for (let i = 0; i < a.length; i++) {
-    const x = a[i], y = b[i];
-    dot += x * y; na += x * x; nb += y * y;
-  }
-  const denom = Math.sqrt(na) * Math.sqrt(nb);
-  return denom < 1e-12 ? 0 : dot / denom;
-}
+// ─── RETIRED: the 256-D byte-stretch ──────────────────────────────────────
+// The byte-stretch pair (linear-interpolated UTF-8
+// bytes onto a 256-point grid) were the previous representation of a
+// pattern. They could not tell code from prose (a JS file and a README read
+// 0.86 cosine, above real code-vs-code pairs) and were retired with Void's
+// to_waveform.py (ECOSYSTEM §7). The functions are GONE — not kept for
+// "binary inputs", because keeping an encoder is keeping a door. The one
+// number that survives is the width, so the migration script can still
+// recognise legacy rows on disk and re-encode them through the fractal
+// stack. It is a marker of what was, never a target to encode to.
+const RETIRED_BYTE_LEN = 256;
 
 // ─── Stable fingerprint (used for dedup IDs across the codebase) ─────────
 
@@ -115,15 +72,11 @@ module.exports = {
   codeToWaveform: toFractalWaveform,
   waveformCosine: fractalCoherency,
   digestWaveform,
-  // Legacy byte-stretch for binary / non-text inputs.
-  BYTE_TARGET_LEN,
-  byteCodeToWaveform,
-  byteWaveformCosine,
+  // The retired representation's width — a marker for migration, not an encoder.
+  RETIRED_BYTE_LEN,
 };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-byteCodeToWaveform.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-byteWaveformCosine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 digestWaveform.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

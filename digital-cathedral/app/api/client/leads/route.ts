@@ -4,6 +4,7 @@ import { getFilteredLeads } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { getClientById, getPurchasesByLead } from "@/app/lib/client-database";
 import { getAllTierPrices } from "@/app/lib/lead-depreciation";
+import { getLeadOperationsSummary } from "@/app/lib/lead-operations";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,7 @@ export async function GET(req: NextRequest) {
 
       // If purchased, show full info; otherwise gate it
       if (purchased) {
+        const operations = await getLeadOperationsSummary(lead.leadId);
         return {
           leadId: lead.leadId,
           firstName: lead.firstName,
@@ -79,6 +81,7 @@ export async function GET(req: NextRequest) {
           purchased: true,
           available: false,
           buyerCount: activeBuyerCount,
+          ...operations,
         };
       }
 

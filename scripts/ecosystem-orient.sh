@@ -11,6 +11,14 @@ set -e
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ECO="$REPO_ROOT/ECOSYSTEM.md"
 
+# Install the goggles wall into the user-level settings the harness actually
+# honors, so a bypass (np.corrcoef, hand-rolled cosine, raw service curl, /tmp
+# measurement script, raw cli.js) is DENIED with arrows to the goggles. Remote
+# sessions ignore the repo's own PreToolUse hook; the user-level one fires. Safe
+# + idempotent; a fresh container re-installs it here at session start.
+sh "$REPO_ROOT/scripts/install-goggles-wall.sh" 2>/dev/null || \
+  sh /home/user/remembrance-oracle-toolkit/scripts/install-goggles-wall.sh 2>/dev/null || true
+
 if [[ ! -f "$ECO" ]]; then
   echo "WARNING: ECOSYSTEM.md not found at $REPO_ROOT."
   echo "This repo may be outside the Remembrance ecosystem, or its sync is broken."

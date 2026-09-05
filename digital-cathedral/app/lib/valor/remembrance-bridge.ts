@@ -200,6 +200,26 @@ export async function listRecords(
 }
 
 /**
+ * Resonant records — the field's OWN cosine over the stored waveforms, ranked
+ * high→low. This is the substrate's established kin/duplicate detector: the
+ * same waveform cosine the coherency mapper reads as a duplicate at 0.999
+ * (duplicateAt / selfMatchAt). Unlike `listRecords`, which text-matches, this
+ * asks the compressor which stored records share this content's SHAPE. Wraps
+ * the legacy store's `resonant` action ({ q, k } → { legacies:[…,resonance] }).
+ * Best-effort: [] when the field is unreachable.
+ */
+export async function resonantRecords(
+  content: string,
+  k = 5,
+): Promise<Array<SubstrateRecord & { resonance: number }>> {
+  const r = await mcpTool<{ ok: boolean; legacies: Array<SubstrateRecord & { resonance: number }> }>(
+    "legacy",
+    { action: "resonant", q: content, k },
+  );
+  return r && r.ok && Array.isArray(r.legacies) ? r.legacies : [];
+}
+
+/**
  * Attach a resolved outcome to a record — the write that makes the retro-causal
  * recall path live. Re-stores the record (store is upsert-by-id) with a
  * `meta.ledger` (observed_start → observed_end) and `meta.resolved`, so

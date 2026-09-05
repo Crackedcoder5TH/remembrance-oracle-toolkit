@@ -305,7 +305,7 @@ function _main() {
   console.log('  Read the body before you quote a number from it.\n');
 }
 
-if (require.main === module) main();
+if (require.main === module) _main();
 // ── Periodic table declarations (covenant fractal, atomic scale) ──────
 // The exported surface is elements; underscore helpers are internal. The
 // brief's whole job is pre-call guidance, so every element is inert,

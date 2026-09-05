@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyClient } from "@/app/lib/client-auth";
 import { getLeadById } from "@/app/lib/database";
 import { getPurchasesByLead } from "@/app/lib/client-database";
+import { getLeadOperations } from "@/app/lib/lead-operations";
 
 export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -14,5 +15,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!result.ok) return NextResponse.json({ success: false, message: "Unable to load lead." }, { status: 500 });
   if (!result.value) return NextResponse.json({ success: false, message: "Lead not found." }, { status: 404 });
   const lead = result.value;
-  return NextResponse.json({ success: true, lead: { ...lead, consentIp: undefined, consentUserAgent: undefined, consentText: undefined, consentSummary: lead.consentTcpa && lead.consentPrivacy ? `Consent recorded ${lead.consentTimestamp}` : "Consent requires admin review" } });
+  const operations = await getLeadOperations(params.id);
+  return NextResponse.json({ success: true, lead: { ...lead, ...operations, consentIp: undefined, consentUserAgent: undefined, consentText: undefined, consentSummary: lead.consentTcpa && lead.consentPrivacy ? `Consent recorded ${lead.consentTimestamp}` : "Consent requires admin review" } });
 }

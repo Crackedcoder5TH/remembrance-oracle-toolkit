@@ -13,6 +13,12 @@ type Lead = {
   tier: string;
   createdAt: string;
   purchased: boolean;
+  phone?: string;
+  email?: string;
+  status?: string;
+  nextFollowUpAt?: string | null;
+  appointmentAt?: string | null;
+  doNotContact?: boolean;
 };
 
 export default function MyLeads() {
@@ -92,15 +98,15 @@ export default function MyLeads() {
                       {l.firstName} {l.lastName}
                     </b>
                     <p className="text-sm text-[#8a8175]">
-                      {l.state} · {l.coverageInterest} · New
+                      {l.state} · {l.coverageInterest} · {l.status || "New"}
                     </p>
+                    <p className="mt-1 text-xs text-[#8a8175]">Follow-up: {l.nextFollowUpAt ? new Date(l.nextFollowUpAt).toLocaleString() : "Not set"} · Appointment: {l.appointmentAt ? new Date(l.appointmentAt).toLocaleString() : "Not set"}</p>
                   </div>
                   <div className="flex gap-2">
-                    {/* Call/Text are Phase-3 placeholders until contact actions are wired. */}
-                    <a className="rounded-lg border border-[#e2d9c9] px-3 py-2 text-sm" href="#">
+                    <a className={`rounded-lg border border-[#e2d9c9] px-4 py-3 text-sm ${!l.phone || l.doNotContact || l.status === "Do Not Contact" ? "pointer-events-none opacity-50" : ""}`} href={l.phone && !l.doNotContact && l.status !== "Do Not Contact" ? `tel:${l.phone}` : undefined} aria-disabled={!l.phone || l.doNotContact || l.status === "Do Not Contact"} title={l.doNotContact || l.status === "Do Not Contact" ? "Do Not Contact — outreach blocked" : !l.phone ? "No phone number available" : undefined}>
                       Call
                     </a>
-                    <a className="rounded-lg border border-[#e2d9c9] px-3 py-2 text-sm" href="#">
+                    <a className={`rounded-lg border border-[#e2d9c9] px-4 py-3 text-sm ${!l.phone || l.doNotContact || l.status === "Do Not Contact" ? "pointer-events-none opacity-50" : ""}`} href={l.phone && !l.doNotContact && l.status !== "Do Not Contact" ? `sms:${l.phone}` : undefined} aria-disabled={!l.phone || l.doNotContact || l.status === "Do Not Contact"} title={l.doNotContact || l.status === "Do Not Contact" ? "Do Not Contact — outreach blocked" : !l.phone ? "No phone number available" : undefined}>
                       Text
                     </a>
                     <Link

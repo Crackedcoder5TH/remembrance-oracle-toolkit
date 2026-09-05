@@ -9,7 +9,7 @@ const { quiet } = require('./quiet');
  * A node with heavy work posts a work item; any entangled node claims
  * it (claiming is entropy-gated, so a hot node idles); the node
  * computes and submits a result. Every result is run through the
- * compressor (codeToWaveform -> 256-D waveform) and scored for
+ * compressor (codeToWaveform -> canonical fractal vector) and scored for
  * coherency; collect() returns the highest-coherency result, because
  * coherency is the ecosystem's final tiebreaker.
  *

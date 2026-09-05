@@ -42,7 +42,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { toFractalWaveform } = require('../src/core/fractal-waveform');
-const { composedAtDepth } = require('../src/core/decoder-stack');
+const { composedAtDepth, currentDepth } = require('../src/core/decoder-stack');
 const SL = require('../src/core/substrate-ledger');
 const {
   DEFAULT_EXTENSIONS, DEFAULT_SKIP_DIRS,
@@ -389,6 +389,14 @@ function main() {
       const fractal = Array.from(toFractalWaveform(content));
       const composed_v1 = Array.from(composedAtDepth(content, 4));
       const composed_v2 = Array.from(composedAtDepth(content, 5));
+      // THE CANONICAL WIDTH, AT INGEST. The harvest wrote depth-4 and depth-5
+      // vectors only; an entry reached the canonical width (232-D at depth 8)
+      // only if someone later ran `--do redecode`. Every file witnessed this
+      // session landed at 145-D and read as such in `--do state` — the four
+      // deepest layers had nothing to match against on the newest memory.
+      // Same schema redecode-substrate.js writes, so the two paths agree.
+      const decodedDepth = currentDepth();
+      const composed = Array.from(composedAtDepth(content, decodedDepth));
 
       // ── Sanitize at the doorway ────────────────────────────────
       // Witnessing and sanitizing happen at the same entry point:
@@ -411,6 +419,10 @@ function main() {
           ingested_from: dir,
           composed_v1,
           composed_v2,
+          composed,
+          composed_width: composed.length,
+          decoded_depth: decodedDepth,
+          composed_from: 'decoder',
           sanitize,
         };
         // TIME DIMENSION: stamp when this datum joined the substrate (ingest-instant

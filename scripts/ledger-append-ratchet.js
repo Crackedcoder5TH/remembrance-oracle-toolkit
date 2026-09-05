@@ -36,6 +36,8 @@ const LEDGERS = [
   { file: 'seeds/gates.lock.json', arrayKey: 'history' },
   // every owner acceptance of debt into a gate floor (scripts/lib/ratchet-law.js)
   { file: 'seeds/debt-accepted.ledger.json', arrayKey: 'accepted' },
+  // every change coin minted over a staged patch (.claude/skills/goggles/change-coin.py)
+  { file: 'coins.ledger.json', arrayKey: 'coins' },
 ];
 
 function stableStringify(obj) {

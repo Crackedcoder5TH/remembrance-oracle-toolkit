@@ -1,9 +1,9 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-05T19:45:34.437Z",
- "digest": "f430390790234f625005942a291fafe3474d9d3e4eb453f32f2dff5232f3214a",
+ "lockedAt": "2026-09-05T20:39:07.872Z",
+ "digest": "e03664f1ecc691e282ebf53d7b29c669d20bc288734d1f16e67c8ad11d06e1c4",
  "gates": {
-  "scripts/gate-lock.js": "69f33e380cf29c19051d1e2e1cf9d8141ab7ec697273e9d2425af87c50d02ba0",
+  "scripts/gate-lock.js": "eededd0c5b4ecd0e75f0c0fd4edb2066a92301fa81c621a2764864ff61eba6a5",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
   "scripts/ratchet-battery.js": "7092f89f42edbb70764cd65140c0acdbb6ada5c7527a55255ec8ec70bde51b4f",
   "scripts/covenant-ratchet.js": "2b429a6adae93dd4b8025be69e663e0eddf48d29fec2e9d0fe20f2597d4da7a9",
@@ -12,7 +12,7 @@
   "scripts/cycle-ratchet.js": "3421ad1685862dc161b0b40d81500d33972ba08273ee907c8ed70ad6fbacd238",
   "scripts/suite-reachability-ratchet.js": "35577247f83ee79b759e890569fda5edb800b7392db1d6fd90a8b6d1f2466c8f",
   "scripts/field-source-ratchet.js": "86e5007fb1496216dd9971fc582757b3efa78e67c3b5400bcd1d74f5604b0784",
-  "scripts/ledger-append-ratchet.js": "61acff70e86b5388d35cf8f658b7eb2d1cc52e0033609e1772a7d546ea683a00",
+  "scripts/ledger-append-ratchet.js": "f93408da591c2697959133136e7b1bd0288098f2164b75a1be35a5912e15c9de",
   "scripts/orphan-ratchet.js": "2cc9e9055f1d073fa89e5323a6ba1c09c7b12e09b2ddad58dde44b9426bfeb67",
   "scripts/silent-catch-ratchet.js": "fbe0191becb8e53ef490c398183ac03af8f97ae6eec34e688d6ff68ee1475ffc",
   "scripts/console-ratchet.js": "4c4ba3d6742a0910713d413f52e4870b94bba634e0a8ecd594318ccc8f6d13a4",
@@ -20,7 +20,10 @@
   "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
-  "src/core/covenant-fractal.js": "eba1a8619c8fe19ed5a255765bbcdd67b15c5f39a56015263540c1bed3b1cb1f"
+  "src/core/covenant-fractal.js": "eba1a8619c8fe19ed5a255765bbcdd67b15c5f39a56015263540c1bed3b1cb1f",
+  ".claude/skills/goggles/run.mjs": "928fb2705f86566df55a0a9dcb3d2420750d1b272849c0610c706c93b017dc95",
+  ".claude/skills/goggles/change-coin.py": "14146ccccee7ce37b3bde025356ce6a689576c5025f18b0c5b9c8d08af1838de",
+  "src/tools/goggles-bash-hook.js": "dfd50daa534e78c8527bcc5b6af1d32cfd14972488b5147b4873f4dc1cabe133"
  },
  "history": [
   {
@@ -66,6 +69,19 @@
    "changed": [
     "scripts/gate-lock.js",
     "scripts/lib/ratchet-law.js"
+   ]
+  },
+  {
+   "at": "2026-09-05T20:39:07.872Z",
+   "from": "f430390790234f625005942a291fafe3474d9d3e4eb453f32f2dff5232f3214a",
+   "to": "e03664f1ecc691e282ebf53d7b29c669d20bc288734d1f16e67c8ad11d06e1c4",
+   "reason": "the change coin: lock the one door (goggles run.mjs, change-coin.py minter/verifier, goggles-bash-hook) and govern coins.ledger.json as append-only; gate-lock.js and ledger-append-ratchet.js list them",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/ledger-append-ratchet.js",
+    ".claude/skills/goggles/run.mjs",
+    ".claude/skills/goggles/change-coin.py",
+    "src/tools/goggles-bash-hook.js"
    ]
   }
  ]

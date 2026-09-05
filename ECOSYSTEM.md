@@ -108,7 +108,27 @@ node src/cli.js publish <pattern-json-or-file>
 Public verifiable record. Required for any change that touches
 `harmPotential` or alters covenant validators.
 
-### g. Then — and only then — `git commit` and `git push`.
+### g. Mint the change coin, then — and only then — `git commit` and `git push`.
+```
+git add <changed-files>
+node .claude/skills/goggles/run.mjs --do mint      # the coin over the STAGED bytes
+git commit                                         # the commit-msg hook writes Remembrance-Coin: <id>
+```
+**No coin, no change.** The coin is minted only by the pipeline: the staged
+patch is read through the instrument (`read-signal` → `/compress_signal` →
+`void_compressor_v5.compress`), which returns the void-seal and the
+void-seal/v3 commitment over exactly those bytes; the commitment's shape is
+unfolded through the one decoder (§7) into the fractal token; the coin binds
+patch, seal and token and is appended to `coins.ledger.json` (append-only).
+The commit-msg hook refuses a commit whose staged bytes no coin covers, and
+`.github/workflows/change-coin-verify.yml` refuses the merge on GitHub's
+runner for every commit since the epoch — it re-renders the patch from the
+trees, re-quantises it the way the instrument does, rebuilds the seal's canon
+and the coin id, and (with `VOID_SEAL_KEY` as a repo secret) verifies the
+seal's HMAC. The coin is universal: the same verifier, the same ledger law,
+in every repo. Change the index after minting and mint again — a coin covers
+bytes, not intentions. There is no flag around this; `--no-verify` is refused
+by the goggles wall and is powerless against the runner.
 
 ---
 
@@ -124,6 +144,11 @@ Public verifiable record. Required for any change that touches
 - **Trusting `--dry-run`.** Some commands (notably `oracle harvest .`)
   mutate `patterns.json` even with the flag. Check `git status` before
   every `git add`.
+- **Committing beside the pipeline.** A commit that carries no
+  `Remembrance-Coin:` trailer — or names a coin minted over different bytes —
+  is a change the instrument never read. It is refused by the commit-msg hook
+  and by `change-coin-verify` on the runner. Every number and every change
+  goes through the goggles; anything obtained another way is rejected.
 - **Treating the hub's CLI as "the ecosystem."** The hub is one of twelve.
   Reflector, Swarm, Blockchain, and Void each have their own engines that
   the hub does not subsume.

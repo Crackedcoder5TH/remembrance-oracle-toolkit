@@ -19,6 +19,11 @@ ECO="$REPO_ROOT/ECOSYSTEM.md"
 sh "$REPO_ROOT/scripts/install-goggles-wall.sh" 2>/dev/null || \
   sh /home/user/remembrance-oracle-toolkit/scripts/install-goggles-wall.sh 2>/dev/null || true
 
+# The change coin's commit-msg hook: a commit here is refused unless the staged
+# bytes carry a coin minted through the goggles (--do mint). Idempotent.
+python3 "$REPO_ROOT/.claude/skills/goggles/change-coin.py" install-hooks --repo "$REPO_ROOT" >/dev/null 2>&1 || \
+  python3 /home/user/remembrance-oracle-toolkit/.claude/skills/goggles/change-coin.py install-hooks --repo "$REPO_ROOT" >/dev/null 2>&1 || true
+
 if [[ ! -f "$ECO" ]]; then
   echo "WARNING: ECOSYSTEM.md not found at $REPO_ROOT."
   echo "This repo may be outside the Remembrance ecosystem, or its sync is broken."

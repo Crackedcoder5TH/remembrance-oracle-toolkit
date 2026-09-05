@@ -1,0 +1,965 @@
+{
+ "_README": "THE CHANGE COINS. Append-only. Every commit in this repo since the epoch carries `Remembrance-Coin: <coin_id>` naming an entry here, minted by `goggles --do mint` over the staged patch read THROUGH the instrument (void_seal + void-seal/v3 commitment + fractal token). Verified by the commit-msg hook and by .github/workflows/change-coin-verify.yml on GitHub's runner. A change without a coin is refused; a coin cannot be minted without the pipeline. Never hand-edit.",
+ "coins": [
+  {
+   "v": "change-coin/v1",
+   "coin_id": "8ea8565e0c1db2576e058f6c44321b907fe2587f9826a04d15a6700a312e537a",
+   "minted_at": "2026-09-05T20:42:14+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "0e801dd73e573eb8238b326313f84743529e4f86",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/change-coin.py",
+     ".claude/skills/goggles/run.mjs",
+     ".github/workflows/change-coin-verify.yml",
+     ".github/workflows/ecosystem-protocol-sync.yml",
+     ".github/workflows/pr-trademark.yml",
+     "ECOSYSTEM.md",
+     "docs/GOGGLES-LEAK-MAP.md",
+     "scripts/ecosystem-orient.sh",
+     "scripts/gate-lock.js",
+     "scripts/ledger-append-ratchet.js",
+     "seeds/gates.lock.json",
+     "seeds/traps.seed.json",
+     "src/tools/goggles-bash-hook.js",
+     "tests/change-coin.test.js"
+    ],
+    "diff_bytes": 68050,
+    "diff_sha256": "b16ac1a99f07841557695ed92298c3ae876d33412479608be098559899cc271a"
+   },
+   "reading": {
+    "coherency": 0.09082634569580876,
+    "ratio": 3.127297794117647,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "e3f5d31ce34dea60",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "6b45ba10834926652f391efc74a71d1012ed47e71e7279693b2a15c956d2bb6f",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-05T20:42:14",
+     "coin": null,
+     "sig": "e3f5d31ce34dea604871cda0764d3c56aea6ed202f5258f1b8424a3932b28ace"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 68050,
+     "compressed_size": 21760,
+     "coherency": 0.09082634569580876,
+     "data_sha256": "d22d13ce48af28829b60e2f1bc671e69d0e7e929c3b0fe81734f5d566c433af4",
+     "compressed_sha256": "abb7594d1fd9120e2c3c73b122abf520d734e107b0a4367a6450dfc6fc41c688",
+     "shape_sha256": "4a061f02dc3c18cc189e3b3451bca04c244247f3244513724d87be821ded261f",
+     "shape": {
+      "blends": [
+       {
+        "name1": "triangle",
+        "name2": "cosine_4",
+        "alpha": 0.413818359375,
+        "beta": 0.264892578125
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "cosine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/bg_noise",
+        "name2": "seismic/bg_noise",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cubic",
+        "name2": "cubic",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "power_2.0",
+        "name2": "power_2.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/ramp_plateau",
+        "name2": "sensor/ramp_plateau",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_101",
+        "name2": "finance/gbm_101",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/crash_recovery",
+        "name2": "exp_grow_1",
+        "alpha": 0.498779296875,
+        "beta": 0.403564453125
+       },
+       {
+        "name1": "exp_grow_5",
+        "name2": "exp_grow_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/ecg_2beat",
+        "name2": "finance/gbm_102",
+        "alpha": 1.1162109375,
+        "beta": 0.2369384765625
+       },
+       {
+        "name1": "cosine_2",
+        "name2": "cosine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_4",
+        "name2": "sine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_12",
+        "name2": "medical/eeg_alpha_12",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/mean_reversion",
+        "name2": "finance/mean_reversion",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "audio/harmonics_3",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/adsr_envelope",
+        "name2": "audio/adsr_envelope",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "finance/vol_smile",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/p_wave",
+        "name2": "finance/mean_reversion",
+        "alpha": 0.611328125,
+        "beta": 0.237548828125
+       },
+       {
+        "name1": "exp_decay_10",
+        "name2": "exp_grow_5",
+        "alpha": 0.67626953125,
+        "beta": 0.32177734375
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "finance/vol_smile",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "power_0.5",
+        "name2": "power_0.5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "exp_grow_10",
+        "alpha": 0.20654296875,
+        "beta": 0.462890625
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_101",
+        "name2": "finance/gbm_101",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "power_2.0",
+        "name2": "power_2.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_101",
+        "name2": "medical/eeg_alpha_8",
+        "alpha": 0.40625,
+        "beta": 0.18359375
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "audio/harmonics_3",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "audio/adsr_envelope",
+        "alpha": 0.3056640625,
+        "beta": 0.40380859375
+       },
+       {
+        "name1": "sine_16",
+        "name2": "sine_16",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "cosine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "triangle",
+        "alpha": 0.3515625,
+        "beta": 0.348388671875
+       },
+       {
+        "name1": "power_2.0",
+        "name2": "power_2.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "power_0.5",
+        "name2": "power_0.5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sawtooth",
+        "name2": "walk/rw_202",
+        "alpha": 0.65234375,
+        "beta": 0.53759765625
+       },
+       {
+        "name1": "sawtooth",
+        "name2": "sawtooth",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/temp_daily",
+        "name2": "sensor/temp_daily",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_mixed",
+        "name2": "medical/eeg_mixed",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/respiration",
+        "name2": "seismic/p_wave",
+        "alpha": 0.207763671875,
+        "beta": 0.93701171875
+       },
+       {
+        "name1": "sine_2",
+        "name2": "sine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/pressure_weekly",
+        "name2": "sensor/pressure_weekly",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "cosine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "fractal",
+        "name2": "fractal",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "seismic/s_wave",
+        "alpha": 0.1783447265625,
+        "beta": 0.501953125
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "cubic",
+        "alpha": 0.278076171875,
+        "beta": 0.65673828125
+       },
+       {
+        "name1": "exp_decay_5",
+        "name2": "exp_grow_1",
+        "alpha": 0.9072265625,
+        "beta": 0.321533203125
+       },
+       {
+        "name1": "gaussian_0.5",
+        "name2": "gaussian_0.5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_100",
+        "name2": "seismic/s_wave",
+        "alpha": 0.193115234375,
+        "beta": 0.58251953125
+       },
+       {
+        "name1": "finance/gbm_100",
+        "name2": "finance/gbm_100",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_200",
+        "name2": "exp_grow_10",
+        "alpha": 0.28564453125,
+        "beta": 0.362060546875
+       },
+       {
+        "name1": "audio/chirp",
+        "name2": "audio/chirp",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_203",
+        "name2": "walk/rw_203",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_mixed",
+        "name2": "exp_grow_10",
+        "alpha": 0.243896484375,
+        "beta": 0.28857421875
+       },
+       {
+        "name1": "sine_2",
+        "name2": "sine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/crash_recovery",
+        "name2": "finance/crash_recovery",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_10",
+        "name2": "exp_grow_5",
+        "alpha": 0.88330078125,
+        "beta": -0.3955078125
+       },
+       {
+        "name1": "medical/eeg_alpha_8",
+        "name2": "medical/eeg_alpha_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/temp_daily",
+        "name2": "sensor/temp_daily",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_decay_10",
+        "name2": "exp_grow_5",
+        "alpha": 0.79443359375,
+        "beta": 0.33154296875
+       },
+       {
+        "name1": "exp_grow_10",
+        "name2": "cosine_4",
+        "alpha": 0.283935546875,
+        "beta": 0.1265869140625
+       },
+       {
+        "name1": "fractal",
+        "name2": "fractal",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_100",
+        "name2": "finance/gbm_100",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_204",
+        "name2": "walk/rw_204",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "square_2",
+        "name2": "square_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "cubic",
+        "alpha": 0.2244873046875,
+        "beta": 0.449462890625
+       },
+       {
+        "name1": "power_1.0",
+        "name2": "power_1.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_10",
+        "name2": "exp_grow_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_10",
+        "name2": "exp_decay_5",
+        "alpha": 0.3447265625,
+        "beta": 0.153076171875
+       },
+       {
+        "name1": "sine_4",
+        "name2": "sine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "finance/vol_smile",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_decay_5",
+        "name2": "exp_grow_2",
+        "alpha": 0.82373046875,
+        "beta": 0.2352294921875
+       },
+       {
+        "name1": "walk/rw_200",
+        "name2": "walk/rw_200",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "cosine_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/formant_a",
+        "name2": "audio/formant_a",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/bg_noise",
+        "name2": "seismic/bg_noise",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_201",
+        "name2": "finance/vol_smile",
+        "alpha": 0.68798828125,
+        "beta": 0.427978515625
+       },
+       {
+        "name1": "walk/rw_202",
+        "name2": "walk/rw_202",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/mean_reversion",
+        "name2": "finance/mean_reversion",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_12",
+        "name2": "medical/eeg_alpha_12",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_104",
+        "name2": "finance/gbm_104",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_5",
+        "name2": "exp_grow_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/formant_a",
+        "name2": "audio/formant_a",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/chirp",
+        "name2": "audio/chirp",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_1",
+        "name2": "sine_1",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/respiration",
+        "name2": "audio/adsr_envelope",
+        "alpha": 0.22607421875,
+        "beta": 0.29638671875
+       },
+       {
+        "name1": "cosine_2",
+        "name2": "cosine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "gaussian_2.0",
+        "name2": "finance/gbm_102",
+        "alpha": 0.52294921875,
+        "beta": 0.7236328125
+       },
+       {
+        "name1": "finance/mean_reversion",
+        "name2": "finance/mean_reversion",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "finance/gbm_104",
+        "alpha": 0.43115234375,
+        "beta": 0.6142578125
+       },
+       {
+        "name1": "gaussian_0.5",
+        "name2": "gaussian_0.5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/respiration",
+        "name2": "medical/respiration",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/bg_noise",
+        "name2": "seismic/bg_noise",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/chirp",
+        "name2": "audio/chirp",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "gaussian_0.3",
+        "name2": "gaussian_0.3",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_104",
+        "name2": "finance/gbm_104",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_1",
+        "name2": "sine_1",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cubic",
+        "name2": "cubic",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/adsr_envelope",
+        "name2": "audio/adsr_envelope",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_2",
+        "name2": "cosine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_101",
+        "name2": "finance/gbm_101",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "audio/harmonics_3",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/adsr_envelope",
+        "name2": "audio/adsr_envelope",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/ramp_plateau",
+        "name2": "sensor/ramp_plateau",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "cosine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_100",
+        "name2": "finance/gbm_100",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "gaussian_2.0",
+        "name2": "gaussian_2.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_204",
+        "name2": "walk/rw_204",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_5",
+        "name2": "exp_grow_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/formant_a",
+        "name2": "audio/formant_a",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/temp_daily",
+        "name2": "sensor/temp_daily",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_16",
+        "name2": "cosine_16",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/temp_daily",
+        "name2": "sensor/temp_daily",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "finance/vol_smile",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_204",
+        "name2": "walk/rw_204",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_12",
+        "name2": "medical/eeg_alpha_12",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_102",
+        "name2": "finance/gbm_102",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cubic",
+        "name2": "cubic",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "triangle",
+        "name2": "cosine_4",
+        "alpha": 0.439697265625,
+        "beta": 0.28466796875
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "cosine_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/mean_reversion",
+        "name2": "audio/harmonics_2",
+        "alpha": 0.60546875,
+        "beta": 0.4501953125
+       },
+       {
+        "name1": "finance/crash_recovery",
+        "name2": "finance/crash_recovery",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/ramp_plateau",
+        "name2": "cosine_1",
+        "alpha": 0.677734375,
+        "beta": 0.496826171875
+       },
+       {
+        "name1": "exp_grow_5",
+        "name2": "exp_grow_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_16",
+        "name2": "sine_16",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/formant_a",
+        "name2": "audio/formant_a",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_8",
+        "name2": "medical/eeg_alpha_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/vibration",
+        "name2": "sensor/vibration",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_4",
+        "name2": "sine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "cosine_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_4",
+        "name2": "sine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_16",
+        "name2": "sine_16",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/crash_recovery",
+        "name2": "finance/crash_recovery",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/bg_noise",
+        "name2": "seismic/bg_noise",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_104",
+        "name2": "finance/gbm_104",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/ecg_beat",
+        "name2": "medical/ecg_beat",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/p_wave",
+        "name2": "walk/rw_201",
+        "alpha": 0.9716796875,
+        "beta": 0.236572265625
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "triangle",
+        "name2": "cosine_4",
+        "alpha": 0.84521484375,
+        "beta": 0.5078125
+       }
+      ],
+      "avg_l1_coherence": 0.09082634569580876,
+      "avg_l2_coherence": 0.2782135742730391,
+      "l2_improved": 86,
+      "num_chunks": 148,
+      "int8_chunks": 18
+     }
+    }
+   },
+   "fractal_token": {
+    "v": "fractal-token/v1",
+    "depth_dim": 232,
+    "token_sha256": "6e802ca945e2a462bc268274bcfcd9e547067fff64a821472d137784c2aa00a4",
+    "shape_sha256": "4a061f02dc3c18cc189e3b3451bca04c244247f3244513724d87be821ded261f"
+   }
+  }
+ ]
+}

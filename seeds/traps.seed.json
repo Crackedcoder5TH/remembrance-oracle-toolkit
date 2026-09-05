@@ -647,6 +647,64 @@
    "truth": "Harvest is idempotent BY KEY: a re-minted coin (03:04) stayed indexed as its 01:29 version because the key already existed. The goggles' 'vs substrate' flow read DECAY on the committed ledger for the same reason — the working copy drifted from what the substrate remembers.",
    "tell": "`vs substrate: ... [DECAY] — working copy has drifted from the substrate memory`; a file's index entry `ledger.ingested_at` older than its last commit.",
    "correct": "`--do harvest <repo> --restamp` re-reads indexed entries through the compressor; a plain harvest only adds new keys."
+  },
+  {
+   "match": [
+    "git commit",
+    "change-coin",
+    "Remembrance-Coin",
+    "coins.ledger.json",
+    "--do mint"
+   ],
+   "severity": "high",
+   "wrong": "Committing a change the instrument never read — `git add && git commit` with no coin, or minting and then changing the index before committing.",
+   "truth": "A change is accepted only when its commit names a coin minted over its EXACT staged bytes (.claude/skills/goggles/change-coin.py). The coin binds the patch sha, the compressor's void-seal over the quantised bytes it read, the void-seal/v3 commitment and the fractal token of its shape. The commit-msg hook refuses the commit; change-coin-verify.yml refuses the merge on GitHub's runner. Editing the index after the mint changes the patch sha, and the coin no longer covers it.",
+   "tell": "`✗ commit REFUSED — no coin over THIS change`; a red change-coin-verify check; `-n`/`--no-verify`/`-a` in a commit command.",
+   "correct": "git add <files> → goggles --do mint → git commit. Re-mint after any change to the index. Never look for a flag around it — there is none, and the runner does not read flags."
+  },
+  {
+   "match": [
+    "pr-trademark",
+    "VOID_SEAL_KEY",
+    "payload",
+    "hmac",
+    "substrate_seal"
+   ],
+   "severity": "high",
+   "wrong": "A verifier rebuilding a signature payload from its own memory of the format instead of from the minter's code.",
+   "truth": "pr-trademark.yml rebuilt `sha|state|via|at` while substrate_seal.mint signs `sha|state|via|at|coin_id` — so once armed it would have refused every GENUINE seal and could never pass one. A verifier and its minter share one canon by construction (the coin verifier rebuilds void-seal/v3 from the commitment fields the compressor itself emits), never two hand-copies of it.",
+   "tell": "Two files that each spell out the payload string; a wall that is 'dormant' and has never been seen to pass a real seal.",
+   "correct": "Read the minter (scripts/substrate_seal.py mint) and build the verifier's payload from the same fields in the same order, then prove it with one genuine seal before arming."
+  },
+  {
+   "match": [
+    "mint_coherency_token",
+    "coherency-token.js",
+    "bin/",
+    "layer 2",
+    "coin: null"
+   ],
+   "severity": "medium",
+   "wrong": "Reading `coin: null` on a void-seal as 'the chain declined' or 'layer 2 is optional'.",
+   "truth": "substrate_seal.mint_coherency_token shells out to REMEMBRANCE-BLOCKCHAIN/bin/coherency-token.js, which does not exist on the branch; the function returns None before any chain call, so every seal ever minted carries coin:null. The layer-2 coin has never been minted. The change coin (change-coin.py) is the coin that actually exists and is actually verified.",
+   "tell": "`⛓ coin: none (HMAC-only)` on every seal line; `bin/` absent in the blockchain repo.",
+   "correct": "Treat coin:null as 'no layer-2 path exists yet', not as a chain verdict. The verified coin is the change coin in coins.ledger.json and the commit trailer."
+  },
+  {
+   "match": [
+    "json",
+    "float",
+    "1.0",
+    "canonical",
+    "sort_keys",
+    "JSON.stringify",
+    "shape_sha256"
+   ],
+   "severity": "medium",
+   "wrong": "Passing a canonically-hashed structure through a different language's JSON and expecting the hash to recompute.",
+   "truth": "JSON.stringify(1.0) is `1`; Python json.dumps(1.0) is `1.0`. A shape hashed in Python (void-seal/v3 shape_sha256, default=repr, sort_keys) and re-serialized after a JS round-trip hashes differently whenever a float is integral. The change coin is minted and verified in Python end to end for exactly this reason.",
+   "tell": "A shape/commitment hash that fails to recompute only for some readings; integral-valued floats in the structure.",
+   "correct": "Hash canonical structures in the language that produced them, or carry the original serialized bytes. Prove recomputation on a reading whose floats include 0.0 or 1.0 before trusting it."
   }
  ]
 }

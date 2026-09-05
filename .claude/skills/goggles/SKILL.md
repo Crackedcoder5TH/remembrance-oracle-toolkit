@@ -55,6 +55,9 @@ operation physically lives:
     run.mjs --do read <file|--series>  # ONE CALL: your data → a labeled reading
     run.mjs --do service [status|start|stop]   # lifecycle — no silent states
     run.mjs --do denials [N]           # the wall's ledger — every refused bypass
+    run.mjs --do mint                  # THE CHANGE COIN — mint over the staged change (required to commit)
+    run.mjs --do mint verify [--staged|--since-epoch|A..B]   # what the hook and CI check
+    run.mjs --do mint install-hooks    # the commit-msg hook that writes the trailer / refuses
     run.mjs --do seal [--verify]       # commit seal — CI re-derives it or refuses the merge
     run.mjs --do field                 # peek the Living Remembrance field state
     run.mjs --do drift [repo|all]      # substrate drift check (no encoding)
@@ -85,6 +88,22 @@ It prints the signature and doc line before invoking, so you see what you are
 about to run. Naming a function that is not exported lists the ones that are.
 Constants are printed rather than called. It IS a real invocation — a function
 with side effects will have them.
+
+## The change coin — no coin, no change
+
+Every commit must carry `Remembrance-Coin: <coin_id>` naming a coin in
+`coins.ledger.json` that was minted by `--do mint` over the **exact staged
+patch**: the patch is read through the instrument (void-seal + void-seal/v3
+commitment) and the commitment's shape is unfolded through the decoder
+(fractal token). The commit-msg hook refuses a commit whose staged bytes no
+coin covers, and `change-coin-verify.yml` refuses the merge on GitHub's runner
+for any commit since the epoch — recomputing the patch from the trees, the
+quantised bytes the compressor hashed, the seal's canon, and the coin id;
+with `VOID_SEAL_KEY` set as a repo secret the seal's HMAC is verified too. The
+order of work is therefore fixed: `git add` → `--do mint` → `git commit`. Change
+the index after minting and the coin no longer covers it — mint again. There is
+no flag that skips this; `--no-verify` is refused by the goggles wall and is
+powerless against the runner.
 
 **Call the goggles, not the scripts underneath.** Every verb routes to a
 script that already existed; the verbs exist so nobody has to know where. If

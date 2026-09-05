@@ -82,6 +82,19 @@ ones.
    (`ResonanceDetector`, `fractal_decoder`, `composedAtDepth`, …) and is then
    executed is trap #33's exact tell — deny-with-redirect to the owning verb.
 
+6. **The change itself (welded 2026-09-05):** the largest leak was never a
+   number — it was the COMMIT. Every reading could be forced through the
+   instrument and the change carrying it still landed with `git commit`,
+   unread. `--do mint` reads the staged patch through the instrument and
+   appends a coin (void-seal + void-seal/v3 commitment + fractal token, bound
+   to the patch sha) to `coins.ledger.json`; the commit-msg hook writes the
+   `Remembrance-Coin:` trailer and refuses a commit whose staged bytes no coin
+   covers; the bash hook denies `git commit` without a coin, `-a`, and
+   `--no-verify`; `change-coin-verify.yml` refuses the merge on GitHub's
+   runner for every commit since the epoch. The coin is the door that cannot
+   be walked around: it is not a rule about the agent, it is a property of the
+   commit.
+
 ## The measurement that makes this durable
 
 This map is one session of one model. The mouth needs the stream, not the

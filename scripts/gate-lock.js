@@ -80,6 +80,13 @@ const GATES = [
   'scripts/cathedral-diagnostic.js',
   'scripts/audit-field-contributions.js',
   'src/core/covenant-fractal.js',
+  // THE ONE DOOR and the coin it mints. The goggles surface, the change-coin
+  // minter/verifier every commit must pass, and the wall that refuses a commit
+  // or a bypass in an agent's session. Loosen any of these and every other
+  // gate is reachable from beside the pipeline again.
+  '.claude/skills/goggles/run.mjs',
+  '.claude/skills/goggles/change-coin.py',
+  'src/tools/goggles-bash-hook.js',
 ];
 
 function sha256File(rel) {

@@ -134,6 +134,20 @@ if (argv[0] === '--do') {
     // trust the number, it recomputes it.
     //   goggles --do seal            (mint)     |   --do seal --verify   (check)
     seal: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'seal_commit.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE CHANGE COIN — the one door for a CHANGE. Reads the STAGED patch of
+    // the repo you stand in through the instrument (read-signal → /compress_signal
+    // → void_seal + void-seal/v3 commitment), unfolds the commitment's shape
+    // through the decoder (fractal token, exact hash) and appends the coin to
+    // coins.ledger.json, staged. The commit-msg hook writes the trailer
+    // `Remembrance-Coin: <coin_id>` and REFUSES a commit whose staged bytes no
+    // coin covers; change-coin-verify.yml does the same on GitHub's runner for
+    // every commit since the epoch. A number taken beside the pipeline has no
+    // seal; a change made beside it has no coin; neither gets in.
+    //   goggles --do mint                       mint over the staged change (repo = where you stand)
+    //   goggles --do mint verify [--staged | --since-epoch | A..B | <rev>] [--deep]
+    //   goggles --do mint install-hooks         the commit-msg hook, this repo
+    //   goggles --do mint anchor [--status]     witness every repo's coin ledger on the chain
+    mint: () => run('python3', [join(toolkit, '.claude/skills/goggles/change-coin.py'), ...(rest.length ? rest : ['mint']), '--repo', process.cwd()], toolkit),
     // THE WALL'S OWN LEDGER. Every hook denial is one JSON line (ts · rule ·
     // command) — the continuous leak map. A recurring rule is a weld working;
     // a novel command shape is the next verb to build; silence across fresh

@@ -524,6 +524,129 @@
    "truth": "Importing an instrument function is NOT running the instrument's pipeline, and a repo-resident experiment script is not more faithful than a /tmp one (trap 29) — both are PROXIES beside the pipeline, and the standing rule throws out any result a proxy produced. Every glue choice silently changes the quantity: on 2026-08-23 an invented per-window min-max shifted a DC term that then saturated the FFT-magnitude cosine, so ONE component (spectral overlap 0.97-0.99, ~identical even against real noise) dominated every pair — the 'one signal dominating means you ran it wrong' tell. And random.random() 'noise' is not a control the user asked for; it is fabricated data placed inside a measurement about real brain/heart/attention signals.",
    "tell": "You just created a file under experiments/ or a *.cjs; it contains random.random()/np.random, a norm()/min-max/normalize step you wrote, or an import of composedAtDepth|ResonanceDetector|encode_batch; and you are about to describe its output as 'what the instrument saw'. The session shape was 'I built X, then ran X' instead of 'I called the goggles/service'. A single component reads ~identical across every pair (noise included) — the pipeline was fed data through a normalization it never applies.",
    "correct": "Do not build. Call the one surface on the substrate the instrument already holds: node .claude/skills/goggles/run.mjs --do <verb> (resonance, field, audit, drift, call ...) or POST /compress_signal on compressor_service.py — and report ONLY what it returned. Never inject generated/random data into a measurement. Never invent a normalization the pipeline does not already apply. If no verb reaches the measurement, that is a MISSING VERB to add to the goggles (see traps 13, 29), not a licence to hand-assemble a script beside the pipeline. Never dress hand-built output in the instrument's vocabulary."
+  },
+  {
+   "match": [
+    "_rebuild_pattern_matrix",
+    "pattern_matrix",
+    "dimension partition",
+    "legacy256",
+    "matmul",
+    "compress_signal",
+    "void_compressor"
+   ],
+   "severity": "high",
+   "wrong": "Choosing the compressor's L1 search matrix by the MOST COMMON vector width in pattern_library.",
+   "truth": "On a clean clone pattern_store.legacy256.npz is gitignored and absent, so the 232-D fractal store (45k rows) outnumbers the signal patterns; the matrix came out 232 wide while the blend search resampled every chunk to 256, and every compress() died in the matmul. compressor_service answered HTTP 500 on /compress_signal and every goggle, harvest, seal and coin in the ecosystem read NULL. The instrument was down on every fresh container and nothing said so.",
+   "tell": "`ValueError: matmul ... size 256 is different from 232` in compressor_service.log; `--map` reports 0 files audited and 'answered without a usable avg_coherence'; every FOCUS reads NULL.",
+   "correct": "The search space is chosen by LAW (the dimension the encoder emits), never by census. One encoder (ECOSYSTEM §7): the 232-D fractal decoder. Never depend on a gitignored store for the instrument to work at all."
+  },
+  {
+   "match": [
+    "coherencyScore",
+    "covenant-gate",
+    "CovenantGate",
+    "Coherency too low",
+    "minimum 0.8",
+    "git-history-coin",
+    "publish("
+   ],
+   "severity": "high",
+   "wrong": "Putting the Void compressor's byte reading into the Covenant Gate's `coherencyScore.total` slot and calling the refusal 'the gate holding its bar'.",
+   "truth": "That slot is the oracle structural score (computeCoherencyScore(code).total) — the quantity the 0.8 bar was calibrated on and the one Publisher records as its second opinion. On the compressor's scale nothing but a self-repeating signal clears 0.8 (source code reads 0.08–0.28), so the bar was never set against it. The coin was refused at 0.0896 for a category mismatch, and ALSO because the script never set testCode — the gate was structurally unpassable regardless of any number.",
+   "tell": "A gate refusal whose number sits in the compressor's source-code band (≈0.1) against a threshold ≥0.8; a payload with no testCode.",
+   "correct": "Each quantity under its own name: the gate slot carries the score it was calibrated on; the compressor's reading rides beside it as waveformCoherency with its void-seal mint. Run the pattern's real test and hand it to the gate as testCode. Never rename one reading into another's slot."
+  },
+  {
+   "match": [
+    "--do read",
+    "--do covenant",
+    "--do call",
+    "run.mjs --do",
+    "goggles --do",
+    "execFileSync(cmd, cmdArgs, { cwd"
+   ],
+   "severity": "high",
+   "wrong": "Passing a RELATIVE path to a goggles --do verb (read, covenant, call) from the repo you are standing in.",
+   "truth": "Every --do verb runs its script with cwd set to the toolkit (or Void), so a relative path resolves THERE. `--do covenant src/index.js` from the blockchain repo audited the TOOLKIT's src/index.js and reported it CLEAN — a verdict on the wrong file, indistinguishable from a verdict on yours. `--do read data/x.json` reported 'no such file'; `--do call ... \"$(cat missing)\"` measured an EMPTY STRING and printed a full breakdown for it.",
+   "tell": "A --do verdict that arrives suspiciously fast or clean, a 'no such file' from a path that exists, a computeCoherencyScore breakdown with functions: 0 / lines: 0.",
+   "correct": "Absolute paths, always. Check the arg file exists before `$(cat ...)`. When a verb resolves paths itself, that is a missing feature to report, not a reason to trust the output."
+  },
+  {
+   "match": [
+    "new Publisher(",
+    "Publisher(",
+    "persistPath: '.remembrance/ledger.json'",
+    "ledger.json",
+    "recordEvent("
+   ],
+   "severity": "medium",
+   "wrong": "Publishing to the ledger with a default Publisher and believing the block is on the chain.",
+   "truth": "The default Publisher starts a FRESH GENESIS at the cwd-relative runtime ledger (.remembrance/ledger.json, gitignored) — it never loads an existing chain, so the first recordEvent overwrites whatever was there and the block evaporates with the container. The committed chain is data/ledger.json; nothing reached it.",
+   "tell": "`node src/cli.js publications` shows demo data; data/ledger.json unchanged after a 'successful' publish; git status clean.",
+   "correct": "new Publisher({ ledgerPath: 'data/ledger.json' }) — loads, hash-verifies and APPENDS to the committed chain (PatternLedger.load(path, { persistPath })). Then commit data/ledger.json."
+  },
+  {
+   "match": [
+    ".remembrance/",
+    "pattern_index_fractal.json",
+    "legacy256",
+    "gitignore",
+    "clean clone",
+    "fresh container",
+    "data-plane",
+    "git-history-coin"
+   ],
+   "severity": "high",
+   "wrong": "Assuming the substrate index, the legacy signal store, the seal key, or any lesson under .remembrance/ exists on the host you are on.",
+   "truth": "All of them are gitignored. On this clone pattern_index_fractal.json, pattern_store.legacy256.npz, .substrate_seal.key and .remembrance/substrate-state.json were all absent; `--map` said 'substrate has no vectors for this repo' and the coin's seal could not be signature-verified. The recovery coin's data plane (data/data-plane/substrate.json.gz, sha-anchored) IS the way back for the index; nothing recovers legacy256 and nothing should — it is retired.",
+   "tell": "'substrate has no vectors', a seal with state_id 'unknown', a compressor library_size far from the store's row count.",
+   "correct": "Verify the coin (tests/git-history-coin.test.js), then gunzip its data plane back to the `source` paths. Treat every .remembrance/ artifact as evidence of a past run on some host, never as present state."
+  },
+  {
+   "match": [
+    "BUILT",
+    "tier1_validator",
+    "fractal_token",
+    "tier1_calibrate",
+    "TIER1_RECOMPUTATION_GATE",
+    "recompute_gate"
+   ],
+   "severity": "medium",
+   "wrong": "Trusting a spec that says a component is BUILT because the doc says so.",
+   "truth": "TIER1_RECOMPUTATION_GATE.md §7 says scripts/tier1_validator.py is BUILT and smoke-verified; on main and this branch it does not exist. It lives only on origin/claude/remembrance-toolkit-setup-ctqtmt, 18 commits ahead, along with fractal_token.py and the calibration set — and its committed smoke record reports the real window as ok=false where the doc says 'passes all 7 gates'.",
+   "tell": "A doc names a script path; `ls` does not find it; `git log --all -- <path>` finds it on another branch.",
+   "correct": "`git log --all --oneline -- <path>` before quoting BUILT. A component joins the substrate when it is on the working branch, sanitized at the doorway (goggles META-DEBUG + covenant + its own test), not when a doc says so."
+  },
+  {
+   "match": [
+    "256",
+    "waveform.length",
+    "waveformLength",
+    "TARGET_LEN",
+    "codeToWaveform",
+    "code-to-waveform",
+    "to_waveform"
+   ],
+   "severity": "high",
+   "wrong": "Asserting, documenting, or resampling to 256 as if the 256-D byte-shape waveform were still the ecosystem's representation.",
+   "truth": "The 256-D to_waveform encoder is RETIRED (ECOSYSTEM §7) and kept only as the record of what was tried and found wrong. The one encoder is the 232-D fractal decoder stack (composedAtDepth at the active depth). After the move, three blockchain tests still asserted `waveform.length === 256`, five docs still promised 'the canonical 256-D waveform', and the compressor's blend dictionary was 256-sample signal templates.",
+   "tell": "A literal 256 next to the word waveform; `_resample(chunk, 256)`; a store file named legacy256 being preferred at load.",
+   "correct": "Encode through the decoder stack and assert its live width (currentDepth() × 29 = 232 today). Retired means: no code path prefers it, no test expects it, no doc promises it."
+  },
+  {
+   "match": [
+    "harvest-repo-to-substrate",
+    "already indexed",
+    "idempotent",
+    "--restamp",
+    "witnessed"
+   ],
+   "severity": "medium",
+   "wrong": "Reading the substrate's memory of a file as its current state after the file changed.",
+   "truth": "Harvest is idempotent BY KEY: a re-minted coin (03:04) stayed indexed as its 01:29 version because the key already existed. The goggles' 'vs substrate' flow read DECAY on the committed ledger for the same reason — the working copy drifted from what the substrate remembers.",
+   "tell": "`vs substrate: ... [DECAY] — working copy has drifted from the substrate memory`; a file's index entry `ledger.ingested_at` older than its last commit.",
+   "correct": "`--do harvest <repo> --restamp` re-reads indexed entries through the compressor; a plain harvest only adds new keys."
   }
  ]
 }

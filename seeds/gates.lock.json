@@ -1,0 +1,62 @@
+{
+ "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
+ "lockedAt": "2026-09-05T19:22:34.334Z",
+ "digest": "08427de8a2b96836eb4178154ecd4ef4c6c168bdd563f0c7f534fc635d0a126d",
+ "gates": {
+  "scripts/gate-lock.js": "73901f861d67dc4e3d128217c2d7abf8ca62c11aa235dab391847206ba1bb856",
+  "scripts/lib/ratchet-law.js": "7184c804c005d27850a6b906286b14184b5622cc8bf2498aebcb90ad706bd8be",
+  "scripts/ratchet-battery.js": "7092f89f42edbb70764cd65140c0acdbb6ada5c7527a55255ec8ec70bde51b4f",
+  "scripts/covenant-ratchet.js": "2b429a6adae93dd4b8025be69e663e0eddf48d29fec2e9d0fe20f2597d4da7a9",
+  "scripts/exemption-ratchet.js": "678cb750310e2aa3428e6cd78c56e157b464d82b9ae5de209a65e0000ca4cf91",
+  "scripts/size-ratchet.js": "f9fc77be34d0259f2fe21d34bd8b8494894a4bc698ce4e4a50cc2ec4e0d33f88",
+  "scripts/cycle-ratchet.js": "3421ad1685862dc161b0b40d81500d33972ba08273ee907c8ed70ad6fbacd238",
+  "scripts/suite-reachability-ratchet.js": "35577247f83ee79b759e890569fda5edb800b7392db1d6fd90a8b6d1f2466c8f",
+  "scripts/field-source-ratchet.js": "86e5007fb1496216dd9971fc582757b3efa78e67c3b5400bcd1d74f5604b0784",
+  "scripts/ledger-append-ratchet.js": "61acff70e86b5388d35cf8f658b7eb2d1cc52e0033609e1772a7d546ea683a00",
+  "scripts/orphan-ratchet.js": "2cc9e9055f1d073fa89e5323a6ba1c09c7b12e09b2ddad58dde44b9426bfeb67",
+  "scripts/silent-catch-ratchet.js": "fbe0191becb8e53ef490c398183ac03af8f97ae6eec34e688d6ff68ee1475ffc",
+  "scripts/console-ratchet.js": "4c4ba3d6742a0910713d413f52e4870b94bba634e0a8ecd594318ccc8f6d13a4",
+  "scripts/atomic-drift-ratchet.js": "4fe3cdc47ab8201a191d74e4017a048e7208c4c1ef0cb810dd2326d1d619e31d",
+  "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
+  "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
+  "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
+  "src/core/covenant-fractal.js": "eba1a8619c8fe19ed5a255765bbcdd67b15c5f39a56015263540c1bed3b1cb1f"
+ },
+ "history": [
+  {
+   "at": "2026-09-05T19:21:51.883Z",
+   "from": null,
+   "to": "29898152ddfba703e523c92a7aa5d115c85e4625eab3121e2daa715b0a230bc4",
+   "reason": "gate law installed: every ratchet's --save-baseline refuses to loosen (scripts/lib/ratchet-law.js), gate-lock added as gate zero, atomic-drift added to the pre-commit hook, console-ratchet gained the unparseable guard",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/lib/ratchet-law.js",
+    "scripts/ratchet-battery.js",
+    "scripts/covenant-ratchet.js",
+    "scripts/exemption-ratchet.js",
+    "scripts/size-ratchet.js",
+    "scripts/cycle-ratchet.js",
+    "scripts/suite-reachability-ratchet.js",
+    "scripts/field-source-ratchet.js",
+    "scripts/ledger-append-ratchet.js",
+    "scripts/orphan-ratchet.js",
+    "scripts/silent-catch-ratchet.js",
+    "scripts/console-ratchet.js",
+    "scripts/atomic-drift-ratchet.js",
+    "scripts/ecosystem-ratchet.js",
+    "scripts/cathedral-diagnostic.js",
+    "scripts/audit-field-contributions.js",
+    "src/core/covenant-fractal.js"
+   ]
+  },
+  {
+   "at": "2026-09-05T19:22:34.335Z",
+   "from": "29898152ddfba703e523c92a7aa5d115c85e4625eab3121e2daa715b0a230bc4",
+   "to": "08427de8a2b96836eb4178154ecd4ef4c6c168bdd563f0c7f534fc635d0a126d",
+   "reason": "covenant-ratchet save path: compare against effectiveBaseline().bs (the floor object), so a run above the floor is refused as DEBT",
+   "changed": [
+    "scripts/covenant-ratchet.js"
+   ]
+  }
+ ]
+}

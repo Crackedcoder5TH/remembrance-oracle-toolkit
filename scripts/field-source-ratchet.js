@@ -33,6 +33,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_PATH = path.join(ROOT, '.field-sources-baseline.json');
@@ -98,6 +99,11 @@ function main() {
         console.error('  a coherency comes from the Void compressor or it is not a coherency. Fix the site.');
         return 1;
       }
+      // THE LAW: the write surface only shrinks. A new site feeding the field
+      // — even a MEASURED one — is DEBT until the owner carries it in by name.
+      const knownMeasured = new Set((baseline.measured || []).map((s) => s.key));
+      const addedMeasured = current.filter((s) => s.kind === 'MEASURED' && !knownMeasured.has(s.key) && !gf.has(s.key));
+      if (refuseIfLoosening('field-source', addedMeasured.map((s) => `NEW write site: ${s.key}`), argv)) return 1;
     }
     const data = JSON.stringify({
       note: 'field-source baseline — every call site allowed to feed contribute({coherence}). New sites are a decision; the grandfathered non-measured list is shrink-only and each entry awaits owner adjudication.',

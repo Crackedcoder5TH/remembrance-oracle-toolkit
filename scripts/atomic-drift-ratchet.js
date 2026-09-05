@@ -45,6 +45,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_PATH = path.join(ROOT, '.atomic-drift-baseline.json');
@@ -236,6 +237,17 @@ function main() {
 
   if (argv.includes('--save-baseline')) {
     const prev = loadBaseline();
+    // THE LAW: drift only shrinks. New or grown drift and unreadable files are DEBT.
+    if (prev) {
+      const debt = [];
+      for (const [f, n] of Object.entries(current.byFile)) {
+        const base = prev.byFile[f];
+        if (base === undefined) debt.push(`NEW drifting file: ${f} (${n})`);
+        else if (n > base) debt.push(`GREW: ${f} ${base} -> ${n}`);
+      }
+      for (const f of current.unparseable || []) debt.push(`UNPARSEABLE: ${f}`);
+      if (refuseIfLoosening('atomic-drift', debt, argv)) return 1;
+    }
     const data = JSON.stringify({
       note: 'atomic-drift baseline — functions whose declared atomicProperties disagree with extractAtomicProperties over their own body, per file. Shrink-only: re-measure and correct the DECLARATION, never loosen the comparison.',
       savedAt: new Date().toISOString(),

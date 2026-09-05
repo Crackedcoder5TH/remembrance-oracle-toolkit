@@ -19,6 +19,8 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.resolve(__dirname, '..');
 
 const RATCHETS = [
+  // gate zero: the gates themselves are locked (scripts/gate-lock.js)
+  { name: 'gate-lock', script: 'scripts/gate-lock.js' },
   { name: 'covenant', script: 'scripts/covenant-ratchet.js' },
   { name: 'exemption', script: 'scripts/exemption-ratchet.js' },
   { name: 'size', script: 'scripts/size-ratchet.js' },
@@ -53,13 +55,18 @@ runOne.atomicProperties = {
 function main() {
   const results = RATCHETS.map(runOne);
   const ok = results.every((r) => r.ok);
+  // DEBT: every open gate is debt the code owes. The gates never move to
+  // meet it (scripts/lib/ratchet-law.js); they count it until it is paid.
+  const debt = results.filter((r) => !r.ok).map((r) => r.name);
   if (process.argv.includes('--json')) {
-    console.log(JSON.stringify({ ok, gates: results }, null, 1));
+    console.log(JSON.stringify({ ok, debt: debt.length, openGates: debt, gates: results }, null, 1));
     return ok ? 0 : 1;
   }
-  console.log('══ RATCHET BATTERY — the gate family, one read ══');
+  console.log(`══ RATCHET BATTERY — the gate family (${RATCHETS.length} gates), one read ══`);
   for (const r of results) console.log(`  ${r.ok ? '✓' : '✗'} ${r.name.padEnd(18)} ${r.line}`);
-  console.log(ok ? '  all gates hold' : '  A GATE IS OPEN — fix the code, never the gate');
+  console.log(ok
+    ? '  all gates hold — no debt'
+    : `  DEBT: ${debt.length} gate(s) open [${debt.join(', ')}] — fix the code, never the gate`);
   return ok ? 0 : 1;
 }
 main.atomicProperties = {

@@ -22,6 +22,7 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 const DIAG_DIR = path.join(REPO_ROOT, '.remembrance', 'diagnostics');
 const LATEST = path.join(DIAG_DIR, 'ecosystem-latest.json');
 const BASELINE = path.join(DIAG_DIR, 'ecosystem-baseline.json');
@@ -45,41 +46,11 @@ function buildRepoIndex(report) {
   return out;
 }
 
-function main() {
-  const args = process.argv.slice(2);
-  const save = args.includes('--save-baseline');
-  const asJson = args.includes('--json');
-  const tolIdx = args.indexOf('--tolerance');
-  const tolerance = tolIdx >= 0 ? Number.parseInt(args[tolIdx + 1], 10) || 10 : 10;
-
-  const latest = readJson(LATEST);
-  if (!latest) {
-    const msg = 'no ecosystem-latest.json — run `node scripts/ecosystem-diagnostic.js` first';
-    if (asJson) { console.log(JSON.stringify({ ok: false, reason: msg })); process.exit(2); }
-    console.error(`[eco-ratchet] ${msg}`);
-    process.exit(2);
-  }
-
-  if (save) {
-    fs.writeFileSync(BASELINE, fs.readFileSync(LATEST));
-    console.log(`[eco-ratchet] baseline saved from current: ${path.relative(REPO_ROOT, BASELINE)}`);
-    process.exit(0);
-  }
-
-  const base = readJson(BASELINE);
-  if (!base) {
-    fs.writeFileSync(BASELINE, fs.readFileSync(LATEST));
-    const msg = 'no baseline — current run stored as the initial baseline. Pass after this run.';
-    if (asJson) { console.log(JSON.stringify({ ok: true, initialized: true })); process.exit(0); }
-    console.log(`[eco-ratchet] ${msg}`);
-    process.exit(0);
-  }
-
-  const curIdx = buildRepoIndex(latest);
-  const baseIdx = buildRepoIndex(base);
-
+/** Every way the current scan is worse than a baseline — the gate's debt list. */
+function collectViolations(curIdx, baseIdx, tolerance) {
   const violations = [];
   for (const [repo, bs] of baseIdx.entries()) {
+
     const cs = curIdx.get(repo);
     if (!cs) {
       violations.push(`${repo}: disappeared from the current scan (was audited in baseline)`);
@@ -104,6 +75,55 @@ function main() {
       }
     }
   }
+  return violations;
+}
+collectViolations.atomicProperties = {
+  charge: 0, valence: 1, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.4, group: 12, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
+function main() {
+  const args = process.argv.slice(2);
+  const save = args.includes('--save-baseline');
+  const asJson = args.includes('--json');
+  const tolIdx = args.indexOf('--tolerance');
+  const tolerance = tolIdx >= 0 ? Number.parseInt(args[tolIdx + 1], 10) || 10 : 10;
+
+  const latest = readJson(LATEST);
+  if (!latest) {
+    const msg = 'no ecosystem-latest.json — run `node scripts/ecosystem-diagnostic.js` first';
+    if (asJson) { console.log(JSON.stringify({ ok: false, reason: msg })); process.exit(2); }
+    console.error(`[eco-ratchet] ${msg}`);
+    process.exit(2);
+  }
+
+  if (save) {
+    // THE LAW: the floor only tightens. Every violation the check would raise
+    // against the existing baseline is DEBT; it is never saved into the floor.
+    const prevBase = readJson(BASELINE);
+    if (prevBase) {
+      const debt = collectViolations(buildRepoIndex(latest), buildRepoIndex(prevBase), tolerance);
+      if (refuseIfLoosening('eco-ratchet', debt, args)) process.exit(1);
+    }
+    fs.writeFileSync(BASELINE, fs.readFileSync(LATEST));
+    console.log(`[eco-ratchet] baseline saved from current: ${path.relative(REPO_ROOT, BASELINE)}`);
+    process.exit(0);
+  }
+
+  const base = readJson(BASELINE);
+  if (!base) {
+    fs.writeFileSync(BASELINE, fs.readFileSync(LATEST));
+    const msg = 'no baseline — current run stored as the initial baseline. Pass after this run.';
+    if (asJson) { console.log(JSON.stringify({ ok: true, initialized: true })); process.exit(0); }
+    console.log(`[eco-ratchet] ${msg}`);
+    process.exit(0);
+  }
+
+  const curIdx = buildRepoIndex(latest);
+  const baseIdx = buildRepoIndex(base);
+  const violations = collectViolations(curIdx, baseIdx, tolerance);
 
   const result = {
     ok: violations.length === 0,

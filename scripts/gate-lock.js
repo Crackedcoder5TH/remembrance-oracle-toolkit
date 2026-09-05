@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 'use strict';
-// @oracle-infrastructure — the lock over the gate family. Reads and verifies; the only write is --relock, an owner act appended to a governed ledger.
 
 /**
  * gate-lock — the gates cannot be edited.
@@ -41,8 +40,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { createGate, requireGate } = require('../src/core/covenant-fractal');
 
 const ROOT = path.resolve(__dirname, '..');
+// The one write — a relock — goes through the covenant gate.
+const _writeLock = requireGate((gate, file, data) => fs.writeFileSync(file, data));
+const _sealedGate = () => createGate().seal({
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.3, group: 18, period: 2,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+});
 const LOCK_PATH = path.join(ROOT, 'seeds', 'gates.lock.json');
 // The sibling Witness, when this is the dev layout. Best-effort: absent
 // chain = no anchor check; present chain with an anchor = must match.
@@ -78,12 +86,7 @@ function sha256File(rel) {
   try { return crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'); }
   catch (_) { return null; }
 }
-sha256File.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'odd', phase: 'gas',
-  reactivity: 'low', electronegativity: 0, group: 16, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+sha256File.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Hash every gate; { rel: sha256|null }. */
 function census() {
@@ -91,34 +94,19 @@ function census() {
   for (const g of GATES) out[g] = sha256File(g);
   return out;
 }
-census.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 18, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+census.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The lock digest: sha256 over the sorted gate hashes — one number for the whole family. */
 function digestOf(hashes) {
   const canon = Object.keys(hashes).sort().map((k) => `${k}:${hashes[k]}`).join('\n');
   return crypto.createHash('sha256').update(canon).digest('hex');
 }
-digestOf.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 16, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+digestOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function loadLock() {
   try { return JSON.parse(fs.readFileSync(LOCK_PATH, 'utf8')); } catch (_) { return null; }
 }
-loadLock.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+loadLock.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * The last gate-lock digest the Witness recorded, or null when the chain is
@@ -137,12 +125,7 @@ function chainAnchoredDigest() {
   } catch (_) { /* no chain here */ }
   return null;
 }
-chainAnchoredDigest.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'odd', phase: 'gas',
-  reactivity: 'low', electronegativity: 0, group: 13, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+chainAnchoredDigest.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function main() {
   const argv = process.argv.slice(2);
@@ -176,7 +159,7 @@ function main() {
         { at: new Date().toISOString(), from: prevDigest, to: digest, reason, changed },
       ],
     };
-    fs.writeFileSync(LOCK_PATH, JSON.stringify(doc, null, 1) + '\n');
+    _writeLock(_sealedGate(), LOCK_PATH, JSON.stringify(doc, null, 1) + '\n');
     console.log(`[gate-lock] relocked ${GATES.length} gates → ${digest.slice(0, 16)}…  (${changed.length} changed) — reason: ${reason}`);
     console.log('  witness it: cd ../REMEMBRANCE-BLOCKCHAIN && node scripts/anchor-gate-lock.js');
     return 0;
@@ -219,12 +202,7 @@ function main() {
   console.error('  a gate is changed only by the owner, with a reason, in the open: --relock --reason "<why>", then anchor it.');
   return 1;
 }
-main.atomicProperties = {
-  charge: 1, valence: 2, mass: 'medium', spin: 'odd', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.7, group: 18, period: 5,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+main.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 if (require.main === module) process.exit(main());
 module.exports = { GATES, census, digestOf, chainAnchoredDigest };

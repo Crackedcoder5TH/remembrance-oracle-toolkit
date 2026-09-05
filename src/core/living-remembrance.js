@@ -234,19 +234,7 @@ class LivingRemembranceEngine {
     };
   }
 
-  /**
-   * Run `fn` with persistence deferred, then persist ONCE. For a bulk
-   * contribution (the 45k-row store entering the field) a write per
-   * contribute is tens of thousands of 60KB writes; the reconcile-on-write
-   * below still runs at the end, so a concurrent writer's work is added to,
-   * not overwritten. Every contribution still runs the full update law —
-   * only the disk write is batched.
-   */
-  withDeferredPersist(fn) {
-    this._deferPersist = true;
-    try { return fn(); }
-    finally { this._deferPersist = false; this._persist(); }
-  }
+  withDeferredPersist(fn) { this._deferPersist = true; try { return fn(); } finally { this._deferPersist = false; this._persist(); } } // bulk: one disk write at the end (scripts/field-from-store.js)
 
   _persist() {
     if (this._deferPersist) return;

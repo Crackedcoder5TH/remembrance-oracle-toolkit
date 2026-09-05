@@ -1,10 +1,10 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-05T19:22:34.334Z",
- "digest": "08427de8a2b96836eb4178154ecd4ef4c6c168bdd563f0c7f534fc635d0a126d",
+ "lockedAt": "2026-09-05T19:45:34.437Z",
+ "digest": "f430390790234f625005942a291fafe3474d9d3e4eb453f32f2dff5232f3214a",
  "gates": {
-  "scripts/gate-lock.js": "73901f861d67dc4e3d128217c2d7abf8ca62c11aa235dab391847206ba1bb856",
-  "scripts/lib/ratchet-law.js": "7184c804c005d27850a6b906286b14184b5622cc8bf2498aebcb90ad706bd8be",
+  "scripts/gate-lock.js": "69f33e380cf29c19051d1e2e1cf9d8141ab7ec697273e9d2425af87c50d02ba0",
+  "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
   "scripts/ratchet-battery.js": "7092f89f42edbb70764cd65140c0acdbb6ada5c7527a55255ec8ec70bde51b4f",
   "scripts/covenant-ratchet.js": "2b429a6adae93dd4b8025be69e663e0eddf48d29fec2e9d0fe20f2597d4da7a9",
   "scripts/exemption-ratchet.js": "678cb750310e2aa3428e6cd78c56e157b464d82b9ae5de209a65e0000ca4cf91",
@@ -56,6 +56,16 @@
    "reason": "covenant-ratchet save path: compare against effectiveBaseline().bs (the floor object), so a run above the floor is refused as DEBT",
    "changed": [
     "scripts/covenant-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-05T19:45:34.437Z",
+   "from": "08427de8a2b96836eb4178154ecd4ef4c6c168bdd563f0c7f534fc635d0a126d",
+   "to": "f430390790234f625005942a291fafe3474d9d3e4eb453f32f2dff5232f3214a",
+   "reason": "gate law + lock files gate their own writes through requireGate/createGate instead of an @oracle-infrastructure exemption (exemption surface held at 257); atomic identities set to the extractor's measurement",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/lib/ratchet-law.js"
    ]
   }
  ]

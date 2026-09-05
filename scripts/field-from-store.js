@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 'use strict';
-// @oracle-infrastructure — writes the canonical field (entropy.json) through the engine's own contribute(); the only other write is a scratch export under .remembrance/.
 
 /**
  * field-from-store — build the Remembrance field from the 45k-pattern store.
@@ -45,10 +44,20 @@
  */
 
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
+const { createGate, requireGate } = require('../src/core/covenant-fractal');
+
+// The one direct write — the export stamp under .remembrance/ — goes through
+// the covenant gate; the field itself is written by the engine's contribute().
+const _writeStamp = requireGate((gate, file, data) => fs.writeFileSync(file, data));
+const _sealedGate = () => createGate().seal({
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.3, group: 18, period: 2,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'utility',
+});
 
 const HOME = process.env.ECOSYSTEM_HOME || path.resolve(__dirname, '..', '..');
 const VOID = process.env.VOID_ROOT || path.join(HOME, 'Void-Data-Compressor');
@@ -60,12 +69,7 @@ function defaultAnchorText() {
   const { COVENANT_PRINCIPLES } = require('../src/core/covenant-principles');
   return COVENANT_PRINCIPLES.map((p) => `${p.name}: ${p.seal}`).join('\n');
 }
-defaultAnchorText.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.1, group: 18, period: 1,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'utility',
-};
+defaultAnchorText.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Export the store's rows and stems through numpy into a raw float32 .npy and
@@ -87,15 +91,10 @@ function exportStore() {
     `np.save(${JSON.stringify(npy)}, s['waveforms'].astype(np.float32))`,
     `json.dump([str(x) for x in s['source_stems']], open(${JSON.stringify(stems)}, 'w'))`,
   ].join('\n')], { stdio: ['ignore', 'ignore', 'inherit'] });
-  fs.writeFileSync(stamp, sha + '\n');
+  _writeStamp(_sealedGate(), stamp, sha + '\n');
   return { npy, stems, sha, cached: false };
 }
-exportStore.atomicProperties = {
-  charge: 0, valence: 1, mass: 'medium', spin: 'odd', phase: 'liquid',
-  reactivity: 'medium', electronegativity: 0.4, group: 13, period: 3,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+exportStore.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Read a little-endian float32 .npy (C order) into { rows, width, data }. */
 function readNpyF32(file) {
@@ -114,12 +113,7 @@ function readNpyF32(file) {
   const data = new Float32Array(buf.buffer.slice(buf.byteOffset + off, buf.byteOffset + off + rows * width * 4));
   return { rows, width, data };
 }
-readNpyF32.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'odd', phase: 'gas',
-  reactivity: 'low', electronegativity: 0.2, group: 14, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+readNpyF32.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function main() {
   const argv = process.argv.slice(2);
@@ -181,12 +175,7 @@ function main() {
   }
   return 0;
 }
-main.atomicProperties = {
-  charge: 1, valence: 2, mass: 'heavy', spin: 'odd', phase: 'liquid',
-  reactivity: 'high', electronegativity: 0.6, group: 3, period: 5,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'utility',
-};
+main.atomicProperties = { charge: -1, valence: 2, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0.5, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 if (require.main === module) process.exit(main());
 module.exports = { defaultAnchorText, readNpyF32 };

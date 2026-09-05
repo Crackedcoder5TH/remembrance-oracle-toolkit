@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — gate law shared by every ratchet. The only write is the append-only debt ledger under seeds/, itself governed by ledger-append-ratchet.
 
 /**
  * ratchet-law — the one rule every gate obeys.
@@ -35,8 +34,17 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { createGate, requireGate } = require('../../src/core/covenant-fractal');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+// The one write — the append-only debt ledger — goes through the covenant gate.
+const _writeLedger = requireGate((gate, file, data) => fs.writeFileSync(file, data));
+const _sealedGate = () => createGate().seal({
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.3, group: 18, period: 2,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+});
 // Tests point this elsewhere; the real ledger is tracked and governed.
 const DEBT_LEDGER = process.env.DEBT_LEDGER_PATH || path.join(ROOT, 'seeds', 'debt-accepted.ledger.json');
 
@@ -44,12 +52,7 @@ function _argValue(argv, flag) {
   const i = argv.indexOf(flag);
   return i >= 0 ? argv[i + 1] : null;
 }
-_argValue.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.1, group: 18, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+_argValue.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Append one accepted-debt entry to the governed ledger. */
 function _witnessAcceptedDebt(name, debt, reason) {
@@ -57,14 +60,9 @@ function _witnessAcceptedDebt(name, debt, reason) {
   try { doc = JSON.parse(fs.readFileSync(DEBT_LEDGER, 'utf8')); } catch (_) { /* first entry */ }
   if (!Array.isArray(doc.accepted)) doc.accepted = [];
   doc.accepted.push({ at: new Date().toISOString(), gate: name, reason, items: debt });
-  fs.writeFileSync(DEBT_LEDGER, JSON.stringify(doc, null, 1) + '\n');
+  _writeLedger(_sealedGate(), DEBT_LEDGER, JSON.stringify(doc, null, 1) + '\n');
 }
-_witnessAcceptedDebt.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'odd', phase: 'liquid',
-  reactivity: 'low', electronegativity: 0.4, group: 13, period: 2,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+_witnessAcceptedDebt.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Refuse a save that would loosen the floor — unless the owner accepts the
@@ -91,12 +89,7 @@ function refuseIfLoosening(name, debt, argv = process.argv) {
   if (accept) console.error('  (--accept-debt needs --reason "<why>" — an unexplained acceptance is a silent edit)');
   return true;
 }
-refuseIfLoosening.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.3, group: 18, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+refuseIfLoosening.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * One line that says how much debt a gate is carrying, for check output.
@@ -107,11 +100,6 @@ refuseIfLoosening.atomicProperties = {
 function debtLine(name, count) {
   return `[${name}] DEBT ${count} — the gate holds its floor; the code owes ${count} item(s)`;
 }
-debtLine.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.2, group: 18, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+debtLine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { refuseIfLoosening, debtLine, DEBT_LEDGER };

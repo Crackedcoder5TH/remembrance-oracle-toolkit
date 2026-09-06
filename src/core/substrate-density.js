@@ -70,20 +70,19 @@ function getDensityFactor(opts) {
  */
 function refreshDensity(opts = {}) {
   if (!_whit) return null;
-  const substratePath = opts.substratePath || process.env.VOID_FRACTAL_INDEX || DEFAULT_SUBSTRATE;
-  const sample = Number.isFinite(opts.sample) ? opts.sample : FIT_SAMPLE;
-  let idx;
-  try { idx = JSON.parse(fs.readFileSync(substratePath, 'utf8')).index; } catch (_) { return null; }
-  const names = Object.keys(idx);
-  const vecs = [];
-  const step = Math.max(1, Math.floor(names.length / (sample || 1)));
-  for (let i = 0; i < names.length && vecs.length < sample; i += step) {
-    const v = idx[names[i]].composed_v1;
-    if (Array.isArray(v) && v.length === DIM) vecs.push(v);
-  }
-  if (vecs.length < DIM) return null; // too few to fit meaningfully
-  const W = _whit.fitWhitening(vecs, { epsilon: 1e-3 });
-  const effDim = _whit.participationRatio(vecs.map((v) => _whit.applyWhitening(v, W)));
+  // ONE REFERENCE. This used to fit its own 116-D transform on `composed_v1`
+  // read out of the index — a representation the index stopped carrying when
+  // the 45k patterns moved to the store (2026-08-04). The density now reads
+  // the effective dimensionality of the canonical reference
+  // (src/core/whitening-reference.js: per-layer ZCA fitted on the store +
+  // index at the canonical width) — the same transform every resonance path
+  // applies, so density and resonance describe one space.
+  let st = null;
+  try { st = require('./whitening-reference').status(); } catch (e) { quiet('core:substrate-density:reference', e); return null; }
+  if (!st || st.mode !== 'whitened' || !st.pr || !Number.isFinite(st.pr.whitened)) return null;
+  const effDim = st.pr.whitened;
+  const names = { length: st.fitted ? st.fitted.rows : 0 };
+  const vecs = { length: st.fitted ? st.fitted.rows : 0 };
 
   const prev = _readCache(opts);
   // Reference captured once, so the factor starts at 1.0 and rises with
@@ -98,7 +97,8 @@ function refreshDensity(opts = {}) {
     effectiveDim: +effDim.toFixed(3),
     reference: +reference.toFixed(3),
     factor: +factor.toFixed(4),
-    dim: DIM,
+    dim: st.width,
+    rawEffectiveDim: st.pr && Number.isFinite(st.pr.raw) ? +st.pr.raw.toFixed(3) : null,
   };
   _writeCache(entry, opts);
   return entry;

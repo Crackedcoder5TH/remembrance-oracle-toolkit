@@ -167,7 +167,14 @@ verb that fills it.
   (one file doing too much), never proof of a bug.
 - **resonance** (META) — how much the code is shaped like the library's
   patterns; `CONSONANT` fits, `OUTLIER` is novel. Read the nearest siblings it
-  lists before committing — a change here ripples to them.
+  lists before committing — a change here ripples to them. Every cosine is
+  taken in the ONE resonance space (per-layer whitening fitted on the store +
+  index; ECOSYSTEM §7). The bands are quartiles of that space measured over
+  42 hub files on 2026-09-06 (min 0.551 · p25 0.639 · p50 0.671 · p75 0.709 ·
+  max 0.828): `CONSONANT ≥ 0.71`, `FAMILIAR ≥ 0.67`, `DISTINCT ≥ 0.64`, else
+  `OUTLIER`. Readings taken before that date were in the raw cone (everything
+  ≈ 0.95, every file CONSONANT) and are not comparable — a Δ against one of
+  them reports the change of space, not of the file.
 - **META-DEBUG** — the audit checkers (AST taint/type/edge-case analysis) run
   on the goggled file, fed through the substrate learning loop: a finding you
   FIX is reinforced (amplitude up, eventually promoted into the shared pattern

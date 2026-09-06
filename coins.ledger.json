@@ -1061,6 +1061,61 @@
      "shape_sha256": "1a5af048911eccfe5772bd88c4fb538fede298114a1dbaffe5360565d76d85ed"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "da06869ffa4a132f3bebd6a03900153a2422aee65e0b152bbb105a36bc72ce8a",
+   "minted_at": "2026-09-06T18:00:37+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "9e4a01cd19ff9b705a3fa50e1d030536226ab9a5",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     "ECOSYSTEM.md",
+     "scripts/domain-separability-benchmark.mjs",
+     "seeds/traps.seed.json",
+     "src/core/decoder-stack.js",
+     "src/core/fractal-index.js",
+     "src/core/living-remembrance.js",
+     "src/core/substrate-density.js",
+     "src/core/whitening-reference.js",
+     "src/tools/goggles-hook.js",
+     "src/tools/goggles-instrument.js",
+     "src/tools/goggles.js",
+     "tests/whitening-reference.test.js"
+    ],
+    "diff_bytes": 59456,
+    "diff_sha256": "b11122533c6e50a18061feae96cd3cbc20658a20968f3d7d273b71cfa0eabcc7"
+   },
+   "reading": {
+    "coherency": 0.04452234377074163,
+    "ratio": 3.371668367925598,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "8746c7ca53367e99",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "1a05cd47ffea775d2b804c0512f146d77f6e72cc19de9cb5621bd7d19adb451e",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-06T18:00:37",
+     "coin": null,
+     "sig": "8746c7ca53367e9987ae6e2b0e9dbdb96ab5dd36359c8a024d6abd57cf29fb8b"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 59456,
+     "compressed_size": 17634,
+     "coherency": 0.04452234377074163,
+     "data_sha256": "cc023bd8ce9cdd6026e98a11b2bb4a4d39f94110f772df7021d5bb7ff725e9d4",
+     "compressed_sha256": "896284a99ef57b0f50b7f2b7a6de823c945b6fdcfa129fd9e419e8a6d6ae0356",
+     "shape_sha256": "a484396a81a1382b540c09b07e5e2f71862a5278f168b323626ab9184a7885b1"
+    }
+   }
   }
  ]
 }

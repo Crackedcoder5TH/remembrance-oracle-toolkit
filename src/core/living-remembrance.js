@@ -104,9 +104,9 @@ const PARAMS = {
     coherencyMixed:     0.35,  // partly repeating — some strong internal echo
     coherencyTypical:   0.10,  // the band ordinary source code lives in
     // Random/high-entropy sits below coherencyTypical (~0.09).
-    resonanceConsonant: 0.90,  // pattern-resonance verdict bands
-    resonanceFamiliar:  0.82,
-    resonanceDistinct:  0.70,
+    resonanceConsonant: 0.71,  // pattern-resonance bands = quartiles of the ONE whitened space (whitening-reference.js),
+    resonanceFamiliar:  0.67,  // measured 2026-09-06 over 42 hub files: p25 0.639 · p50 0.671 · p75 0.709 (min 0.551, max 0.828).
+    resonanceDistinct:  0.64,  // The old 0.90/0.82/0.70 were the raw cone's, where every file read ≈0.95 — see trap 49.
   },
 
   // ── composition — field-gated layer attention (encoder stack) ──

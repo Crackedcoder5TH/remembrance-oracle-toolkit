@@ -193,7 +193,21 @@ Partial-depth reads (`composedAtDepth`) and the depth-flow cosine
 (`flowCosines`, d1..d4) are part of the same canonical module.
 Nothing else encodes. There are no language-specific encoders, no
 per-vendor translators, no parity contracts to maintain "agreement"
-between parallel implementations. Mathematics doesn't have a Python
+between parallel implementations.
+
+**One resonance space.** Every cosine the decoder takes (`composedCosine`,
+`flowCosines`, the FractalIndex search behind the goggles' META lens) is
+taken in the whitened space of `src/core/whitening-reference.js`: eight
+per-layer 29×29 ZCA transforms fitted on the canonical substrate (the 45k
+store rows plus the index, at the canonical width), cached by store hash.
+Raw composed vectors live in a cone (measured: mean cosine 0.917 within a
+domain vs 0.860 across, participation ratio 4.6 of 232), so raw cosines
+read ~0.9 for everything and no threshold means anything. Whitened, the
+same patterns read 0.283 within vs 0.042 across. Other languages apply the
+same reference (`Void-Data-Compressor/whitening_reference.py` reads the
+hub's cached transform); nothing re-fits its own. Re-derive any band from
+the distribution measured in this space; a threshold calibrated on the cone
+is a threshold calibrated on nothing. Mathematics doesn't have a Python
 dialect and a JavaScript dialect; it has math. Other languages call
 in.
 

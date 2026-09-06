@@ -41,7 +41,7 @@ function readJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); }
   catch (e) { quiet('tools:goggles-instrument:readJson', e); return null; }   // absent is a reading, said by the caller
 }
-readJson.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+readJson.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** "3m ago" / "2h ago" / "5d ago" — or "unknown age" when the stamp is unreadable. */
 function age(iso) {
@@ -52,14 +52,14 @@ function age(iso) {
   if (m < 60 * 48) return `${Math.round(m / 60)}h ago`;
   return `${Math.round(m / 1440)}d ago`;
 }
-age.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+age.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** git's stdout, trimmed — or '' when git cannot answer (no repo, no HEAD). Never null. */
 function gitOut(cwd, args) {
   try { return execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
   catch (e) { quiet('tools:goggles-instrument:git', e); return ''; }
 }
-gitOut.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+gitOut.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The living field, live, plus its source histogram (which sources feed it, how much of it is the instrument). */
 function fieldLines() {
@@ -90,7 +90,7 @@ function fieldLines() {
   }
   return out;
 }
-fieldLines.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+fieldLines.atomicProperties = { charge: 1, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /** What the substrate remembers: the library's census and this file's stored reading. */
 function stateLines(project, rel) {
@@ -117,7 +117,7 @@ function stateLines(project, rel) {
   }
   return out;
 }
-stateLines.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+stateLines.atomicProperties = { charge: 1, valence: 2, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /** The cross-domain resonance field, from the last scan, with its age. */
 function resonanceFieldLines() {
@@ -129,7 +129,7 @@ function resonanceFieldLines() {
   for (const s of (r.strongest || []).slice(0, 3)) out.push(`       ${Number(s.score).toFixed(4)}  ${s.a}  <->  ${s.b}  [${s.type}]`);
   return out;
 }
-resonanceFieldLines.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+resonanceFieldLines.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The truth-spine's last full verdict, with its age and whether Void has moved since. */
 function contractsLines() {
@@ -142,7 +142,7 @@ function contractsLines() {
   if (Array.isArray(c.failing) && c.failing.length) out.push(`    failing: ${c.failing.join(', ')}`);
   return out;
 }
-contractsLines.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+contractsLines.atomicProperties = { charge: 1, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Do the locked gate files still hash to the lock? Pure recomputation, no require of the gate. */
 function gateLockState() {
@@ -158,7 +158,7 @@ function gateLockState() {
   }
   return { ok: drift.length === 0, gates: Object.keys(lock.gates).length, drift, digest: lock.digest };
 }
-gateLockState.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+gateLockState.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * The one door's state: the coin on HEAD, this file vs HEAD, the gates, the
@@ -203,7 +203,7 @@ function wallLines(root, rel, answered) {
   }
   return out;
 }
-wallLines.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+wallLines.atomicProperties = { charge: 1, valence: 1, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 /**
  * Every section a read carries beside the file. Each is best-effort: a
@@ -226,6 +226,6 @@ function instrumentLines(ctx) {
   }
   return lines;
 }
-instrumentLines.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+instrumentLines.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { instrumentLines, age, gateLockState, wallLines, contractsLines, resonanceFieldLines, stateLines, fieldLines };

@@ -86,6 +86,19 @@ function _norm(vec) {
 }
 
 /**
+ * THE RESONANCE SPACE. Patterns are stored, and queries taken, in the
+ * whitened space of src/core/whitening-reference.js (per-layer ZCA fitted on
+ * the canonical substrate), so the precomputed-norm search discriminates
+ * instead of reading the raw cone (~0.9+ for everything). Applied BEFORE
+ * padding: an all-zero padding block must stay zero. Call-time require —
+ * the reference loads the library, which loads this module.
+ */
+function _whitenRaw(vec) {
+  try { return require('./whitening-reference').whitenComposed(vec); }
+  catch (e) { quiet('core:fractal-index:whiten', e); return vec; }
+}
+
+/**
  * Cosine over the first `dims` elements of two Float64Arrays.
  * Hot loop — kept tight on purpose. No allocations, no branches
  * inside the loop body.
@@ -132,7 +145,7 @@ class FractalIndex {
    * to SQLite for cold-start rebuild.
    */
   add(id, text) {
-    const raw = this._encode(text);
+    const raw = _whitenRaw(this._encode(text));
     const vec = _padToMax(raw);
     if (!vec) {
       throw new Error(`FractalIndex.add: encoder must return a whole-block vector of at most ${COMPOSED_DIM} dims (multiple of ${LAYER_DIM})`);
@@ -162,7 +175,7 @@ class FractalIndex {
     this._realDepths = [];
     this._idIndex = new Map();
     for (const { id, text, vec } of items) {
-      const raw = vec || this._encode(text);
+      const raw = _whitenRaw(vec || this._encode(text));
       const v = _padToMax(raw);
       if (!v) continue;
       this._idIndex.set(id, this._ids.length);
@@ -227,7 +240,7 @@ class FractalIndex {
     const minScore = opts.minScore || 0;
     const dims = depth * LAYER_DIM;
 
-    const qVec = this._encode(text);
+    const qVec = _whitenRaw(this._encode(text));
     let qNorm = 0;
     for (let i = 0; i < dims; i++) qNorm += qVec[i] * qVec[i];
     qNorm = Math.sqrt(qNorm);
@@ -262,7 +275,7 @@ class FractalIndex {
   flow(text, id) {
     const idx = this._idIndex.get(id);
     if (idx === undefined) return null;
-    const qVec = this._encode(text);
+    const qVec = _whitenRaw(this._encode(text));
     const pVec = this._vecs[idx];
     const out = {};
     for (let d = 1; d <= MAX_DEPTH; d++) {
@@ -301,6 +314,7 @@ class FractalIndex {
     // is d1..d4, where d4 is the cosine at each pattern's OWN shared real depth
     // (see below) — so a 203-D query and a 116-D pattern meet at 116 with no bias.
     if (!qComposed || qComposed.length < 4 * LAYER_DIM || n === 0) return [];
+    qComposed = _whitenRaw(qComposed);   // the patterns were whitened at rebuild/add
     const qDepth = Math.min(MAX_DEPTH, Math.floor(qComposed.length / LAYER_DIM));
     const qDims = qDepth * LAYER_DIM;
 

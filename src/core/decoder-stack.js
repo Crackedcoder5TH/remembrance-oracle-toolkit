@@ -208,10 +208,26 @@ function compose(input) {
 }
 
 /**
- * Cosine between two composed signatures (same depth).
+ * THE RESONANCE SPACE. Every cosine the decoder takes is taken in the
+ * whitened space of src/core/whitening-reference.js: eight per-layer ZCA
+ * transforms fitted on the canonical substrate (the 45k store + the index).
+ * Raw composed vectors live in a narrow cone, so raw cosines read ~0.9+ for
+ * everything (the saturation the goggles showed as CONSONANT on every file,
+ * 100% of domains resonating); whitening is what lets resonance
+ * discriminate. Call-time require: the reference loads the library, which
+ * loads this module. WHITENING_REFERENCE=off gives the raw cone back.
+ */
+function _whiten(v) {
+  try { return require('./whitening-reference').whitenComposed(v); }
+  catch (e) { quiet('core:decoder-stack:whiten', e); return v; }
+}
+
+/**
+ * Cosine between two composed signatures (same depth), in the resonance space.
  */
 function composedCosine(a, b) {
   if (!a || !b || a.length !== b.length) return 0;
+  a = _whiten(a); b = _whiten(b);
   let dot = 0, na = 0, nb = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i];
@@ -287,6 +303,7 @@ function flowCosines(a, b) {
   const CHECK = flowCheckpoints();
   const width = CHECK[CHECK.length - 1];
   const out = new Array(CHECK.length).fill(0);
+  a = _whiten(a || []); b = _whiten(b || []);
   let dot = 0, na = 0, nb = 0, c = 0;
   const n = Math.min(width, a.length, b.length);
   for (let i = 0; i < n && c < CHECK.length; i++) {
@@ -340,6 +357,7 @@ activeLayers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "
 activateNextLayer.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 12, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 composedAtDepth.atomicProperties = { charge: 1, valence: 1, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 compose.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_whiten.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 composedCosine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 composedCosineOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 flowCheckpoints.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

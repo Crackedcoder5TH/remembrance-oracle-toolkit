@@ -62,7 +62,7 @@ const ft = require('../core/field-tool');
 // Moving numbers consolidated in the Living Remembrance Engine (the core).
 let GOG;
 try { GOG = require('../core/living-remembrance').gogglesParams(); }
-catch (_) { GOG = { coherencyRepeating: 0.90, coherencyMixed: 0.35, coherencyTypical: 0.10, resonanceConsonant: 0.90, resonanceFamiliar: 0.82, resonanceDistinct: 0.70 }; }
+catch (_) { GOG = { coherencyRepeating: 0.90, coherencyMixed: 0.35, coherencyTypical: 0.10, resonanceConsonant: 0.71, resonanceFamiliar: 0.67, resonanceDistinct: 0.64 }; }
 
 const LANG_BY_EXT = {
   '.js': 'javascript', '.jsx': 'javascript', '.mjs': 'javascript', '.cjs': 'javascript',

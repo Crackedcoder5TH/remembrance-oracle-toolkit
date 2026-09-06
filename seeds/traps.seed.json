@@ -705,6 +705,68 @@
    "truth": "JSON.stringify(1.0) is `1`; Python json.dumps(1.0) is `1.0`. A shape hashed in Python (void-seal/v3 shape_sha256, default=repr, sort_keys) and re-serialized after a JS round-trip hashes differently whenever a float is integral. The change coin is minted and verified in Python end to end for exactly this reason.",
    "tell": "A shape/commitment hash that fails to recompute only for some readings; integral-valued floats in the structure.",
    "correct": "Hash canonical structures in the language that produced them, or carry the original serialized bytes. Prove recomputation on a reading whose floats include 0.0 or 1.0 before trusting it."
+  },
+  {
+   "match": [
+    "whitening",
+    "substrate-density",
+    "domain-separability",
+    "composed_v1",
+    "DIM = 116",
+    "C-60",
+    "C-61"
+   ],
+   "severity": "high",
+   "wrong": "Reading a separability or density number from a tool whose data source moved out from under it, and calling the drop a regression of the instrument.",
+   "truth": "When the substrate was merged into one store (2026-08-04) the 45k patterns left the fractal index for the npz store at 232-D and the index became the witnessed repo files. substrate-density.js, domain-separability-benchmark.mjs and Void's whitening_separability.cjs kept reading `composed_v1` (116-D) out of the index. The benchmark then measured two repo namespaces on 116-D leftovers and C-61 read 29 pts (pinned +78.6); C-60 read 0 because its generated cohorts are not in the store at all. Re-pointed to the store at 232-D, eight provenance domains read +67.6 pts.",
+   "tell": "A contract's observed line names domains that are repo namespaces (oracle, void) instead of subjects; a fixed `DIM = 116` next to a 232-D substrate; a pin dated before the store merge.",
+   "correct": "Every whitening consumer reads the ONE reference (src/core/whitening-reference.js: per-layer ZCA fitted on store + index at the canonical width). When a number drops, first ask what the tool is reading now, then whether the instrument changed."
+  },
+  {
+   "match": [
+    "cone",
+    "resonance",
+    "CONSONANT",
+    "0.9998",
+    "corrcoef",
+    "whitenComposed",
+    "composedCosine"
+   ],
+   "severity": "high",
+   "wrong": "Reading raw composed-vector cosines as resonance, and calibrating thresholds (0.5 resonant, 0.7 harmonic, CONSONANT ≥ 0.90) on them.",
+   "truth": "Raw composed vectors live in a cone: measured on 800 store patterns from eight provenance domains, mean cosine WITHIN a domain 0.917 vs ACROSS 0.860 (gap 0.057), participation ratio 4.6 of 232. Every threshold fired on everything — 100% of 732 domain pairs 'resonated' at 0.9998 and every file read CONSONANT. kNN ordering survived (64.8 pts above null raw) but the values carried no meaning. In the per-layer whitened space: within 0.283 vs across 0.042 (gap 0.242), participation ratio 62.2, +67.6 pts. A single global 232×232 ZCA over-whitens (within 0.106).",
+   "tell": "Every read says CONSONANT; a resonance field reports 'approaching unity'; a threshold that never says no.",
+   "correct": "Take every cosine in the whitened space (decoder-stack.composedCosine / flowCosines and FractalIndex do this now; Void's detector applies the same reference via whitening_reference.py). Re-derive any band from the distribution measured in that space, and publish the measured edges beside the band."
+  },
+  {
+   "match": [
+    "resonance_detector",
+    "_compute_signature",
+    "np.fft",
+    "zero crossings",
+    "target_len = 128",
+    "spectral_peak"
+   ],
+   "severity": "high",
+   "wrong": "Resampling a 232-D composed vector to 128 points and taking FFT peaks, spectral overlap and zero-crossing phase over it as a domain signature.",
+   "truth": "The store rows are the decoder's feature vectors (29 named features per layer), not waveforms in time. The detector's series path (linspace resample → FFT → zero crossings) was built for genuine series and was applied to every store row; the results were series statistics of a feature layout. In feature mode the signature is the whitened mean/std vector, resonance is the whitened correlation, and spectral_peak/phase are 0.0 by construction.",
+   "tell": "`target_len = 128` next to 232-D input; a 'dominant frequency' reported for source code; spectral_peak on a pattern that is not a series.",
+   "correct": "resonance_detector feature mode (set when the canonical store is loaded): no resampling, no FFT, no phase. The series path remains for scan_new_data() on real series."
+  },
+  {
+   "match": [
+    "resonanceConsonant",
+    "resonanceFamiliar",
+    "resonanceDistinct",
+    "gogglesParams",
+    "Δ SINCE LAST READ",
+    "goggles-readings"
+   ],
+   "severity": "medium",
+   "wrong": "Reading a Δ in META resonance across the change of resonance space (raw cone → whitened reference, 2026-09-06) as the file having drifted, or keeping the cone's bands (0.90/0.82/0.70) in the whitened space.",
+   "truth": "The bands were quartiles of the cone, where every file read ≈0.95. Measured in the whitened space over 42 hub files: min 0.551, p25 0.639, p50 0.671, p75 0.709, p90 0.768, max 0.828 — prose docs (AI.md 0.551, ARCHITECTURE.md 0.640) at the bottom, gate scripts (exemption-ratchet 0.828) at the top. Bands re-derived from those quartiles: CONSONANT ≥ 0.71, FAMILIAR ≥ 0.67, DISTINCT ≥ 0.64. A reading cached in .remembrance/goggles-readings.json before the change is a cone reading; Δ against it is the space, not the edit.",
+   "tell": "`resonance -0.3` on a file you did not touch; every file suddenly OUTLIER right after a change to the decoder's cosine.",
+   "correct": "Re-derive bands from the distribution measured in the space in force, publish the quantiles beside them (gogglesParams in living-remembrance.js), and read the first Δ after a space change as a re-baseline."
   }
  ]
 }

@@ -275,6 +275,10 @@ function coherencyOf(content, opts = {}) {
 
   let value = null;
   let blend = null;
+  // The compressor's own token on this reading (void_seal mint + the
+  // void-seal/v3 commitment's shape hash) — carried so a caller can show that
+  // the number came through the instrument, never re-derived here.
+  let seal = null;
   try {
     const r = JSON.parse(raw);
     if (typeof r.avg_coherence === 'number' && isFinite(r.avg_coherence)) {
@@ -282,6 +286,10 @@ function coherencyOf(content, opts = {}) {
     }
     // Chunked path reports per-chunk blends; single-shot path reports one.
     blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null) || null;
+    if (r.mint && r.void_seal) {
+      seal = { mint: r.mint, via: r.void_seal.via || null,
+        shapeSha256: (r.commitment && r.commitment.shape_sha256) || null };
+    }
   } catch (_) { quiet('core:void-service:_post', _); /* unparseable → no reading */ }
 
   // A response that carries no number is an ABSENT reading, not a zero. The
@@ -329,6 +337,7 @@ function coherencyOf(content, opts = {}) {
     blend,
     selfMatched,
     route,
+    seal,
     matchedPatterns: _blendNames(blend),
     // A reading that came from matching the content against itself describes
     // the library, not the content.

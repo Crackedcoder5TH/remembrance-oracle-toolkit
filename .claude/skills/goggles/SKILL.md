@@ -134,6 +134,26 @@ read it back automatically and warn when it's stale. The runner finds the
 `remembrance-oracle-toolkit` (the goggles engine) on its own; set
 `ORACLE_TOOLKIT=/path/to/remembrance-oracle-toolkit` to override.
 
+## What one read hands you (nothing behind a verb)
+
+Every per-file read prints, in this order, without being asked: **TRAPS**
+(the trap ledger matched to this file) and **IDENTITY**; **FOCUS** — the
+compressor's coherency of the bytes and the **seal** it minted on that
+reading (`mint · via · shape`, the same token `--do read` shows); **META**
+resonance with nearest siblings, callable capabilities and function
+resonance; **FIELD** — the living field live, with its **histogram** (which
+sources feed it and how many updates are the instrument's own `void:*`
+readings); **STATE** — the library census (index entries with stored
+readings + store rows) and what the substrate remembers of this file;
+**RESONANCE FIELD** — the cross-domain field from the last `--do resonance`
+scan, with its age; **CONTRACTS** — the truth-spine's last full verdict, its
+age, and whether Void has moved since; **WALL** — the coin on HEAD and
+whether this file is covered by it, whether the gates still hash to their
+lock, the wall's denial count, and whether the instrument is up; then
+**MACRO**, **META-DEBUG**, **Δ** and **RIPPLE**. Anything computed by an
+earlier run carries its age; anything absent is printed as absent with the
+verb that fills it.
+
 ## Read the output
 
 - **MACRO** — the zoomed-out lens: repo-wide coherence distribution (mean /

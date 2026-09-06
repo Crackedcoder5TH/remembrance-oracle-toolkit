@@ -101,6 +101,6 @@ function loadStore() {
     return { error: `store export failed: ${e && e.message ? e.message : e}` };
   }
 }
-loadStore.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+loadStore.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { exportStore, readNpyF32, loadStore, STORE, SCRATCH };

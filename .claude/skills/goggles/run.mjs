@@ -212,6 +212,13 @@ if (argv[0] === '--do') {
     // baseline saved, nothing written, nothing fed to the field.
     //   goggles --do ratchets [--json]
     ratchets: () => run('node', [join(toolkit, 'scripts/ratchet-battery.js'), ...rest], toolkit),
+    // ONE GATE IN FULL. The battery prints one verdict line per gate; the
+    // items behind a ✗ (which catch, which declaration, which file) were only
+    // reachable by running the ratchet script by hand — a missing verb.
+    //   goggles --do gate <name> [--json | --save-baseline …]
+    //   names: covenant exemption size cycle suite-reachability field-source
+    //          ledger-append orphan silent-catch console atomic-drift ecosystem gate-lock
+    gate: () => run('node', [join(toolkit, rest[0] === 'gate-lock' ? 'scripts/gate-lock.js' : `scripts/${rest[0] || 'covenant'}-ratchet.js`), ...rest.slice(1)], toolkit),
     // THE TWO COVENANT GATES, ENTANGLED, over a file. Runs the fractal
     // audit (byte + atomic) AND the covenant scanner (SQL / injection /
     // harm) and reports CLEAN only when both pass — the shed-decision

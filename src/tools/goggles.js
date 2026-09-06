@@ -864,6 +864,18 @@ function main() {
       + '                scale: 1.00 = one pattern repeats throughout · ~0.09 = random bytes\n'
       + '                       source code normally reads 0.10-0.28 — low here is CORRECT\n'
       + `                read in full: ${Buffer.byteLength(content, 'utf8')} bytes, no slice`);
+    // The compressor's token on THIS reading (what `--do read` shows) — proof
+    // the number above came through the instrument, off the same response.
+    try {
+      const lr = require('../core/void-service').lastReading();
+      if (lr && lr.seal && lr.seal.mint) {
+        const via = lr.route === 'signal' ? 'void:compress_signal' : (lr.route || 'compress');
+        const measures = lr.measures === 'library-membership' ? '  ⚠ SELF-MATCH: this reading measures library membership, not the artifact' : '';
+        console.log(`    sealed      mint ${lr.seal.mint} · via ${via}`
+          + (lr.seal.shapeSha256 ? ` · shape ${String(lr.seal.shapeSha256).slice(0, 12)}…` : '')
+          + '  (the compressor\'s token on this reading)' + measures);
+      }
+    } catch (_) { quiet('tools:goggles:seal', _); /* provenance is best-effort */ }
   }
   console.log('    ⚠ coherency measures SELF-REPETITION — how much of this is one pattern');
   console.log('      restated. It is not a grade, not correctness, not code quality. A');
@@ -975,32 +987,17 @@ function main() {
     console.log(`    live field peers entangled: ${peers.length}`);
   }
 
-  // ── FIELD ──  the living field's reactive state, read AFTER this file's
-  // read contributed to it. The void term (delta_void + its provenance) is
-  // taken straight off the LRE's own contribution reading — not recomputed —
-  // and the entropy/cascade/∫p are the field's live response to the data
-  // just witnessed. This is the resonance-signature/void term the operator
-  // asked to surface actively.
-  try {
-    const fc = require('../core/field-coupling');
-    const state = fc.peekField ? fc.peekField() : null;
-    const last = fc.lastReading ? fc.lastReading() : null;
-    if (state) {
-      console.log('\n  FIELD  (the living field, live — reacts to what was just read)');
-      console.log(`    p (backdrop)     ${(state.coherence ?? 0).toFixed(4)}   0 = noise · 1 = unity`);
-      console.log(`    globalEntropy    ${(state.globalEntropy ?? 0).toFixed(4)}   cost / (coherence + ε) — the balancing field`);
-      console.log(`    cascadeFactor    ${(state.cascadeFactor ?? 0).toFixed(4)}   1 = baseline rate · >1 = a burst`);
-      console.log(`    ∫p (integral)    ${Math.round(state.coherenceIntegral ?? 0)}   total aligned order, no ceiling`);
-      if (last && typeof last.delta_void === 'number') {
-        const iso = last.void_source === 'field:resonance';
-        console.log(`    void term        ${last.delta_void.toFixed(4)}   [${last.void_source}]${iso ? '' : '  (no field measurement — derived from 1−p)'}`);
-        if (typeof last.r_eff === 'number') {
-          console.log(`    r_eff (retro)    ${last.r_eff.toFixed(4)}   pull toward the healed attractor`);
-        }
-      }
-      console.log(`    updates          ${state.updateCount ?? 0}`);
-    }
-  } catch (_) { quiet('tools:goggles:require', _); /* field optional — never block a read */ }
+  // ── FIELD · STATE · RESONANCE FIELD · CONTRACTS · WALL ──  everything the
+  // substrate knows that used to live behind a verb (--do field / state /
+  // resonance / contracts, the coin and the gates) rides on every read now.
+  // goggles-instrument.js returns the lines; this is the one print site.
+  {
+    const root = findRepoRoot(path.dirname(abs));
+    const rel = root ? path.relative(root, abs) : file;
+    let project = root ? path.basename(root) : '';
+    try { const m = JSON.parse(fs.readFileSync(mapCachePath(root), 'utf8')); if (m && m.project) project = m.project; } catch (e) { quiet('tools:goggles:map-project', e); /* no map yet — the repo name stands in */ }
+    for (const line of require('./goggles-instrument').instrumentLines({ root, project, rel, answered: r.coherence != null })) console.log(line);
+  }
 
   // ── MACRO ──  (zoomed out: this section inside the whole-codebase map)
   printMacro(abs, r.coherence, sectionText, fullText);

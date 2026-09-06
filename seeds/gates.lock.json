@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-06T00:12:10.020Z",
- "digest": "5d8e7200f5a0448545d37f22d108c92ad0c95b5d400aa561235de56984d7f809",
+ "lockedAt": "2026-09-06T14:24:44.033Z",
+ "digest": "8079329f673a050a784bf34a7b8ba8e4c82a496c16843e68aa8e15a39d239a5a",
  "gates": {
   "scripts/gate-lock.js": "eededd0c5b4ecd0e75f0c0fd4edb2066a92301fa81c621a2764864ff61eba6a5",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -21,7 +21,7 @@
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/core/covenant-fractal.js": "eba1a8619c8fe19ed5a255765bbcdd67b15c5f39a56015263540c1bed3b1cb1f",
-  ".claude/skills/goggles/run.mjs": "928fb2705f86566df55a0a9dcb3d2420750d1b272849c0610c706c93b017dc95",
+  ".claude/skills/goggles/run.mjs": "57b118606117c36dd6c885081e360a56aa3721e33654ab4bf7142709a6870a67",
   ".claude/skills/goggles/change-coin.py": "52f8af26f82b866d4a9a1e2a11acae6922c17e433e1b98e2e02da5228f1f2471",
   "src/tools/goggles-bash-hook.js": "dfd50daa534e78c8527bcc5b6af1d32cfd14972488b5147b4873f4dc1cabe133"
  },
@@ -91,6 +91,15 @@
    "reason": "change-coin: the coin is saved onto the chain at mint and unfolded only when needed (--do mint unfold / verify --deep); no fractal token on mint; coin_id binds diff | seal | shape_sha256; CHANGE_COIN_NO_CHAIN for test coins",
    "changed": [
     ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-09-06T14:24:44.034Z",
+   "from": "5d8e7200f5a0448545d37f22d108c92ad0c95b5d400aa561235de56984d7f809",
+   "to": "8079329f673a050a784bf34a7b8ba8e4c82a496c16843e68aa8e15a39d239a5a",
+   "reason": "goggles: --do gate <name> — one gate in full through the surface (the battery prints one line per gate; the items behind a ✗ were only reachable by running the ratchet by hand)",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
    ]
   }
  ]

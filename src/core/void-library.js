@@ -89,6 +89,31 @@ class VoidLibrary {
   }
 
   /**
+   * The substrate's memory of one index entry (stored reading, its source,
+   * width, witnessed-at), or null when the substrate has never seen it.
+   * @param {string} name — the index key, e.g. `oracle/src/core/x.js`
+   */
+  entryMeta(name) {
+    this._ensureLoaded();
+    return (this._entryMeta && this._entryMeta.get(name)) || null;
+  }
+
+  /**
+   * Census of the library: index entries (and how many carry a compressor
+   * reading), store rows, and the store this came from. Triggers warmup.
+   */
+  census() {
+    this._ensureLoaded();
+    const entries = this._entryMeta ? this._entryMeta.size : 0;
+    let withReading = 0, fromCompressor = 0;
+    for (const m of (this._entryMeta ? this._entryMeta.values() : [])) {
+      if (typeof m.coherence === 'number') withReading++;
+      if (m.coherenceSource && String(m.coherenceSource).startsWith('void:')) fromCompressor++;
+    }
+    return { entries, withReading, fromCompressor, store: this._store || { rows: 0 }, loadError: this._loadError };
+  }
+
+  /**
    * Score a pre-encoded 29-D fractal vector against the library.
    * Backward-compatible — returns single-cosine matches at L1.
    *
@@ -274,9 +299,21 @@ class VoidLibrary {
       };
       const fractals = new Map();
       const composed = new Map();
+      // What the substrate REMEMBERS about each entry besides its vectors: the
+      // compressor's stored reading and where it came from, the stored width,
+      // when it was witnessed. The goggles' STATE line reads this per file.
+      const meta = new Map();
       for (const [name, entry] of Object.entries(data.index)) {
         if (entry && Array.isArray(entry.fractal) && entry.fractal.length === 29) {
           fractals.set(name, Float64Array.from(entry.fractal));
+        }
+        if (entry) {
+          meta.set(name, {
+            coherence: typeof entry.coherence === 'number' ? entry.coherence : null,
+            coherenceSource: entry.coherence_source || null,
+            width: entry.composed_width || (Array.isArray(entry.composed) ? entry.composed.length : null),
+            ingestedAt: (entry.ledger && entry.ledger.ingested_at) || entry.ingested_at || null,
+          });
         }
         // Load the DEEPEST available composed signature per pattern:
         // composed_v4 (203-D, full 7-layer) > composed_v2 (145-D) > composed_v1
@@ -311,6 +348,7 @@ class VoidLibrary {
       }
       this._fractals = fractals;
       this._composed = composed;
+      this._entryMeta = meta;
       return fractals;
     } catch (err) {
       this._loadError = err && err.message ? err.message : 'unknown';

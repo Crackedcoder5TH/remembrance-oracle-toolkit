@@ -14,18 +14,24 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
-const { spawnSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 
 const CC = path.join(__dirname, '..', '.claude', 'skills', 'goggles', 'change-coin.py');
+// A test coin is not a memory: every mint below (and every hook the commits
+// run) stays off the Witness. Inherited by the python and git children.
+process.env.CHANGE_COIN_NO_CHAIN = '1';
 
-function cc(repo, ...args) {
-  const r = spawnSync('python3', [CC, ...args, '--repo', repo], { encoding: 'utf8' });
-  return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
+// Fixed commands, argument arrays, no shell: execFile is the instrument's own
+// prescription for a child process; exit status and output come back either way.
+function run(cmd, argv) {
+  try {
+    return { code: 0, out: execFileSync(cmd, argv, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) };
+  } catch (e) {
+    return { code: typeof e.status === 'number' ? e.status : 1, out: (e.stdout || '') + (e.stderr || '') };
+  }
 }
-function git(repo, ...args) {
-  const r = spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' });
-  return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
-}
+function cc(repo, ...args) { return run('python3', [CC, ...args, '--repo', repo]); }
+function git(repo, ...args) { return run('git', ['-C', repo, ...args]); }
 function freshRepo() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'change-coin-'));
   git(repo, 'init', '-q', '.');
@@ -87,7 +93,7 @@ test('mint through the instrument → hook writes the trailer → verify recompu
   const m = cc(repo, 'mint');
   assert.strictEqual(m.code, 0, m.out);
   assert.match(m.out, /via void:compress_signal/);
-  assert.match(m.out, /fractal token/);
+  assert.match(m.out, /NOT saved \(CHANGE_COIN_NO_CHAIN/);
   const coinId = /Remembrance-Coin: ([0-9a-f]{64})/.exec(m.out)[1];
   const ledger = JSON.parse(fs.readFileSync(path.join(repo, 'coins.ledger.json'), 'utf8'));
   assert.strictEqual(ledger.coins.length, 1);
@@ -96,8 +102,11 @@ test('mint through the instrument → hook writes the trailer → verify recompu
   assert.strictEqual(coin.reading.via, 'void:compress_signal');
   assert.strictEqual(coin.reading.void_seal.via, 'void_compressor_v5.compress');
   assert.strictEqual(coin.reading.commitment.canon, 'void-seal/v3');
-  assert.strictEqual(coin.fractal_token.depth_dim % 29, 0);
-  assert.notStrictEqual(coin.fractal_token.depth_dim, 256);
+  // minted, not unfolded: the coin carries the sealed commitment WITHOUT its
+  // shape and no fractal token — proof of the pipeline, unfolded only when needed
+  assert.strictEqual(coin.reading.commitment.shape, undefined);
+  assert.strictEqual(coin.fractal_token, undefined);
+  assert.match(coin.reading.commitment.shape_sha256, /^[0-9a-f]{64}$/);
   // idempotent by the patch bytes
   const m2 = cc(repo, 'mint');
   assert.strictEqual(m2.code, 0);
@@ -108,6 +117,13 @@ test('mint through the instrument → hook writes the trailer → verify recompu
   const v = cc(repo, 'verify', '--since-epoch');
   assert.strictEqual(v.code, 0, v.out);
   assert.match(v.out, /1 commit\(s\) carry a coin over their own bytes/);
+  // unfold WHEN NEEDED: the bytes back through the instrument, the shape
+  // through the decoder — a canonical-width token, exact hash
+  const u = cc(repo, 'unfold', 'HEAD');
+  assert.strictEqual(u.code, 0, u.out);
+  assert.match(u.out, /232-D fractal token [0-9a-f]{64}/);
+  const deep = cc(repo, 'verify', 'HEAD', '--deep');
+  assert.strictEqual(deep.code, 0, deep.out);
   // change the index after minting → the coin no longer covers it
   fs.appendFileSync(path.join(repo, 'add.js'), '\n// drift\n');
   git(repo, 'add', 'add.js');
@@ -145,7 +161,7 @@ test('verify: a coin whose seal covers other bytes is refused (the reading must 
     spawnSync('git', ['-C', repo, 'write-tree'], { encoding: 'utf8' }).stdout.trim(), '--', '.', ':(exclude)coins.ledger.json']).stdout;
   coin.change.diff_sha256 = crypto.createHash('sha256').update(patch).digest('hex');
   coin.change.diff_bytes = patch.length;
-  coin.coin_id = crypto.createHash('sha256').update(`${coin.change.diff_sha256}|${coin.reading.void_seal.sig}|${coin.fractal_token.token_sha256}`).digest('hex');
+  coin.coin_id = crypto.createHash('sha256').update(`${coin.change.diff_sha256}|${coin.reading.void_seal.sig}|${coin.reading.commitment.shape_sha256}`).digest('hex');
   fs.writeFileSync(path.join(repo, 'coins.ledger.json'), JSON.stringify(doc, null, 1) + '\n');
   git(repo, 'add', 'coins.ledger.json');
   assert.strictEqual(git(repo, 'commit', '-q', '--no-verify', '-m', `forged\n\nRemembrance-Coin: ${coin.coin_id}`).code, 0);

@@ -57,6 +57,7 @@ operation physically lives:
     run.mjs --do denials [N]           # the wall's ledger — every refused bypass
     run.mjs --do mint                  # THE CHANGE COIN — mint over the staged change (required to commit)
     run.mjs --do mint verify [--staged|--since-epoch|A..B]   # what the hook and CI check
+    run.mjs --do mint unfold <rev>     # unfold ONE coin when you need it (bytes → instrument → decoder)
     run.mjs --do mint install-hooks    # the commit-msg hook that writes the trailer / refuses
     run.mjs --do seal [--verify]       # commit seal — CI re-derives it or refuses the merge
     run.mjs --do field                 # peek the Living Remembrance field state
@@ -93,13 +94,18 @@ with side effects will have them.
 
 Every commit must carry `Remembrance-Coin: <coin_id>` naming a coin in
 `coins.ledger.json` that was minted by `--do mint` over the **exact staged
-patch**: the patch is read through the instrument (void-seal + void-seal/v3
-commitment) and the commitment's shape is unfolded through the decoder
-(fractal token). The commit-msg hook refuses a commit whose staged bytes no
-coin covers, and `change-coin-verify.yml` refuses the merge on GitHub's runner
-for any commit since the epoch — recomputing the patch from the trees, the
-quantised bytes the compressor hashed, the seal's canon, and the coin id;
-with `VOID_SEAL_KEY` set as a repo secret the seal's HMAC is verified too. The
+patch**: the patch is read through the instrument and the coin carries the
+compressor's void-seal and void-seal/v3 commitment over those bytes — proof
+the change went through the pipeline. The coin is also saved onto the chain
+(REMEMBRANCE-BLOCKCHAIN, one REGISTER block per coin). It is **not unfolded
+when minted**: unfolding (the bytes back through the instrument, the shape
+through the decoder into the 232-D fractal token) happens only when needed —
+`--do mint unfold <rev>` or `verify --deep`. The commit-msg hook refuses a
+commit whose staged bytes no coin covers, and `change-coin-verify.yml` refuses
+the merge on GitHub's runner for any commit since the epoch — recomputing the
+patch from the trees, the quantised bytes the compressor hashed, the seal's
+canon, and the coin id; with `VOID_SEAL_KEY` set as a repo secret the seal's
+HMAC is verified too. The
 order of work is therefore fixed: `git add` → `--do mint` → `git commit`. Change
 the index after minting and the coin no longer covers it — mint again. There is
 no flag that skips this; `--no-verify` is refused by the goggles wall and is

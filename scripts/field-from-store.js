@@ -46,23 +46,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { execFileSync } = require('node:child_process');
-const { createGate, requireGate } = require('../src/core/covenant-fractal');
-
-// The one direct write — the export stamp under .remembrance/ — goes through
-// the covenant gate; the field itself is written by the engine's contribute().
-const _writeStamp = requireGate((gate, file, data) => fs.writeFileSync(file, data));
-const _sealedGate = () => createGate().seal({
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.3, group: 18, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'utility',
-});
-
-const HOME = process.env.ECOSYSTEM_HOME || path.resolve(__dirname, '..', '..');
-const VOID = process.env.VOID_ROOT || path.join(HOME, 'Void-Data-Compressor');
-const STORE = path.join(VOID, 'data', 'pattern_store.npz');
-const SCRATCH = path.join(path.resolve(__dirname, '..'), '.remembrance', 'store-export');
+// The store export (numpy → float32 rows + stems, cached by store sha) lives in
+// core now: src/core/void-library.js loads the same rows into the resonance
+// library, so both consumers read one export.
+const { exportStore, readNpyF32, STORE, SCRATCH } = require('../src/core/store-export');
 
 /** The fifteen principles, exactly as the hub states them. */
 function defaultAnchorText() {

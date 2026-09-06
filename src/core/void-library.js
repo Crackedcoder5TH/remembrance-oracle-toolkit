@@ -19,11 +19,23 @@
  * fractal is the base layer and the JS↔Python parity anchor (contract
  * C-71, verified against to_fractal_waveform.py). The index
  * (pattern_index_fractal.json) stores BOTH per pattern: `fractal`
- * (29-D L1) and `composed_v1` (116-D).
+ * (29-D L1) and `composed` (the canonical width, 232-D at depth 8;
+ * older entries may still carry composed_v1/v2/v4 at 116/145/203-D and
+ * are read at their own depth).
+ *
+ * THE LIBRARY IS THE INDEX PLUS THE STORE. The substrate index holds the
+ * witnessed files (~2.6k). The pattern library itself — 45,547 patterns as
+ * 232-D fractal vectors in Void's data/ store — is loaded beside it through
+ * src/core/store-export.js (numpy exports it once per store version; node
+ * reads the float32 rows). Before this the store was invisible to every
+ * resonance read: the library reported 2,597 where it had once reported
+ * 46,534, and the goggles' META lens matched against the witnessed files
+ * alone. Rows are named `store/<stem>#<row>`; their L1 is the first 29 dims
+ * of the composed vector (the layers compose as prefixes).
  *
  * What this module does:
- *   - Load both the 29-D L1 map and the 116-D composed map lazily on
- *     the first scoring call
+ *   - Load the 29-D L1 map and the composed map lazily on the first
+ *     scoring call — index entries and store rows alike
  *   - scoreWithFlow(): the default — cosine FLOW across all four depths
  *     (d1=29, d2=58, d3=87, d4=116) per match, plus a shape label
  *   - score(): backward-compat single-cosine at L1 (29-D) only
@@ -65,6 +77,7 @@ class VoidLibrary {
     this._loadError = null;
     this._loadAttempted = false;
     this._meta = null;
+    this._store = null;        // { rows, width, sha } | { rows: 0, error } once loaded
   }
 
   /**
@@ -273,11 +286,28 @@ class VoidLibrary {
         // searchFlow), so shallow patterns score exactly as before and deep
         // ones fold in the residual layers — no mixing bias.
         const deep = entry && (
-          (Array.isArray(entry.composed_v4) && entry.composed_v4.length % 29 === 0 && entry.composed_v4)
+          // the canonical waveform under its own name (redecode / harvest write it)
+          (Array.isArray(entry.composed) && entry.composed.length % 29 === 0 && entry.composed)
+          || (Array.isArray(entry.composed_v4) && entry.composed_v4.length % 29 === 0 && entry.composed_v4)
           || (Array.isArray(entry.composed_v2) && entry.composed_v2.length % 29 === 0 && entry.composed_v2)
           || (Array.isArray(entry.composed_v1) && entry.composed_v1.length >= 29 && entry.composed_v1)
         );
         if (deep) composed.set(name, Float64Array.from(deep));
+      }
+      // The pattern library proper: every store row, at the canonical width.
+      const { loadStore } = require('./store-export');
+      const store = loadStore();
+      if (store.error) {
+        this._store = { rows: 0, error: store.error };
+      } else {
+        const { rows, width, data, stems } = store;
+        for (let i = 0; i < rows; i++) {
+          const row = data.subarray(i * width, (i + 1) * width);
+          const name = `store/${stems[i] || 'unknown'}#${i}`;
+          fractals.set(name, row.subarray(0, 29));
+          composed.set(name, row);
+        }
+        this._store = { rows, width, sha: store.sha };
       }
       this._fractals = fractals;
       this._composed = composed;

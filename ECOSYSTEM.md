@@ -117,9 +117,13 @@ git commit                                         # the commit-msg hook writes 
 **No coin, no change.** The coin is minted only by the pipeline: the staged
 patch is read through the instrument (`read-signal` → `/compress_signal` →
 `void_compressor_v5.compress`), which returns the void-seal and the
-void-seal/v3 commitment over exactly those bytes; the commitment's shape is
-unfolded through the one decoder (§7) into the fractal token; the coin binds
-patch, seal and token and is appended to `coins.ledger.json` (append-only).
+void-seal/v3 commitment over exactly those bytes; the coin binds patch, seal
+and the commitment's shape hash, is appended to `coins.ledger.json`
+(append-only) and saved onto the chain (REMEMBRANCE-BLOCKCHAIN, one REGISTER
+block per coin). The coin is proof the change went through the pipeline; it
+is NOT unfolded when minted. Unfolding — the bytes back through the
+instrument, the shape through the one decoder (§7) into the 232-D fractal
+token — happens only when needed: `--do mint unfold <rev>`, `verify --deep`.
 The commit-msg hook refuses a commit whose staged bytes no coin covers, and
 `.github/workflows/change-coin-verify.yml` refuses the merge on GitHub's
 runner for every commit since the epoch — it re-renders the patch from the

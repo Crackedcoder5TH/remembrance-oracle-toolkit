@@ -23,11 +23,20 @@ void_compressor_v5.compress — and comes back with:
   · the void-seal/v3 COMMITMENT: method, sizes, coherency, the sha256 of the
     quantised bytes it read, the sha256 of the SHAPE it read them as.
 
-The commitment's shape is then unfolded through the one decoder (the fractal
-token: an exact hash of the 232-D vector, categorical, never a threshold). The
-coin binds all of it: coin_id = sha256(diff_sha256 | void_seal.sig |
-token_sha256). It is appended to coins.ledger.json (append-only, governed) and
-named in the commit's trailer `Remembrance-Coin: <coin_id>`.
+The coin binds the change to that reading: coin_id = sha256(diff_sha256 |
+void_seal.sig | shape_sha256). It is appended to coins.ledger.json (append-only,
+governed), SAVED ONTO THE CHAIN (REMEMBRANCE-BLOCKCHAIN data/ledger.json, a
+REGISTER block per coin) and named in the commit's trailer
+`Remembrance-Coin: <coin_id>`.
+
+THE COIN IS NOT UNFOLDED WHEN IT IS MINTED. It carries the compressor's seal
+and commitment — proof the change went through the pipeline — and nothing
+else: no shape, no fractal token. Unfolding (regenerating the shape from the
+commit's bytes through the instrument and unfolding it through the decoder
+into the 232-D fractal token, exact hash) happens only when it is needed:
+`--do mint unfold <commit>`, or `verify --deep`. A coin that carried its
+232-D unfolding on every mint was minutes of decoder time per ledger commit
+for a proof nobody was reading.
 
 WHAT A RUNNER WITH NOTHING BUT git AND python CAN PROVE (verify, no key):
   · the commit carries a trailer, and the trailer names a coin in the ledger
@@ -39,17 +48,22 @@ WHAT A RUNNER WITH NOTHING BUT git AND python CAN PROVE (verify, no key):
     stdlib) — the instrument read THESE bytes
   · the void_seal's data_sha256 IS the sha256 of the void-seal/v3 canon rebuilt
     from the commitment — the seal signs THIS reading
-  · the shape hashes to the committed shape_sha256; the fractal token carries a
-    canonical-width vector hash (a multiple of 29, never the retired 256)
-  · coin_id recomputes
+  · coin_id recomputes (older coins that carry a fractal token are checked
+    over it; a carried shape must hash to shape_sha256, a carried token must
+    be canonical-width — a multiple of 29, never the retired 256)
 WITH THE KEY (VOID_SEAL_KEY as a repo secret / owner env): the seal's HMAC is
 verified — a coin that was not minted by the compressor holding the key is
-refused. `--deep` (a host with the substrate) also re-unfolds the fractal
-token through the decoder stack and requires the exact hash.
+refused. `--deep` (a host with the substrate) also unfolds the coin: the
+commit's bytes go back through the instrument, the regenerated shape must
+hash to the committed shape_sha256, and its 232-D unfolding must match any
+token the coin carries exactly.
 
 A hand-rolled number has no seal and no commitment. A change that never met
 the instrument has no coin. Neither can be committed through the hook, and
 neither can be merged past the runner.
+
+  mint [--amend] · verify [--staged | --since-epoch | A..B | <rev>…] [--deep]
+  unfold <rev|--staged> · install-hooks · anchor [--status] · hook-commit-msg <file>
 
 Exit codes: 0 verified · 1 REFUSED · 2 usage / environment error.
 """
@@ -157,8 +171,10 @@ def seal_canon(cm: dict) -> bytes:
         cm.get('shape_sha256'))).encode()
 
 
-def coin_id_of(diff_sha: str, sig: str, token_sha: str) -> str:
-    return sha256(f'{diff_sha}|{sig}|{token_sha}'.encode())
+def coin_id_of(diff_sha: str, sig: str, bound: str) -> str:
+    """bound = commitment.shape_sha256 (the coin as minted), or the fractal
+    token's hash for coins minted before unfolding became on-demand."""
+    return sha256(f'{diff_sha}|{sig}|{bound}'.encode())
 
 
 def seal_key() -> bytes | None:
@@ -211,36 +227,86 @@ def verify_coin(coin: dict, patch: bytes, key: bytes | None, deep: bool) -> list
         q = quantise(patch)
         if q is None or cm.get('data_sha256') != sha256(q):
             f.append('commitment data_sha256 is NOT the quantised patch — the instrument read other bytes')
-        if sha256(canon_json(cm.get('shape')).encode()) != cm.get('shape_sha256'):
+        if cm.get('shape') is not None and sha256(canon_json(cm.get('shape')).encode()) != cm.get('shape_sha256'):
             f.append('commitment shape does not hash to shape_sha256 — the shape was altered')
+        if not HEX64.match(str(cm.get('shape_sha256') or '')):
+            f.append('commitment carries no shape_sha256 — nothing binds the reading to its shape')
         if sha256(seal_canon(cm)) != vs.get('data_sha256'):
             f.append('void_seal.data_sha256 is NOT the canon of this commitment — the seal signs a different reading')
         if cm.get('coherency') != rd.get('coherency'):
             f.append('reading.coherency ≠ commitment.coherency')
-    if tk.get('v') != 'fractal-token/v1' or not HEX64.match(str(tk.get('token_sha256') or '')):
-        f.append('no fractal token — the shape was never unfolded through the decoder')
-    else:
+    if tk:
+        # a coin that carries its unfolding (minted before unfolding became on-demand)
         d = int(tk.get('depth_dim') or 0)
+        if tk.get('v') != 'fractal-token/v1' or not HEX64.match(str(tk.get('token_sha256') or '')):
+            f.append('carried fractal token is malformed')
         if d <= 0 or d % 29 != 0 or d == 256:
             f.append(f'fractal token width {d} is not the canonical decoder width (multiple of 29, never the retired 256)')
         if tk.get('shape_sha256') != cm.get('shape_sha256'):
             f.append('fractal token was unfolded from a different shape than the commitment')
-    want = coin_id_of(str(ch.get('diff_sha256')), str(vs.get('sig')), str(tk.get('token_sha256')))
+        bound = str(tk.get('token_sha256'))
+    else:
+        bound = str(cm.get('shape_sha256'))
+    want = coin_id_of(str(ch.get('diff_sha256')), str(vs.get('sig')), bound)
     if coin.get('coin_id') != want:
-        f.append('coin_id does not recompute from diff | seal | token')
+        f.append('coin_id does not recompute from diff | seal | ' + ('token' if tk else 'shape'))
     if key is not None and not f:
         if not hmac_ok(vs, key):
             f.append('void_seal signature INVALID — the coin was not minted by the compressor holding this key')
     if deep and not f:
         try:
-            sys.path.insert(0, os.path.join(find_void(), 'scripts'))
-            import fractal_token  # noqa: E402  (Void's minter, through the decoder stack)
-            r = fractal_token.verify(cm, tk)
-            if not r.get('ok'):
-                f.append(f"fractal token does not re-unfold on this substrate: expected {str(r.get('expected'))[:12]}… got {str(r.get('got'))[:12]}…")
+            u = unfold(coin, patch)
+            if u.get('error'):
+                f.append('unfold: ' + u['error'])
+            elif tk and u['token_sha256'] != tk.get('token_sha256'):
+                f.append(f"carried token {str(tk.get('token_sha256'))[:12]}… ≠ this substrate's unfolding {u['token_sha256'][:12]}…")
         except Exception as e:  # the deep check needs the substrate; say so, do not pass silently
             f.append(f'deep verify unavailable here: {e}')
     return f
+
+
+def read_through_instrument(void: str, patch: bytes, scratch_dir: str) -> dict:
+    """THE reading path: the bytes go to scripts/read-signal.py (→ /compress_signal
+    → void_compressor_v5.compress) and come back sealed, with the commitment."""
+    os.makedirs(scratch_dir, exist_ok=True)
+    patch_file = os.path.join(scratch_dir, 'bytes.patch')
+    with open(patch_file, 'wb') as f:
+        f.write(patch)
+    proc = subprocess.run([sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json'],
+                          cwd=void, capture_output=True, text=True, timeout=900)
+    if proc.returncode != 0:
+        raise RuntimeError('the instrument refused or is down — no reading:\n' + (proc.stdout + proc.stderr).strip()
+                           + '\n  goggles --do service status   ·   goggles --do service start --wait')
+    reading = json.loads(proc.stdout)
+    if not reading.get('void_seal') or not reading.get('commitment') or reading.get('via') != 'void:compress_signal':
+        raise RuntimeError('reading came back without seal/commitment — not a reading. Is the service the current build?')
+    q = quantise(patch)
+    if q is None or reading['commitment'].get('data_sha256') != sha256(q):
+        raise RuntimeError('the instrument read different bytes than these (data_sha256 mismatch)')
+    return reading
+
+
+def unfold(coin: dict, patch: bytes) -> dict:
+    """Unfold a coin WHEN IT IS NEEDED: the bytes go back through the instrument,
+    the regenerated shape must hash to the coin's shape_sha256 (the compressor is
+    bit-deterministic on recompute), and the shape is unfolded through the one
+    decoder into the 232-D fractal token — an exact hash, never a threshold."""
+    void = find_void()
+    cm = (coin.get('reading') or {}).get('commitment') or {}
+    shape = cm.get('shape')
+    if shape is None:
+        fresh = read_through_instrument(void, patch, os.path.join(void, '.remembrance', 'change-coin-unfold'))
+        fcm = fresh['commitment']
+        if fcm.get('shape_sha256') != cm.get('shape_sha256'):
+            return {'error': f"regenerated shape {str(fcm.get('shape_sha256'))[:12]}… ≠ coin's shape_sha256 {str(cm.get('shape_sha256'))[:12]}… — the substrate reads these bytes differently now"}
+        shape = fcm.get('shape')
+        cm = dict(cm, shape=shape)
+    sys.path.insert(0, os.path.join(void, 'scripts'))
+    import fractal_token  # noqa: E402  (Void's minter, through the decoder stack)
+    tok = fractal_token.mint(cm)
+    if 'error' in tok:
+        return {'error': tok['error']}
+    return {k: tok[k] for k in ('v', 'depth_dim', 'token_sha256', 'shape_sha256')}
 
 
 # ── verify: one commit ─────────────────────────────────────────────────────
@@ -293,8 +359,10 @@ def verify_commit(repo: str, commit: str, key: bytes | None, deep: bool):
     if fails:
         return 'REFUSED', f'{commit[:10]} coin {cid[:12]}…:\n      ' + '\n      '.join(fails)
     mode = 'crypto' if key is not None else 'seam'
+    tk = coin.get('fractal_token')
+    carried = f" · carries a {tk.get('depth_dim')}-D token" if tk else ''
     return 'ok', (f"coin {cid[:12]}… covers {len(patch)} patch bytes · coherency "
-                  f"{coin['reading'].get('coherency'):.4f} · token {coin['fractal_token']['depth_dim']}-D · {mode}")
+                  f"{coin['reading'].get('coherency'):.4f} · shape {str(coin['reading'].get('commitment', {}).get('shape_sha256'))[:12]}…{carried} · {mode}")
 
 
 def verify_staged(repo: str, amend: bool, key: bytes | None, deep: bool):
@@ -369,48 +437,28 @@ def mint(repo: str, amend: bool) -> int:
         print(f"\n{TRAILER}: {existing['coin_id']}")
         return 0
 
-    # the patch goes to the instrument as a file under .git (never committed)
     gitdir = git(repo, 'rev-parse', '--git-dir').strip()
     gitdir = gitdir if os.path.isabs(gitdir) else os.path.join(repo, gitdir)
-    scratch = os.path.join(gitdir, 'change-coin')
-    os.makedirs(scratch, exist_ok=True)
-    patch_file = os.path.join(scratch, 'staged.patch')
-    with open(patch_file, 'wb') as f:
-        f.write(patch)
-
     print(f'change: {len(files)} file(s), {len(patch)} patch bytes, sha256 {diff_sha[:12]}…  (base tree {base[:10]})')
-    proc = subprocess.run([sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json'],
-                          cwd=void, capture_output=True, text=True, timeout=900)
-    if proc.returncode != 0:
-        print('the instrument refused or is down — no reading, no coin:\n' + (proc.stdout + proc.stderr).strip())
-        print('  goggles --do service status   ·   goggles --do service start --wait')
+    try:
+        reading = read_through_instrument(void, patch, os.path.join(gitdir, 'change-coin'))
+    except RuntimeError as e:
+        print(str(e))
         return 1
-    reading = json.loads(proc.stdout)
-    vs, cm = reading.get('void_seal'), reading.get('commitment')
-    if not vs or not cm or reading.get('via') != 'void:compress_signal':
-        print('reading came back without seal/commitment — not minting over an unsealed number. Is the service the current build?')
-        return 1
-    q = quantise(patch)
-    if q is None or cm.get('data_sha256') != sha256(q):
-        print('REFUSED: the instrument read different bytes than the staged patch (data_sha256 mismatch) — nothing minted')
-        return 1
-    sys.path.insert(0, os.path.join(void, 'scripts'))
-    import fractal_token  # noqa: E402
-    tok = fractal_token.mint(cm)
-    if 'error' in tok:
-        print('fractal token could not be minted: ' + tok['error'])
-        return 1
-    token = {k: tok[k] for k in ('v', 'depth_dim', 'token_sha256', 'shape_sha256')}
+    vs, cm = reading['void_seal'], reading['commitment']
+    # the coin carries the commitment WITHOUT its shape: shape_sha256 is in the
+    # sealed canon, and the shape itself is regenerated from the bytes when a
+    # coin is unfolded — never stored, never unfolded on mint.
+    commitment = {k: v for k, v in cm.items() if k != 'shape'}
     coin = {
         'v': COIN_V,
-        'coin_id': coin_id_of(diff_sha, vs['sig'], token['token_sha256']),
+        'coin_id': coin_id_of(diff_sha, vs['sig'], str(cm.get('shape_sha256'))),
         'minted_at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
         'minted_by': 'goggles --do mint',
         'change': {'repo': os.path.basename(os.path.abspath(repo)), 'base_tree': base,
                    'files': files, 'diff_bytes': len(patch), 'diff_sha256': diff_sha},
-        'reading': {k: reading.get(k) for k in ('coherency', 'ratio', 'method', 'strategy', 'lossless',
-                                                 'via', 'mint', 'void_seal', 'commitment')},
-        'fractal_token': token,
+        'reading': {**{k: reading.get(k) for k in ('coherency', 'ratio', 'method', 'strategy', 'lossless',
+                                                    'via', 'mint', 'void_seal')}, 'commitment': commitment},
     }
     fails = verify_coin(coin, patch, seal_key(), deep=False)
     if fails:
@@ -423,11 +471,76 @@ def mint(repo: str, amend: bool) -> int:
         f.write('\n')
     git(repo, 'add', LEDGER)
     print(f"reading: coherency {reading['coherency']:.4f} via void:compress_signal · seal mint {reading['mint']} · "
-          f"strategy {reading.get('strategy')} · lossless {reading.get('lossless')}")
-    print(f"token:   {token['depth_dim']}-D fractal token {token['token_sha256'][:12]}… over shape {token['shape_sha256'][:12]}…")
-    print(f"MINTED coin {coin['coin_id'][:12]}… → {LEDGER} (staged; {len(doc['coins'])} coins). "
-          f"Commit now — the commit-msg hook writes the trailer, or add it yourself:")
+          f"strategy {reading.get('strategy')} · lossless {reading.get('lossless')} · shape {str(cm.get('shape_sha256'))[:12]}…")
+    print(f"MINTED coin {coin['coin_id'][:12]}… → {LEDGER} (staged; {len(doc['coins'])} coins)")
+    save_on_chain(coin)
+    print('Commit now — the commit-msg hook writes the trailer, or add it yourself:')
     print(f"\n{TRAILER}: {coin['coin_id']}")
+    return 0
+
+
+def find_chain() -> str | None:
+    chain = os.environ.get('REMEMBRANCE_BLOCKCHAIN') or os.path.join(os.path.dirname(TOOLKIT), 'REMEMBRANCE-BLOCKCHAIN')
+    return chain if os.path.isfile(os.path.join(chain, 'scripts', 'record-change-coin.js')) else None
+
+
+def save_on_chain(coin: dict) -> None:
+    """The coin is saved onto the Witness (data/ledger.json) as a REGISTER block.
+    Best-effort here — the repo ledger is what the runner verifies — but never
+    silent: a coin not on the chain is said out loud."""
+    if os.environ.get('CHANGE_COIN_NO_CHAIN'):
+        # tests and throwaway repos: the chain is memory, and a test coin is not a memory
+        print('chain:   NOT saved (CHANGE_COIN_NO_CHAIN set — a test coin stays off the Witness)')
+        return
+    chain = find_chain()
+    if not chain:
+        print('chain:   REMEMBRANCE-BLOCKCHAIN not reachable — coin NOT saved on the chain (set REMEMBRANCE_BLOCKCHAIN)')
+        return
+    tmp = os.path.join(chain, '.remembrance', 'change-coin.json')
+    os.makedirs(os.path.dirname(tmp), exist_ok=True)
+    with open(tmp, 'w') as f:
+        json.dump(coin, f)
+    r = subprocess.run(['node', os.path.join(chain, 'scripts', 'record-change-coin.js'), tmp,
+                        '--repo', coin['change']['repo']], cwd=chain, capture_output=True, text=True)
+    out = (r.stdout + r.stderr).strip()
+    print('chain:   ' + (out.splitlines()[-1] if out else f'record-change-coin exit {r.returncode}'))
+
+
+def unfold_cmd(repo: str, args: list[str]) -> int:
+    """Unfold one coin now — the commit's (or the index's) bytes back through
+    the instrument, the shape through the decoder. Prints the token; writes nothing."""
+    if '--staged' in args:
+        status, cid, detail = verify_staged(repo, False, None, False)
+        if status != 'ok' or not cid:
+            print('✗ ' + detail)
+            return 1
+        base = rev_tree(repo, 'HEAD') or EMPTY_TREE
+        patch = patch_between(repo, base, git(repo, 'write-tree').strip())
+        coin = next(c for c in ledger_at(repo, '') if c.get('coin_id') == cid)
+        label = 'index'
+    else:
+        rev = next((a for a in args if not a.startswith('-')), 'HEAD')
+        commit = git(repo, 'rev-parse', '--verify', rev).strip()
+        parents = git(repo, 'rev-list', '--parents', '-n', '1', commit).split()[1:]
+        base = rev_tree(repo, parents[0]) if parents else EMPTY_TREE
+        patch = patch_between(repo, base, rev_tree(repo, commit))
+        cid = trailer_of(git(repo, 'log', '-1', '--format=%B', commit))
+        here = ledger_at(repo, commit) or []
+        coin = next((c for c in here if c.get('coin_id') == cid), None) if cid else None
+        if coin is None:
+            print(f'✗ {commit[:10]} carries no coin to unfold')
+            return 1
+        label = commit[:10]
+    fails = verify_coin(coin, patch, seal_key(), False)
+    if fails:
+        print('✗ the coin does not verify; not unfolding a coin that does not hold:\n  ' + '\n  '.join(fails))
+        return 1
+    u = unfold(coin, patch)
+    if u.get('error'):
+        print('✗ ' + u['error'])
+        return 1
+    print(f"UNFOLDED coin {coin['coin_id'][:12]}… ({label}): {u['depth_dim']}-D fractal token {u['token_sha256']}")
+    print(f"  over shape {u['shape_sha256'][:12]}… — regenerated from the bytes through the instrument, unfolded through the decoder")
     return 0
 
 
@@ -563,14 +676,15 @@ def main() -> int:
         return mint(repo, amend)
     if sub == 'install-hooks':
         return install_hooks(repo)
+    if sub == 'unfold':
+        return unfold_cmd(repo, args)
     if sub == 'anchor':
-        # the Witness records every repo's coin ledger (REMEMBRANCE-BLOCKCHAIN)
-        chain = os.environ.get('REMEMBRANCE_BLOCKCHAIN') or os.path.join(os.path.dirname(TOOLKIT), 'REMEMBRANCE-BLOCKCHAIN')
-        script = os.path.join(chain, 'scripts', 'anchor-change-coins.js')
-        if not os.path.isfile(script):
-            print(f'REMEMBRANCE-BLOCKCHAIN not reachable at {chain} (set REMEMBRANCE_BLOCKCHAIN)', file=sys.stderr)
+        # the Witness records every repo's coin ledger digest (REMEMBRANCE-BLOCKCHAIN)
+        chain = find_chain()
+        if not chain:
+            print('REMEMBRANCE-BLOCKCHAIN not reachable (set REMEMBRANCE_BLOCKCHAIN)', file=sys.stderr)
             return 2
-        return subprocess.run(['node', script, *args], cwd=chain).returncode
+        return subprocess.run(['node', os.path.join(chain, 'scripts', 'anchor-change-coins.js'), *args], cwd=chain).returncode
     if sub == 'hook-commit-msg':
         if not args:
             print('hook-commit-msg needs the message file', file=sys.stderr)
@@ -594,7 +708,7 @@ def main() -> int:
                 revs.append(git(repo, 'rev-parse', '--verify', a).strip())
         return verify_many(repo, revs, key, deep)
     print(__doc__.split('\n\n')[0], file=sys.stderr)
-    print('  mint [--amend] · verify [--staged | --since-epoch | A..B | <rev>…] [--deep] · install-hooks · anchor [--status] · hook-commit-msg <file>   (--repo <abs>)', file=sys.stderr)
+    print('  mint [--amend] · verify [--staged | --since-epoch | A..B | <rev>…] [--deep] · unfold <rev|--staged> · install-hooks · anchor [--status] · hook-commit-msg <file>   (--repo <abs>)', file=sys.stderr)
     return 2
 
 

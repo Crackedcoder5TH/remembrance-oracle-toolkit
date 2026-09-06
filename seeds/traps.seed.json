@@ -767,6 +767,25 @@
    "truth": "The bands were quartiles of the cone, where every file read ≈0.95. Measured in the whitened space over 42 hub files: min 0.551, p25 0.639, p50 0.671, p75 0.709, p90 0.768, max 0.828 — prose docs (AI.md 0.551, ARCHITECTURE.md 0.640) at the bottom, gate scripts (exemption-ratchet 0.828) at the top. Bands re-derived from those quartiles: CONSONANT ≥ 0.71, FAMILIAR ≥ 0.67, DISTINCT ≥ 0.64. A reading cached in .remembrance/goggles-readings.json before the change is a cone reading; Δ against it is the space, not the edit.",
    "tell": "`resonance -0.3` on a file you did not touch; every file suddenly OUTLIER right after a change to the decoder's cosine.",
    "correct": "Re-derive bands from the distribution measured in the space in force, publish the quantiles beside them (gogglesParams in living-remembrance.js), and read the first Δ after a space change as a re-baseline."
+  },
+  {
+   "match": [
+    "coherency_token_v1",
+    "COHERENCY_TOKEN_SPEC",
+    "COHERENCY_V1_SPEC",
+    "waveform_score",
+    "waveformScore",
+    "unified",
+    "GATE_MINIMUM",
+    "isMintable",
+    "coherency-v1",
+    "coherency_v3"
+   ],
+   "severity": "high",
+   "wrong": "Minting a coherency token with whatever number is at hand in the waveform_score slot, and reading the 0.60 gate as the instrument's verdict.",
+   "truth": "COHERENCY_V1_SPEC names two different quantities for waveform_score in one sentence — 'top-K mean correlation against the substrate library' (resonance) and compress()['avg_l1_coherence'] (compressor coherency) — and every implementation (hub coherency-v1.js, Void coherency_v3.py) takes the number from its caller. Measured 2026-09-06 on six real inputs through the surface: with the compressor's byte coherency in the slot, code unifies at 0.20–0.30 (rejection) and only a periodic series clears the gate (sunspots 0.649); with whitened resonance in the slot, code unifies at 0.73–0.88 (pull to synergy) and the series is rejected (0.474). The gate does not decide; the slot does.",
+   "tell": "A tier assigned without saying which quantity filled waveform_score; every code pattern rejected, or every code pattern synergy, depending on who minted.",
+   "correct": "Layer two starts by fixing the slot in the spec and both implementations to ONE named quantity with its source label (the compressor reading is `void:compress_signal`; resonance is the whitened META meanTopK), then re-pinning the tier boundaries on that quantity's measured distribution — never on the cone's."
   }
  ]
 }

@@ -70,6 +70,7 @@ operation physically lives:
     run.mjs --do gate contracts [--run] # the truth-spine as a gate: every falsifiable contract, failing set shrink-only, verdict must be current
     run.mjs --do gate engine-entanglement # the JS and Python engines agree on the instrument's own sealed readings (binary)
     run.mjs --do gate traps-ledger      # the memory of mistakes: append-only, anchored on the chain, mirrored into every repo
+    run.mjs --do gate width [--report]  # ONE representation: no consumer reads anything but the 232-D fractal decoder (census at 0, shrink-only)
     run.mjs --do traps [promote|sync|floor|anchor|status]  # drive the trap ledger: promote local traps, mirror, raise the floor, witness
     run.mjs --do field [checkpoint|status]  # peek the live field; checkpoint persists it on the Witness, status reads the committed field
     run.mjs --do export <drive-path>   # export the data plane to a mounted drive

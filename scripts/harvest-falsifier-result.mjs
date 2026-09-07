@@ -36,7 +36,7 @@ for (const [metric, vals] of Object.entries(series)) {
   if (!vals.length) continue;
   const key = 'falsification/' + name + '/' + metric;
   if (index[key]) continue;
-  const entry = { composed_v2: Array.from(composedAtDepth(ser(vals), 8)), waveform: vals, source: 'falsifier-receipt', test: name, metric, verdict: 'disconfirming' };
+  const entry = { composed: Array.from(composedAtDepth(ser(vals), 8)), waveform: vals, source: 'falsifier-receipt', test: name, metric, verdict: 'disconfirming' };
   SL.stamp(entry, { sequence: seq++, now, series: vals, cadence: 'event' });
   index[key] = entry; added++;
 }

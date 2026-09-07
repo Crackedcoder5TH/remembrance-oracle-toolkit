@@ -62,8 +62,8 @@ contributions++;
 // ── 2. Substrate population ─────────────────────────────────────
 console.log('Wiring substrate population statistics...');
 const idx = JSON.parse(fs.readFileSync(FRACTAL_INDEX, 'utf8'));
-const entries = Object.entries(idx.index).map(([name, e]) => ({ name, l1: e.fractal, composed: e.composed_v1 }));
-const validEntries = entries.filter(e => Array.isArray(e.composed) && e.composed.length === 116);
+const entries = Object.entries(idx.index).map(([name, e]) => ({ name, l1: Array.isArray(e.composed) ? e.composed.slice(0, 29) : null, composed: e.composed }));   // L1 is the first block of the ONE vector
+const validEntries = entries.filter(e => Array.isArray(e.composed) && e.composed.length === 232);
 
 contribute(Math.min(1, validEntries.length / 100000), 'substrate:size:total');
 contribute(Math.min(1, validEntries.length / 46534), 'substrate:size:current-vs-baseline');
@@ -106,7 +106,7 @@ const step = validEntries.length / PROBE_COUNT;
 const probes = [];
 for (let i = 0; i < PROBE_COUNT; i++) probes.push(validEntries[Math.floor(i * step)]);
 
-for (const [depth, len, field] of [[1, 29, 'l1'], [3, 87, 'composed'], [4, 116, 'composed']]) {
+for (const [depth, len, field] of [[1, 29, 'l1'], [3, 87, 'composed'], [4, 116, 'composed'], [8, 232, 'composed']]) {
   let collisions = 0;
   for (const probe of probes) {
     let bestCos = -1, bestIdx = -1;
@@ -160,7 +160,7 @@ for (let k = 0; k < tries; k++) {
   if (i === j) continue;
   const a = validEntries[i], b = validEntries[j];
   if (a.name.split('/')[0] === b.name.split('/')[0]) continue;
-  const cc = cosineRange(a.composed, b.composed, 116);
+  const cc = cosineRange(a.composed, b.composed, 232);
   if (cc > 0.95) {
     bridges.push({ a: a.name, b: b.name, cos: cc });
   }
@@ -181,7 +181,7 @@ const discriminations = [];
 for (let i = 0; i < cascadeEntries.length; i++) {
   for (let j = i + 1; j < cascadeEntries.length; j++) {
     const l1 = cosineRange(cascadeEntries[i].l1, cascadeEntries[j].l1, 29);
-    const d4 = cosineRange(cascadeEntries[i].composed, cascadeEntries[j].composed, 116);
+    const d4 = cosineRange(cascadeEntries[i].composed, cascadeEntries[j].composed, 232);
     if (l1 > 0.99 && d4 < l1) {
       discriminations.push({ l1, d4, drop: l1 - d4 });
     }
@@ -199,7 +199,7 @@ if (discriminations.length > 0) {
 // ── 7. Encoder configuration meta ───────────────────────────────
 console.log('Wiring decoder-stack meta...');
 const totalDims = layers.reduce((s, L) => s + L.dims, 0);
-contribute(totalDims / 116, 'encoder:total-dims-normalized');
+contribute(totalDims / 232, 'encoder:total-dims-normalized');
 contribute(Math.min(1, idx.patterns_translated / 100000), 'substrate:patterns-translated-normalized');
 contributions += 2;
 

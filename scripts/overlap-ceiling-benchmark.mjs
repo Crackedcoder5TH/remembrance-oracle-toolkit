@@ -11,8 +11,8 @@ const W = require('./src/core/whitening');
 
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
 const idx = JSON.parse(fs.readFileSync(VOID + '/pattern_index_fractal.json', 'utf8')).index;
-const DIM = 116, V = [];
-for (const n of Object.keys(idx)) { const v = idx[n].composed_v1; if (Array.isArray(v) && v.length === DIM) V.push(v); }
+const DIM = 232 /* the ONE width */, V = [];
+for (const n of Object.keys(idx)) { const v = idx[n].composed; if (Array.isArray(v) && v.length === DIM) V.push(v); }
 const N = 4000, step = Math.max(1, Math.floor(V.length / N)), lib = [];
 for (let i = 0; i < V.length && lib.length < N; i += step) lib.push(V[i]);
 

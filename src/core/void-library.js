@@ -304,8 +304,11 @@ class VoidLibrary {
       // when it was witnessed. The goggles' STATE line reads this per file.
       const meta = new Map();
       for (const [name, entry] of Object.entries(data.index)) {
-        if (entry && Array.isArray(entry.fractal) && entry.fractal.length === 29) {
-          fractals.set(name, Float64Array.from(entry.fractal));
+        // The L1 block is the first 29 of the canonical vector (composed[:29] ===
+        // the L1 fractal — verified); it is read FROM the one vector, never
+        // carried as a vector of its own.
+        if (entry && Array.isArray(entry.composed) && entry.composed.length >= 29) {
+          fractals.set(name, Float64Array.from(entry.composed.slice(0, 29)));
         }
         if (entry) {
           meta.set(name, {
@@ -315,20 +318,14 @@ class VoidLibrary {
             ingestedAt: (entry.ledger && entry.ledger.ingested_at) || entry.ingested_at || null,
           });
         }
-        // Load the DEEPEST available composed signature per pattern:
-        // composed_v4 (203-D, full 7-layer) > composed_v2 (145-D) > composed_v1
-        // (116-D). A re-encoded pattern (composed_v4[0:116] === composed_v1
-        // exactly — verified) lights up L5-L7; the rest keep their identical
-        // 116-D base. Each is compared at its OWN real depth (fractal-index
-        // searchFlow), so shallow patterns score exactly as before and deep
-        // ones fold in the residual layers — no mixing bias.
-        const deep = entry && (
-          // the canonical waveform under its own name (redecode / harvest write it)
-          (Array.isArray(entry.composed) && entry.composed.length % 29 === 0 && entry.composed)
-          || (Array.isArray(entry.composed_v4) && entry.composed_v4.length % 29 === 0 && entry.composed_v4)
-          || (Array.isArray(entry.composed_v2) && entry.composed_v2.length % 29 === 0 && entry.composed_v2)
-          || (Array.isArray(entry.composed_v1) && entry.composed_v1.length >= 29 && entry.composed_v1)
-        );
+        // ONE WIDTH. Only the canonical vector under its own name — `composed`,
+        // the 232-D decoder at the active depth (redecode / harvest write it;
+        // `--do redecode all` measured every entry canonical on 2026-09-07) —
+        // enters the library. The old checkpoints (composed_v1 116-D,
+        // composed_v2 145-D, composed_v4 203-D) are never read as a fallback:
+        // an entry without the one vector is not compared at all, and the
+        // census below says how many there are.
+        const deep = entry && Array.isArray(entry.composed) && entry.composed.length % 29 === 0 && entry.composed.length >= 116 && entry.composed;
         if (deep) composed.set(name, Float64Array.from(deep));
       }
       // The pattern library proper: every store row, at the canonical width.

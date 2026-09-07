@@ -238,35 +238,37 @@ class VoidBridge {
      * must not be quoted as a substrate reading.
      */
     if (!this.connected) {
-      return { coherence: 0, bestMatch: 'none', voidWins: false };
+      return { coherence: null, bestMatch: 'none', voidWins: false, source: null };
     }
-
-    // Convert code to byte distribution (simplified waveform)
     const code = pattern.code || '';
     if (code.length < 20) {
-      return { coherence: 0, bestMatch: 'none', voidWins: false };
+      return { coherence: null, bestMatch: 'none', voidWins: false, source: null };
     }
-
-    // Byte frequency distribution (the code's waveform signature)
-    const freq = new Array(256).fill(0);
-    for (let i = 0; i < code.length; i++) {
-      freq[code.charCodeAt(i) % 256]++;
-    }
-    const total = code.length;
-    const normalized = freq.map(f => f / total);
-
-    // Compare against known code distribution patterns
-    // (In full implementation, this calls the Python compressor)
-    const entropy = -normalized.reduce((s, p) =>
-      s + (p > 0 ? p * Math.log2(p) : 0), 0) / 8;
-
-    // Higher structure (lower entropy) = higher coherence
-    const coherence = Math.max(0, 1 - entropy);
-
+    // THE INSTRUMENT, not a proxy (2026-09-07): the byte-histogram entropy
+    // this used to invert was a 256-bin fabrication that never touched the
+    // compressor. The coherency is the compressor's own reading of the bytes
+    // (void-service, `void:compress_signal`); the match is the pattern's
+    // resonance with the library over its 232-D decoder vector in the one
+    // space. No reading → null, never a number.
+    let coherence = null, bestMatch = 'none', resonance = null;
+    try {
+      const vs = require('../core/void-service');
+      const c = vs.coherencyOf(code, { quiet: true });
+      if (typeof c === 'number') coherence = c;
+    } catch (_) { quiet('compression:void-bridge:coherency', _); /* instrument unreachable — stays null */ }
+    try {
+      const ds = require('../core/decoder-stack');
+      const { VoidLibrary } = require('../core/void-library');
+      const composed = Array.from(ds.composedAtDepth(code, ds.currentDepth()));
+      const r = new VoidLibrary().scoreWithFlow(composed.slice(0, 29), composed, { k: 3 });
+      if (r && Number.isFinite(r.meanTopK)) { resonance = r.meanTopK; bestMatch = r.bestMatch ? (r.bestMatch.name || 'none') : 'none'; }
+    } catch (_) { quiet('compression:void-bridge:resonance', _); /* library unreachable */ }
     return {
-      coherence: coherence,
-      bestMatch: coherence > 0.5 ? 'structured_code' : 'generic',
-      voidWins: coherence > 0.6,
+      coherence,
+      source: coherence === null ? null : 'void:compress_signal',
+      resonance,
+      bestMatch,
+      voidWins: typeof resonance === 'number' && resonance >= 0.71,   // the CONSONANT band of the one space
     };
   }
 
@@ -286,12 +288,11 @@ class VoidBridge {
 
     const description = debugPattern.description || debugPattern.error || '';
 
-    // Convert description to waveform (byte distribution)
-    const waveform = new Array(256).fill(0);
-    for (let i = 0; i < Math.min(description.length, 10000); i++) {
-      const idx = Math.floor(i / Math.max(description.length, 1) * 256);
-      waveform[Math.min(idx, 255)] += description.charCodeAt(i) / 256;
-    }
+    // The ONE representation: the description unfolded by the 232-D fractal
+    // decoder at its active depth — never the 256-bin byte histogram this
+    // used to build (the retired waveform, trap: 256 is never a decoder vector).
+    const ds = require('../core/decoder-stack');
+    const waveform = Array.from(ds.composedAtDepth(description, ds.currentDepth()));
 
     // Normalize
     const max = Math.max(...waveform);
@@ -364,18 +365,11 @@ class VoidBridge {
       const code = pattern.code || '';
       if (code.length < 20) continue;
 
-      // Code → 256-point waveform (byte distribution signature)
-      const waveform = new Array(256).fill(0);
-      const step = Math.max(1, Math.floor(code.length / 256));
-      for (let i = 0; i < 256; i++) {
-        const start = i * step;
-        const end = Math.min(start + step, code.length);
-        let sum = 0;
-        for (let j = start; j < end; j++) {
-          sum += code.charCodeAt(j);
-        }
-        waveform[i] = sum / (end - start || 1);
-      }
+      // The ONE representation: the code unfolded by the 232-D fractal decoder
+      // at its active depth — never the 256-point byte-average this used to
+      // build (the retired waveform).
+      const ds = require('../core/decoder-stack');
+      const waveform = Array.from(ds.composedAtDepth(code, ds.currentDepth()));
 
       // Normalize to 0-1
       const max = Math.max(...waveform);

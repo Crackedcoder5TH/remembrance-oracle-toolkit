@@ -39,6 +39,8 @@ const RATCHETS = [
   { name: 'engine-entanglement', script: 'scripts/engine-entanglement-ratchet.js' },
   // the memory of mistakes: append-only, anchored on the chain, mirrored into every repo
   { name: 'traps-ledger', script: 'scripts/traps-ledger-ratchet.js' },
+  // ONE representation: no consumer reads anything but the 232-D fractal decoder (shrink-only, at 0)
+  { name: 'width', script: 'scripts/width-ratchet.js' },
 ];
 
 function runOne(r) {

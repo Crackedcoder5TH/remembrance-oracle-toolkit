@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * abundance-classifier.js — classifier head over the composed 116-D
- * fractal signature: extraction-aligned vs abundance-aligned.
+ * abundance-classifier.js — classifier head over the L1–L4 blocks of the
+ * canonical 232-D fractal decoder vector: extraction-aligned vs abundance-aligned.
  *
  * The encoder stack (L1 structural, L2 lexical, L3 numerical,
  * L4 spectral) was never given an "extraction" or "abundance" label,
@@ -35,7 +35,7 @@
  * Two entry points:
  *   classifyAlignment(text)       — full: geometry + lexicon
  *   classifySignature(composed)   — geometry only, from a
- *                                   precomputed 116-D vector
+ *                                   precomputed 232-D vector (its L1–L4 blocks are read)
  *
  * Output (both): {
  *   extraction:  0..1,
@@ -49,11 +49,11 @@
  * Deterministic. Pure. No external dependencies.
  */
 
-const { compose, composedAtDepth } = require('./decoder-stack');
+const { compose, composedAtDepth, currentDepth } = require('./decoder-stack');
 
-const COMPOSED_DIM = 116;
+const COMPOSED_DIM = 4 * 29;   // the L1–L4 blocks of the 232-D vector the markers read
 
-// ── Dimension indices in the composed 116-D vector ──────────────
+// ── Dimension indices in the L1–L4 blocks of the 232-D vector ────
 // L1 occupies 0..28, L2 29..57, L3 58..86, L4 87..115. Each index
 // below is (layer base + within-layer dim) per the inspect* maps in
 // the four encoder files. If an encoder's layout changes, the spec
@@ -240,9 +240,13 @@ function classifySignature(composed) {
   // classifier's DIM map addresses L1–L4, where its markers live; the one
   // canonical vector is passed whole and read by its L1–L4 blocks. Shorter
   // vectors are refused: the markers live in L3/L4.
-  if (!composed || composed.length < COMPOSED_DIM) {
+  // ONE WIDTH: the canonical 232-D decoder vector, whole. The markers live in
+  // its L1–L4 blocks (the first COMPOSED_DIM = 116 entries) and are read from
+  // the one vector; a 116-D checkpoint or a 145-D one is not accepted on its
+  // own, and the retired 256-D waveform never was.
+  if (!composed || composed.length !== 232) {
     throw new Error(
-      `classifySignature expects at least a ${COMPOSED_DIM}-D composed vector (depth 4), got length ${composed ? composed.length : 'none'}`
+      `classifySignature expects the canonical 232-D decoder vector (markers read from its L1–L4 blocks), got length ${composed ? composed.length : 'none'}`
     );
   }
   const exMarkers = _extractionMarkers(composed);
@@ -275,7 +279,7 @@ function classifyAlignment(text) {
       label: 'mixed', confidence: 0, lexiconTilt: 0, evidence: [],
     };
   }
-  const composed = composedAtDepth(text, 4);
+  const composed = composedAtDepth(text, currentDepth());   // the ONE width — the classifier reads its L1–L4 blocks
   const base = classifySignature(composed);
   const tilt = _lexiconTilt(text);
   // Vocabulary nudges, geometry decides: shift alignment by at most
@@ -300,7 +304,7 @@ function classifyAlignment(text) {
  * inspecting WHY a pattern classified the way it did.
  */
 function inspectAlignmentMarkers(text) {
-  const composed = composedAtDepth(typeof text === 'string' ? text : '', 4);
+  const composed = composedAtDepth(typeof text === "string" ? text : "", currentDepth());
   return {
     extraction: _extractionMarkers(composed),
     abundance: _abundanceMarkers(composed),

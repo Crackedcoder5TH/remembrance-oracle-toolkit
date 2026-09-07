@@ -241,6 +241,8 @@ if (argv[0] === '--do') {
     //          instrument's own sealed readings — binary)
     //          traps-ledger        (the memory of mistakes: append-only, anchored
     //          on the chain, mirrored into every repo, floor never lowered)
+    //          width [--report]    (ONE representation: no consumer reads anything
+    //          but the 232-D fractal decoder — the census is at 0 and only shrinks)
     // THE TRAP LEDGER, driven. `promote` appends traps learned on this host into
     // the tracked seed; `sync` writes the byte-identical mirror into every repo;
     // `floor` raises the count floor; `anchor` witnesses the seed on the chain.

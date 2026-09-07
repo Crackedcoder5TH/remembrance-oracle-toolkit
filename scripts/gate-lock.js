@@ -79,6 +79,7 @@ const GATES = [
   'scripts/contracts-ratchet.js',
   'scripts/engine-entanglement-ratchet.js',
   'scripts/traps-ledger-ratchet.js',
+  'scripts/width-ratchet.js',
   // what the gates measure WITH — loosen a checker and the gate goes blind
   'scripts/cathedral-diagnostic.js',
   'scripts/audit-field-contributions.js',

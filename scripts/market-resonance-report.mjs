@@ -81,7 +81,7 @@ try {
   const lib = [];
   for (const k of Object.keys(idx)) {
     if (k.startsWith('market/')) continue;
-    const v = idx[k].composed_v1; if (Array.isArray(v) && v.length === 116) lib.push({ k, v });
+    const v = idx[k].composed; if (Array.isArray(v) && v.length === 232) lib.push({ k, v });   // the ONE width
     if (lib.length >= 4000) break;
   }
   // project market waveforms to depth-4/116-D to match the library's composed_v1

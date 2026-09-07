@@ -1700,6 +1700,89 @@
      "shape_sha256": "5126357a8eaaaac84221eb3fa41d6b61e0972c8855efd909351f5a42ed8ed385"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "8e2d5f6440461a5f68c7995c5e86d2d96ba475ebfd51772dce0dcb96e465b4b3",
+   "minted_at": "2026-09-07T20:34:49+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "848ac7d1ec336e026e202764c94eb3487e9a510b",
+    "files": [
+     ".atomic-drift-baseline.json",
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/run.mjs",
+     ".width-baseline.json",
+     "scripts/build-capability-index.js",
+     "scripts/cognition-trajectory.cjs",
+     "scripts/cross-domain-universality-benchmark.mjs",
+     "scripts/domain-superfamilies.mjs",
+     "scripts/epc-phonon-run.mjs",
+     "scripts/field-self-read.cjs",
+     "scripts/gate-lock.js",
+     "scripts/harvest-falsifier-result.mjs",
+     "scripts/lre-attractor-sim2.mjs",
+     "scripts/market-crawl.mjs",
+     "scripts/market-resonance-report.mjs",
+     "scripts/moat-content-consensus.mjs",
+     "scripts/moat-metric.js",
+     "scripts/moat-uniqueness-gate.mjs",
+     "scripts/mp-structural-run.mjs",
+     "scripts/music-telescope.cjs",
+     "scripts/overlap-ceiling-benchmark.mjs",
+     "scripts/ratchet-battery.js",
+     "scripts/raw-compression-grouping.mjs",
+     "scripts/resonance-capacity-benchmark.mjs",
+     "scripts/retrieval-scaling-bench.mjs",
+     "scripts/sc-tests-full.mjs",
+     "scripts/stress-test-fractal-search.js",
+     "scripts/stress-test-substrate.js",
+     "scripts/substrate-connect.mjs",
+     "scripts/superfamily-coverage-sweep.mjs",
+     "scripts/width-ratchet.js",
+     "scripts/wire-encoder-into-field.js",
+     "seeds/gates.lock.json",
+     "src/compression/void-bridge.js",
+     "src/core/abundance-classifier.js",
+     "src/core/mapper/flow.js",
+     "src/core/residual-monitor.js",
+     "src/core/void-library.js",
+     "tests/abundance-classifier.test.js",
+     "tests/substrate-density.test.js",
+     "tests/width-ratchet.test.js"
+    ],
+    "diff_bytes": 93321,
+    "diff_sha256": "a35b92881ab23bc3707aab4ad2368ea5d0fa6b3a57589b56917d01d84299e37d"
+   },
+   "reading": {
+    "coherency": 0,
+    "ratio": 3.222410220994475,
+    "method": "void_symbolic",
+    "strategy": "void_symbolic",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "19cca6a27a0dfd54",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "cdc26cf59b75e4de2965a7a362ae56d33a46e8fce78925e91f0587a9cbd4f182",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T20:34:49",
+     "coin": null,
+     "sig": "19cca6a27a0dfd54de4aa584abc3ec28e6044f58251ef9a89b4029863523f7e9"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "void_symbolic",
+     "original_size": 93321,
+     "compressed_size": 28960,
+     "coherency": 0,
+     "data_sha256": "a3d28b0f7e195cf71a96e986c1f03a5eae6b31d299dca445aac754129c5754ca",
+     "compressed_sha256": "93dc97a100bf95c4f38455f25a12edb11bd80535c69c94518611511176ff0c1b",
+     "shape_sha256": "f52edc196ebc256eadf40ef713b69e7455e6ea4583fee6db582b66185794c7b5"
+    }
+   }
   }
  ]
 }

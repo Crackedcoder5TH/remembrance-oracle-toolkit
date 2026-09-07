@@ -1,7 +1,7 @@
 {
  "note": "atomic-drift baseline — functions whose declared atomicProperties disagree with extractAtomicProperties over their own body, per file. Shrink-only: re-measure and correct the DECLARATION, never loosen the comparison.",
- "savedAt": "2026-09-07T18:57:39.311Z",
+ "savedAt": "2026-09-07T20:32:18.860Z",
  "total": 0,
- "compared": 2325,
+ "compared": 2324,
  "byFile": {}
 }

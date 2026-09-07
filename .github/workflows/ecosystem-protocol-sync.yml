@@ -1,8 +1,11 @@
 name: ecosystem-protocol-sync
 
-# Verifies that this repo's ECOSYSTEM.md matches the canonical source in
-# remembrance-oracle-toolkit/main. Fails on detected drift; tolerates the
-# case where canonical doesn't exist yet (initial bootstrap).
+# Verifies that this repo's ECOSYSTEM.md AND its goggles skill (the one
+# surface: .claude/skills/goggles/run.mjs + SKILL.md) match the canonical
+# source in remembrance-oracle-toolkit/main. Fails on detected drift;
+# tolerates the case where canonical doesn't exist yet (initial bootstrap).
+# This is the harness-independent wall: an agent with no hooks at all still
+# cannot merge a forked surface. Local mirrors: contracts C-50 and C-62.
 
 on:
   push:
@@ -78,3 +81,48 @@ jobs:
             exit 1
           fi
           echo "ECOSYSTEM.md matches canonical (sha256:$LOCAL)."
+
+  verify-goggles-skill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine if this is the canonical hub
+        id: gate
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          LOWER="${REPO,,}"
+          if [[ "$LOWER" == "crackedcoder5th/remembrance-oracle-toolkit" ]]; then
+            echo "is_hub=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_hub=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify goggles skill matches canonical (C-62's CI mirror)
+        if: steps.gate.outputs.is_hub == 'false'
+        run: |
+          BASE="https://raw.githubusercontent.com/Crackedcoder5TH/remembrance-oracle-toolkit/main/.claude/skills/goggles"
+          FAILED=0
+          for F in run.mjs SKILL.md; do
+            LOCALPATH=".claude/skills/goggles/$F"
+            if [[ ! -f "$LOCALPATH" ]]; then
+              echo "::error title=goggles skill missing::$LOCALPATH is missing — this repo has no surface."
+              FAILED=1; continue
+            fi
+            if ! curl -fsSL -o "/tmp/canon-$F" "$BASE/$F"; then
+              echo "::warning::Canonical $F not yet on hub main — bootstrap in progress. Skipped."
+              continue
+            fi
+            LOCAL=$(sha256sum "$LOCALPATH" | awk '{print $1}')
+            CANON=$(sha256sum "/tmp/canon-$F" | awk '{print $1}')
+            if [[ "$LOCAL" != "$CANON" ]]; then
+              echo "::error title=goggles skill drift::$LOCALPATH does not match the canonical hub — the same command would mean a different instrument here."
+              diff "/tmp/canon-$F" "$LOCALPATH" | head -40 || true
+              FAILED=1
+            else
+              echo "$F matches canonical (sha256:$LOCAL)."
+            fi
+          done
+          exit $FAILED

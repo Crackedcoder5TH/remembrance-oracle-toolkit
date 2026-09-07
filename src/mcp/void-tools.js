@@ -44,6 +44,18 @@ function _resolveVoidRepo() {
 
 const SERVICE_URL = process.env.COMPRESSOR_SERVICE_URL || 'http://127.0.0.1:8765';
 
+// Front-door token (see FRONT-DOOR WALL in compressor_service.py); '' fails open.
+let _vtTok = null;
+function _goggleToken() {
+  if (_vtTok !== null) return _vtTok;
+  try {
+    _vtTok = fs.readFileSync(
+      path.join(_resolveVoidRepo() || '', '.remembrance', 'goggles-token'),
+      'utf8').trim();
+  } catch (e) { quiet('mcp:void-tools:goggleToken', e); _vtTok = ''; }
+  return _vtTok;
+}
+
 function _serviceCall(routePath, body, timeoutMs = 60_000) {
   return new Promise((resolve, reject) => {
     const url = new URL(SERVICE_URL + routePath);
@@ -51,7 +63,8 @@ function _serviceCall(routePath, body, timeoutMs = 60_000) {
     const req = http.request({
       hostname: url.hostname, port: url.port, path: url.pathname,
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'content-length': data.length },
+      headers: { 'content-type': 'application/json', 'content-length': data.length,
+                 'x-goggles-token': _goggleToken() },
       timeout: timeoutMs,
     }, (res) => {
       const chunks = [];
@@ -89,7 +102,7 @@ function _serviceCallSync(routePath, body, timeoutMs = 60_000) {
     `const http=require('http');
      const url=new URL('${SERVICE_URL + routePath}');
      const body=Buffer.from(${JSON.stringify(JSON.stringify(body || {}))});
-     const req=http.request({hostname:url.hostname,port:url.port,path:url.pathname,method:'POST',headers:{'content-type':'application/json','content-length':body.length},timeout:${timeoutMs}},(r)=>{
+     const req=http.request({hostname:url.hostname,port:url.port,path:url.pathname,method:'POST',headers:{'content-type':'application/json','content-length':body.length,'x-goggles-token':'${_goggleToken()}'},timeout:${timeoutMs}},(r)=>{
        const c=[]; r.on('data',d=>c.push(d));
        r.on('end',()=>{process.stdout.write(Buffer.concat(c));process.exit(0);});
      });

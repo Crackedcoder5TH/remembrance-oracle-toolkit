@@ -1,24 +1,28 @@
 "use client";
 
 /**
- * Admin Dashboard
+ * /admin — Content / Campaigns.
  *
  * Protected by middleware (session cookie required — see /admin/login).
  *
+ * The content-and-campaigns surface: editable homepage message + site images,
+ * lead velocity at a glance, service/coverage/source breakdowns, and a
+ * filterable lead table with CSV export. Rendered inside the shared PortalShell
+ * so it matches the rest of the admin portal; navigation lives in the sidebar.
+ *
  * Features:
+ *  - Editable homepage story + site image uploads
  *  - Lead stats overview (total, today, week, month)
- *  - Filterable lead table (state, coverage, veteran, search)
+ *  - Filterable lead table (state, coverage, status, source, search)
  *  - Lead scoring with tier badges (hot/warm/standard/cool)
- *  - CSV export
- *  - Pagination
- *  - Real-time SSE notifications
- *  - Editable homepage veteran story message
+ *  - CSV export, pagination, real-time SSE notifications
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { US_STATES } from "../../packages/shared/src/validate-state";
 import { CoherencyPulse } from "../components/coherency-pulse";
+import { MetricCard, Panel, PortalShell } from "../components/portal-shell";
 
 // --- Debounce hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -83,12 +87,14 @@ const COVERAGE_LABELS: Record<string, string> = {
   "not-sure": "Undecided",
 };
 
+const inputCls =
+  "rounded-lg border border-[#e2d9c9] bg-white px-3 py-2 text-sm text-[#211d18] placeholder:text-[#8a8175] outline-none focus:border-[#c9a75f]";
+const th = "px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-[#776e61]";
+const td = "border-t border-[#eee7da] px-3 py-3 text-sm align-middle";
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
-  /** Buyers awaiting license review — surfaced as a badge on the
-   *  Client Management button so operators see the queue. */
-  const [pendingClients, setPendingClients] = useState(0);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -104,13 +110,7 @@ export default function AdminDashboard() {
   const LIMIT = 25;
 
   const fetchStats = useCallback(async () => {
-    // Lead stats + client stats fetched in parallel so the dashboard hydrates
-    // in one round-trip. /api/admin/revenue carries the pending-client count
-    // (see ClientStats.pendingClients).
-    const [leadRes, clientRes] = await Promise.all([
-      fetch("/api/admin/stats"),
-      fetch("/api/admin/revenue").catch(() => null),
-    ]);
+    const leadRes = await fetch("/api/admin/stats");
     if (leadRes.status === 401 || leadRes.status === 403) {
       router.push("/admin/login");
       return;
@@ -118,10 +118,6 @@ export default function AdminDashboard() {
     if (leadRes.ok) {
       const data = await leadRes.json();
       setStats(data.stats);
-    }
-    if (clientRes && clientRes.ok) {
-      const data = await clientRes.json();
-      setPendingClients(data?.stats?.pendingClients ?? 0);
     }
   }, [router]);
 
@@ -165,14 +161,9 @@ export default function AdminDashboard() {
       });
   };
 
-  const handleLogout = async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin/login");
-  };
-
   // --- Image upload state ---
   const [imageSlots] = useState([
-    { slot: "veteran-group", label: "Veteran Group Photo", description: "Displayed in the 'About the Mission' section on the homepage" },
+    { slot: "veteran-group", label: "Community Photo", description: "Displayed in the 'About the Mission' section on the homepage" },
     { slot: "logo", label: "Site Logo", description: "Displayed in the navigation bar" },
   ]);
   const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({});
@@ -215,7 +206,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // --- Editable veteran story message ---
+  // --- Editable homepage story message ---
   const [veteranStory, setVeteranStory] = useState("");
   const [storyLoading, setStoryLoading] = useState(false);
   const [storySaving, setStorySaving] = useState(false);
@@ -301,129 +292,20 @@ export default function AdminDashboard() {
   }, [fetchStats, fetchLeads]);
 
   const totalPages = Math.ceil(total / LIMIT);
+  const from = total === 0 ? 0 : page * LIMIT + 1;
+  const to = Math.min((page + 1) * LIMIT, total);
 
-  // --- Dashboard ---
   return (
-    <main className="min-h-screen px-4 py-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase pulse-gentle">
-            Admin
-          </div>
-          <h1 className="text-3xl font-light text-[var(--text-primary)]">
-            Lead Dashboard
-          </h1>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => router.push("/admin/field")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-indigo-cathedral text-white hover:bg-indigo-cathedral/90"
-            title="Fractal field — every operational number for the website in one view"
-          >
-            Field
-          </button>
-          <button
-            onClick={() => router.push("/admin/seed")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
-          >
-            Seed Test Data
-          </button>
-          <button
-            onClick={() => router.push("/admin/clients?status=pending")}
-            className="relative px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
-            title={pendingClients > 0
-              ? `${pendingClients} buyer${pendingClients === 1 ? "" : "s"} awaiting license verification`
-              : undefined}
-          >
-            Client Management
-            {pendingClients > 0 && (
-              <span
-                aria-label={`${pendingClients} pending verification`}
-                className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-400 text-amber-900 text-[10px] font-semibold flex items-center justify-center border border-amber-500"
-              >
-                {pendingClients > 99 ? "99+" : pendingClients}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => router.push("/admin/pricing")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
-          >
-            Pricing
-          </button>
-          <button
-            onClick={() => router.push("/admin/messages")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
-          >
-            Messages
-          </button>
-          <button
-            onClick={() => router.push("/admin/documents")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
-          >
-            Documents
-          </button>
-          <button
-            onClick={() => router.push("/admin/ai-agents")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-indigo-600 text-white hover:bg-indigo-500"
-          >
-            AI Agents
-          </button>
-          <button
-            onClick={() => router.push("/admin/substrate")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
-            title="Live coherency readings + adjustable substrate controls"
-          >
-            Substrate Console
-          </button>
-          <button
-            onClick={() => router.push("/admin/patterns")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
-            title="Browse the void archetype library and pull your leads by pattern"
-          >
-            Pattern Library
-          </button>
-          <button
-            onClick={() => router.push("/admin/leads")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
-            title="The full searchable list of every submitted lead"
-          >
-            All Leads
-          </button>
-          <button
-            onClick={() => router.push("/admin/notifications")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
-            title="Choose who gets emailed when a new lead is submitted"
-          >
-            Notifications
-          </button>
-          <button
-            onClick={() => router.push("/admin/outcomes")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
-            title="Record lead outcomes and see close-rate by coherency"
-          >
-            Outcomes
-          </button>
-          <button
-            onClick={handleExport}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-teal-cathedral/70 border border-teal-cathedral/20 hover:border-teal-cathedral/40 hover:text-teal-cathedral"
-          >
-            Export CSV
-          </button>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-teal-cathedral/70 border border-teal-cathedral/20 hover:border-teal-cathedral/40 hover:text-teal-cathedral"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <PortalShell
+      role="admin"
+      eyebrow="Content / Campaigns"
+      title="Content & Campaigns"
+      description="Edit the homepage message and site imagery, watch lead velocity, and slice the pipeline by state, coverage, status, and source."
+    >
       {/* Real-time notification flash */}
       {newLeadFlash && (
         <div
-          className="mb-4 px-4 py-3 rounded-lg text-sm font-medium bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/20 animate-in fade-in"
+          className="mb-5 rounded-xl border border-[#176b65]/25 bg-[#176b65]/10 px-4 py-3 text-sm font-medium text-[#176b65]"
           role="status"
           aria-live="polite"
         >
@@ -433,144 +315,130 @@ export default function AdminDashboard() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" role="region" aria-label="Lead statistics">
-          <div className="cathedral-surface p-4">
-            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium">Total Leads</p>
-            <p className="text-2xl font-light text-[var(--text-primary)] mt-1">{stats.total}</p>
-          </div>
-          <div className="cathedral-surface p-4">
-            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium">Today</p>
-            <p className="text-2xl font-light text-teal-cathedral mt-1">{stats.today}</p>
-          </div>
-          <div className="cathedral-surface p-4">
-            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium">This Week</p>
-            <p className="text-2xl font-light text-[var(--text-primary)] mt-1">{stats.thisWeek}</p>
-          </div>
-          <div className="cathedral-surface p-4">
-            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium">This Month</p>
-            <p className="text-2xl font-light text-[var(--text-primary)] mt-1">{stats.thisMonth}</p>
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" role="region" aria-label="Lead statistics">
+          <MetricCard label="Total Leads" value={stats.total} note="All time" />
+          <MetricCard label="Today" value={stats.today} note="Last 24 hours" />
+          <MetricCard label="This Week" value={stats.thisWeek} note="Rolling 7 days" />
+          <MetricCard label="This Month" value={stats.thisMonth} note="Current month" />
         </div>
       )}
 
-      {/* Site Images */}
-      <div className="cathedral-surface p-6 mb-8" role="region" aria-label="Site images">
-        <h2 className="text-lg font-light text-[var(--text-primary)] mb-1">Site Images</h2>
-        <p className="text-xs text-[var(--text-muted)] mb-4">Upload or replace images displayed on the website.</p>
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        {/* Editable Homepage Message */}
+        <Panel
+          title="Homepage Message"
+          action={
+            <button
+              onClick={handleSaveStory}
+              disabled={storySaving || storyLoading}
+              className="rounded-lg bg-[#176b65] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#12544f] disabled:opacity-50"
+            >
+              {storySaving ? "Saving…" : "Save Message"}
+            </button>
+          }
+        >
+          <p className="mb-4 text-xs text-[#8a8175]">
+            Edit the story displayed on the homepage. Use blank lines to separate paragraphs.
+          </p>
 
-        {uploadMessage && (
-          <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${uploadMessage.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-            {uploadMessage.text}
-          </div>
-        )}
+          {storyMessage && (
+            <div className={`mb-4 rounded-lg px-4 py-2 text-sm ${storyMessage.type === "success" ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-red-200 bg-red-50 text-red-700"}`}>
+              {storyMessage.text}
+            </div>
+          )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {imageSlots.map(({ slot, label, description }: { slot: string; label: string; description: string }) => (
-            <div key={slot} className="border border-indigo-cathedral/10 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-1">{label}</h3>
-              <p className="text-xs text-[var(--text-muted)] mb-3">{description}</p>
-
-              {imageUrls[slot] ? (
-                <img
-                  src={imageUrls[slot]!}
-                  alt={label}
-                  className="w-full h-40 object-cover rounded-lg mb-3 bg-[var(--bg-surface)]"
-                />
-              ) : (
-                <div className="w-full h-40 rounded-lg mb-3 bg-[var(--bg-surface)] border border-dashed border-indigo-cathedral/20 flex items-center justify-center">
-                  <span className="text-xs text-[var(--text-muted)]">No image uploaded</span>
-                </div>
-              )}
-
-              <input
-                ref={(el: HTMLInputElement | null) => { fileInputRefs.current[slot] = el; }}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImageUpload(slot, file);
-                  e.target.value = "";
-                }}
-                className="hidden"
+          {storyLoading ? (
+            <div className="py-8 text-center text-sm text-[#8a8175]">Loading message…</div>
+          ) : (
+            <>
+              <textarea
+                value={veteranStory}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setVeteranStory(e.target.value)}
+                rows={12}
+                maxLength={5000}
+                className="w-full resize-y rounded-lg border border-[#e2d9c9] bg-white px-4 py-3 font-sans text-sm leading-relaxed text-[#211d18] placeholder:text-[#8a8175] outline-none focus:border-[#c9a75f]"
+                placeholder="Enter the homepage story message…"
               />
-              <button
-                onClick={() => fileInputRefs.current[slot]?.click()}
-                disabled={uploadingSlot === slot}
-                className="w-full px-4 py-2 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-50"
-              >
-                {uploadingSlot === slot ? "Uploading..." : imageUrls[slot] ? "Replace Image" : "Upload Image"}
-              </button>
+              <p className="mt-3 text-xs text-[#8a8175]">{veteranStory.length}/5000 characters</p>
+            </>
+          )}
+        </Panel>
+
+        {/* Site Images */}
+        <Panel title="Site Images">
+          <p className="mb-4 text-xs text-[#8a8175]">Upload or replace images displayed on the website.</p>
+
+          {uploadMessage && (
+            <div className={`mb-4 rounded-lg px-4 py-2 text-sm ${uploadMessage.type === "success" ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-red-200 bg-red-50 text-red-700"}`}>
+              {uploadMessage.text}
             </div>
-          ))}
-        </div>
-      </div>
+          )}
 
-      {/* Editable Veteran Story Message */}
-      <div className="cathedral-surface p-6 mb-8" role="region" aria-label="Homepage message editor">
-        <h2 className="text-lg font-light text-[var(--text-primary)] mb-1">Homepage Message</h2>
-        <p className="text-xs text-[var(--text-muted)] mb-4">
-          Edit the veteran story displayed on the homepage. Use blank lines to separate paragraphs.
-        </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {imageSlots.map(({ slot, label, description }: { slot: string; label: string; description: string }) => (
+              <div key={slot} className="rounded-xl border border-[#eee7da] p-4">
+                <h3 className="mb-1 text-sm font-semibold text-[#211d18]">{label}</h3>
+                <p className="mb-3 text-xs text-[#8a8175]">{description}</p>
 
-        {storyMessage && (
-          <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${storyMessage.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-            {storyMessage.text}
+                {imageUrls[slot] ? (
+                  <img
+                    src={imageUrls[slot]!}
+                    alt={label}
+                    className="mb-3 h-40 w-full rounded-lg bg-[#faf7f0] object-cover"
+                  />
+                ) : (
+                  <div className="mb-3 flex h-40 w-full items-center justify-center rounded-lg border border-dashed border-[#e2d9c9] bg-[#faf7f0]">
+                    <span className="text-xs text-[#8a8175]">No image uploaded</span>
+                  </div>
+                )}
+
+                <input
+                  ref={(el: HTMLInputElement | null) => { fileInputRefs.current[slot] = el; }}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(slot, file);
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRefs.current[slot]?.click()}
+                  disabled={uploadingSlot === slot}
+                  className="w-full rounded-lg bg-[#176b65] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#12544f] disabled:opacity-50"
+                >
+                  {uploadingSlot === slot ? "Uploading…" : imageUrls[slot] ? "Replace Image" : "Upload Image"}
+                </button>
+              </div>
+            ))}
           </div>
-        )}
-
-        {storyLoading ? (
-          <div className="text-sm text-[var(--text-muted)] py-8 text-center">Loading message...</div>
-        ) : (
-          <>
-            <textarea
-              value={veteranStory}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setVeteranStory(e.target.value)}
-              rows={12}
-              maxLength={5000}
-              className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/40 resize-y font-sans leading-relaxed"
-              placeholder="Enter the veteran story message..."
-            />
-            <div className="flex items-center justify-between mt-3">
-              <p className="text-xs text-[var(--text-muted)]">
-                {veteranStory.length}/5000 characters
-              </p>
-              <button
-                onClick={handleSaveStory}
-                disabled={storySaving}
-                className="px-6 py-2 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-50"
-              >
-                {storySaving ? "Saving..." : "Save Message"}
-              </button>
-            </div>
-          </>
-        )}
+        </Panel>
       </div>
 
-      {/* Veteran + Coverage Breakdown */}
+      {/* Status + Coverage Breakdown */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="cathedral-surface p-4" role="region" aria-label="Service category breakdown">
-            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium mb-3">Service Category</p>
+        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+          <Panel title="Service Category">
             <div className="space-y-2">
               {Object.entries(stats.byVeteranStatus).map(([status, count]) => (
                 <div key={status} className="flex justify-between text-sm">
-                  <span className="text-[var(--text-primary)] capitalize">{status || "Unknown"}</span>
-                  <span className="text-teal-cathedral">{count}</span>
+                  <span className="capitalize text-[#211d18]">{status || "Unknown"}</span>
+                  <span className="font-semibold text-[#176b65]">{count}</span>
                 </div>
               ))}
             </div>
-          </div>
-          <div className="cathedral-surface p-4" role="region" aria-label="Coverage type breakdown">
-            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium mb-3">Coverage Interest</p>
+          </Panel>
+          <Panel title="Coverage Interest">
             <div className="space-y-2">
               {Object.entries(stats.byCoverage).map(([cov, count]) => (
                 <div key={cov} className="flex justify-between text-sm">
-                  <span className="text-[var(--text-primary)]">{COVERAGE_LABELS[cov] || cov}</span>
-                  <span className="text-teal-cathedral">{count}</span>
+                  <span className="text-[#211d18]">{COVERAGE_LABELS[cov] || cov}</span>
+                  <span className="font-semibold text-[#176b65]">{count}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </Panel>
         </div>
       )}
 
@@ -578,225 +446,214 @@ export default function AdminDashboard() {
           The lattice number can overlap human/agent (it's a separate cut),
           so the percentages are shown against the total, not summed. */}
       {stats?.bySource && (
-        <div className="cathedral-surface p-4 mb-8" role="region" aria-label="Submission source breakdown">
-          <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium mb-3">Submission Source</p>
-          {/* Each card is a filter toggle — click to scope the table to that
-              source, click again to clear. Mirrors the Source dropdown below
-              (setFilterSource + reset to page 0). */}
-          <div className="grid grid-cols-3 gap-3 text-center">
-            {([
-              { key: "human", label: "Human", value: stats.bySource.human },
-              { key: "agent", label: "AI Agent", value: stats.bySource.agent },
-              { key: "lattice", label: "Viral Lattice", value: stats.bySource.lattice },
-            ] as const).map((s) => {
-              const active = filterSource === s.key;
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  aria-pressed={active}
-                  title={active ? `Clear ${s.label} filter` : `Filter the table to ${s.label} leads`}
-                  onClick={() => { setFilterSource(active ? "" : s.key); setPage(0); }}
-                  className={`rounded p-2 transition-colors cursor-pointer hover:bg-teal-cathedral/10 ${active ? "ring-1 ring-teal-cathedral bg-teal-cathedral/10" : ""}`}
-                >
-                  <p className="text-2xl font-light text-teal-cathedral">{s.value}</p>
-                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">{s.label}</p>
-                  <p className="text-[10px] text-[var(--text-muted)]">
-                    {stats.total > 0 ? Math.round((100 * s.value) / stats.total) : 0}% of total
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+        <div className="mt-5">
+          <Panel title="Submission Source">
+            {/* Each card is a filter toggle — click to scope the table to that
+                source, click again to clear. Mirrors the Source dropdown below
+                (setFilterSource + reset to page 0). */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {([
+                { key: "human", label: "Human", value: stats.bySource.human },
+                { key: "agent", label: "AI Agent", value: stats.bySource.agent },
+                { key: "lattice", label: "Viral Lattice", value: stats.bySource.lattice },
+              ] as const).map((s) => {
+                const active = filterSource === s.key;
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    aria-pressed={active}
+                    title={active ? `Clear ${s.label} filter` : `Filter the table to ${s.label} leads`}
+                    onClick={() => { setFilterSource(active ? "" : s.key); setPage(0); }}
+                    className={`rounded-xl border p-3 transition-colors ${active ? "border-[#c9a75f] bg-[#c9a75f]/10" : "border-[#eee7da] hover:bg-[#faf7f0]"}`}
+                  >
+                    <p className="font-serif text-2xl text-[#176b65]">{s.value}</p>
+                    <p className="mt-1 text-xs uppercase tracking-wider text-[#8a8175]">{s.label}</p>
+                    <p className="text-[10px] text-[#8a8175]">
+                      {stats.total > 0 ? Math.round((100 * s.value) / stats.total) : 0}% of total
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </Panel>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="cathedral-surface p-4 mb-6" role="search" aria-label="Filter leads">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <input
-            type="text"
-            placeholder="Search name or email..."
-            value={search}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); }}
-            aria-label="Search leads by name or email"
-            className="bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 col-span-2 md:col-span-1"
-          />
-          <select
-            value={filterState}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterState(e.target.value); setPage(0); }}
-            aria-label="Filter by state"
-            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
-          >
-            <option value="">All States</option>
-            {US_STATES.map((s) => (
-              <option key={s.code} value={s.code}>{s.name}</option>
-            ))}
-          </select>
-          <select
-            value={filterCoverage}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterCoverage(e.target.value); setPage(0); }}
-            aria-label="Filter by coverage type"
-            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
-          >
-            <option value="">All Coverage</option>
-            {Object.entries(COVERAGE_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
-            ))}
-          </select>
-          <select
-            value={filterVeteran}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterVeteran(e.target.value); setPage(0); }}
-            aria-label="Filter by service category"
-            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
-          >
-            <option value="">All Military Status</option>
-            <option value="active-duty">Active-Duty</option>
-            <option value="reserve">Reserve</option>
-            <option value="national-guard">National Guard</option>
-            <option value="veteran">Veteran</option>
-            <option value="non-military">Non-Military</option>
-          </select>
-          <select
-            value={filterSource}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-              setFilterSource(e.target.value as "" | "human" | "agent" | "lattice");
-              setPage(0);
-            }}
-            aria-label="Filter by submission source"
-            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
-          >
-            <option value="">All Sources</option>
-            <option value="human">Human-submitted</option>
-            <option value="agent">AI-Agent-submitted</option>
-            <option value="lattice">From viral lattice</option>
-          </select>
-          <button
-            onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setFilterSource(""); setSearch(""); setPage(0); }}
-            className="text-sm text-teal-cathedral underline py-2"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
+      {/* Lead table + filters */}
+      <div className="mt-5">
+        <Panel
+          title={total > 0 ? `Leads · ${total.toLocaleString()}` : "Leads"}
+          action={
+            <button onClick={handleExport} className="text-xs font-bold text-[#176b65]">
+              Export CSV →
+            </button>
+          }
+        >
+          {/* Filters */}
+          <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-6" role="search" aria-label="Filter leads">
+            <input
+              type="text"
+              placeholder="Search name or email…"
+              value={search}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); }}
+              aria-label="Search leads by name or email"
+              className={`${inputCls} col-span-2 md:col-span-1`}
+            />
+            <select
+              value={filterState}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterState(e.target.value); setPage(0); }}
+              aria-label="Filter by state"
+              className={inputCls}
+            >
+              <option value="">All States</option>
+              {US_STATES.map((s) => (
+                <option key={s.code} value={s.code}>{s.name}</option>
+              ))}
+            </select>
+            <select
+              value={filterCoverage}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterCoverage(e.target.value); setPage(0); }}
+              aria-label="Filter by coverage type"
+              className={inputCls}
+            >
+              <option value="">All Coverage</option>
+              {Object.entries(COVERAGE_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
+            <select
+              value={filterVeteran}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterVeteran(e.target.value); setPage(0); }}
+              aria-label="Filter by service category"
+              className={inputCls}
+            >
+              <option value="">All Status</option>
+              <option value="active-duty">Active-Duty</option>
+              <option value="reserve">Reserve</option>
+              <option value="national-guard">National Guard</option>
+              <option value="veteran">Veteran</option>
+              <option value="non-military">Civilian</option>
+            </select>
+            <select
+              value={filterSource}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                setFilterSource(e.target.value as "" | "human" | "agent" | "lattice");
+                setPage(0);
+              }}
+              aria-label="Filter by submission source"
+              className={inputCls}
+            >
+              <option value="">All Sources</option>
+              <option value="human">Human-submitted</option>
+              <option value="agent">AI-Agent-submitted</option>
+              <option value="lattice">From viral lattice</option>
+            </select>
+            <button
+              onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setFilterSource(""); setSearch(""); setPage(0); }}
+              className="rounded-lg border border-[#e2d9c9] px-3 py-2 text-sm text-[#211d18] transition hover:border-[#c9a75f]"
+            >
+              Clear Filters
+            </button>
+          </div>
 
-      {/* Lead Table */}
-      <div className="cathedral-surface overflow-x-auto" role="region" aria-label="Leads table">
-        <table className="w-full text-sm">
-          <caption className="sr-only">Insurance leads with scores, contact details, and state information</caption>
-          <thead>
-            <tr className="text-left text-xs uppercase tracking-wider border-b border-indigo-cathedral/10 metallic-gold">
-              <th className="px-4 py-3" scope="col">Score</th>
-              <th className="px-4 py-3" scope="col">Name</th>
-              <th className="px-4 py-3" scope="col">Contact</th>
-              <th className="px-4 py-3" scope="col">State</th>
-              <th className="px-4 py-3" scope="col">Coverage</th>
-              <th className="px-4 py-3" scope="col">Status</th>
-              <th className="px-4 py-3" scope="col">Source</th>
-              <th className="px-4 py-3" scope="col">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-[var(--text-muted)]">
-                  Loading leads...
-                </td>
-              </tr>
-            ) : leads.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-[var(--text-muted)]">
-                  No leads found.
-                </td>
-              </tr>
-            ) : (
-              leads.map((lead: LeadRow) => (
-                <tr
-                  key={lead.leadId}
-                  className="border-b border-indigo-cathedral/5 hover:bg-[var(--bg-surface)]/50 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[lead.tier]}`}>
-                        {lead.score}
-                        <span className="opacity-70">{lead.tier}</span>
-                      </span>
-                      {lead.shape && lead.shape.length >= 4 ? (
-                        <CoherencyPulse
-                          shape={lead.shape}
-                          score={lead.coherency ?? lead.score / 100}
-                          size="sm"
-                        />
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-primary)]">
-                    {lead.firstName} {lead.lastName}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-[var(--text-primary)]">{lead.email}</div>
-                    <div className="text-[var(--text-muted)] text-xs">{lead.phone}</div>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-primary)]">{lead.state}</td>
-                  <td className="px-4 py-3 text-[var(--text-muted)]">
-                    {COVERAGE_LABELS[lead.coverageInterest] || lead.coverageInterest}
-                  </td>
-                  <td className="px-4 py-3">
-                    {lead.veteranStatus === "non-military" ? (
-                      <span className="text-[var(--text-muted)] text-xs">Non-Military</span>
-                    ) : (
-                      <span className="text-teal-cathedral text-xs capitalize">
-                        {lead.veteranStatus?.replace("-", " ")}{lead.militaryBranch ? ` (${lead.militaryBranch})` : ""}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] text-xs">
-                    {lead.utmSource || "direct"}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--text-muted)] text-xs whitespace-nowrap">
-                    {new Date(lead.createdAt).toLocaleDateString()}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px]">
+              <caption className="sr-only">Insurance leads with scores, contact details, and state information</caption>
+              <thead>
+                <tr>
+                  {["Score", "Name", "Contact", "State", "Coverage", "Status", "Source", "Date"].map((h) => (
+                    <th key={h} className={th} scope="col">{h}</th>
+                  ))}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <nav className="flex items-center justify-between mt-4" aria-label="Leads pagination">
-          <p className="text-sm text-[var(--text-muted)]">
-            Showing {page * LIMIT + 1}–{Math.min((page + 1) * LIMIT, total)} of {total}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(Math.max(0, page - 1))}
-              disabled={page === 0}
-              aria-label="Previous page"
-              className="px-3 py-1.5 rounded text-sm text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25 disabled:opacity-30"
-            >
-              Prev
-            </button>
-            <span className="px-3 py-1.5 text-sm text-[var(--text-primary)]">
-              {page + 1} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-              disabled={page >= totalPages - 1}
-              aria-label="Next page"
-              className="px-3 py-1.5 rounded text-sm text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25 disabled:opacity-30"
-            >
-              Next
-            </button>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className={`${td} text-center text-[#8a8175]`}>Loading leads…</td>
+                  </tr>
+                ) : leads.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className={`${td} text-center text-[#8a8175]`}>No leads found.</td>
+                  </tr>
+                ) : (
+                  leads.map((lead: LeadRow) => (
+                    <tr key={lead.leadId} className="hover:bg-[#faf7f0]">
+                      <td className={td}>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium ${TIER_STYLES[lead.tier]}`}>
+                            {lead.score}
+                            <span className="opacity-70">{lead.tier}</span>
+                          </span>
+                          {lead.shape && lead.shape.length >= 4 ? (
+                            <CoherencyPulse
+                              shape={lead.shape}
+                              score={lead.coherency ?? lead.score / 100}
+                              size="sm"
+                            />
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className={`${td} whitespace-nowrap font-semibold text-[#211d18]`}>
+                        {lead.firstName} {lead.lastName}
+                      </td>
+                      <td className={td}>
+                        <div className="text-[#211d18]">{lead.email}</div>
+                        <div className="text-xs text-[#8a8175]">{lead.phone}</div>
+                      </td>
+                      <td className={`${td} text-[#211d18]`}>{lead.state}</td>
+                      <td className={`${td} text-[#776e61]`}>
+                        {COVERAGE_LABELS[lead.coverageInterest] || lead.coverageInterest}
+                      </td>
+                      <td className={td}>
+                        {lead.veteranStatus === "non-military" ? (
+                          <span className="text-xs text-[#8a8175]">Civilian</span>
+                        ) : (
+                          <span className="text-xs capitalize text-[#176b65]">
+                            {lead.veteranStatus?.replace("-", " ")}{lead.militaryBranch ? ` (${lead.militaryBranch})` : ""}
+                          </span>
+                        )}
+                      </td>
+                      <td className={`${td} whitespace-nowrap text-xs text-[#8a8175]`}>
+                        {lead.utmSource || "direct"}
+                      </td>
+                      <td className={`${td} whitespace-nowrap text-xs text-[#8a8175]`}>
+                        {new Date(lead.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        </nav>
-      )}
 
-      {/* Footer */}
-      <footer className="mt-12 text-center text-xs text-[var(--text-muted)]">
-        <p>Admin Dashboard — Lead data is confidential.</p>
-      </footer>
-    </main>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <nav className="mt-5 flex items-center justify-between text-sm" aria-label="Leads pagination">
+              <span className="text-[#8a8175]">Showing {from}–{to} of {total.toLocaleString()}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(Math.max(0, page - 1))}
+                  disabled={page === 0}
+                  aria-label="Previous page"
+                  className="rounded-lg border border-[#e2d9c9] px-3 py-1.5 text-[#211d18] transition hover:border-[#c9a75f] disabled:opacity-40"
+                >
+                  ← Prev
+                </button>
+                <span className="text-[#776e61]">{page + 1} / {totalPages}</span>
+                <button
+                  onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                  disabled={page >= totalPages - 1}
+                  aria-label="Next page"
+                  className="rounded-lg border border-[#e2d9c9] px-3 py-1.5 text-[#211d18] transition hover:border-[#c9a75f] disabled:opacity-40"
+                >
+                  Next →
+                </button>
+              </div>
+            </nav>
+          )}
+        </Panel>
+      </div>
+    </PortalShell>
   );
 }

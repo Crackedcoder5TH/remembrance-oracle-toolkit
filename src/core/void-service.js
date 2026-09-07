@@ -26,12 +26,26 @@ const { quiet } = require('./quiet');
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawn } = require('child_process');
 
 const PORT = process.env.VOID_SVC_PORT || '8765';
 const VOID_ROOT = process.env.VOID_ROOT
   || path.resolve(__dirname, '..', '..', '..', 'Void-Data-Compressor');
+
+// Front-door token: the service's measurement routes require it (see the
+// FRONT-DOOR WALL block in compressor_service.py). Minted by the service;
+// read once per process. Fails open to '' against an open/unwalled service.
+let _gogTok = null;
+function _goggleToken() {
+  if (_gogTok !== null) return _gogTok;
+  try {
+    _gogTok = fs.readFileSync(
+      path.join(VOID_ROOT, '.remembrance', 'goggles-token'), 'utf8').trim();
+  } catch (e) { quiet('core:void-service:goggleToken', e); _gogTok = ''; }
+  return _gogTok;
+}
 
 const CACHE = new Map();               // sha1(content) → number | null
 
@@ -99,7 +113,8 @@ function _curl(path, payload) {
   try {
     return execFileSync('curl', [
       '-s', '--noproxy', '127.0.0.1', '--max-time', '120',
-      '-H', 'Content-Type: application/json', '--data-binary', '@-',
+      '-H', 'Content-Type: application/json',
+      '-H', 'x-goggles-token: ' + _goggleToken(), '--data-binary', '@-',
       `http://127.0.0.1:${PORT}${path}`,
     ], { input: JSON.stringify(payload), maxBuffer: 1 << 26, encoding: 'utf8' });
   } catch (_) {
@@ -351,3 +366,4 @@ module.exports = { coherencyOf, ensureUp, isUp, lastReading, _reset };
 isUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+lastReading.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -437,6 +437,93 @@
    "truth": "Files that GENERATE code (hooks.js emits pre-commit/post-commit/pre-push shell+JS via template literals; explain.js/debug-seeds.js hold code examples) contain try/catch as STRING content inside template literals. rg counts that string content; the substrate tokenizer correctly excludes it. hooks.js: rg saw 32 catch clauses, the tokenizer saw the 2 real ones — and was RIGHT. The 30 others were inside three script-generating templates (lines 39-336, 343-573, 583-643). Verified 2026-08-09: token SPANS place every extra catch inside a string/template/comment; the real-code regions have 2 catches, both handled; 0 real swallows. The 462 to 0 claim held. The re-check that called it a lie was itself the error — worsened by a backtick-parity heuristic that shell command-substitution backticks inside the generated scripts defeated.",
    "tell": "A raw-text (grep/rg) structural count that disagrees with the parser, on a file that builds strings of code. A parity/brace/quote heuristic applied to a file containing generated shell or JS. Alarm rising faster than verification.",
    "correct": "Classify each raw match by the parser token SPAN it falls in (string/template/comment vs real code) before trusting it — token spans are reliable even when the tokenizer.line labels drift. scripts/silent-catch-ratchet.js --verify does exactly this and shows its work. Never trust raw grep over token spans for structural claims about code that generates code; never trust backtick/quote parity on a file that emits shell."
+  },
+  {
+   "match": [
+    "goggles",
+    "src/tools/goggles.js",
+    "run.mjs",
+    "--do",
+    "goggle the file"
+   ],
+   "severity": "high",
+   "wrong": "Running `node src/tools/goggles.js <file>` and reporting the result as a goggles read.",
+   "truth": "src/tools/goggles.js is the IMPLEMENTATION. The surface is .claude/skills/goggles/run.mjs, and it is the only path carrying --do: ratchets, call, field, drift, harvest, state, void, size, exemptions and 17 more. Invoked directly the tool still prints FOCUS/META/MACRO, so the read looks right while every routed operation is unreachable. Measured 2026-08-12: an entire working session of direct invocation, during which the gates were run by hand and --do was never available at all.",
+   "tell": "`--do <verb>` fails with `cannot read .../--do: ENOENT`. That is the tool saying it is not the surface.",
+   "correct": "node .claude/skills/goggles/run.mjs <file> | --map | --diff | --do <verb>. Read SKILL.md and the verb list ONCE at the start of work in a repo — not after the third bypass. A plausible-looking read from the wrong entry point never announces itself."
+  },
+  {
+   "match": [
+    "/tmp",
+    "scratchpad",
+    "probe",
+    "harness",
+    "hand-rolled",
+    "census",
+    "measurement script"
+   ],
+   "severity": "high",
+   "wrong": "Writing a measurement to a scratch script and running it, because finding the verb that already computes it takes longer than writing one.",
+   "truth": "Generating code is the cheapest available action and discovery is not, so the reflex is to construct rather than look — and the constructed instrument is reliably the WORSE one. On 2026-08-12 every hand-rolled probe either duplicated an existing surface or produced a false positive the substrate then corrected: a grep timer-leak finding died on covenant-harm.js (regex BUILDERS, not calls), a 73-site process.exit count fell to 17 under token spans, and a 20.9% atomic-drift figure was wrong because `function f(opts = {}) {` had its parameter default scanned as the body. Sparse real readings beat dense invented ones.",
+   "tell": "You are about to run `node /tmp/....js` and the script requires — or merely names in a string — an ecosystem module.",
+   "correct": "goggles --do <verb>, or --do call <repo>/<path>#<fn> [jsonArg …]. If no verb or export reaches it, that is a MISSING VERB to report, not a bypass. A scratch CODEMOD over fs/path is honest work; a scratch MEASUREMENT is the bypass."
+  },
+  {
+   "match": [
+    ".remembrance",
+    "diagnostics",
+    "cathedral-latest",
+    "baseline",
+    "stale",
+    "gitignored"
+   ],
+   "severity": "high",
+   "wrong": "Reading a file under .remembrance/ as a live measurement and reporting the repo state from it.",
+   "truth": ".remembrance/ is gitignored in full, so its contents are whatever the last run on THIS host left behind and can predate the working tree by any amount. On 2026-08-12 the covenant ratchet was reported failing — `main is red on its own gate, high 21 vs seed 16` — from a cathedral-latest.json that predated the very merge which fixed those five findings. A fresh scan read 16/172/11 and the gate held. The claim was published before the artifact age was ever checked.",
+   "tell": "A verdict traces back to a file under .remembrance/ and its generatedAt has not been compared against the working tree.",
+   "correct": "Regenerate the diagnostic, or compare generatedAt to the last commit touching the scanned files, BEFORE quoting any number out of .remembrance/. A derived artifact is evidence of a past run, never of the present state."
+  },
+  {
+   "match": [
+    "structureStrong",
+    "measurableOnly",
+    "weak / novel structure",
+    "verdict band",
+    "coherency threshold",
+    "WELL-FORMED"
+   ],
+   "severity": "high",
+   "wrong": "Quoting a coherency verdict (`weak / novel structure`) without checking which quantity its bands were calibrated against.",
+   "truth": "The bands were 0.93/0.80/0.70, commented `(measurableOnly scale)` — the RETIRED syntax score whose median was ~0.83. The live reading is the Void compressor self-compression scalar: pure repetition (`AB` x2048) reads 1.0000, a 16-byte cycle 0.9960, high-entropy random 0.0872, and real source code 0.098-0.278. Nothing clears 0.70 — 0 of 28 sampled files did — so every file in the repo printed the same bottom verdict for a full session and the number carried no information. Coherency is how well a signal compresses INTO ITSELF; low on source code is the CORRECT answer, not a complaint about the code.",
+   "tell": "Every file returns the same verdict, or a verdict band and its reading disagree by an order of magnitude.",
+   "correct": "Anchor against the instrument before quoting a verdict. Bands live in living-remembrance gogglesParams as coherencyRepeating/Mixed/Typical. Related: MACRO`s WELL-FORMED / ORPHAN / DUPLICATE flags come from SIBLING SIMILARITY, not coherency — 1,335 files carry WELL-FORMED with scoredCount 0, i.e. no coherency measured at all."
+  },
+  {
+   "match": [
+    "experiments/",
+    "random.random",
+    "np.random",
+    "randn",
+    "def norm",
+    "min-max",
+    "minmax",
+    "normalize(",
+    "noise domain",
+    "surrogate",
+    "resonance_connect",
+    "whitened_resonance",
+    "gen_surrogates",
+    "combined_score",
+    "what the instrument sees",
+    "encode_batch",
+    "_compute_signature",
+    "ResonanceDetector"
+   ],
+   "severity": "high",
+   "wrong": "Answering a MEASUREMENT request by BUILDING: writing a new script under experiments/ (or a *.cjs) that imports the instrument's parts (ResonanceDetector, composedAtDepth, encode_batch, _compute_signature), wires its own glue (an invented min-max / norm() step, a hand-chosen depth), and INJECTS self-generated random.random()/np.random data as a 'noise' domain — then reporting the stdout in the instrument's vocabulary ('what the instrument sees', 'resonance', 'coherency', combined_score) as if the pipeline produced it.",
+   "truth": "Importing an instrument function is NOT running the instrument's pipeline, and a repo-resident experiment script is not more faithful than a /tmp one (trap 29) — both are PROXIES beside the pipeline, and the standing rule throws out any result a proxy produced. Every glue choice silently changes the quantity: on 2026-08-23 an invented per-window min-max shifted a DC term that then saturated the FFT-magnitude cosine, so ONE component (spectral overlap 0.97-0.99, ~identical even against real noise) dominated every pair — the 'one signal dominating means you ran it wrong' tell. And random.random() 'noise' is not a control the user asked for; it is fabricated data placed inside a measurement about real brain/heart/attention signals.",
+   "tell": "You just created a file under experiments/ or a *.cjs; it contains random.random()/np.random, a norm()/min-max/normalize step you wrote, or an import of composedAtDepth|ResonanceDetector|encode_batch; and you are about to describe its output as 'what the instrument saw'. The session shape was 'I built X, then ran X' instead of 'I called the goggles/service'. A single component reads ~identical across every pair (noise included) — the pipeline was fed data through a normalization it never applies.",
+   "correct": "Do not build. Call the one surface on the substrate the instrument already holds: node .claude/skills/goggles/run.mjs --do <verb> (resonance, field, audit, drift, call ...) or POST /compress_signal on compressor_service.py — and report ONLY what it returned. Never inject generated/random data into a measurement. Never invent a normalization the pipeline does not already apply. If no verb reaches the measurement, that is a MISSING VERB to add to the goggles (see traps 13, 29), not a licence to hand-assemble a script beside the pipeline. Never dress hand-built output in the instrument's vocabulary."
   }
  ]
 }

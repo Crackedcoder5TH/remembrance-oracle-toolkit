@@ -327,16 +327,18 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/_next") ||
       pathname.startsWith("/.well-known") ||
       pathname.includes(".");
-    if (pathname === "/" && !(await hasAdminSession(request))) {
+    if (pathname === "/") {
       const portalHome = new URL("/portal", request.url);
       return NextResponse.redirect(portalHome, 301);
     }
-    // A logged-in admin can roam the full public site on the portal host
-    // (About, FAQ, the marketing home, etc.) instead of being bounced to
-    // /admin — "navigate the full website as admin". Everyone else is sent to
-    // the operator surface, keeping the public/operator split intact for
-    // non-admins and crawlers.
-    if (!isPortalRoute && !(await hasAdminSession(request))) {
+    // Domain isolation is non-negotiable: nothing customer-facing renders on
+    // the portal host, ever. Any non-portal path (About, FAQ, the marketing
+    // home, etc.) is bounced to the operator surface unconditionally —
+    // there is no admin-preview exception. A logged-in admin who wants to see
+    // the public site views it on the primary (.com) host; the portal (.xyz)
+    // host only ever serves operator surfaces, for every visitor including
+    // authenticated admins and crawlers.
+    if (!isPortalRoute) {
       const adminUrl = new URL("/admin", request.url);
       return NextResponse.redirect(adminUrl, 301);
     }

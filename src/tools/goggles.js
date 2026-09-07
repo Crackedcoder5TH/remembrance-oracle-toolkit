@@ -824,7 +824,15 @@ function main() {
   const r = ft.read({ content, name: file, language },
     { source: 'goggles', growSubstrate: autoIngest, topK: top });
   const vr = r.voidResonance || r.resonance || {};
-  const meanTopK = vr.meanTopK ?? 0;
+  // SELF-MATCH (trap 51): once witnessed, the file's own entry sits in the top-K
+  // at 1.0 and lifts the mean by (1 − r)/k — membership, not shape (measured
+  // +0.061/+0.068/+0.074 at k=5). The mean is over the non-self matches.
+  const _selfBase = path.basename(file);
+  const _score = (mm) => (mm.d4 ?? mm.similarity ?? mm.score ?? 0);
+  const _nonSelf = (vr.topMatches || []).filter((mm) => path.basename(String(mm.name || '')) !== _selfBase && !(_score(mm) > 0.9999));
+  const meanTopK = _nonSelf.length
+    ? _nonSelf.reduce((s, mm) => s + _score(mm), 0) / _nonSelf.length
+    : (vr.meanTopK ?? 0);
   const [tag, gloss] = consonanceVerdict(meanTopK, vr.bestMatch);
 
   const W = 64;

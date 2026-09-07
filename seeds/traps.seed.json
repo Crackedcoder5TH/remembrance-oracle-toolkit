@@ -786,6 +786,25 @@
    "truth": "COHERENCY_V1_SPEC names two different quantities for waveform_score in one sentence — 'top-K mean correlation against the substrate library' (resonance) and compress()['avg_l1_coherence'] (compressor coherency) — and every implementation (hub coherency-v1.js, Void coherency_v3.py) takes the number from its caller. Measured 2026-09-06 on six real inputs through the surface: with the compressor's byte coherency in the slot, code unifies at 0.20–0.30 (rejection) and only a periodic series clears the gate (sunspots 0.649); with whitened resonance in the slot, code unifies at 0.73–0.88 (pull to synergy) and the series is rejected (0.474). The gate does not decide; the slot does.",
    "tell": "A tier assigned without saying which quantity filled waveform_score; every code pattern rejected, or every code pattern synergy, depending on who minted.",
    "correct": "Layer two starts by fixing the slot in the spec and both implementations to ONE named quantity with its source label (the compressor reading is `void:compress_signal`; resonance is the whitened META meanTopK), then re-pinning the tier boundaries on that quantity's measured distribution — never on the cone's."
+  },
+  {
+   "match": [
+    "meanTopK",
+    "topMatches",
+    "scoreWithFlow",
+    "harvest",
+    "witnessed",
+    "OUTLIER",
+    "FAMILIAR",
+    "CONSONANT",
+    "META",
+    "resonance"
+   ],
+   "severity": "medium",
+   "wrong": "Reading a rise in a file's META resonance right after it was witnessed (harvested, or ingested by an earlier read) as the file's shape having become more familiar to the codebase.",
+   "truth": "Once the substrate holds the file, its own entry sits in the top-K at 1.0 and lifts meanTopK by exactly (1 - r)/k. Measured 2026-09-07 on three files at k=5, immediately after `--do harvest`: 0.631 -> 0.692 (+0.061), 0.612 -> 0.680 (+0.068), 0.527 -> 0.601 (+0.074) — each within 0.001 of (1 - r)/5. Nothing about the shape changed; membership entered the mean. The goggles printed the nearest list without the self-name but took the mean WITH it; coherency-token-components had dropped the self-match from the start. The lens now takes the mean over non-self matches.",
+   "tell": "A file's resonance jumps by roughly a fifth of its distance to 1.0 the first read after a harvest, with no edit; the nearest list shows no self-entry while the number moved.",
+   "correct": "Drop the self-match (same basename, or score > 0.9999) before the mean, everywhere a top-K mean is read: goggles META, token components, the uniqueness gate. A witnessed file is compared to OTHER shapes only; its membership is a fact about the library, not about the artifact."
   }
  ]
 }

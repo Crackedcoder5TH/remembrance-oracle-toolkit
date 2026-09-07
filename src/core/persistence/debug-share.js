@@ -297,35 +297,10 @@ function debugGlobalStats() {
  * Prevents candidate loss when .remembrance/ is deleted.
  */
 
-shareDebugPatterns.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-pullDebugPatterns.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-syncDebugToPersonal.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-federatedDebugSearch.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-debugGlobalStats.atomicProperties = {
-  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'low', electronegativity: 1, group: 10, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+shareDebugPatterns.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+pullDebugPatterns.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+syncDebugToPersonal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 10, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+federatedDebugSearch.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 10, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+debugGlobalStats.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 10, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { debugGlobalStats, federatedDebugSearch, pullDebugPatterns, shareDebugPatterns, syncDebugToPersonal };

@@ -78,6 +78,7 @@ function _ecosystemPath() {
   }
   return null;
 }
+_ecosystemPath.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function registerOnboardCommands(handlers, _context) {
   handlers['onboard'] = async () => {

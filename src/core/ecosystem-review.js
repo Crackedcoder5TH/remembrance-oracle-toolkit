@@ -51,6 +51,7 @@ function geometricMean(values) {
   const product = values.reduce((acc, v) => acc * Math.max(0.001, v), 1);
   return Math.pow(product, 1 / values.length);
 }
+geometricMean.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 async function ecosystemReview(code, options = {}) {
   const components = [];
@@ -265,6 +266,7 @@ async function ecosystemReview(code, options = {}) {
   // list treated any numeric-looking return field as a coherence signal.
   return __retVal;
 }
+ecosystemReview.atomicProperties = { charge: 1, valence: 8, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 2, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function _suggestFixes(code, component) {
   const fixes = [];
@@ -289,12 +291,14 @@ function _suggestFixes(code, component) {
   }
   return fixes;
 }
+_suggestFixes.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 function _findLine(code, needle) {
   const idx = code.indexOf(needle);
   if (idx === -1) return 0;
   return code.slice(0, idx).split('\n').length;
 }
+_findLine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _checkTaint(code, options = {}) {
   // Taint analysis: detect user-input flowing to sensitive operations
@@ -336,6 +340,7 @@ function _checkTaint(code, options = {}) {
   }
   return { score: 1.0, details: { sources: sourceCount, sinks: sinkCount, risk: 0, reason: 'clean' } };
 }
+_checkTaint.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 13, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function printReview(result) {
   console.log('');
@@ -370,6 +375,7 @@ function printReview(result) {
   console.log('');
   console.log('═'.repeat(70));
 }
+printReview.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   ecosystemReview,

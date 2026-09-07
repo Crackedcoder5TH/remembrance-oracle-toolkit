@@ -240,12 +240,14 @@ function _inferPattern(snippets) {
   const matched = suspicious.filter(p => new RegExp(p, 'i').test(allText));
   return matched.length > 0 ? matched.join('|') : null;
 }
+_inferPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _categoryToName(category) {
   const words = category.replace(/[-_]/g, ' ').split(' ').filter(w => w.length > 0);
   if (words.length === 0) return 'The Guard';
   return 'The ' + words.map(w => w[0].toUpperCase() + w.slice(1)).join(' ') + ' Guard';
 }
+_categoryToName.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 module.exports = {
   recordViolation,
@@ -262,7 +264,7 @@ module.exports = {
 loadEvolvedPrinciples.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 saveEvolvedPrinciples.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 recordViolation.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-discoverPrinciples.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+discoverPrinciples.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 promotePrinciple.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 createEvolvedRegistry.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-evolvedCovenantStats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+evolvedCovenantStats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

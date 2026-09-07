@@ -68,6 +68,7 @@ function _canonicalStore() {
   }
   return _store;
 }
+_canonicalStore.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Load existing field-event / field-snapshot waveforms into memory once. */
 function _loadCaches(store) {
@@ -90,6 +91,7 @@ function _loadCaches(store) {
     }
   } catch (_) { quiet('core:field-memory:_loadCaches', _); /* fresh store — caches stay empty */ }
 }
+_loadCaches.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Max cosine of `wf` against a cache array. Returns { sim, id }. */
 function _nearest(wf, cache) {
@@ -100,6 +102,7 @@ function _nearest(wf, cache) {
   }
   return best;
 }
+_nearest.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Top-k {id, similarity} of `wf` against a cache, descending. This is
@@ -111,6 +114,7 @@ function _topNeighbors(wf, cache, k) {
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, k);
 }
+_topNeighbors.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Normalize a query input (string → waveform; array → as-is). */
 function _toWaveform(input) {
@@ -118,6 +122,7 @@ function _toWaveform(input) {
   if (typeof input === 'string') return Array.from(codeToWaveform(input));
   return null;
 }
+_toWaveform.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 
 /** Stable short digest of a waveform — the canonical substrate id op. */
@@ -460,6 +465,7 @@ function _parseSnapshotText(text) {
   }
   return state;
 }
+_parseSnapshotText.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /** Restore from the newest field-snapshot pattern in the canonical store. */
 function _restoreFromSnapshot() {
@@ -477,6 +483,7 @@ function _restoreFromSnapshot() {
     return null;
   }
 }
+_restoreFromSnapshot.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Canonical ledger path — the blockchain's ledger.json living in the
@@ -489,6 +496,7 @@ function _ledgerPath() {
   return process.env.LEDGER_PATH
     || path.join(__dirname, '..', '..', '.remembrance', 'ledger.json');
 }
+_ledgerPath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Locate a committed durable artifact inside the sibling
@@ -507,16 +515,19 @@ function _committedBlockchainData(file) {
   for (const c of candidates) { try { if (fs.existsSync(c)) return c; } catch (_) { quiet('core:field-memory:_committedBlockchainData', _); /* ignore */ } }
   return candidates[0];
 }
+_committedBlockchainData.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Committed durable ledger (the blockchain's append-only chain, in git). */
 function _committedLedgerPath() {
   return process.env.COMMITTED_LEDGER_PATH || _committedBlockchainData('ledger.json');
 }
+_committedLedgerPath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Committed durable bootstrap snapshot (fast cold-start, in git). */
 function _seedPath() {
   return process.env.FIELD_SEED_PATH || _committedBlockchainData('field-histogram.seed.json');
 }
+_seedPath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * The recovery coin's field — a third durable witness. The git-history coin
@@ -557,6 +568,7 @@ function _coerceFieldState(e) {
     sources: (e.sources && typeof e.sources === 'object') ? e.sources : {},
   };
 }
+_coerceFieldState.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /** Restore the newest field state witnessed in one ledger file (chain JSON). */
 function _restoreFromLedgerFile(lp) {
@@ -574,6 +586,7 @@ function _restoreFromLedgerFile(lp) {
     return null;
   }
 }
+_restoreFromLedgerFile.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Restore from the blockchain ledger — checking BOTH the live working
@@ -590,6 +603,7 @@ function _restoreFromLedger() {
   if (!committed) return local;
   return (committed.updateCount > local.updateCount) ? committed : local;
 }
+_restoreFromLedger.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Restore from the committed bootstrap snapshot — the field histogram
@@ -606,6 +620,7 @@ function _restoreFromSeed() {
     return null;
   }
 }
+_restoreFromSeed.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Reconstruct the field's last-known state from durable memory. Reads
@@ -640,6 +655,7 @@ function _resetCaches() {
   _store = null;
   _storeAttempted = false;
 }
+_resetCaches.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   recordObservation,
@@ -669,8 +685,8 @@ recordObservation.atomicProperties = { charge: 0, valence: 0, mass: "medium", sp
 snapshot.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 recall.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 maybeSnapshot.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-neighbors.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-within.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-query.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+neighbors.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+within.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+query.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 _restoreFromCoin.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 restoreLatest.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

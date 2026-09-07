@@ -42,13 +42,26 @@ test('measureComponents fills the slot with resonance, named, and never with the
   assert.ok(['transcendence', 'synergy', 'stability', 'pull', 'gate', 'rejection'].includes(m.label));
 });
 
-test('a pattern with a blocking atomic value scores atom 0 and cannot mint', () => {
-  const code = 'function f(a) { return a; }\nf.atomicProperties = { charge: 0, harmPotential: "dangerous", alignment: "neutral", intention: "neutral" };\n';
+test('atom is read from the SHAPE: a dangerous body scores 0 and cannot mint; a declaration cannot buy it back', () => {
+  // the body evals its input — the extractor computes harmPotential 'dangerous' from the tokens
+  const code = 'function f(a) { return eval(a); }\nf.atomicProperties = { charge: 0, harmPotential: "none", alignment: "healing", intention: "benevolent" };\n';
   const { STORE } = require('../src/core/store-export');
   if (!fs.existsSync(STORE)) return;
   const m = C.measureComponents({ code, language: 'javascript' });
   if (m.refused) return;
-  assert.strictEqual(m.atom, 0);
+  assert.strictEqual(m.atom, 0, 'a benevolent declaration over a dangerous body reads 0');
   assert.strictEqual(m.unified, 0);
   assert.strictEqual(m.label, 'rejection');
+  assert.strictEqual(m.atomDetail[0].harm, 'dangerous');
+});
+
+test('atom reads shape, not declarations: an undeclared benign body scores 1.0; a declared dangerous value over a benign body does not', () => {
+  const { STORE } = require('../src/core/store-export');
+  if (!fs.existsSync(STORE)) return;
+  const benign = C.measureComponents({ code: 'function add(a, b) { return a + b; }\nfunction mul(a, b) { return a * b; }\n', language: 'javascript' });
+  if (benign.refused) return;
+  assert.strictEqual(benign.atom, 1, 'no declarations, benign bodies → 1.0');
+  const declaredBad = C.measureComponents({ code: 'function add(a, b) { return a + b; }\nadd.atomicProperties = { harmPotential: "dangerous", alignment: "degrading", intention: "malevolent" };\n', language: 'javascript' });
+  if (declaredBad.refused) return;
+  assert.strictEqual(declaredBad.atom, 1, 'a declaration is not the shape');
 });

@@ -87,7 +87,7 @@ function contribute(obs) {
   return result;
 }
 
-contribute.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 1, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+contribute.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 1, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Read the current field state. Reading the field also records it:
@@ -111,7 +111,7 @@ function peekField() {
   return state;
 }
 
-peekField.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+peekField.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Field-aware throttle hint. High-volume callers can check this
@@ -138,7 +138,7 @@ function fieldPressure({ entropyThreshold = 10, cascadeThreshold = 4 } = {}) {
   return { hot: false, state, reason: null };
 }
 
-fieldPressure.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+fieldPressure.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 // ── Cost / coherency separation (explicit convention) ────────────────────
 //
@@ -189,7 +189,7 @@ function recordCost({ units, source, kind = 'work' } = {}) {
   return contribute({ cost: u, coherence: passthroughCoherence, source: label });
 }
 
-recordCost.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+recordCost.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Register a coherency-positive outcome. Drives the coherence integral
@@ -208,7 +208,7 @@ function recordBenefit({ coherence, source, cost = 1.0 } = {}) {
   return contribute({ cost, coherence, source: label });
 }
 
-recordBenefit.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+recordBenefit.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Sample how full the durable volume is and record it as a cost — the storage
@@ -242,7 +242,7 @@ function recordStorageVolume({ path: dir } = {}) {
   } catch (_) { return null; }
 }
 
-recordStorageVolume.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+recordStorageVolume.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Meta-observation as a first-class contribution type ──────────────────
 
@@ -303,7 +303,7 @@ function recordMetaObservation({ scores, source, sessionId } = {}) {
   };
 }
 
-recordMetaObservation.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+recordMetaObservation.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Project the field's response to a candidate contribution without

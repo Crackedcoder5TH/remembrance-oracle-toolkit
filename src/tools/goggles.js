@@ -85,6 +85,7 @@ function parseArgs(argv) {
   }
   return out;
 }
+parseArgs.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Checkpoint the goggles' learned memory to the chain, or restore it.
 // The ledger becomes the memory of what the instrument learned, so a
@@ -108,6 +109,7 @@ async function runMemory(action) {
     console.log('  from checkpoint ' + r.from + ' · digest ' + String(r.digest).slice(0, 16) + '…');
   }
 }
+runMemory.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── MACRO lens — the whole codebase, compressed ─────────────────
 
@@ -120,10 +122,12 @@ function findRepoRoot(startDir) {
     d = parent;
   }
 }
+findRepoRoot.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function mapCachePath(root) {
   return path.join(root, '.remembrance', 'goggles-map.json');
 }
+mapCachePath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Build the macro map for a project, print it, and cache it.
@@ -206,6 +210,7 @@ function runMap(dir, { deep = false } = {}) {
     console.error('could not cache map: ' + e.message);
   }
 }
+runMap.atomicProperties = { charge: -1, valence: 1, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 1, group: 13, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // Canonical depth-flow cosine from the encoder stack (§7: one cosine).
 // Every call site sits behind a composedAtDepth guard, so decoder-stack
@@ -216,10 +221,12 @@ function runMap(dir, { deep = false } = {}) {
 function _deepest(f) {
   return require('../core/decoder-stack').deepestFlow(f);
 }
+_deepest.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _flowCosines(a, b) {
   return require('../core/decoder-stack').flowCosines(a, b);
 }
+_flowCosines.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _flowLabel(f) {
   // Pass the whole flow array — classifyFlow reads every active depth now.
@@ -228,10 +235,12 @@ function _flowLabel(f) {
   try { return require('../core/coherency-mapper').classifyFlow(f); }
   catch { return ''; }
 }
+_flowLabel.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _fmtFlow(f) {
   return f.map((x) => x.toFixed(2)).join('→');
 }
+_fmtFlow.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── META-DEBUG — the orthogonal correctness axis ────────────────────
 // Runs the toolkit's audit checkers on the goggled file and feeds the
@@ -379,6 +388,7 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
   }
   return { high: surfaced.length, medium: medium.length, suppressed, resolved };
 }
+runMetaDebug.atomicProperties = { charge: 0, valence: 4, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Reading history — how the edits changed everything ─────────────
 // Every goggle read persists its numbers; the next read of the same
@@ -387,10 +397,12 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
 function readingsPath(root) {
   return path.join(root, '.remembrance', 'goggles-readings.json');
 }
+readingsPath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function loadReadings(root) {
   try { return JSON.parse(fs.readFileSync(readingsPath(root), 'utf8')); } catch (_) { return {}; }
 }
+loadReadings.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Readings taken before coherency was rewired onto the Void compressor are
 // NOT comparable to readings taken after. Before the rewiring the number was
@@ -443,6 +455,7 @@ function printAndRecordDelta(root, rel, current) {
     fs.writeFileSync(readingsPath(root), JSON.stringify(all));
   } catch (_) { quiet('tools:goggles:readingsPath', _); /* history is best-effort */ }
 }
+printAndRecordDelta.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Print the MACRO section for a focused file: where it sits inside the
@@ -587,6 +600,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
     }
   } catch (_e) { quiet('tools:goggles:_deepest', _e); /* stat best-effort */ }
 }
+printMacro.atomicProperties = { charge: 0, valence: 4, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 1, group: 3, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * VERSION PROVENANCE — the first thing a reader must know.
@@ -630,6 +644,7 @@ function printCanonicalStatus(absFile) {
     return;
   }
 }
+printCanonicalStatus.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 /**
  * DOC CAVEATS — surface a document's own warnings BEFORE its content.
@@ -705,11 +720,13 @@ function printDocCaveats(absFile) {
   }
   console.log('     Do not quote this document without reconciling the above.');
 }
+printDocCaveats.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function bar(x, width = 22) {
   const n = Math.max(0, Math.min(width, Math.round((x || 0) * width)));
   return '█'.repeat(n) + '·'.repeat(width - n);
 }
+bar.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * What the coherency number MEANS, in the compressor's own terms.
@@ -734,6 +751,7 @@ function coherencyMeaning(c) {
   if (c >= GOG.coherencyTypical) return 'low self-repetition — normal for source code';
   return 'almost no self-repetition — near-random byte structure';
 }
+coherencyMeaning.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function consonanceVerdict(meanTopK, best) {
   // How well the section fits the established structure of the whole codebase.
@@ -742,6 +760,7 @@ function consonanceVerdict(meanTopK, best) {
   if (meanTopK >= GOG.resonanceDistinct) return ['DISTINCT', 'a shape the codebase uses only loosely — worth a second look'];
   return ['OUTLIER', 'structurally novel here — either genuinely new, or drifting from the codebase'];
 }
+consonanceVerdict.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Is auto-ingest on for this read? Default ON — looking witnesses.
@@ -778,6 +797,7 @@ function resolveAutoIngest(absFile) {
 
   return true;   // default ON
 }
+resolveAutoIngest.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 function main() {
   const { file, lines, top, map, deep, memory } = parseArgs(process.argv.slice(2));
@@ -1031,5 +1051,6 @@ function main() {
   console.log('    above — they share this structure. Read them before you commit.');
   console.log('═'.repeat(W) + '\n');
 }
+main.atomicProperties = { charge: 0, valence: 4, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 main();

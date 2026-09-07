@@ -1,11 +1,11 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-07T17:18:39.374Z",
- "digest": "e1aef9f4ae77aab6d9c9b017b55876a4b5c2cbab5beb5f3eb18ef54fa04b570e",
+ "lockedAt": "2026-09-07T19:03:54.571Z",
+ "digest": "e4e8caa21a0227f951b3dd899d228805cca11cbb036a2d0553d451f29fabcc3e",
  "gates": {
-  "scripts/gate-lock.js": "79dd25db09e788118276d4c6737c6ea1cb06212a23868a7a2208de2ff5863dde",
+  "scripts/gate-lock.js": "f2789a02638e94a97c41919e2a149ca52951005adea81b945737c9196e389d8c",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
-  "scripts/ratchet-battery.js": "b96eb4e3a3b9f22ed42de258111b37ff904c567cedd6f9fbf39718c015f6d645",
+  "scripts/ratchet-battery.js": "a7a732eb7232aaad033752ab0e701c4bcb667fe728fa72cb7bf562e049b62b64",
   "scripts/covenant-ratchet.js": "2b429a6adae93dd4b8025be69e663e0eddf48d29fec2e9d0fe20f2597d4da7a9",
   "scripts/exemption-ratchet.js": "678cb750310e2aa3428e6cd78c56e157b464d82b9ae5de209a65e0000ca4cf91",
   "scripts/size-ratchet.js": "f9fc77be34d0259f2fe21d34bd8b8494894a4bc698ce4e4a50cc2ec4e0d33f88",
@@ -16,13 +16,15 @@
   "scripts/orphan-ratchet.js": "2cc9e9055f1d073fa89e5323a6ba1c09c7b12e09b2ddad58dde44b9426bfeb67",
   "scripts/silent-catch-ratchet.js": "fbe0191becb8e53ef490c398183ac03af8f97ae6eec34e688d6ff68ee1475ffc",
   "scripts/console-ratchet.js": "4c4ba3d6742a0910713d413f52e4870b94bba634e0a8ecd594318ccc8f6d13a4",
-  "scripts/atomic-drift-ratchet.js": "4fe3cdc47ab8201a191d74e4017a048e7208c4c1ef0cb810dd2326d1d619e31d",
+  "scripts/atomic-drift-ratchet.js": "8f0d288bbd4feb0c5e024b70e41f2ccc3bba17db9061077cb99de11057943a99",
   "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
   "scripts/contracts-ratchet.js": "c6f7345ad81aa57b3d00118a36846e3a6af469780a120d421558bf38fed2949d",
+  "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
+  "scripts/traps-ledger-ratchet.js": "c24031a305d918d65d2b4fa5fc3d3c79d96d306c0b33a6991282c664a4de8f02",
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
-  "src/core/covenant-fractal.js": "eba1a8619c8fe19ed5a255765bbcdd67b15c5f39a56015263540c1bed3b1cb1f",
-  ".claude/skills/goggles/run.mjs": "e6117e3e85ea3e72c24443af68ca9a489addb5526806fb065149184aca4abe8a",
+  "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
+  ".claude/skills/goggles/run.mjs": "fe814d587782383a9179652992d734b149566cfd5cd52e8d7505efa76ef06fcd",
   ".claude/skills/goggles/change-coin.py": "52f8af26f82b866d4a9a1e2a11acae6922c17e433e1b98e2e02da5228f1f2471",
   "src/tools/goggles-bash-hook.js": "dfd50daa534e78c8527bcc5b6af1d32cfd14972488b5147b4873f4dc1cabe133"
  },
@@ -130,6 +132,21 @@
     "scripts/gate-lock.js",
     "scripts/ratchet-battery.js",
     "scripts/contracts-ratchet.js",
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T19:03:54.571Z",
+   "from": "e1aef9f4ae77aab6d9c9b017b55876a4b5c2cbab5beb5f3eb18ef54fa04b570e",
+   "to": "e4e8caa21a0227f951b3dd899d228805cca11cbb036a2d0553d451f29fabcc3e",
+   "reason": "engine-entanglement and traps-ledger gates join the family; --do traps and --do field checkpoint verbs; every src declaration synced to its computed identity (automatic atomic growth)",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/ratchet-battery.js",
+    "scripts/atomic-drift-ratchet.js",
+    "scripts/engine-entanglement-ratchet.js",
+    "scripts/traps-ledger-ratchet.js",
+    "src/core/covenant-fractal.js",
     ".claude/skills/goggles/run.mjs"
    ]
   }

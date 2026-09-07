@@ -124,6 +124,7 @@ function _clip(x) {
   if (x > 1) return 1;
   return x;
 }
+_clip.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Geometric marker extraction ──────────────────────────────────
 
@@ -137,6 +138,7 @@ function _extractionMarkers(v) {
     narrowBand: _clip(1 - v[DIM.l4SpectralEntropy]),
   };
 }
+_extractionMarkers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _abundanceMarkers(v) {
   return {
@@ -152,12 +154,14 @@ function _abundanceMarkers(v) {
     healingBalance: _clip((v[DIM.l1Alignment] + v[DIM.l1Intention]) / 2),
   };
 }
+_abundanceMarkers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _weightedMean(markers, weights) {
   let sum = 0;
   for (const [name, w] of Object.entries(weights)) sum += markers[name] * w;
   return _clip(sum);
 }
+_weightedMean.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Lexicon pass (text mode) ─────────────────────────────────────
 
@@ -169,6 +173,7 @@ function _countTerms(lower, terms) {
   }
   return n;
 }
+_countTerms.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 15, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Lexical tilt in [-1, 1]: positive toward abundance vocabulary,
@@ -182,6 +187,7 @@ function _lexiconTilt(text) {
   if (total === 0) return 0;
   return (ab - ex) / total;
 }
+_lexiconTilt.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Evidence assembly ────────────────────────────────────────────
 
@@ -197,12 +203,14 @@ function _evidence(exMarkers, abMarkers) {
   rows.sort((a, b) => b.value * b.weight - a.value * a.weight);
   return rows;
 }
+_evidence.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _label(alignment) {
   if (alignment > 0.15) return 'abundance-aligned';
   if (alignment < -0.15) return 'extraction-aligned';
   return 'mixed';
 }
+_label.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Confidence grows with how decisively the poles separate and how
@@ -214,6 +222,7 @@ function _confidence(extraction, abundance) {
   const magnitude = (extraction + abundance) / 2;
   return _clip(separation * 0.7 + magnitude * 0.3);
 }
+_confidence.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Public API ───────────────────────────────────────────────────
 

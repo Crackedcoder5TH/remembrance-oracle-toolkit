@@ -42,12 +42,7 @@ function classifyRole(name) {
   }
   return 'neutral';
 }
-classifyRole.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.3, group: 2, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+classifyRole.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const ROLE_COMPLEMENTARITY = {
   'validator+mutation':  0.95,
@@ -92,12 +87,7 @@ function roleComplementarity(roleA, roleB) {
   if (roleA === 'neutral' || roleB === 'neutral') return 0.60;
   return 0.55;
 }
-roleComplementarity.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 2, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+roleComplementarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const PHASE_BONDS = {
   'solid+solid':   0.70, 'solid+gas':    0.90, 'solid+liquid': 0.60, 'solid+plasma': 0.55,
@@ -184,12 +174,7 @@ function roleAwareCoherence(el1, el2) {
 
   return Math.round((score / dims) * 1000) / 1000;
 }
-roleAwareCoherence.atomicProperties = {
-  charge: 1, valence: 4, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 6,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+roleAwareCoherence.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function covenantGroupCoherenceRoleAware(periodicTable) {
   if (!periodicTable) return { coherence: 0, reason: 'no periodic table' };
@@ -235,12 +220,7 @@ function covenantGroupCoherenceRoleAware(periodicTable) {
     method: 'role-aware',
   };
 }
-covenantGroupCoherenceRoleAware.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+covenantGroupCoherenceRoleAware.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 13, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   classifyRole,

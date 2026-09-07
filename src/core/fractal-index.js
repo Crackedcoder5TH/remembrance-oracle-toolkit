@@ -61,6 +61,7 @@ function _compose(input) {
   }
   return out;
 }
+_compose.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Zero-pad any whole-block vector (116-D v1, 145-D v2, or a future
  *  deeper stack truncated) up to COMPOSED_DIM. Returns null when the
@@ -73,6 +74,7 @@ function _padToMax(vec) {
   for (let i = 0; i < vec.length; i++) out[i] = vec[i];
   return out;
 }
+_padToMax.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Precompute the L2 norm of a signature so the cosine inner loop
@@ -84,6 +86,7 @@ function _norm(vec) {
   for (let i = 0; i < vec.length; i++) s += vec[i] * vec[i];
   return Math.sqrt(s);
 }
+_norm.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * THE RESONANCE SPACE. Patterns are stored, and queries taken, in the
@@ -97,6 +100,7 @@ function _whitenRaw(vec) {
   try { return require('./whitening-reference').whitenComposed(vec); }
   catch (e) { quiet('core:fractal-index:whiten', e); return vec; }
 }
+_whitenRaw.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Cosine over the first `dims` elements of two Float64Arrays.
@@ -109,6 +113,7 @@ function _cosineAt(q, qn, p, pn, dims) {
   for (let i = 0; i < dims; i++) dot += q[i] * p[i];
   return dot / (qn * pn);
 }
+_cosineAt.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 class FractalIndex {
   /**

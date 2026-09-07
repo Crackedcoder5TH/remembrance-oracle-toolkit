@@ -396,6 +396,7 @@ function _cosine29(a, b) {
   if (na === 0 || nb === 0) return 0;
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
+_cosine29.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Cosine over the first N dims of two (possibly longer) vectors.
 // Used for depth-aware reads (29 = d1, 58 = d2, 87 = d3, 116 = d4).
@@ -409,6 +410,7 @@ function _cosineN(a, b, n) {
   if (na === 0 || nb === 0) return 0;
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
+_cosineN.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Shape of the coherency flow across the four depths.
 // Mirrors classifyFlow in coherency-mapper to keep void-library
@@ -438,6 +440,7 @@ function _classifyFlow(f) {
   if (inc >= 2 && dec <= 1) return 'ASCENDING';
   return 'OSCILLATING';
 }
+_classifyFlow.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const _default = new VoidLibrary();
 

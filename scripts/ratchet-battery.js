@@ -35,6 +35,10 @@ const RATCHETS = [
   // the truth-spine as a gate: Void's falsifiable contracts, failing set shrink-only,
   // verdict must be current (scripts/contracts-ratchet.js)
   { name: 'contracts', script: 'scripts/contracts-ratchet.js' },
+  // the JS and Python engines move together on the instrument's own sealed readings (binary)
+  { name: 'engine-entanglement', script: 'scripts/engine-entanglement-ratchet.js' },
+  // the memory of mistakes: append-only, anchored on the chain, mirrored into every repo
+  { name: 'traps-ledger', script: 'scripts/traps-ledger-ratchet.js' },
 ];
 
 function runOne(r) {

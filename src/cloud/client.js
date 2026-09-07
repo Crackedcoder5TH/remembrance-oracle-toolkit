@@ -33,6 +33,7 @@ function _deriveKey() {
   const identity = `${os.hostname()}:${username}:remembrance-oracle`;
   return crypto.scryptSync(identity, 'remembrance-token-salt', 32);
 }
+_deriveKey.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _encryptToken(plaintext) {
   if (!plaintext) return plaintext;
@@ -43,6 +44,7 @@ function _encryptToken(plaintext) {
   const tag = cipher.getAuthTag();
   return 'enc:' + iv.toString('hex') + ':' + tag.toString('hex') + ':' + encrypted.toString('hex');
 }
+_encryptToken.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _decryptToken(stored) {
   if (!stored || !stored.startsWith('enc:')) return stored; // plaintext fallback for migration
@@ -62,6 +64,7 @@ function _decryptToken(stored) {
     return null;
   }
 }
+_decryptToken.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── HTTP Helper ───
 
@@ -431,11 +434,11 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-request.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+request.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 ensureDir.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-registerRemote.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+registerRemote.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 removeRemote.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 listRemotes.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 loadRemotesConfig.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-federatedRemoteSearch.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+federatedRemoteSearch.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 8, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 checkRemoteHealth.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 8, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

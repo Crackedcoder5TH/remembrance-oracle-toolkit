@@ -31,6 +31,7 @@ function _loadCompression() {
     }
   }
 }
+_loadCompression.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── 1. Holographic Boost for Decision Engine ────────────────────────────
 
@@ -131,6 +132,7 @@ function _neutralStability() {
   // list treated any numeric-looking return field as a coherence signal.
   return __retVal;
 }
+_neutralStability.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── 3. Structured Description Embedding ─────────────────────────────────
 
@@ -253,6 +255,7 @@ function _deltaSimilarity(deltaA, deltaB) {
   }
   return matches / Math.max(keysA.length, keysB.length);
 }
+_deltaSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── 5. Family Stability for Confidence Decay ───────────────────────────
 
@@ -531,6 +534,7 @@ function _findSingletonMatch(targetHash, newPattern, store) {
 
   return null;
 }
+_findSingletonMatch.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── 8. Fractal Integrity Check ─────────────────────────────────────
 
@@ -639,6 +643,7 @@ function repairFractalIntegrity(store) {
 function _safeParseJSON(str) {
   try { return JSON.parse(str); } catch { return {}; }
 }
+_safeParseJSON.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   holoDecisionBoost,

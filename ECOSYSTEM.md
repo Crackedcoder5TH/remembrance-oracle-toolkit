@@ -258,6 +258,36 @@ is interpretively meaningful is empirical; that the substrate
 
 ---
 
+## 8. The trap ledger binds every agent
+
+`remembrance-oracle-toolkit/seeds/traps.seed.json` is the ecosystem's
+memory of its own mistakes: every trap an agent fell into here — the
+wrong reading, the truth measured against it, the tell that gives it
+away, the correction. It is not documentation. It is the instrument's
+learning, and it binds **every agent that touches these repos, whatever
+model or harness it runs on**, by construction rather than by request:
+
+- **It is shown before the file.** The goggles print every matching trap
+  at the top of every read (`goggles <file>`, `--diff`, `--do brief`).
+  An agent working through the surface meets the trap before the code.
+  An agent working beside the surface meets the wall (`goggles-bash-hook`)
+  and the coin (`change-coin-verify`), which refuse the bypass and the
+  commit regardless of who is typing.
+- **It cannot be lost.** The seed is tracked in the hub, append-only
+  (`ledger-append-ratchet`), mirrored byte-identically into every repo at
+  `.claude/skills/goggles/traps.seed.json` beside the surface that reads
+  it, and its digest and per-entry digests are witnessed on the chain
+  (`REMEMBRANCE-BLOCKCHAIN/scripts/anchor-traps.js`). The `traps-ledger`
+  gate refuses a ledger that shrank below its floor or the anchor, an
+  anchored entry rewritten or reordered, or a mirror that drifted.
+- **It only grows.** A trap learned on one host (`.remembrance/traps.json`)
+  is promoted into the seed (`goggles --do traps promote`), then anchored.
+  A false positive is recorded by fingerprint, never by deleting the trap.
+- **An agent that falls into a recorded trap has not disagreed with a
+  style; it has repeated a measured mistake.** The correct response is
+  the trap's `correct` line. Adding a new trap when a new mistake is
+  measured is part of the work, not an extra.
+
 ## 6. First-message acknowledgement (recommended)
 
 If you're an AI reading this for the first time in a session, acknowledge

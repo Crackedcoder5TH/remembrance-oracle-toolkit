@@ -33,6 +33,7 @@ function _cosineLen(a, b, len) {
   if (na < 1e-12 || nb < 1e-12) return 0;
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
+_cosineLen.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Read the coherency flow between two patterns across all depths.
@@ -65,12 +66,7 @@ function coherencyFlow(a, b) {
   out.deepest = d1;
   return out;
 }
-coherencyFlow.atomicProperties = {
-  charge: -1, valence: 2, mass: 'light', spin: 'odd', phase: 'liquid',
-  reactivity: 'stable', electronegativity: 0.5, group: 15, period: 4,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'analysis',
-};
+coherencyFlow.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * In-repo pairwise depth-flow — the ONE sibling engine both map modes
@@ -122,6 +118,7 @@ function _pairwiseFlow(entries, opts = {}) {
   }
   return out;
 }
+_pairwiseFlow.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Pull the depth readings out of a flow, however it arrived.
@@ -145,6 +142,7 @@ function _flowValues(f) {
   }
   return out;
 }
+_flowValues.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function classifyFlow(f) {
   const values = _flowValues(f);
@@ -165,12 +163,7 @@ function classifyFlow(f) {
   if (inc >= 2 && dec <= 1) return 'ASCENDING';
   return 'OSCILLATING';
 }
-classifyFlow.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 15, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'analysis',
-};
+classifyFlow.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function formatFlow(f) {
   if (!f) return 'no-flow';
@@ -180,11 +173,6 @@ function formatFlow(f) {
   // waveform's flow now — L1 structural through L8 dynamical.
   return `${v.map((x) => x.toFixed(3)).join(' → ')}  [${f.shape}]`;
 }
-formatFlow.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.2, group: 13, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'presentation',
-};
+formatFlow.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { coherencyFlow, classifyFlow, formatFlow, _pairwiseFlow, _flowValues, _cosineLen };

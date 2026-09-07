@@ -147,6 +147,7 @@ function _voidCoherencyOf(content) {
   if (!_voidService) return null;
   return _voidService.coherencyOf(content, { quiet: true });
 }
+_voidCoherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * The compressor's seal on the reading just taken — {mint, via, sig,
@@ -170,6 +171,7 @@ function _voidReadingSource() {
   } catch (_) { quiet('core:field-tool:void-route', _); }
   return 'void:compress_signal';
 }
+_voidReadingSource.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 let _SQLiteStore = null;
 try {

@@ -148,6 +148,7 @@ function _isValidVoidSeal(seal) {
     && seal.via === 'void_compressor_v5.compress'
     && typeof seal.sig === 'string' && seal.sig.length > 0);
 }
+_isValidVoidSeal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // The one door into the resonance space (resonance-space.js): whitened when
 // the reference is in force, raw and labelled otherwise, 256-D refused.
@@ -721,6 +722,7 @@ function getEngine(opts) {
   }
   return _instance;
 }
+getEngine.atomicProperties = { charge: 1, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Convenience: the goggles instrument's consolidated tuning, read from the
@@ -732,6 +734,7 @@ function gogglesParams() {
   try { return getEngine().params('goggles') || PARAMS.goggles; }
   catch (_) { return PARAMS.goggles; }
 }
+gogglesParams.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   LivingRemembranceEngine,

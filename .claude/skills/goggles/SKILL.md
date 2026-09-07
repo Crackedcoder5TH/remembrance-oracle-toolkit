@@ -68,6 +68,10 @@ operation physically lives:
     run.mjs --do coin [--publish]      # mint the git-history recovery coin
     run.mjs --do token <file> [--dry]  # LAYER TWO: the coherency token for a pattern (components → gates → chain)
     run.mjs --do gate contracts [--run] # the truth-spine as a gate: every falsifiable contract, failing set shrink-only, verdict must be current
+    run.mjs --do gate engine-entanglement # the JS and Python engines agree on the instrument's own sealed readings (binary)
+    run.mjs --do gate traps-ledger      # the memory of mistakes: append-only, anchored on the chain, mirrored into every repo
+    run.mjs --do traps [promote|sync|floor|anchor|status]  # drive the trap ledger: promote local traps, mirror, raise the floor, witness
+    run.mjs --do field [checkpoint|status]  # peek the live field; checkpoint persists it on the Witness, status reads the committed field
     run.mjs --do export <drive-path>   # export the data plane to a mounted drive
     run.mjs --do verify <snapshot>     # re-check an export's integrity
     run.mjs --do contracts [--strict]  # the falsifiable contracts (Void truth-spine)

@@ -256,7 +256,7 @@ module.exports = {
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 tempFilePath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-measureRatio.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+measureRatio.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 6, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 sanitizeIdentifier.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 calculateConfidence.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-detectHiddenIdentifiers.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+detectHiddenIdentifiers.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

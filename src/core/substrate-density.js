@@ -44,10 +44,13 @@ function _cachePath(opts) { return (opts && opts.cachePath) || process.env.VOID_
 function _readCache(opts) {
   try { return JSON.parse(fs.readFileSync(_cachePath(opts), 'utf8')); } catch (_) { return null; }
 }
+_readCache.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_cachePath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function _writeCache(obj, opts) {
   const p = _cachePath(opts);
   try { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); } catch (_) { quiet('core:substrate-density:_cachePath', _); /* best-effort */ }
 }
+_writeCache.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * The current density factor — FAST (cache read). 1.0 when no cache yet
@@ -109,4 +112,4 @@ module.exports = { getDensityFactor,  refreshDensity, CACHE_PATH, FIT_SAMPLE };
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 getDensityFactor.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-refreshDensity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+refreshDensity.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 1, group: 10, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

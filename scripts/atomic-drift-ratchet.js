@@ -173,12 +173,14 @@ function censusDrift() {
       if (!body) { unresolved++; continue; }
 
       compared++;
-      const diffs = compare(declared, extractAtomicProperties(body));
+      const computed = extractAtomicProperties(body);
+      const diffs = compare(declared, computed);
       if (diffs.length) {
         byFile[rel] = (byFile[rel] || 0) + 1;
         total++;
         for (const x of diffs) perDim[x.dim] = (perDim[x.dim] || 0) + 1;
-        detail.push({ file: rel, name, diffs });
+        // the literal's span in the file, so --sync can rewrite exactly it
+        detail.push({ file: rel, name, diffs, computed, span: sp });
       }
     }
   }
@@ -218,9 +220,84 @@ function loadBaseline() {
   catch { return null; }
 }
 
+/** One canonical declaration literal from a computed identity (the DIMS, in order). */
+function literalOf(computed) {
+  return '{ ' + DIMS.map((d) => `${d}: ${JSON.stringify(computed[d])}`).join(', ') + ' }';
+}
+literalOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/**
+ * AUTOMATIC GROWTH. Declarations are the code's self-knowledge, and the
+ * extractor is what measures it — so a declaration is never typed by hand:
+ *   --sync   rewrite every drifted declaration to what the extractor computes
+ *            over the function's own body (the identity this gate holds it to)
+ *   --grow   add a declaration to every top-level `function NAME(` in src/
+ *            that has none, computed the same way — more signatures, so the
+ *            census sees more of the code
+ * Every write goes through the covenant gate. Sizes are the size ratchet's
+ * business: a monolith that cannot carry its own signatures is the owner's
+ * decomposition, not this script's silence.
+ */
+function syncAndGrow(current, doSync, doGrow) {
+  const { tokenize } = require('../src/audit/parser');
+  const { extractAtomicProperties } = require('../src/atomic/property-extractor');
+  const touched = new Map();   // rel → code
+  const load = (rel) => touched.has(rel) ? touched.get(rel) : fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  let synced = 0, grown = 0;
+  if (doSync) {
+    const byFile = {};
+    for (const d of current.detail) (byFile[d.file] = byFile[d.file] || []).push(d);
+    for (const [rel, items] of Object.entries(byFile)) {
+      let code = load(rel);
+      for (const d of items.sort((a, b) => b.span[0] - a.span[0])) {   // from the end, so spans stay valid
+        code = code.slice(0, d.span[0]) + literalOf(d.computed) + code.slice(d.span[1]);
+        synced++;
+      }
+      touched.set(rel, code);
+    }
+  }
+  if (doGrow) {
+    const files = execSync('git ls-files src', { cwd: ROOT, encoding: 'utf8' }).split('\n').filter((f) => f.endsWith('.js'));
+    for (const rel of files) {
+      let code = load(rel);
+      const declared = new Set([...code.matchAll(/^\s*([A-Za-z_$][\w$]*)\.atomicProperties\s*=/gm)].map((m) => m[1]));
+      const adds = [];
+      const re = /^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/gm;
+      let m;
+      while ((m = re.exec(code)) !== null) {
+        const name = m[1];
+        if (declared.has(name)) continue;
+        // the function's closing brace at column 0 — the house layout for top-level functions
+        const close = code.indexOf('\n}\n', m.index);
+        if (close < 0) continue;
+        adds.push({ name, at: close + 3, start: m.index });
+      }
+      if (!adds.length) continue;
+      let toks;
+      try { toks = tokenize(code).filter((t) => t.type !== 'comment'); } catch { continue; }
+      for (const a of adds.sort((x, y) => y.at - x.at)) {
+        const body = functionBody(toks, code, a.name);
+        if (!body) continue;
+        code = code.slice(0, a.at) + `${a.name}.atomicProperties = ${literalOf(extractAtomicProperties(body))};\n` + code.slice(a.at);
+        grown++;
+      }
+      touched.set(rel, code);
+    }
+  }
+  for (const [rel, code] of touched) _writeBaseline(_sealedGate(), path.join(ROOT, rel), code);
+  return { synced, grown, files: touched.size };
+}
+syncAndGrow.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
 function main() {
   const argv = process.argv.slice(2);
   const current = censusDrift();
+
+  if (argv.includes('--sync') || argv.includes('--grow')) {
+    const r = syncAndGrow(current, argv.includes('--sync'), argv.includes('--grow'));
+    console.log(`[atomic-drift] ${r.synced} declaration(s) synced to the computed identity, ${r.grown} added, ${r.files} file(s) written — re-run to see the census, then --save-baseline to ratchet down`);
+    return 0;
+  }
 
   if (argv.includes('--report')) {
     console.log('== declared vs computed atomic identity ==');

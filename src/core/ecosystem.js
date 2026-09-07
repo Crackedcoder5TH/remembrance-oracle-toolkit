@@ -119,6 +119,7 @@ function discoverStatic(options = {}) {
 
   return found;
 }
+discoverStatic.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 0, group: 6, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Layer 2: Runtime registry ─────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ function announceModule(repoRoot, options = {}) {
 
   return record;
 }
+announceModule.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Read the runtime registry to find modules that are currently
@@ -224,6 +226,7 @@ function readRegistry(repoRoot) {
 
   return Array.from(out.values());
 }
+readRegistry.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function isStale(record) {
   if (!record.startedAt) return true;
@@ -231,6 +234,7 @@ function isStale(record) {
   // 24h cutoff — older records are treated as stale
   return age > 24 * 60 * 60 * 1000;
 }
+isStale.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Health checks ─────────────────────────────────────────────────────────
 
@@ -282,6 +286,7 @@ function runHealthCheck(manifest, record) {
     return Promise.resolve({ alive: false, latencyMs: Date.now() - started, error: e.code || e.message });
   }
 }
+runHealthCheck.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 8, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Main discovery entry point ────────────────────────────────────────────
 
@@ -361,6 +366,7 @@ async function discoverEcosystem(options = {}) {
     byCapability: (cap) => manifests.filter(m => (m.capabilities || []).includes(cap)),
   };
 }
+discoverEcosystem.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Ecosystem-wide auto-wiring ────────────────────────────────────────────
 
@@ -414,6 +420,7 @@ async function autoWireAll(options = {}) {
 
   return { wired, ecosystem: eco };
 }
+autoWireAll.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Awaitable wire-once helper ────────────────────────────────────────────
 
@@ -446,11 +453,13 @@ function ensureWired(options = {}) {
   });
   return _wireOnce;
 }
+ensureWired.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function resetEcosystemWiring() {
   _wireOnce = null;
   _wireOnceRoot = null;
 }
+resetEcosystemWiring.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function loadSelfManifest(repoRoot) {
   const p = path.join(repoRoot, MANIFEST_FILE);
@@ -458,6 +467,7 @@ function loadSelfManifest(repoRoot) {
   try { return JSON.parse(fs.readFileSync(p, 'utf-8')); }
   catch { return null; }
 }
+loadSelfManifest.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   discoverEcosystem,

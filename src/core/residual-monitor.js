@@ -39,6 +39,7 @@ function _namespaceOf(name) {
   const slash = name.indexOf('/');
   return slash < 0 ? name : name.slice(0, slash);
 }
+_namespaceOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _topLevelDomain(name) {
   // Two-level prefix for finer distinct-domain check:
@@ -48,6 +49,7 @@ function _topLevelDomain(name) {
   const parts = String(name || '').split('/');
   return parts.slice(0, Math.min(2, parts.length)).join('/');
 }
+_topLevelDomain.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _sampleIndices(n, k) {
   // Deterministic-spread sample so two runs over the same substrate
@@ -60,6 +62,7 @@ function _sampleIndices(n, k) {
   for (let i = 0; i < k; i++) out.push(Math.floor(i * step));
   return out;
 }
+_sampleIndices.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Core: residual measurement ──────────────────────────────────
 
@@ -162,6 +165,7 @@ function _cosineL1(a, b) {
   if (na < 1e-12 || nb < 1e-12) return 0;
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
+_cosineL1.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Entanglement with compression ────────────────────────────────
 
@@ -215,5 +219,5 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-measureResidual.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-checkAndSpawn.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+measureResidual.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+checkAndSpawn.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

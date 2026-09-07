@@ -79,12 +79,7 @@ function detectSubstrateNamespace(files, projectPath, opts = {}) {
   if (ranked.length && ranked[0][1] >= 2) return ranked[0][0];
   return null;
 }
-detectSubstrateNamespace.atomicProperties = {
-  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'liquid',
-  reactivity: 'stable', electronegativity: 0.6, group: 15, period: 4,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'analysis',
-};
+detectSubstrateNamespace.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Detect the substrate namespace with zero encoding: one pass over the
@@ -133,11 +128,6 @@ function namespaceFromIndexNames(rels, indexNames) {
   if (ranked.length && ranked[0][1] >= 3) return ranked[0][0];
   return null;
 }
-namespaceFromIndexNames.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 12, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'analysis',
-};
+namespaceFromIndexNames.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { detectSubstrateNamespace, namespaceFromIndexNames };

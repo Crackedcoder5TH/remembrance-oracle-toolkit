@@ -46,6 +46,7 @@ function _goggleToken() {
   } catch (e) { quiet('core:void-service:goggleToken', e); _gogTok = ''; }
   return _gogTok;
 }
+_goggleToken.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const CACHE = new Map();               // sha1(content) → number | null
 
@@ -76,6 +77,7 @@ function _isSelfMatch(blend) {
   if (Array.isArray(blend)) return blend.length > 0 && blend.every(one);
   return one(blend);
 }
+_isSelfMatch.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The distinct pattern names a reading blended from. */
 function _blendNames(blend) {
@@ -85,6 +87,7 @@ function _blendNames(blend) {
   for (const b of arr) { if (b.name1) names.add(b.name1); if (b.name2) names.add(b.name2); }
   return [...names];
 }
+_blendNames.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 const CACHE_MAX = 5000;
 
 let _startAttempted = false;
@@ -121,6 +124,7 @@ function _curl(path, payload) {
     return '';
   }
 }
+_curl.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 /** The canonical read: byte series in, blend provenance out. */
 function _postSignal(series) { return _curl('/compress_signal', { series }); }
@@ -132,6 +136,9 @@ function _postLegacy(content) { return _curl('/compress', { input: content }); }
 function _isUnknownRoute(raw) {
   return !!raw && raw.includes('unknown route');
 }
+_isUnknownRoute.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_postLegacy.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 17, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_postSignal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Read through whichever route this compressor serves.
@@ -156,6 +163,7 @@ function _post(series, content) {
   }
   return { raw: '', route: null };
 }
+_post.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Is the service answering right now? */
 function isUp() {
@@ -361,6 +369,7 @@ function _reset() {
   _startAttempted = false;
   _unavailable = false;
 }
+_reset.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Provenance of the most recent reading: which route served it, the blend it
@@ -377,5 +386,5 @@ module.exports = { coherencyOf, ensureUp, isUp, lastReading, _reset };
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 isUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

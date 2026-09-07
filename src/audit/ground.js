@@ -371,6 +371,7 @@ function unquoteString(tok) {
   }
   return null;
 }
+unquoteString.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Resolve a run of string concatenation tokens starting at index `start`.
@@ -399,6 +400,7 @@ function resolveStringConcat(tokens, start) {
   if (j === start + 1) return null;
   return { resolved: result, endIndex: j - 1 };
 }
+resolveStringConcat.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 /**
  * Resolve a template literal with only constant parts (no dynamic
@@ -436,6 +438,7 @@ function resolveTemplateLiteral(tok) {
 
   return resolved;
 }
+resolveTemplateLiteral.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Resolve indirections in source code.
@@ -569,6 +572,7 @@ function _contributeGrounding(res) {
     });
   } catch (_) { quiet('audit:ground:require', _); /* field optional */ }
 }
+_contributeGrounding.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   groundFile,
@@ -580,33 +584,8 @@ module.exports = {
 };
 
 // ── Atomic self-description (batch-generated) ────────────────────
-groundFile.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
-extractAllIdentifiers.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 9, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
-extractDefinedIdentifiers.atomicProperties = {
-  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'inert', electronegativity: 1, group: 2, period: 4,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
-extractCalledIdentifiers.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
-resolveIndirections.atomicProperties = {
-  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 1, group: 8, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'security',
-};
+groundFile.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 13, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+extractAllIdentifiers.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+extractDefinedIdentifiers.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+extractCalledIdentifiers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+resolveIndirections.atomicProperties = { charge: 1, valence: 3, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 1, group: 2, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };

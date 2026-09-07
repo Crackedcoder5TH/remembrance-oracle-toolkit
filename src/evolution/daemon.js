@@ -314,6 +314,7 @@ function startDaemon(oracle, options = {}) {
     },
   };
 }
+startDaemon.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 3, period: 5, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   startDaemon,

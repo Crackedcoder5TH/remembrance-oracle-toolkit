@@ -32,10 +32,11 @@ const { quiet } = require('../core/quiet');
  *   text_score     — src/unified/coherency.js computeCoherencyScore(code).total
  *                    (source code only; null for prose / data)
  *   waveform_score — resonance as above (every input)
- *   atomic_score   — src/atomic + covenant-fractal: 1.0 when every top-level
- *                    function declares its 13 dimensions and none is blocking
- *                    (dangerous / degrading / malevolent); the declared
- *                    fraction otherwise; 0.0 on any blocking value (code only)
+ *   atomic_score   — src/atomic/property-extractor over each function's
+ *                    BODY: the mean benignity the extractor computes (harm
+ *                    none 1.0 / minimal 0.75 / moderate 0.5 / dangerous 0.0;
+ *                    0.0 where computed alignment is degrading or intention
+ *                    malevolent). Shape, never declarations (code only)
  *
  * unified = geometric mean over the non-null components (coherency-v1.js).
  */
@@ -45,7 +46,6 @@ const crypto = require('node:crypto');
 const LAYER_DIM = 29;
 const RETIRED_WIDTH = 256;
 const WAVE_SOURCE = 'resonance:void-library:meanTopK:whitened';
-const BLOCKING = /(?:harmPotential|alignment|intention)\s*:\s*["'](?:dangerous|degrading|malevolent)["']/;
 const CODE_LANGUAGES = new Set(['javascript', 'js', 'typescript', 'ts', 'python', 'py', 'rust', 'go', 'java', 'c', 'cpp', 'ruby', 'php', 'shell', 'sh']);
 
 /** A decoder vector, or the reason it is not one. */
@@ -57,16 +57,60 @@ function canonicalWidth(vec) {
 }
 canonicalWidth.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-function _atomicScore(code) {
-  const { scanForMissingAtomicProperties } = require('../core/covenant-fractal');
-  const missing = scanForMissingAtomicProperties(code) || [];
-  const declared = (code.match(/^\s*[A-Za-z_$][\w$]*\.atomicProperties\s*=/gm) || []).length;
-  const total = declared + missing.length;
-  if (total === 0) return null;                       // nothing to declare — not a code pattern
-  if (BLOCKING.test(code)) return 0;                  // a blocking value anywhere blocks the pattern
-  return declared / total;
+// SHAPE, NOT DECLARATIONS (2026-09-07). The first cut of this score was the
+// fraction of top-level functions carrying an `atomicProperties` literal, 0
+// on any declared blocking value — a reading of what the author WROTE about
+// the code. That rewards declaration discipline and reads nothing of the
+// code itself: a fully declared file scored 1.0 whatever its functions did,
+// and 34% of declarations drift from their own bodies. The score is now
+// what the extractor COMPUTES from each function's body: harm potential,
+// alignment and intention read off the tokens (property-extractor.js), the
+// same identity the atomic-drift gate holds every declaration to.
+const HARM = { none: 1.0, minimal: 0.75, moderate: 0.5, dangerous: 0.0 };
+
+/** Every top-level function's body: `function NAME(...) {...}` and `NAME = (...) => {...}`. */
+function _functionBodies(code) {
+  const out = [];
+  const re = /^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(|^(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>\s*\{/gm;
+  let m;
+  while ((m = re.exec(code)) !== null) {
+    const open = code.indexOf('{', m.index + m[0].length - (m[0].endsWith('{') ? 1 : 0));
+    if (open < 0) continue;
+    let depth = 0, k = open;
+    for (; k < code.length; k++) { if (code[k] === '{') depth++; else if (code[k] === '}' && --depth === 0) break; }
+    if (depth !== 0) continue;
+    out.push({ name: m[1] || m[2], body: code.slice(open, k + 1) });
+  }
+  return out;
 }
-_atomicScore.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_functionBodies.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/**
+ * The pattern's atomic score, read from its SHAPE: the mean over its
+ * functions of the benignity the extractor computes from each body —
+ * harm none 1.0 / minimal 0.75 / moderate 0.5 / dangerous 0.0, and 0.0 for
+ * a function whose computed alignment is degrading or intention malevolent
+ * (the spec's blocking rule, applied to what the code does, not what it
+ * says). null when the pattern has no functions to read (prose, data).
+ */
+function _atomicScore(code) {
+  const { extractAtomicProperties } = require('../atomic/property-extractor');
+  const fns = _functionBodies(code);
+  if (!fns.length) return null;
+  let sum = 0;
+  const perFunction = [];
+  for (const f of fns) {
+    const p = extractAtomicProperties(f.body);
+    const blocked = p.alignment === 'degrading' || p.intention === 'malevolent';
+    const s = blocked ? 0 : (HARM[p.harmPotential] ?? 0.5);
+    perFunction.push({ name: f.name, harm: p.harmPotential, alignment: p.alignment, intention: p.intention, score: s });
+    sum += s;
+  }
+  const score = sum / fns.length;
+  _atomicScore.last = perFunction;
+  return score;
+}
+_atomicScore.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Measure the components for one pattern through the instrument.
@@ -132,6 +176,7 @@ function measureComponents({ code, language, k = 5 } = {}) {
   const digest = crypto.createHash('sha256').update(Buffer.from(Float64Array.from(waveform).buffer)).digest('hex');
   return {
     text, wave, atom,
+    atomDetail: atom === null ? null : (_atomicScore.last || null),   // per-function computed identity behind the score
     unified: u.unified,
     label: v1.label(u.unified),
     components: { text_score: u.text_score, waveform_score: u.waveform_score, atomic_score: u.atomic_score },

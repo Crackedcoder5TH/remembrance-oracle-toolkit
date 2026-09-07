@@ -47,12 +47,7 @@ function runExpiry() {
   fs.writeFileSync(PROPOSAL_FILE, JSON.stringify(kept, null, 2));
   return { changed: true, expired, dropped, totalRemaining: kept.length };
 }
-runExpiry.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.5, group: 12, period: 4,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
+runExpiry.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 if (require.main === module) {
   const r = runExpiry();

@@ -19,7 +19,6 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { composedAtDepth } = require('../src/core/decoder-stack');
 const { cosineSimilarity } = require('../src/compression/holographic');   // native cosine — not reimplemented
-const { toFractalWaveform } = require('../src/core/fractal-waveform');     // native fractal instrument
 
 const DEPTH = 8, DIM = 232;   // the ONE width (the decoder at its active depth)
 const enc = (text) => Array.from(composedAtDepth(text, DEPTH)).slice(0, DIM);
@@ -34,7 +33,7 @@ const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 's
 const files = walk(ROOT).slice(0, 400);
 const items = [];
 for (const f of files) { let t; try { t = fs.readFileSync(f, 'utf8'); } catch { continue; } if (t.length < 200) continue; t = t.slice(0, 16000);
-  items.push({ f, dom: path.relative(ROOT, f).split(path.sep)[0], text: t, vec: enc(t), gz: gzipRatio(t), tri: trigramEntropy(t), frac: Array.from(toFractalWaveform(t)) }); }
+  items.push({ f, dom: path.relative(ROOT, f).split(path.sep)[0], text: t, vec: enc(t), gz: gzipRatio(t), tri: trigramEntropy(t) }); } // ONE vector per item (`vec`, the 232-D decoder); the L1 alone is never carried beside it
 console.log('MOAT — CONTENT-CONSENSUS re-run (leak-closed kill-test) · ' + items.length + ' real content items\n');
 
 // structured-text bands, learned from the honest population (mean ± 2σ)

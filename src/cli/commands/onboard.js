@@ -47,14 +47,10 @@ const CLAIMS = {
   // encoders, not by trusting a comment.
   dims: [
     {
-      id: 'L1 fractal — toFractalWaveform',
-      expect: 29,
-      get: () => require('../../core/fractal-waveform').toFractalWaveform(SAMPLE).length,
-    },
-    {
-      id: 'composed depth-4 — decoder-stack.composedAtDepth(_, 4)',
-      expect: 116,
-      get: () => require('../../core/decoder-stack').composedAtDepth(SAMPLE, 4).length,
+      // ONE representation: the oracle's encoder IS the decoder at its active depth.
+      id: 'canonical encoder — code-to-waveform.codeToWaveform',
+      expect: 232,
+      get: () => require('../../core/code-to-waveform').codeToWaveform(SAMPLE).length,
     },
     {
       // THE canonical vector: the decoder at its active depth (8 × 29 = 232-D).

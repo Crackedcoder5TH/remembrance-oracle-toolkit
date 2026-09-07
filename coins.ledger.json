@@ -1783,6 +1783,73 @@
      "shape_sha256": "f52edc196ebc256eadf40ef713b69e7455e6ea4583fee6db582b66185794c7b5"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "5701741c2c87240bd04ced63c8dec31f34eb626112255535a563f597d0253f70",
+   "minted_at": "2026-09-07T22:49:15+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "7047f82f588cc2c9a1e3130dea2042d2bdca0a00",
+    "files": [
+     ".atomic-drift-baseline.json",
+     "scripts/code-coherence-test.js",
+     "scripts/export-code-substrate.js",
+     "scripts/field-self-debug.js",
+     "scripts/migrate-waveforms-to-fractal.js",
+     "scripts/moat-content-consensus.mjs",
+     "scripts/moat-uniqueness-gate.mjs",
+     "scripts/pr-field-check.js",
+     "scripts/raw-compression-grouping.mjs",
+     "scripts/width-ratchet.js",
+     "seeds/gates.lock.json",
+     "src/cli/commands/onboard.js",
+     "src/cli/commands/verify.js",
+     "src/compression/void-bridge.js",
+     "src/core/code-to-waveform.js",
+     "src/core/field-ingest.js",
+     "src/core/field-memory.js",
+     "src/core/field-tool.js",
+     "src/core/field-workqueue.js",
+     "src/core/void-library.js",
+     "src/unified/coherency-token-components.js",
+     "tests/code-to-waveform.test.js",
+     "tests/field-memory.test.js",
+     "tests/field-tool.test.js",
+     "tests/width-ratchet.test.js"
+    ],
+    "diff_bytes": 86681,
+    "diff_sha256": "be4316ba7cd0411133d87a37ca513e75a97ffb93eec73cd0f6f7466b27547062"
+   },
+   "reading": {
+    "coherency": 0,
+    "ratio": 3.3359375,
+    "method": "void_symbolic",
+    "strategy": "void_symbolic",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "ca15a998bbc76ebf",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "e80f4087098d3b97cc7b6c30e472b806a3d45e5b07a0811f799c1e52f443b9d0",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T22:49:15",
+     "coin": null,
+     "sig": "ca15a998bbc76ebfdf18147fe3e335ebef6eafb83efe9d4af148b8cbd70f14c3"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "void_symbolic",
+     "original_size": 86681,
+     "compressed_size": 25984,
+     "coherency": 0,
+     "data_sha256": "ee6f3cff8bb70af3b78dbdb20e114d5cdc12b4fd52e926356a7800cdd34daaca",
+     "compressed_sha256": "10f5a990fdce4ac985ec6b747e655cf3be06f5e8bd2725aee630cdb2c532f3ee",
+     "shape_sha256": "f52edc196ebc256eadf40ef713b69e7455e6ea4583fee6db582b66185794c7b5"
+    }
+   }
   }
  ]
 }

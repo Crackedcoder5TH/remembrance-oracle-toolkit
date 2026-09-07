@@ -4,9 +4,8 @@
 
 /**
  * Export the Oracle pattern library as a Void-compatible substrate
- * file. Each pattern's code is converted to a 128-point normalized
- * waveform using the same algorithm Void's /coherence endpoint uses
- * internally (raw bytes → float64 → resample → normalize to 0..1).
+ * file. Each pattern's code is encoded as the canonical vector — the
+ * 232-D fractal decoder at its active depth (src/core/code-to-waveform).
  *
  * Output shape matches the existing `*_substrate.json` files that
  * Void's ResonanceDetector._load_all_domains walks:
@@ -26,8 +25,9 @@
 const fs = require('fs');
 const path = require('path');
 const { RemembranceOracle } = require('../src/api/oracle');
+const { codeToWaveform: canonicalVector, TARGET_LEN: CANONICAL_LEN } = require('../src/core/code-to-waveform');
 
-const TARGET_LEN = 128;
+const TARGET_LEN = CANONICAL_LEN; // the canonical width, asked of the encoder
 
 function argValue(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
@@ -36,39 +36,11 @@ function argValue(name, fallback) {
 }
 
 function codeToWaveform(code) {
-  const bytes = Buffer.from(code, 'utf-8');
-  if (bytes.length < 8) return null;
-  const arr = new Float64Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes[i];
-
-  // Resample to TARGET_LEN
-  const wave = new Float64Array(TARGET_LEN);
-  if (arr.length >= TARGET_LEN) {
-    // Downsample by linear interpolation of indices
-    for (let k = 0; k < TARGET_LEN; k++) {
-      const idx = Math.floor((k / (TARGET_LEN - 1)) * (arr.length - 1));
-      wave[k] = arr[idx];
-    }
-  } else {
-    // Upsample via linear interpolation
-    for (let k = 0; k < TARGET_LEN; k++) {
-      const t = (k / (TARGET_LEN - 1)) * (arr.length - 1);
-      const lo = Math.floor(t);
-      const hi = Math.ceil(t);
-      const frac = t - lo;
-      wave[k] = arr[lo] * (1 - frac) + arr[hi] * frac;
-    }
-  }
-
-  // Normalize to [0, 1]
-  let min = Infinity, max = -Infinity;
-  for (const v of wave) { if (v < min) min = v; if (v > max) max = v; }
-  const range = max - min;
-  if (range < 1e-9) return null; // constant — no structure
-  const safeRange = range || 1; // proven nonzero above; belt-and-braces for the audit
-  const out = new Array(TARGET_LEN);
-  for (let k = 0; k < TARGET_LEN; k++) out[k] = (wave[k] - min) / safeRange;
-  return out;
+  // ONE representation: the 232-D fractal decoder at its active depth. The
+  // 128-point byte resample this used to build is a retired representation.
+  if (!code || code.length < 8) return null;
+  const v = Array.from(canonicalVector(code));
+  return v.some((x) => x !== 0) ? v : null; // no structure — nothing to export
 }
 
 function main() {

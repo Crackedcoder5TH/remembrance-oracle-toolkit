@@ -131,7 +131,7 @@ function measureComponents({ code, language, k = 5 } = {}) {
     const { VoidLibrary } = require('../core/void-library');
     const lib = new VoidLibrary();
     // one extra so a self-match can be dropped without shrinking the top-K
-    const r = lib.scoreWithFlow(waveform.slice(0, LAYER_DIM), waveform, { k: k + 1 });
+    const r = lib.scoreWithFlow(waveform, { k: k + 1 });
     if (r && Array.isArray(r.topMatches) && r.topMatches.length) {
       // SELF-MATCH: a library member scores 1.0 against itself, and that number
       // describes library MEMBERSHIP, not the artifact (the same rule the

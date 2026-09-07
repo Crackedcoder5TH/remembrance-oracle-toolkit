@@ -26,7 +26,8 @@ const hasVec = (k) => Array.isArray(idx[k].composed) && idx[k].composed.length =
 const pool = keys.filter((k) => bigNs.includes(ns(k)) && hasVec(k));
 const shuffled = pool.slice(); for (let i = shuffled.length - 1; i > 0; i--) { const jx = Math.floor(rnd() * (i + 1)); [shuffled[i], shuffled[jx]] = [shuffled[jx], shuffled[i]]; }
 const SAMP = shuffled.slice(0, 3000);
-const frac = SAMP.map((k) => idx[k].composed.slice(0, 29)), comp = SAMP.map((k) => idx[k].composed), lab = SAMP.map((k) => ns(k));
+const comp = SAMP.map((k) => idx[k].composed), lab = SAMP.map((k) => ns(k)); // ONE vector: the 232-D decoder, never an L1 slice beside it
+const W = comp[0].length; // the canonical width, read from the vectors themselves
 function purity(V, K = 10) {
   let hit = 0, tot = 0;
   for (let i = 0; i < V.length; i++) { const nn = []; for (let j = 0; j < V.length; j++) { if (i === j) continue; nn.push([cos(V[i], V[j]), lab[j]]); } nn.sort((a, b) => b[0] - a[0]); for (let k = 0; k < K; k++) { if (nn[k][1] === lab[i]) hit++; tot++; } }
@@ -34,21 +35,20 @@ function purity(V, K = 10) {
 }
 // chance = sum of squared class fractions (expected same-label rate for random neighbours)
 const cnt = {}; for (const l of lab) cnt[l] = (cnt[l] || 0) + 1; let chance = 0; for (const c of Object.values(cnt)) chance += (c / lab.length) ** 2;
-const pFrac = purity(frac), pComp = purity(comp);
-// label-shuffle null on raw fractal
+const pComp = purity(comp);
+// label-shuffle null on the canonical vector
 const labShuf = lab.slice(); for (let i = labShuf.length - 1; i > 0; i--) { const jx = Math.floor(rnd() * (i + 1)); [labShuf[i], labShuf[jx]] = [labShuf[jx], labShuf[i]]; }
 function purityLab(V, L, K = 10) { let hit = 0, tot = 0; for (let i = 0; i < V.length; i++) { const nn = []; for (let j = 0; j < V.length; j++) { if (i === j) continue; nn.push([cos(V[i], V[j]), L[j]]); } nn.sort((a, b) => b[0] - a[0]); for (let k = 0; k < K; k++) { if (nn[k][1] === L[i]) hit++; tot++; } } return hit / tot; }
-const pNull = purityLab(frac, labShuf);
+const pNull = purityLab(comp, labShuf);
 console.log('=== PART A: raw compression auto-grouping (kNN-10 domain purity, no labels in embedding) ===');
 console.log('  chance (random neighbour same-domain): ' + (chance * 100).toFixed(1) + '%');
-console.log('  RAW fractal (29-D, L1 only):           ' + (pFrac * 100).toFixed(1) + '%   ' + (pFrac / chance).toFixed(1) + '× chance');
-console.log('  composed (232-D, +lenses):          ' + (pComp * 100).toFixed(1) + '%   (encoder UNFOLDS: ' + (pComp >= pFrac ? '+' : '') + ((pComp - pFrac) * 100).toFixed(1) + ' pts over raw)');
-console.log('  label-shuffle null (raw fractal):      ' + (pNull * 100).toFixed(1) + '%   (must ≈ chance)');
+console.log('  canonical vector (' + W + '-D decoder):    ' + (pComp * 100).toFixed(1) + '%   ' + (pComp / chance).toFixed(1) + '× chance');
+console.log('  label-shuffle null (canonical):        ' + (pNull * 100).toFixed(1) + '%   (must ≈ chance)');
 
 // ── PART B: META-STRUCTURE — do DOMAINS organize into super-families (macro view)? ──
-// domain centroid = mean raw-fractal over its entries; then who is each domain's nearest domain?
+// domain centroid = mean canonical vector over its entries; then who is each domain's nearest domain?
 const domCentroid = {};
-for (const n of bigNs) { const c = new Float64Array(29); let m = 0; for (const k of keys) { if (ns(k) !== n || !Array.isArray(idx[k].composed)) continue; const f = idx[k].composed.slice(0, 29); for (let d = 0; d < 29; d++) c[d] += (f[d] || 0); m++; } for (let d = 0; d < 29; d++) c[d] /= (m || 1); domCentroid[n] = Array.from(c); }
+for (const n of bigNs) { const c = new Float64Array(W); let m = 0; for (const k of keys) { if (ns(k) !== n || !Array.isArray(idx[k].composed)) continue; const f = idx[k].composed; for (let d = 0; d < W; d++) c[d] += (f[d] || 0); m++; } for (let d = 0; d < W; d++) c[d] /= (m || 1); domCentroid[n] = Array.from(c); }
 const probes = ['vix', 'sp500', 'epc-phonon', 'mp-structural', 'covid', 'World_population', 'NYC_taxi_rides', 'solana', 'Diamonds', 'cascade'].filter((p) => domCentroid[p]);
 console.log('\n=== PART B: meta-structure — each probe domain\'s nearest DOMAIN by raw structure (macro view) ===');
 for (const p of probes) {
@@ -58,7 +58,7 @@ for (const p of probes) {
 
 // ── PART C: does meta-structure SHARPEN with coverage? centroid stability at 20 / 100 / all ──
 console.log('\n=== PART C: coverage effect — domain-centroid stability vs sample depth ===');
-function centroidAt(n, cap) { const es = keys.filter((k) => ns(k) === n && Array.isArray(idx[k].composed)).slice(0, cap); const c = new Float64Array(29); for (const k of es) { const f = idx[k].composed.slice(0, 29); for (let d = 0; d < 29; d++) c[d] += (f[d] || 0); } for (let d = 0; d < 29; d++) c[d] /= (es.length || 1); return Array.from(c); }
+function centroidAt(n, cap) { const es = keys.filter((k) => ns(k) === n && Array.isArray(idx[k].composed)).slice(0, cap); const c = new Float64Array(W); for (const k of es) { const f = idx[k].composed; for (let d = 0; d < W; d++) c[d] += (f[d] || 0); } for (let d = 0; d < W; d++) c[d] /= (es.length || 1); return Array.from(c); }
 let s20 = 0, s100 = 0, nprobe = 0;
 for (const p of probes) { if (nsCount[p] < 120) continue; const full = domCentroid[p]; s20 += cos(centroidAt(p, 20), full); s100 += cos(centroidAt(p, 100), full); nprobe++; }
 console.log('  centroid cosine to full-coverage centroid:  20 samples ' + (s20 / nprobe).toFixed(3) + '   ·  100 samples ' + (s100 / nprobe).toFixed(3) + '   (rises → more coverage = more stable/true macro structure)');

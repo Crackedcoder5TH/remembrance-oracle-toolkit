@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-07T20:32:31.724Z",
- "digest": "8cf0acefc94601e7e5ed1503369bd0296215986a71dc1deb01faf24dae5fea32",
+ "lockedAt": "2026-09-07T22:44:39.886Z",
+ "digest": "7ecaa57021d9145cc680242b786cb12b6bfc1536c6d5f8ce8a88cceead8fc378",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -21,7 +21,7 @@
   "scripts/contracts-ratchet.js": "c6f7345ad81aa57b3d00118a36846e3a6af469780a120d421558bf38fed2949d",
   "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
   "scripts/traps-ledger-ratchet.js": "c24031a305d918d65d2b4fa5fc3d3c79d96d306c0b33a6991282c664a4de8f02",
-  "scripts/width-ratchet.js": "480e534badec965805d311faa940c279ac6d05f498f9f7e5123760c3157b1ad4",
+  "scripts/width-ratchet.js": "49c37f6495ba626c6f26ad614a3cda9f0775aedf48467761497506285ae035db",
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
@@ -161,6 +161,15 @@
     "scripts/ratchet-battery.js",
     "scripts/width-ratchet.js",
     ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T22:44:39.886Z",
+   "from": "8cf0acefc94601e7e5ed1503369bd0296215986a71dc1deb01faf24dae5fea32",
+   "to": "7ecaa57021d9145cc680242b786cb12b6bfc1536c6d5f8ce8a88cceead8fc378",
+   "reason": "width gate widened: the 29-D L1 carried alone, the 128-point byte resample and a ==256 guard are consumers; ONE representation across field-memory, field-tool, void-library, the bug corpus and the resonance detector",
+   "changed": [
+    "scripts/width-ratchet.js"
    ]
   }
  ]

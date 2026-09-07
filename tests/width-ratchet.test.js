@@ -14,6 +14,13 @@ test('reads of a non-canonical vector are found', () => {
   assert.equal(hit("const DIM = 116;").id, 'width-116');
   assert.equal(hit("wf = np.interp(np.linspace(0, raw.size - 1, 256), np.arange(raw.size), raw)").id, 'byte-waveform-256');
   assert.equal(hit("const waveform = new Array(256).fill(0);").id, 'byte-waveform-256');
+  assert.equal(hit("if not wf or len(wf) != 256:").id, 'width-256');
+  assert.equal(hit("const TARGET_LEN = 128;").id, 'width-128');
+  assert.equal(hit("if (!inputL1 || inputL1.length !== 29) return null;").id, 'l1-width-29');
+  assert.equal(hit("fractals.set(name, Float64Array.from(entry.composed.slice(0, 29)));").id, 'l1-width-29');
+  assert.equal(hit("const r = lib.scoreWithFlow(waveform.slice(0, LAYER_DIM), waveform, { k });").id, 'l1-width-29');
+  assert.equal(hit("l1 = vec[:29]").id, 'l1-width-29');
+  assert.equal(hit("if (vec.length === 256) return null;").id, 'width-256');
   assert.equal(hit("const c = _cosineL1(entry.fractal, e.fractal);").id, 'l1-as-vector');
   assert.equal(hit("vec = v.get('fractal')").id, 'l1-as-vector');
 });
@@ -23,6 +30,11 @@ test('the canonical vector, the refusals and template names are not consumers', 
   assert.equal(hit("resonantTemplate: { fractal: resonant.fractal, resonance: resonant.resonance }"), undefined);
   assert.equal(hit("handlers['fractal'] = (args) => {"), undefined);
   assert.equal(hit("if (voices.fractal.isCode) signals.push(1);"), undefined);
+  assert.equal(hit("if not wf or len(wf) != WIDTH:"), undefined);
+  assert.equal(hit("const deep = entry.composed.length % 29 === 0 && entry.composed;"), undefined);
+  assert.equal(hit("for (let i = 0; i < 29; i++) out[i] = adims[i];"), undefined);
+  assert.equal(hit("function _canonicalWidth() { return currentDepth() * LAYER_DIM; }"), undefined);
+  assert.equal(hit("for (let i = 0; i < 256; i++) acc += chunk[i];"), undefined);
 });
 
 test('the live census is empty: every consumer reads the 232-D decoder', () => {

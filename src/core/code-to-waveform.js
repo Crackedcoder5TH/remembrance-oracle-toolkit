@@ -1,57 +1,78 @@
 'use strict';
 
 /**
- * code-to-waveform.js — oracle's canonical encoder.
+ * code-to-waveform.js — oracle's canonical encoder. ONE representation.
  *
- * As of fractal-waveform v0.1, `codeToWaveform` and `waveformCosine` ARE
- * the structural fractal versions from ./fractal-waveform. The byte-stretch
- * (the original 256-D linear-interpolated UTF-8) is RETIRED and removed —
- * see RETIRED_BYTE_LEN below. Nothing in the ecosystem encodes to 256-D.
+ * `codeToWaveform` IS the 232-D fractal decoder at its active depth
+ * (decoder-stack.composedAtDepth, 8 layers × 29). It used to be the 29-D L1
+ * alone (fractal-waveform.toFractalWaveform), and before that the 256-sample
+ * byte-stretch. Both are retired here: the L1 is the first 29 dims of the
+ * one vector and is never carried as a vector of its own, and nothing in the
+ * ecosystem encodes to 256-D (see RETIRED_BYTE_LEN below).
  *
- * Why: byte-stretch could not discriminate code from prose — a JS source
- * file and a markdown README scored 0.86 cosine, higher than several real
- * code-vs-code pairs. Fractal-waveform encodes the ecosystem's existing
- * structural vocabulary (atomic properties + structural histograms +
- * structurality), then gates the cosine by structurality agreement.
+ * `waveformCosine` is the one cosine (ECOSYSTEM §7): decoder-stack's
+ * composedCosine, which carries both vectors into the one whitened space.
+ * A vector that is not the canonical width is not a reading — NaN says
+ * "no vector", never a number (0 would read as orthogonal, which is a
+ * reading). This is what makes a stale row invisible instead of wrong.
  *
- * Migration note: stored waveforms from before this change are 256-D and
- * cannot be compared against new 29-D fractal vectors. `waveformCosine`
- * returns 0 on length mismatch (instead of silently truncating to
- * `Math.min(a.length, b.length)` and producing meaningless numbers).
- * Field-memory entries with legacy `waveform: [256 floats]` will simply
- * not match new queries until re-encoded.
+ * Migration: field rows written before this carried 29-D (and, earlier,
+ * 256-D) waveforms; scripts/migrate-waveforms-to-fractal.js re-encodes any
+ * row whose width is not TARGET_LEN from its source `code` column.
  *
- * Cross-language parity: Void's legacy `to_waveform.py` was DELETED
- * (2026-07, ECOSYSTEM §7) — Python reaches the canonical fractal stack
- * through Void's `fractal_encoder.py` node bridge, so JS↔Python parity
- * now holds for the canonical encoder itself.
+ * Cross-language parity: Python reaches the same decoder through Void's
+ * canonical_vector.py (WIDTH = 232), so JS↔Python parity holds for the
+ * canonical vector itself (contract C-67 drives both engines).
  */
 
-const {
-  FRACTAL_DIM,
-  toFractalWaveform,
-  fractalCoherency,
-} = require('./fractal-waveform');
+const { composedAtDepth, composedCosine, currentDepth } = require('./decoder-stack');
+
+const LAYER_DIM = 29;
+
+// THE width: the decoder at its active depth, asked for — never written down.
+const TARGET_LEN = currentDepth() * LAYER_DIM;
 
 // ─── RETIRED: the 256-D byte-stretch ──────────────────────────────────────
-// The byte-stretch pair (linear-interpolated UTF-8
-// bytes onto a 256-point grid) were the previous representation of a
-// pattern. They could not tell code from prose (a JS file and a README read
-// 0.86 cosine, above real code-vs-code pairs) and were retired with Void's
-// to_waveform.py (ECOSYSTEM §7). The functions are GONE — not kept for
-// "binary inputs", because keeping an encoder is keeping a door. The one
-// number that survives is the width, so the migration script can still
-// recognise legacy rows on disk and re-encode them through the fractal
-// stack. It is a marker of what was, never a target to encode to.
+// The byte-stretch pair (linear-interpolated UTF-8 bytes onto a 256-point
+// grid) were the previous representation of a pattern. They could not tell
+// code from prose (a JS file and a README read 0.86 cosine, above real
+// code-vs-code pairs) and were retired with Void's to_waveform.py
+// (ECOSYSTEM §7). The functions are GONE. The one number that survives is
+// the width, so the migration script can still recognise legacy rows on
+// disk. It is a marker of what was, never a target to encode to.
 const RETIRED_BYTE_LEN = 256;
+
+/**
+ * The canonical vector of a text: the 232-D decoder at the active depth.
+ * Empty / non-string input is the zero vector at the canonical width.
+ * @param {string} input
+ * @returns {Float64Array}
+ */
+function codeToWaveform(input) {
+  if (typeof input !== 'string' || input.length === 0) return new Float64Array(TARGET_LEN);
+  return composedAtDepth(input, currentDepth());
+}
+
+/**
+ * The one cosine between two canonical vectors, in the one space.
+ * NaN when either side is not a canonical-width vector (no reading);
+ * 0 when either side has no structure (the zero vector).
+ */
+function waveformCosine(a, b) {
+  if (!_canonical(a) || !_canonical(b)) return NaN;
+  return composedCosine(a, b);
+}
+
+function _canonical(v) {
+  return !!v && typeof v.length === 'number' && v.length === TARGET_LEN;
+}
 
 // ─── Stable fingerprint (used for dedup IDs across the codebase) ─────────
 
 /** FNV-1a over the waveform's 4-decimal string form. Deterministic and
- * dependency-free. Works on any waveform length, including the new
- * fractal vectors. Note: this hash changes when the encoder changes, so
- * digests recorded by the old byte encoder will differ from digests
- * computed by the new fractal encoder for the same source. */
+ * dependency-free. Note: this hash changes when the encoder changes, so
+ * digests recorded by an earlier encoder differ from digests computed by
+ * the decoder for the same source. */
 function digestWaveform(wf) {
   let h = 0x811c9dc5;
   for (let i = 0; i < wf.length; i++) {
@@ -67,10 +88,11 @@ function digestWaveform(wf) {
 // ─── Canonical exports ───────────────────────────────────────────────────
 
 module.exports = {
-  // Canonical: structural fractal encoder.
-  TARGET_LEN: FRACTAL_DIM,
-  codeToWaveform: toFractalWaveform,
-  waveformCosine: fractalCoherency,
+  // Canonical: the 232-D decoder at its active depth.
+  TARGET_LEN,
+  LAYER_DIM,
+  codeToWaveform,
+  waveformCosine,
   digestWaveform,
   // The retired representation's width — a marker for migration, not an encoder.
   RETIRED_BYTE_LEN,
@@ -79,4 +101,7 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
+codeToWaveform.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+waveformCosine.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_canonical.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 digestWaveform.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

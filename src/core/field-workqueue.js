@@ -257,7 +257,7 @@ function submitResult(id, nodeId, result) {
 
   const text = typeof result === 'string' ? result : JSON.stringify(result === undefined ? null : result);
 
-  // Everything goes to the compressor -> 256-D waveform -> coherency score.
+  // Everything goes to the canonical encoder -> 232-D decoder vector -> digest.
   let waveformDigest = null;
   try {
     const { codeToWaveform, digestWaveform } = require('./code-to-waveform');

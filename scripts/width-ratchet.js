@@ -68,6 +68,12 @@ const PATTERNS = [
   { id: 'width-116', re: /(?:length|DIM|WIDTH|size|shape\[1\])\s*(?:===|!==|==|!=|=)\s*116\b|\b116-D\b/, why: 'the 116-D depth-4 checkpoint as a width' },
   { id: 'width-145', re: /(?:length|DIM|WIDTH|size|shape\[1\])\s*(?:===|!==|==|!=|=)\s*145\b|\b145-D\b/, why: 'the 145-D depth-5 checkpoint as a width' },
   { id: 'width-203', re: /(?:length|DIM|WIDTH|size|shape\[1\])\s*(?:===|!==|==|!=|=)\s*203\b|\b203-D\b/, why: 'the 203-D depth-7 checkpoint as a width' },
+  // The 29-D L1 is the first block of the one vector; carried alone (a `=== 29` guard, a
+  // `.slice(0, 29)` / `[:29]` handed on as a vector) it is a truncation given its own name.
+  // Decoder internals that BUILD the block (`% 29`, `< 29` loops, `* 29`) are not consumers.
+  { id: 'l1-width-29', re: /(?:\.length|TARGET_LEN|DIM|WIDTH)\s*(?:===|!==|==|!=)\s*29\b|\.(?:slice|subarray)\(0,\s*(?:29|LAYER_DIM|FRACTAL_DIM)\)|(?:vec|composed|waveform|wf|fractal|row|arr|v|w|x)\w*\[:29\]/, why: 'the 29-D L1 carried as a vector of its own' },
+  { id: 'width-128', re: /(?:length|DIM|WIDTH|TARGET_LEN|size|shape\[1\])\s*(?:===|!==|==|!=|=)\s*128\b|\b128-(?:D|point)\b/, why: 'the retired 128-point byte resample as a width' },
+  { id: 'width-256', re: /(?:length|DIM|WIDTH|size|shape\[1\])\s*(?:===|!==|==|!=|=)\s*256\b|len\([^\n)]*\)\s*(?:==|!=)\s*256\b|\b256-D\b/, why: 'a guard or width that keys on the retired 256-sample waveform' },
   { id: 'byte-waveform-256', re: /np\.interp\([^\n]*\b256\b|linspace\([^\n]*\b256\)|np\.(zeros|full|ones|random\.random|random\.randn)\(256\b|randn\(256\)|new (?:Float64Array|Float32Array|Array)\(256\)|\bto_waveform\(|_resample_to_256|WAVEFORM_LEN = 256|TARGET_LEN = 256|DIM = 256/, why: 'the retired 256-sample byte waveform' },
   // `.fractal` is also the name of the fractal-alignment TEMPLATES (resonant.fractal, result.fractal.alignment);
   // only an index entry's `fractal` field carried as a vector counts.
@@ -97,9 +103,12 @@ const ALLOW = [
   [/Void-Data-Compressor\/(rag_query|score_v3_records|score_for_bugs|score_cross_repo_records|build_pattern_store|merge_cross_repo_to_store|merge_crawler_inbox|substrate_serf|seed_language_substrate|oracle_bridge|refine_loop|fractal_compute|fractal_retro_search|scripts\/harvest_to_store|scripts\/ingest_gate)\.py$/, 'rewritten to canonical_vector on 2026-09-07; the census still reads them (a regression here counts)'],
   [/Void-Data-Compressor\/tests\/(test_coherency_token_v1|test_living_remembrance_space)\.py$/, 'tests that assert the refusal of the retired width'],
   [/Void-Data-Compressor\/\.claude\//, 'the surface'],
+  [/remembrance-oracle-toolkit\/(src\/core\/(fractal-waveform|fractal-index|compose|lexical-waveform|numerical-waveform|spectral-waveform|redundancy-waveform|content-projection|dimensional-waveform|dynamical-waveform|relational-waveform)\.js|packages\/field-tool\/src\/[^/]+\.js)$/, 'the decoder layers themselves and the vendored field-tool decoder: they BUILD the 29-D block that becomes the one vector'],
+  [/Void-Data-Compressor\/(fractal_decoder|fractal_encoder|to_fractal_waveform|verify_fractal_parity)\.py$/, 'the Python decoder and its JS-parity check: they build the 29-D block, never carry it as a reading'],
+  [/(remembrance-oracle-toolkit\/scripts\/migrate-waveforms-to-fractal\.js|Void-Data-Compressor\/rebuild_pattern_store_fractal\.py)$/, 'completed migrations off the 256-sample waveform; they name the retired width only as the history they replaced'],
   [/Void-Data-Compressor\/scripts\/(benchmark_|coherence_decomposition|equation_morphing|depth_vs_breadth|other_half_of_entropy|verify_compression_equation|compression_equation_guard|desaturation_test|whitening_separability|reencode-v5|domain-overlap-check|universal-structure-test|coherency-flow-map|lens-block-analysis|ingest-real-domains|ingest-genomes-languages)/, 'experiment records and completed re-encodes that name the old keys as history'],
 ];
-// Allowed files are still scanned for the RETIRED byte waveform being BUILT (not refused) — except the compressor internals.
+// Allowed files are still scanned for the RETIRED byte waveform being BUILT or GUARDED ON (not refused) — except the compressor internals.
 const NEVER_ALLOW_BUILD = /Void-Data-Compressor\/(rag_query|score_v3_records|score_for_bugs|score_cross_repo_records|build_pattern_store|merge_cross_repo_to_store|merge_crawler_inbox|substrate_serf|scripts\/harvest_to_store|scripts\/ingest_gate)\.py$/;
 
 function walk(dir, exts, shallow) {
@@ -139,7 +148,7 @@ function census() {
         for (const p of PATTERNS) {
           if (!p.re.test(line)) continue;
           if (refusesIt(line)) continue;                       // a refusal names the width to refuse it
-          if (allow && !(p.id === 'byte-waveform-256' && NEVER_ALLOW_BUILD.test(abs))) continue;
+          if (allow && !((p.id === 'byte-waveform-256' || p.id === 'width-256' || p.id === 'l1-width-29') && NEVER_ALLOW_BUILD.test(abs))) continue;
           sites.push({ file: rel, line: i + 1, id: p.id, why: p.why, text: line.trim().slice(0, 120) });
           break;
         }

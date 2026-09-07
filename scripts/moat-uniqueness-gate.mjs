@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { toFractalWaveform } = require('../src/core/fractal-waveform');
+const { codeToWaveform } = require('../src/core/code-to-waveform'); // ONE representation: the 232-D decoder at its active depth
 const UG = require('/home/user/REMEMBRANCE-BLOCKCHAIN/src/uniqueness-gate');
 
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
@@ -26,7 +26,7 @@ for (const [name, e] of Object.entries(idx)) { if (Array.isArray(e.composed) && 
 console.log('MOAT — NATIVE UNIQUENESS GATE (resonance dedup) · substrate ' + substrate.length + ' fractals\n');
 
 const gate = (fractal) => { const sig = UG.uniquenessSignature(fractal, substrate); const r = UG.passesUniquenessGate(sig); return { pass: r.pass, reason: r.reason, mean: sig.mean, peak: sig.peakSpread, near: sig.top?.[0]?.score ?? 0 }; };
-const fracOf = (text) => Array.from(toFractalWaveform(text));
+const fracOf = (text) => Array.from(codeToWaveform(text)); // the canonical vector — the same width the substrate rows carry
 
 // HONEST held-out: real, usable session-new scripts (not in the substrate)
 const heldOut = ['scripts/market-crawl.mjs', 'scripts/incompressible-residual-benchmark.mjs', 'scripts/mp-structural-run.mjs', 'scripts/epc-phonon-run.mjs', 'scripts/sc-tests-full.mjs', 'scripts/retrieval-scaling-bench.mjs', 'scripts/lre-attractor-sim2.mjs', 'scripts/market-resonance-report.mjs']

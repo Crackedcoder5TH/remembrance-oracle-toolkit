@@ -260,7 +260,7 @@ class VoidBridge {
       const ds = require('../core/decoder-stack');
       const { VoidLibrary } = require('../core/void-library');
       const composed = Array.from(ds.composedAtDepth(code, ds.currentDepth()));
-      const r = new VoidLibrary().scoreWithFlow(composed.slice(0, 29), composed, { k: 3 });
+      const r = new VoidLibrary().scoreWithFlow(composed, { k: 3 });
       if (r && Number.isFinite(r.meanTopK)) { resonance = r.meanTopK; bestMatch = r.bestMatch ? (r.bestMatch.name || 'none') : 'none'; }
     } catch (_) { quiet('compression:void-bridge:resonance', _); /* library unreachable */ }
     return {

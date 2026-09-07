@@ -73,10 +73,9 @@ function render(n, depth) {
 // ── Engines (each an independent verdict branch) ────────────────────
 function encoderEngine() {
   const kids = [];
-  try { kids.push(leaf('L1 fractal = 29-D', require('../../core/fractal-waveform').toFractalWaveform(SAMPLE).length === 29)); }
-  catch (e) { kids.push(leaf('L1 fractal = 29-D', false, e.message)); }
-  try { kids.push(leaf('composed depth-4 = 116-D', require('../../core/decoder-stack').composedAtDepth(SAMPLE, 4).length === 116)); }
-  catch (e) { kids.push(leaf('composed depth-4 = 116-D', false, e.message)); }
+  // ONE representation: the canonical encoder IS the decoder at its active depth.
+  try { const c = require('../../core/code-to-waveform'); kids.push(leaf('codeToWaveform = canonical width (' + c.TARGET_LEN + '-D)', c.codeToWaveform(SAMPLE).length === c.TARGET_LEN)); }
+  catch (e) { kids.push(leaf('codeToWaveform = canonical width', false, e.message)); }
   // the canonical width: the decoder at its active depth — 232-D, the one vector every resonance reads
   try { const ds = require('../../core/decoder-stack'); kids.push(leaf('composed canonical (active depth) = 232-D', ds.composedAtDepth(SAMPLE, ds.currentDepth()).length === 232)); }
   catch (e) { kids.push(leaf('composed canonical (active depth) = 232-D', false, e.message)); }
@@ -223,7 +222,7 @@ leaf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", ph
 branch.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 symbol.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 render.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-encoderEngine.atomicProperties = { charge: 1, valence: 3, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+encoderEngine.atomicProperties = { charge: 1, valence: 2, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 fieldEngine.atomicProperties = { charge: 1, valence: 1, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 falsificationEngine.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 contractsEngine.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

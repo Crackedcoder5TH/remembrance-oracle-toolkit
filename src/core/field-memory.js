@@ -5,8 +5,10 @@ const { quiet } = require('./quiet');
  * field-memory — the field's compression + recall layer.
  *
  * Every observation that enters the LivingRemembranceEngine field is
- * also compressed by the canonical fractal encoder (codeToWaveform) into
- * a fractal vector and offered to the pattern library. The
+ * also compressed by the canonical encoder (codeToWaveform — the 232-D
+ * fractal decoder at its active depth) and offered to the pattern library.
+ * A stored row whose vector is not that width is not a reading (cosine NaN)
+ * until migrate-waveforms-to-fractal re-encodes it. The
  * pattern compressor's similarity gate decides what survives: a
  * waveform that is within NOVELTY_THRESHOLD cosine of one already in
  * the library is redundant — dropped by design. Only genuinely new
@@ -111,10 +113,11 @@ _nearest.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even"
 function _topNeighbors(wf, cache, k) {
   return cache
     .map((e) => ({ id: e.id, similarity: Math.round(waveformCosine(wf, e.waveform) * 10000) / 10000 }))
+    .filter((e) => Number.isFinite(e.similarity)) // a non-canonical stored row is no reading
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, k);
 }
-_topNeighbors.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_topNeighbors.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Normalize a query input (string → waveform; array → as-is). */
 function _toWaveform(input) {
@@ -346,6 +349,7 @@ function neighbors(input, opts = {}) {
       ranked.push({ id: s.id, kind: 'field-snapshot', similarity: waveformCosine(wf, s.waveform) });
     }
     return ranked
+      .filter((e) => Number.isFinite(e.similarity)) // a non-canonical stored row is no reading
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, k)
       .map((r) => ({ ...r, similarity: Math.round(r.similarity * 10000) / 10000 }));
@@ -416,7 +420,9 @@ function query(text, opts = {}) {
         similarity: Math.round(waveformCosine(wf, parsed.waveform) * 10000) / 10000,
       });
     }
-    return ranked.sort((a, b) => b.similarity - a.similarity).slice(0, k);
+    return ranked
+      .filter((e) => Number.isFinite(e.similarity)) // a non-canonical stored row is no reading
+      .sort((a, b) => b.similarity - a.similarity).slice(0, k);
   } catch (_) {
     return [];
   }

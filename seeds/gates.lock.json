@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-06T14:24:44.033Z",
- "digest": "8079329f673a050a784bf34a7b8ba8e4c82a496c16843e68aa8e15a39d239a5a",
+ "lockedAt": "2026-09-07T10:27:43.345Z",
+ "digest": "cd388bb410091224ccbedaaf9060c61309cdd038438150848ecd6fd4d485946c",
  "gates": {
   "scripts/gate-lock.js": "eededd0c5b4ecd0e75f0c0fd4edb2066a92301fa81c621a2764864ff61eba6a5",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -21,7 +21,7 @@
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/core/covenant-fractal.js": "eba1a8619c8fe19ed5a255765bbcdd67b15c5f39a56015263540c1bed3b1cb1f",
-  ".claude/skills/goggles/run.mjs": "57b118606117c36dd6c885081e360a56aa3721e33654ab4bf7142709a6870a67",
+  ".claude/skills/goggles/run.mjs": "1284f367611e3a1933ee3ad666511d54da7b1f83c7778cabf3b7dc0ee62bdb11",
   ".claude/skills/goggles/change-coin.py": "52f8af26f82b866d4a9a1e2a11acae6922c17e433e1b98e2e02da5228f1f2471",
   "src/tools/goggles-bash-hook.js": "dfd50daa534e78c8527bcc5b6af1d32cfd14972488b5147b4873f4dc1cabe133"
  },
@@ -98,6 +98,24 @@
    "from": "5d8e7200f5a0448545d37f22d108c92ad0c95b5d400aa561235de56984d7f809",
    "to": "8079329f673a050a784bf34a7b8ba8e4c82a496c16843e68aa8e15a39d239a5a",
    "reason": "goggles: --do gate <name> — one gate in full through the surface (the battery prints one line per gate; the items behind a ✗ were only reachable by running the ratchet by hand)",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T10:17:33.082Z",
+   "from": "8079329f673a050a784bf34a7b8ba8e4c82a496c16843e68aa8e15a39d239a5a",
+   "to": "0df5f705ade9a6544ca10269d495fe1042d74c1b516d56dc9a4aac9f7369355c",
+   "reason": "goggles: --do token — layer two through the surface (the coherency token for a pattern: components, gates, chain)",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T10:27:43.345Z",
+   "from": "0df5f705ade9a6544ca10269d495fe1042d74c1b516d56dc9a4aac9f7369355c",
+   "to": "cd388bb410091224ccbedaaf9060c61309cdd038438150848ecd6fd4d485946c",
+   "reason": "goggles: --do whiten — the one resonance space fitted through the surface; the fit decomposed out of the core module",
    "changed": [
     ".claude/skills/goggles/run.mjs"
    ]

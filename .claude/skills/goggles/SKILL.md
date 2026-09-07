@@ -66,6 +66,7 @@ operation physically lives:
     run.mjs --do absorb                # hub patterns → Void (export → inbox)
     run.mjs --do publish <json>        # publish a pattern/coin to the ledger
     run.mjs --do coin [--publish]      # mint the git-history recovery coin
+    run.mjs --do token <file> [--dry]  # LAYER TWO: the coherency token for a pattern (components → gates → chain)
     run.mjs --do export <drive-path>   # export the data plane to a mounted drive
     run.mjs --do verify <snapshot>     # re-check an export's integrity
     run.mjs --do contracts [--strict]  # the falsifiable contracts (Void truth-spine)

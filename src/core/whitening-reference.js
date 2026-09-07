@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — bounded internal-state writes to an internally-constructed cache path (.remembrance/whitening-reference.json) — not user-input-driven mutations
 
 /**
  * whitening-reference.js — the transform that lets resonance discriminate.
@@ -24,6 +23,10 @@
  * blend). The reference is cached by store sha + index census and refitted
  * when either changes.
  *
+ * WHO FITS IT. scripts/fit-whitening-reference.js (goggles --do whiten): this
+ * module only reads the cache and spawns the fitter when it is missing or
+ * stale, because requiring the library from here closed a lexical cycle.
+ *
  * WHERE IT IS APPLIED. decoder-stack.composedCosine and flowCosines whiten
  * both sides before the cosine; FractalIndex whitens at rebuild/add and at
  * query. Every consumer discriminates at once. Void's detector applies the
@@ -39,43 +42,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { quiet } = require('./quiet');
-const { fitWhitening, applyWhitening, participationRatio } = require('./whitening');
-
+const { fitWhitening, applyWhitening } = require('./whitening');
 const LAYER_DIM = 29;
+const RETIRED_WIDTH = 256;   // the byte waveform that was tried, found wrong, retired
 const EPSILON = 1e-3;
 const CACHE_PATH = path.join(__dirname, '..', '..', '.remembrance', 'whitening-reference.json');
-const FIT_SAMPLE = 60000;
 
 let _ref;           // { key, width, layers:[{mean,W,d}], fitted:{store,index,rows}, pr:{raw,whitened} } | null
 let _disabled = process.env.WHITENING_REFERENCE === 'off';
-
-function _indexVectors() {
-  // the substrate index's canonical vectors, through the library (one loader)
-  try {
-    const { VoidLibrary } = require('./void-library');
-    const lib = new VoidLibrary();
-    lib._ensureLoaded();
-    const out = [];
-    for (const [name, vec] of (lib._composed || new Map())) {
-      if (!name.startsWith('store/')) out.push(vec);   // store rows come from the store itself
-    }
-    return out;
-  } catch (e) { quiet('core:whitening-reference:index', e); return []; }
-}
-_indexVectors.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-
-function _storeRows() {
-  try {
-    const { loadStore } = require('./store-export');
-    const s = loadStore();
-    if (s.error) return { rows: [], width: 0, sha: null, error: s.error };
-    const rows = [];
-    const step = Math.max(1, Math.floor(s.rows / FIT_SAMPLE));
-    for (let i = 0; i < s.rows && rows.length < FIT_SAMPLE; i += step) rows.push(s.data.subarray(i * s.width, (i + 1) * s.width));
-    return { rows, width: s.width, sha: s.sha, error: null };
-  } catch (e) { quiet('core:whitening-reference:store', e); return { rows: [], width: 0, sha: null, error: String(e && e.message || e) }; }
-}
-_storeRows.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Fit one 29×29 ZCA per layer block over rows of the canonical width. */
 function fitLayers(rows, width) {
@@ -88,13 +62,16 @@ function fitLayers(rows, width) {
   }
   return layers;
 }
-fitLayers.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+fitLayers.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Apply the per-layer transform to a composed vector of any whole-block depth ≤ width. */
 function whitenComposed(vec, ref) {
   const r = ref || reference();
   if (!r || !r.layers || !r.layers.length || !vec) return vec;
   const n = vec.length;
+  // The retired 256-D byte waveform is not a decoder vector: it has no
+  // layers to whiten. Refused here so it can never be dressed as one.
+  if (n === RETIRED_WIDTH) { quiet('core:whitening-reference:retired-width', new Error('256-D waveform refused')); return vec; }
   const out = new Float64Array(n);
   const blocks = Math.min(r.layers.length, Math.floor(n / LAYER_DIM));
   for (let b = 0; b < blocks; b++) {
@@ -110,29 +87,7 @@ function whitenComposed(vec, ref) {
   for (let i = blocks * LAYER_DIM; i < n; i++) out[i] = vec[i] || 0;   // a partial trailing block stays raw
   return out;
 }
-whitenComposed.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-
-function _fit() {
-  const store = _storeRows();
-  const index = _indexVectors();
-  const width = store.width || (index.length ? index[0].length : 0);
-  const rows = [...store.rows, ...index.filter((v) => v.length === width)];
-  if (!width || rows.length < LAYER_DIM * 4) return null;
-  const layers = fitLayers(rows, width);
-  const ref = {
-    key: `${store.sha || 'nostore'}:${index.length}:${width}`,
-    width, layers,
-    fitted: { store: store.rows.length, index: index.filter((v) => v.length === width).length, rows: rows.length, epsilon: EPSILON, at: new Date().toISOString() },
-    storeError: store.error,
-  };
-  // the effective dimensionality, raw vs whitened, on the fit sample (the density signal)
-  try {
-    const sample = rows.filter((_, i) => i % Math.max(1, Math.floor(rows.length / 4000)) === 0).map((v) => Array.from(v));
-    ref.pr = { raw: participationRatio(sample), whitened: participationRatio(sample.map((v) => Array.from(whitenComposed(v, ref)))) };
-  } catch (e) { quiet('core:whitening-reference:pr', e); }
-  return ref;
-}
-_fit.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+whitenComposed.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _currentKey() {
   try {
@@ -141,31 +96,41 @@ function _currentKey() {
     return sha;
   } catch (e) { quiet('core:whitening-reference:key', e); return 'nostore'; }
 }
-_currentKey.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_currentKey.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/** The cached reference when it matches the store on this host, else null. Never fits. */
+function cached() {
+  try {
+    if (!fs.existsSync(CACHE_PATH)) return null;
+    const doc = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
+    if (doc && typeof doc.key === 'string' && doc.key.startsWith(_currentKey() + ':') && Array.isArray(doc.layers)) return doc;
+  } catch (e) { quiet('core:whitening-reference:cache', e); }
+  return null;
+}
+cached.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
- * The fitted reference (cached by store sha), or null when disabled or when
- * there is nothing to fit on. Never throws.
+ * The reference in force, or null when disabled or when there is nothing to
+ * fit on. Reads the cache; when the cache is missing or stale (the store
+ * changed) it runs scripts/fit-whitening-reference.js as a CHILD PROCESS —
+ * a process boundary, not a require, because the fitter needs the library
+ * and the library's search engine needs this module (the lexical cycle the
+ * cycle ratchet refused). Never throws.
  */
 function reference() {
   if (_disabled) return null;
   if (_ref !== undefined) return _ref;
-  _ref = null;
+  _ref = cached();
+  if (_ref) return _ref;
   try {
-    const sha = _currentKey();
-    if (fs.existsSync(CACHE_PATH)) {
-      const cached = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
-      if (cached && typeof cached.key === 'string' && cached.key.startsWith(sha + ':') && Array.isArray(cached.layers)) { _ref = cached; return _ref; }
-    }
-    _ref = _fit();
-    if (_ref) {
-      fs.mkdirSync(path.dirname(CACHE_PATH), { recursive: true });
-      fs.writeFileSync(CACHE_PATH, JSON.stringify(_ref));
-    }
+    const { execFileSync } = require('node:child_process');
+    execFileSync(process.execPath, [path.join(__dirname, '..', '..', 'scripts', 'fit-whitening-reference.js')],
+      { stdio: ['ignore', 'ignore', 'ignore'], timeout: 15 * 60 * 1000 });
+    _ref = cached();
   } catch (e) { quiet('core:whitening-reference:fit', e); _ref = null; }
   return _ref;
 }
-reference.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0.5, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+reference.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** One line about the reference in force, for the goggles. */
 function status() {
@@ -174,13 +139,13 @@ function status() {
   if (!r) return { mode: 'raw', why: 'no substrate to fit on (no store, no index)' };
   return { mode: 'whitened', width: r.width, layers: r.layers.length, fitted: r.fitted, pr: r.pr || null, storeError: r.storeError || null, cache: CACHE_PATH };
 }
-status.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+status.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Test/benchmark hook: forget the cached reference and re-read the switch. */
 function _reset(opts = {}) {
   _ref = undefined;
   if (typeof opts.disabled === 'boolean') _disabled = opts.disabled;
 }
-_reset.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_reset.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-module.exports = { reference, whitenComposed, fitLayers, status, LAYER_DIM, EPSILON, CACHE_PATH, _reset };
+module.exports = { reference, cached, whitenComposed, fitLayers, status, LAYER_DIM, EPSILON, CACHE_PATH, _reset };

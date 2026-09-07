@@ -66,6 +66,12 @@ if (argv[0] === '--do') {
     publish: () => run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/src/cli.js'), 'publish', ...rest], join(HOME, 'REMEMBRANCE-BLOCKCHAIN')),
     // mint the git-history recovery coin (+--publish to anchor on chain)
     coin: () => run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/scripts/git-history-coin.js'), ...rest], join(HOME, 'REMEMBRANCE-BLOCKCHAIN')),
+    // LAYER TWO — the coherency token for a PATTERN: its 232-D decoder vector,
+    // the three components through the instrument (text · resonance in the one
+    // whitened space · atomic), unified → tier → rate, the covenant and
+    // uniqueness gates, a REGISTER block on the chain. Paths must be absolute.
+    //   goggles --do token <file> [via] [--name n] [--language l] [--dry] [--json]
+    token: () => run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/bin/coherency-token.js'), ...rest], join(HOME, 'REMEMBRANCE-BLOCKCHAIN')),
     // export the data plane to a mounted drive (verify with `--do verify <snap>`)
     export: () => run('bash', [join(toolkit, 'scripts/export-data-plane.sh'), ...rest], toolkit),
     verify: () => run('bash', [join(toolkit, 'scripts/export-data-plane.sh'), '--verify', ...rest], toolkit),
@@ -148,6 +154,11 @@ if (argv[0] === '--do') {
     //   goggles --do mint install-hooks         the commit-msg hook, this repo
     //   goggles --do mint anchor [--status]     witness every repo's coin ledger on the chain
     mint: () => run('python3', [join(toolkit, '.claude/skills/goggles/change-coin.py'), ...(rest.length ? rest : ['mint']), '--repo', process.cwd()], toolkit),
+    // THE ONE RESONANCE SPACE — fit (or refresh) the per-layer whitening
+    // reference every decoder cosine is taken in, on the canonical substrate.
+    // Reads fit it on first use themselves; this is the explicit door.
+    //   goggles --do whiten [--force | --status]
+    whiten: () => run('node', [join(toolkit, 'scripts/fit-whitening-reference.js'), ...rest], toolkit),
     // THE WALL'S OWN LEDGER. Every hook denial is one JSON line (ts · rule ·
     // command) — the continuous leak map. A recurring rule is a weld working;
     // a novel command shape is the next verb to build; silence across fresh

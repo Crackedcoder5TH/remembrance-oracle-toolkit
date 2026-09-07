@@ -31,6 +31,9 @@ pruneFieldSources.atomicProperties = { charge: 0, valence: 0, mass: "light", spi
  * @param {number} obs.cost — work units (default 1.0)
  * @param {number} obs.coherence — alignment 0..1
  * @param {string} obs.source — caller identity (e.g. "reflect:src/foo.js")
+ * @param {number} [obs.resonance] — measured substrate resonance (authority weight)
+ * @param {object} [obs.seal] — the compressor's void seal on this reading ({via, sig, mint, …})
+ * @param {number} [obs.void] — a MEASURED void term read off the field, when the caller has one
  * @returns {object|null} new field state + derived terms, or null if engine unavailable
  */
 function contribute(obs) {
@@ -48,7 +51,16 @@ function contribute(obs) {
   // measured substrate resonance; a fabricated low-resonance flood is
   // therefore near-powerless against the field.
   const resonance = (typeof obs.resonance === 'number' && isFinite(obs.resonance)) ? Math.max(0, Math.min(1, obs.resonance)) : null;
-  const result = engine.contribute({ cost, coherence: clamped, source: obs.source || null, resonance });
+  // The two inputs the engine has always accepted and this door always
+  // dropped (measured 2026-09-07: no caller in src/ reached either):
+  //   seal — the compressor's token on the reading just taken; a present
+  //          but invalid seal is inert at the engine (a forged token cannot
+  //          move the field), an absent one is legacy/untokened.
+  //   void — a MEASURED void term from the field (delta_void), when the
+  //          caller read one; absent → the engine's labelled fallback.
+  const seal = (obs.seal && typeof obs.seal === 'object') ? obs.seal : null;
+  const voidTerm = (typeof obs.void === 'number' && isFinite(obs.void)) ? Math.max(0, obs.void) : null;
+  const result = engine.contribute({ cost, coherence: clamped, source: obs.source || null, resonance, seal, void: voidTerm });
   _recordReading(result);  // the void term (delta_void, void_source), r_eff and p, read off the field
   _pushRecent(clamped);
 

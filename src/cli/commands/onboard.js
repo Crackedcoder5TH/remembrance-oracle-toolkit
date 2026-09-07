@@ -56,6 +56,14 @@ const CLAIMS = {
       expect: 116,
       get: () => require('../../core/decoder-stack').composedAtDepth(SAMPLE, 4).length,
     },
+    {
+      // THE canonical vector: the decoder at its active depth (8 × 29 = 232-D).
+      // Every resonance in the ecosystem reads this width, in the one
+      // whitened space; the depth-4 checkpoint above is an intermediate.
+      id: 'composed canonical — decoder-stack.composedAtDepth(_, currentDepth())',
+      expect: 232,
+      get: () => { const ds = require('../../core/decoder-stack'); return ds.composedAtDepth(SAMPLE, ds.currentDepth()).length; },
+    },
   ],
 };
 

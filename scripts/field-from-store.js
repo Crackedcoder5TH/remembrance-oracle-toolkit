@@ -58,50 +58,6 @@ function defaultAnchorText() {
 }
 defaultAnchorText.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-/**
- * Export the store's rows and stems through numpy into a raw float32 .npy and
- * a JSON stem list. The object-dtype columns are pickled inside the npz, which
- * node cannot read; numpy can, once, into formats node can.
- */
-function exportStore() {
-  fs.mkdirSync(SCRATCH, { recursive: true });
-  const npy = path.join(SCRATCH, 'waveforms.f32.npy');
-  const stems = path.join(SCRATCH, 'stems.json');
-  const stamp = path.join(SCRATCH, 'store.sha256');
-  const sha = crypto.createHash('sha256').update(fs.readFileSync(STORE)).digest('hex');
-  if (fs.existsSync(npy) && fs.existsSync(stems) && fs.existsSync(stamp) && fs.readFileSync(stamp, 'utf8').trim() === sha) {
-    return { npy, stems, sha, cached: true };
-  }
-  execFileSync('python3', ['-c', [
-    'import numpy as np, json, sys',
-    `s = np.load(${JSON.stringify(STORE)}, allow_pickle=True)`,
-    `np.save(${JSON.stringify(npy)}, s['waveforms'].astype(np.float32))`,
-    `json.dump([str(x) for x in s['source_stems']], open(${JSON.stringify(stems)}, 'w'))`,
-  ].join('\n')], { stdio: ['ignore', 'ignore', 'inherit'] });
-  _writeStamp(_sealedGate(), stamp, sha + '\n');
-  return { npy, stems, sha, cached: false };
-}
-exportStore.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-
-/** Read a little-endian float32 .npy (C order) into { rows, width, data }. */
-function readNpyF32(file) {
-  const buf = fs.readFileSync(file);
-  if (buf.toString('latin1', 0, 6) !== '\x93NUMPY') throw new Error('not a .npy file: ' + file);
-  const major = buf[6];
-  const hlen = major === 1 ? buf.readUInt16LE(8) : buf.readUInt32LE(8);
-  const hstart = major === 1 ? 10 : 12;
-  const header = buf.toString('latin1', hstart, hstart + hlen);
-  const shape = /'shape':\s*\((\d+),\s*(\d+)\)/.exec(header);
-  if (!shape || !/'<f4'/.test(header) || /'fortran_order':\s*True/.test(header)) {
-    throw new Error('unexpected .npy header: ' + header.trim());
-  }
-  const rows = Number(shape[1]), width = Number(shape[2]);
-  const off = hstart + hlen;
-  const data = new Float32Array(buf.buffer.slice(buf.byteOffset + off, buf.byteOffset + off + rows * width * 4));
-  return { rows, width, data };
-}
-readNpyF32.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
-
 function main() {
   const argv = process.argv.slice(2);
   const dry = argv.includes('--dry');

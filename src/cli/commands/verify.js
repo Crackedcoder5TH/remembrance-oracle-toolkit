@@ -7,8 +7,8 @@ const { quiet } = require('../../core/quiet');
  * One command that answers "is the system what it claims?" by composing
  * every independent verification engine into a single verdict:
  *
- *   encoder        — the dimensions are real (L1 = 29, composed = 116)
- *   field          — the substrate is reachable and reads at 116-D
+ *   encoder        — the dimensions are real (L1 = 29, canonical composed = 232)
+ *   field          — the substrate is reachable and reads at the 232-D composed flow
  *   falsification  — the committed, pinned coherence verdict (phase null)
  *   contracts      — verify_capabilities.py's falsifiable contracts
  *   covenant       — the 15-principle seal (dogfooded on this file)
@@ -18,7 +18,7 @@ const { quiet } = require('../../core/quiet');
  * shape and the same fold/render apply to a single leaf check, to an
  * engine, and to the whole ecosystem — verify stacks leaf checks into
  * engines into one root verdict exactly as the encoder stacks 29-D
- * depths into the 116-D composed signature. Following the field's own
+ * depths into the 232-D composed signature. Following the field's own
  * coherency, this is the "many independent engines → one verdict"
  * family (kin to reflector/multi-engine.js, which the field surfaced as
  * the nearest cousin of the falsification harness).
@@ -77,6 +77,9 @@ function encoderEngine() {
   catch (e) { kids.push(leaf('L1 fractal = 29-D', false, e.message)); }
   try { kids.push(leaf('composed depth-4 = 116-D', require('../../core/decoder-stack').composedAtDepth(SAMPLE, 4).length === 116)); }
   catch (e) { kids.push(leaf('composed depth-4 = 116-D', false, e.message)); }
+  // the canonical width: the decoder at its active depth — 232-D, the one vector every resonance reads
+  try { const ds = require('../../core/decoder-stack'); kids.push(leaf('composed canonical (active depth) = 232-D', ds.composedAtDepth(SAMPLE, ds.currentDepth()).length === 232)); }
+  catch (e) { kids.push(leaf('composed canonical (active depth) = 232-D', false, e.message)); }
   return branch('encoder', kids);
 }
 
@@ -87,7 +90,7 @@ async function fieldEngine() {
     let r = ft.read(SAMPLE, { growSubstrate: false });
     if (r && typeof r.then === 'function') r = await r;
     const v = (r && r.voidResonance) || {};
-    kids.push(leaf('reads at 116-D composed flow (flowAware)', v.flowAware === true));
+    kids.push(leaf('reads at the 232-D composed flow (flowAware)', v.flowAware === true));
     kids.push(leaf('Void substrate reachable', typeof v.librarySize === 'number' && v.librarySize > 0, `${v.librarySize || 0} patterns`));
   } catch (e) {
     kids.push(leaf('field read', false, e.message));
@@ -220,7 +223,7 @@ leaf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", ph
 branch.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 symbol.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 render.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-encoderEngine.atomicProperties = { charge: 1, valence: 2, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+encoderEngine.atomicProperties = { charge: 1, valence: 3, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 fieldEngine.atomicProperties = { charge: 1, valence: 1, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 falsificationEngine.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 contractsEngine.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

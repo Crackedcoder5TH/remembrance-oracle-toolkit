@@ -287,7 +287,11 @@ function coherencyOf(content, opts = {}) {
     // Chunked path reports per-chunk blends; single-shot path reports one.
     blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null) || null;
     if (r.mint && r.void_seal) {
+      // `sig` rides along: the field's seal gate (living-remembrance
+      // _isValidVoidSeal) is structural on {via, sig}; without the sig the
+      // token was carried but could never pass the gate.
       seal = { mint: r.mint, via: r.void_seal.via || null,
+        sig: typeof r.void_seal.sig === 'string' ? r.void_seal.sig : null,
         shapeSha256: (r.commitment && r.commitment.shape_sha256) || null };
     }
   } catch (_) { quiet('core:void-service:_post', _); /* unparseable → no reading */ }

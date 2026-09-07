@@ -1209,6 +1209,72 @@
      "shape_sha256": "e0e6227faed0516431a87c4d3db62d5745f3651c80f6ba8a109667f157cde717"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "d695919a6830685ede7f656d5911442af0521f315aacad659373c1092542e272",
+   "minted_at": "2026-09-07T17:30:59+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "48af92cf8b74ce69f0e5384dacc0bccbbb514c2b",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/run.mjs",
+     ".contracts-baseline.json",
+     "scripts/contracts-ratchet.js",
+     "scripts/field-from-store.js",
+     "scripts/gate-lock.js",
+     "scripts/harvest-repo-to-substrate.js",
+     "scripts/ratchet-battery.js",
+     "seeds/gates.lock.json",
+     "src/cli/commands/onboard.js",
+     "src/cli/commands/verify.js",
+     "src/core/abundance-classifier.js",
+     "src/core/field-coupling/verbs.js",
+     "src/core/field-registry.js",
+     "src/core/field-tool.js",
+     "src/core/fractal-index.js",
+     "src/core/living-remembrance.js",
+     "src/core/resonance-space.js",
+     "src/core/substrate-density.js",
+     "src/core/void-library.js",
+     "src/core/void-service.js",
+     "src/unified/coherency-token-components.js",
+     "tests/contracts-ratchet.test.js",
+     "tests/healed-overlap-space.test.js"
+    ],
+    "diff_bytes": 66839,
+    "diff_sha256": "95c030cbab040069b0aa039358e0e57e24809e90061c8afe4727fdf25fc76648"
+   },
+   "reading": {
+    "coherency": 0.06774429509674756,
+    "ratio": 3.160385833845572,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "0db355802ca031f4",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "5b7438f695f852fedf867de10fc8a0f6a0bb72c5335b8da2c152079e1df54ede",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T17:30:59",
+     "coin": null,
+     "sig": "0db355802ca031f4eb78276995e45c931a1356510ffae926d8d2e9888828df7a"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 66839,
+     "compressed_size": 21149,
+     "coherency": 0.06774429509674756,
+     "data_sha256": "f6b7a58134b13d27139fb192c8b806db8ce25979d5b72e29afe76338144f4042",
+     "compressed_sha256": "bdf5c1f8e33f37b69949186021b22ac0664b07949a176eb44fca0628ba4771e8",
+     "shape_sha256": "8c2fa076197c50cac3612b4900fcdcbd93f0ab677ab47ab744d46c710c265f21"
+    }
+   }
   }
  ]
 }

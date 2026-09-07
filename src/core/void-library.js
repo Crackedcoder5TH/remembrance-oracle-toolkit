@@ -72,7 +72,7 @@ class VoidLibrary {
     this.voidRoot = opts.voidRoot || DEFAULT_VOID_ROOT;
     this.indexPath = path.join(this.voidRoot, 'pattern_index_fractal.json');
     this._fractals = null;     // Map<name, Float64Array(29)>
-    this._composed = null;     // Map<name, Float64Array(116)> (composed_v1 when present)
+    this._composed = null;     // Map<name, Float64Array(232)> — the canonical `composed` (232-D decoder) per entry
     this._fractalIndex = null; // FractalIndex over the composed vectors (the search engine)
     this._loadError = null;
     this._loadAttempted = false;

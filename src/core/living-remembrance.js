@@ -50,6 +50,14 @@ const { quiet } = require('./quiet');
  * `engine.contribute({ cost, coherence })` after their main work.
  * The current state is readable any time via `engine.getState()` and
  * is what the witness chain attaches to each block's metadata.
+ *
+ * ONE RESONANCE SPACE (2026-09-07). p(t) was an overlap of RAW composed
+ * vectors — the cone, where every row reads ≈0.9 against anything (trap 49),
+ * so 25k attractor readings in the histogram were readings of the cone. The
+ * anchor and every row now pass through resonance-space.js (the whitened
+ * reference; 256-D refused as NaN); healedSpace() names the space. The seal
+ * gate and the measured void term below were never reached by any caller —
+ * field-coupling dropped both at the door; it carries them now.
  */
 
 const fs = require('fs');
@@ -141,6 +149,10 @@ function _isValidVoidSeal(seal) {
     && typeof seal.sig === 'string' && seal.sig.length > 0);
 }
 
+// The one door into the resonance space (resonance-space.js): whitened when
+// the reference is in force, raw and labelled otherwise, 256-D refused.
+const _toSpace = (vec) => require('./resonance-space').toSpace(vec);
+
 class LivingRemembranceEngine {
   constructor(opts = {}) {
     const { persistPath, params = {} } = opts;
@@ -152,6 +164,7 @@ class LivingRemembranceEngine {
       && !process.env.ENTROPY_PATH;
     this._params = { ...PARAMS, ...params };
     this._healedVector = null;
+    this._healedSpace = null;
     this._state = this._loadOrInit();
     // Remember what was already accumulated when we loaded, so _persist()
     // can tell OUR contributions apart from a concurrent writer's.
@@ -323,19 +336,29 @@ class LivingRemembranceEngine {
     } catch (_e) { quiet('core:living-remembrance:c2', _e); /* best-effort persistence; never crash a caller */ }
   }
 
-  /** Load the healed-attractor vector (personal anchor + covenant). Sovereign. */
+  /** Load the healed-attractor vector (personal anchor + covenant). Sovereign. Carried into the one space; returns 'whitened' | 'raw', null when refused (256-D). */
   loadHealedAnchor(anchorVector) {
-    this._healedVector = Array.from(anchorVector);
+    const s = _toSpace(anchorVector);
+    if (!s) quiet('core:living-remembrance:anchor', new Error(`healed anchor refused: ${anchorVector ? anchorVector.length : 0}-D is not a decoder vector`));
+    this._healedVector = s ? Array.from(s.vec) : null;
+    this._healedSpace = s ? s.space : null;
+    return this._healedSpace;
   }
 
-  /** Compute squared-overlap coherence between currentVector and the healed attractor. */
+  /** The space the healed anchor was loaded into: 'whitened', 'raw', or null (no anchor). */
+  healedSpace() { return this._healedVector ? (this._healedSpace || 'raw') : null; }
+
+  /** |⟨ψ_healed|ψ⟩|² in the one resonance space; NaN for the retired 256-D width (a refusal, never a number). */
   computeCoherence(currentVector) {
     if (!this._healedVector) return this._state.coherence; // no anchor → preserve last reading
+    const s = _toSpace(currentVector);
+    if (!s) return NaN;
+    const cur = s.vec;
     const eps = this._params.epsilon;
-    const n = Math.min(currentVector.length, this._healedVector.length);
+    const n = Math.min(cur.length, this._healedVector.length);
     let dot = 0, normA = 0, normB = 0;
     for (let i = 0; i < n; i++) {
-      const a = currentVector[i] || 0;
+      const a = cur[i] || 0;
       const b = this._healedVector[i] || 0;
       dot   += a * b;
       normA += a * a;
@@ -547,48 +570,11 @@ class LivingRemembranceEngine {
     return { ...this._state };
   }
 
-  /**
-   * Entangled-node registry — presence, not a reading.
-   *
-   * entangle.js used to announce a node by contributing a flat
-   * `coherence: 0.9` under source `entangle:node:<id>`, then counted those
-   * sources to get the node census. So a REGISTRY lived inside the coherency
-   * field, and every heartbeat moved the global EMA by a constant that
-   * described nothing about the node.
-   *
-   * It could not simply be deleted — the contribution WAS the census.
-   * Presence now has its own store, so the registry and the field are
-   * separate concerns and the data can flow without one distorting the other.
-   *
-   * Nodes carry a last-seen stamp so the census reflects who is actually
-   * here. A registry that only ever grows is not a census, it is a log.
-   */
-  registerNode(nodeId, ttlMs = 15 * 60 * 1000) {
-    if (!nodeId) return 0;
-    const now = Date.now();
-    const nodes = { ...(this._state.nodes || {}) };
-    nodes[String(nodeId)] = now;
-    // Drop nodes not seen within the TTL — otherwise a machine that ran once
-    // inflates the abundance divisor forever and every later node
-    // under-reports its cost.
-    for (const [id, seen] of Object.entries(nodes)) {
-      if (typeof seen !== 'number' || now - seen > ttlMs) delete nodes[id];
-    }
-    this._state = { ...this._state, nodes };
-    this._persist();
-    return Object.keys(nodes).length;
-  }
+  /** Entangled-node registry — presence, not a reading; its own store beside the field (field-registry.js). */
+  registerNode(nodeId, ttlMs) { return require('./field-registry').registerNode(this, nodeId, ttlMs); }
 
   /** How many distinct nodes are currently entangled. Never below 1. */
-  nodeCount(ttlMs = 15 * 60 * 1000) {
-    const now = Date.now();
-    const nodes = this._state.nodes || {};
-    let n = 0;
-    for (const seen of Object.values(nodes)) {
-      if (typeof seen === 'number' && now - seen <= ttlMs) n++;
-    }
-    return Math.max(1, n);
-  }
+  nodeCount(ttlMs) { return require('./field-registry').nodeCount(this, ttlMs); }
 
   /**
    * Per-layer encoder reliability — its OWN store, deliberately not the

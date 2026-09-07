@@ -119,10 +119,10 @@ class FractalIndex {
   constructor(opts = {}) {
     this._encode = opts.encoder || _compose;
     this._ids = [];                              // parallel arrays — packed
-    this._vecs = [];                             // Float64Array(116) per pattern
+    this._vecs = [];                             // Float64Array(232) per pattern (canonical width, padded)
     this._norms = new Float64Array(0);           // precomputed ||p|| per pattern
     this._normsByDepth = new Array(MAX_DEPTH).fill(null); // ||p|| at depths 1..MAX_DEPTH
-    this._realDepths = [];                       // pre-pad whole-block depth per pattern (4=116-D … 7=203-D)
+    this._realDepths = [];                       // pre-pad whole-block depth per pattern (4=116-D … 8=232-D)
     this._idIndex = new Map();                   // id → array position
   }
 

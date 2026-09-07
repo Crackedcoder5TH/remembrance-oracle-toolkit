@@ -227,10 +227,10 @@ function _confidence(extraction, abundance) {
  *             label:string, confidence:number, evidence:Array }}
  */
 function classifySignature(composed) {
-  // Accepts the 116-D core or any deeper composition (e.g. 145-D with
-  // L5) — the classifier's DIM map addresses the first four layers, so
-  // deeper vectors are read by their 116-D core. Shorter vectors are
-  // still refused: the markers live in L3/L4.
+  // Reads the first four layers (116 of the 232-D decoder vector) — the
+  // classifier's DIM map addresses L1–L4, where its markers live; the one
+  // canonical vector is passed whole and read by its L1–L4 blocks. Shorter
+  // vectors are refused: the markers live in L3/L4.
   if (!composed || composed.length < COMPOSED_DIM) {
     throw new Error(
       `classifySignature expects at least a ${COMPOSED_DIM}-D composed vector (depth 4), got length ${composed ? composed.length : 'none'}`

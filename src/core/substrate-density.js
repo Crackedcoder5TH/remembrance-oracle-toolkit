@@ -37,7 +37,6 @@ const DEFAULT_SUBSTRATE = path.join(__dirname, '..', '..', '..', 'Void-Data-Comp
 const FIT_SAMPLE = 60000;    // fit the FULLY-FILLED maximum library (covers all ~47.6k patterns).
                             // The R-term (retro pull) is anchored to the whole library's capacity,
                             // not a subsample — completing the meta-loop: Ψ_healed = the full substrate.
-const DIM = 116;
 
 // The cache path is overridable ($VOID_DENSITY_CACHE or opts.cachePath) so
 // tests isolate from the live cache and never clobber the real density signal.

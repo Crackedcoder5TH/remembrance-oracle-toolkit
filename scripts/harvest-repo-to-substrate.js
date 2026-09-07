@@ -17,8 +17,10 @@
  * Schema per entry (matches the existing index):
  *   <namespace>/<relpath>: {
  *     fractal:     29-D  (L1 structural, the JS↔Python parity anchor)
- *     composed_v1: 116-D (depth-4 composed — what mapFromSubstrate reads)
- *     composed_v2: 145-D (depth-5 composed — the current canonical)
+ *     composed:    232-D (the decoder at the active depth — THE canonical
+ *                  vector; every resonance reads it, in the one whitened space)
+ *     composed_v1: 116-D, composed_v2: 145-D (depth-4 / depth-5 checkpoints,
+ *                  kept as the flow's intermediate records — never compared)
  *     source_file, ingested_from
  *     ledger:      { ingested_at, sequence, observed_start, observed_end, cadence }
  *                  — the TIME DIMENSION: when this datum joined the substrate + the
@@ -166,12 +168,28 @@ function voidCoherenceOf(content) {
   return c;
 }
 
-function cosine116(a, b) {
+// Cross-repo resonance of a newly-witnessed file, in the ONE resonance
+// space over the ONE width (the 232-D decoder vector). This was a raw cosine
+// over the 116-D composed_v1 checkpoints with a 0.90
+// floor — the cone (trap 49): measured 2026-09-07, every new file "arose"
+// with some file in another repo at 0.93–0.94, because in the cone every
+// pair does. Both sides now pass through resonance-space.js and the floor
+// is the CONSONANT band of the whitened space (living-remembrance
+// gogglesParams), so "arose" means what the goggles' META lens means.
+function resonanceCosine(a, b) {
+  const { toSpace } = require('../src/core/resonance-space');
+  const A = toSpace(Array.from(a)), B = toSpace(Array.from(b));
+  if (!A || !B) return 0;
   let dot = 0, na = 0, nb = 0;
-  const n = Math.min(a.length, b.length, 116);
-  for (let i = 0; i < n; i++) { const x = a[i] || 0, y = b[i] || 0; dot += x * y; na += x * x; nb += y * y; }
+  const n = Math.min(A.vec.length, B.vec.length);
+  for (let i = 0; i < n; i++) { const x = A.vec[i] || 0, y = B.vec[i] || 0; dot += x * y; na += x * x; nb += y * y; }
   return (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
 }
+resonanceCosine.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+function aroseFloor() {
+  try { return require('../src/core/living-remembrance').gogglesParams().resonanceConsonant; } catch (_) { return 0.71; }
+}
+aroseFloor.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Is this file too small to carry a waveform? The harvest floor. Under
 // MIN_CHARS there is no signal to compress: the compressor chunks and
@@ -339,11 +357,13 @@ function main() {
   const now = new Date().toISOString();
   const beforeTotal = Object.keys(index).length;
 
-  // Pre-index existing composed_v1 vectors for the "what arises" resonance
-  // report — nearest cross-repo neighbour of each newly harvested file.
+  // Pre-index the existing CANONICAL vectors (`composed`, the 232-D decoder
+  // at the active depth) for the "what arises" resonance report — nearest
+  // cross-repo neighbour of each newly harvested file. Entries that carry only
+  // the old 116-D/145-D checkpoints are not compared: one width, one space.
   const composedAll = [];
   for (const [name, e] of Object.entries(index)) {
-    if (e.composed_v1) composedAll.push([name, e.composed_v1]);
+    if (Array.isArray(e.composed) && e.composed.length >= 116 && e.composed.length % 29 === 0) composedAll.push([name, e.composed]);
   }
 
   let added = 0, skipped = 0, floored = 0;
@@ -490,11 +510,11 @@ function main() {
       let best = null, bestScore = -1;
       for (const [name, vec] of composedAll) {
         if (name.startsWith(ns + '/')) continue;   // cross-repo only
-        const s = cosine116(composed_v1, vec);
+        const s = resonanceCosine(composed, vec);
         if (s > bestScore) { bestScore = s; best = name; }
       }
-      if (best && bestScore >= 0.90) arose.push({ from: key, to: best, score: bestScore });
-      composedAll.push([key, composed_v1]);        // future files can match this one
+      if (best && bestScore >= aroseFloor()) arose.push({ from: key, to: best, score: bestScore });
+      composedAll.push([key, composed]);           // future files can match this one
 
       // Persist periodically so an interrupted long ingest keeps what it has
       // already read, and re-running resumes instead of restarting.

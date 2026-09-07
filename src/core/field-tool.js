@@ -148,6 +148,20 @@ function _voidCoherencyOf(content) {
   return _voidService.coherencyOf(content, { quiet: true });
 }
 
+/**
+ * The compressor's seal on the reading just taken — {mint, via, sig,
+ * shapeSha256} from the void-seal/v3 commitment — so the contribution can
+ * carry its token into the field's seal gate. null when the reading had none.
+ */
+function _voidReadingSeal() {
+  try {
+    const r = _voidService && _voidService.lastReading && _voidService.lastReading();
+    if (r && r.seal && typeof r.seal === 'object') return r.seal;
+  } catch (_) { quiet('core:field-tool:void-seal', _); }
+  return null;
+}
+_voidReadingSeal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
 /** Which compressor route produced the reading just taken. */
 function _voidReadingSource() {
   try {
@@ -179,7 +193,7 @@ class FieldTool {
     this.opts = {
       autoEntangle: opts.autoEntangle !== false,
       growSubstrate: opts.growSubstrate !== false,
-      useVoidSubstrate: opts.useVoidSubstrate !== false,  // primary: Void's composed (116-D) library
+      useVoidSubstrate: opts.useVoidSubstrate !== false,  // primary: Void's composed (232-D decoder) library
       useCodingFilter: opts.useCodingFilter !== false,    // secondary: Oracle's coding subset
       agentSource: opts.agentSource || DEFAULT_SOURCE,
       language: opts.language || null,        // null = infer per-call
@@ -218,7 +232,7 @@ class FieldTool {
 
     const layers = {
       entangled: false,
-      voidScored: false,      // primary substrate: Void's composed (116-D) library
+      voidScored: false,      // primary substrate: Void's composed (232-D decoder) library
       codingFiltered: false,  // secondary: Oracle's coding-specific filter
       grew: false,            // input captured into Oracle's table
       contributed: false,     // field histogram updated
@@ -441,6 +455,9 @@ class FieldTool {
           coherence: coherency,
           source: merged.source || merged.agentSource,
           resonance: _res,
+          // the compressor's token on THIS reading — the field's seal gate
+          // was unreachable from here until the door carried it (2026-09-07)
+          seal: _voidReadingSeal(),
         });
         layers.contributed = true;
         if (_res !== null) layers.resonanceWeight = +_res.toFixed(4);
@@ -476,9 +493,9 @@ class FieldTool {
     }
 
     return {
-      waveform,         // 29-D L1 fractal (back-compat; scoring runs the 116-D composed flow)
-      composed,         // 116-D composed vector (null when the encoder stack is unreachable)
-      voidResonance,    // Void's composed (116-D) flow-aware library read
+      waveform,         // 29-D L1 fractal (back-compat; scoring runs the 232-D composed flow)
+      composed,         // 232-D decoder vector at the active depth (null when the stack is unreachable)
+      voidResonance,    // Void's composed (232-D) flow-aware library read
       codeResonance,    // Oracle's coding-specific filter
       // THE coherency — from the Void compressor, or null when it could not be
       // read. Null means "not measured"; it never means zero.

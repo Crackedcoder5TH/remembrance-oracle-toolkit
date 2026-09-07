@@ -142,6 +142,6 @@ function measureComponents({ code, language, k = 5 } = {}) {
     waveformWidth: w.width,
   };
 }
-measureComponents.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+measureComponents.atomicProperties = { charge: -1, valence: 5, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 4, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { measureComponents, canonicalWidth, WAVE_SOURCE, RETIRED_WIDTH, LAYER_DIM };

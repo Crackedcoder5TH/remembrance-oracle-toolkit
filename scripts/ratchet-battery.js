@@ -32,6 +32,9 @@ const RATCHETS = [
   { name: 'silent-catch', script: 'scripts/silent-catch-ratchet.js' },
   { name: 'console', script: 'scripts/console-ratchet.js' },
   { name: 'atomic-drift', script: 'scripts/atomic-drift-ratchet.js' },
+  // the truth-spine as a gate: Void's falsifiable contracts, failing set shrink-only,
+  // verdict must be current (scripts/contracts-ratchet.js)
+  { name: 'contracts', script: 'scripts/contracts-ratchet.js' },
 ];
 
 function runOne(r) {

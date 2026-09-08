@@ -190,9 +190,13 @@ function ensureUp(opts = {}) {
       + '(first start loads the pattern library, ~65-100s; then reads are ~1.5s)');
   }
   try {
-    spawn('python3', [path.join(VOID_ROOT, 'compressor_service.py'),
+    const child = spawn('python3', [path.join(VOID_ROOT, 'compressor_service.py'),
       '--host', '127.0.0.1', '--port', String(PORT)],
-    { cwd: VOID_ROOT, detached: true, stdio: 'ignore' }).unref();
+    { cwd: VOID_ROOT, detached: true, stdio: 'ignore' });
+    child.once('error', (error) => {
+      if (!opts.quiet) console.error('[void] compressor process failed to start — ' + error.message);
+    });
+    child.unref();
   } catch (e) {
     if (!opts.quiet) console.error('[void] could not start the service — ' + e.message);
     return false;

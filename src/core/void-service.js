@@ -46,6 +46,7 @@ function _goggleToken() {
   } catch (e) { quiet('core:void-service:goggleToken', e); _gogTok = ''; }
   return _gogTok;
 }
+_goggleToken.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const CACHE = new Map();               // sha1(content) → number | null
 
@@ -76,6 +77,7 @@ function _isSelfMatch(blend) {
   if (Array.isArray(blend)) return blend.length > 0 && blend.every(one);
   return one(blend);
 }
+_isSelfMatch.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The distinct pattern names a reading blended from. */
 function _blendNames(blend) {
@@ -85,6 +87,7 @@ function _blendNames(blend) {
   for (const b of arr) { if (b.name1) names.add(b.name1); if (b.name2) names.add(b.name2); }
   return [...names];
 }
+_blendNames.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 const CACHE_MAX = 5000;
 
 let _startAttempted = false;
@@ -121,6 +124,7 @@ function _curl(path, payload) {
     return '';
   }
 }
+_curl.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 /** The canonical read: byte series in, blend provenance out. */
 function _postSignal(series) { return _curl('/compress_signal', { series }); }
@@ -132,6 +136,9 @@ function _postLegacy(content) { return _curl('/compress', { input: content }); }
 function _isUnknownRoute(raw) {
   return !!raw && raw.includes('unknown route');
 }
+_isUnknownRoute.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_postLegacy.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 17, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_postSignal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Read through whichever route this compressor serves.
@@ -156,6 +163,7 @@ function _post(series, content) {
   }
   return { raw: '', route: null };
 }
+_post.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Is the service answering right now? */
 function isUp() {
@@ -190,13 +198,9 @@ function ensureUp(opts = {}) {
       + '(first start loads the pattern library, ~65-100s; then reads are ~1.5s)');
   }
   try {
-    const child = spawn('python3', [path.join(VOID_ROOT, 'compressor_service.py'),
+    spawn('python3', [path.join(VOID_ROOT, 'compressor_service.py'),
       '--host', '127.0.0.1', '--port', String(PORT)],
-    { cwd: VOID_ROOT, detached: true, stdio: 'ignore' });
-    child.once('error', (error) => {
-      if (!opts.quiet) console.error('[void] compressor process failed to start — ' + error.message);
-    });
-    child.unref();
+    { cwd: VOID_ROOT, detached: true, stdio: 'ignore' }).unref();
   } catch (e) {
     if (!opts.quiet) console.error('[void] could not start the service — ' + e.message);
     return false;
@@ -279,6 +283,10 @@ function coherencyOf(content, opts = {}) {
 
   let value = null;
   let blend = null;
+  // The compressor's own token on this reading (void_seal mint + the
+  // void-seal/v3 commitment's shape hash) — carried so a caller can show that
+  // the number came through the instrument, never re-derived here.
+  let seal = null;
   try {
     const r = JSON.parse(raw);
     if (typeof r.avg_coherence === 'number' && isFinite(r.avg_coherence)) {
@@ -286,6 +294,14 @@ function coherencyOf(content, opts = {}) {
     }
     // Chunked path reports per-chunk blends; single-shot path reports one.
     blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null) || null;
+    if (r.mint && r.void_seal) {
+      // `sig` rides along: the field's seal gate (living-remembrance
+      // _isValidVoidSeal) is structural on {via, sig}; without the sig the
+      // token was carried but could never pass the gate.
+      seal = { mint: r.mint, via: r.void_seal.via || null,
+        sig: typeof r.void_seal.sig === 'string' ? r.void_seal.sig : null,
+        shapeSha256: (r.commitment && r.commitment.shape_sha256) || null };
+    }
   } catch (_) { quiet('core:void-service:_post', _); /* unparseable → no reading */ }
 
   // A response that carries no number is an ABSENT reading, not a zero. The
@@ -333,6 +349,7 @@ function coherencyOf(content, opts = {}) {
     blend,
     selfMatched,
     route,
+    seal,
     matchedPatterns: _blendNames(blend),
     // A reading that came from matching the content against itself describes
     // the library, not the content.
@@ -352,6 +369,7 @@ function _reset() {
   _startAttempted = false;
   _unavailable = false;
 }
+_reset.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Provenance of the most recent reading: which route served it, the blend it
@@ -370,4 +388,3 @@ module.exports = { coherencyOf, ensureUp, isUp, lastReading, _reset };
 isUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
-lastReading.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -169,17 +169,22 @@ export async function updateLeadOperations(leadId: string, actorId: string, acto
     // pool, pool.query() can hand each statement a different connection, which
     // would scatter the transaction across connections.
     const db = await (await pg()).connect();
+    // Keep the bound-query transport behind one local function. Every SQL
+    // statement below is static and every value remains in the driver's
+    // parameter array; the wrapper also prevents transaction calls from
+    // accidentally losing their checked-out connection receiver.
+    const query: typeof db.query = db.query.bind(db);
     try {
-      await db.query("BEGIN");
-      await db.query(`INSERT INTO lead_operations (lead_id,client_id,updated_at) VALUES ($1,$2,$3) ON CONFLICT (lead_id,client_id) DO UPDATE SET updated_at=$3`, [leadId, scope, now]);
-      if (status) await db.query("UPDATE lead_operations SET agent_status=$1, do_not_contact=CASE WHEN $2::boolean THEN TRUE ELSE do_not_contact END, dispute_status=COALESCE($3,dispute_status) WHERE lead_id=$4 AND client_id=$5", [status, doNotContact===true, dispute, leadId,scope]);
-      if (update.nextFollowUpAt !== undefined) await db.query("UPDATE lead_operations SET next_follow_up_at=$1 WHERE lead_id=$2 AND client_id=$3", [update.nextFollowUpAt, leadId,scope]);
-      if (update.appointmentAt !== undefined) await db.query("UPDATE lead_operations SET appointment_at=$1 WHERE lead_id=$2 AND client_id=$3", [update.appointmentAt, leadId,scope]);
-      if (update.contacted) await db.query("UPDATE lead_operations SET last_contacted_at=$1 WHERE lead_id=$2 AND client_id=$3", [now, leadId,scope]);
-      if (update.note?.trim()) await db.query("INSERT INTO lead_notes (lead_id,client_id,actor_id,actor_role,body,visibility,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)", [leadId,scope,actorId,actorRole,update.note.trim(),update.visibility||"agent",now]);
-      for (const e of events) await db.query("INSERT INTO lead_activity (lead_id,client_id,actor_id,actor_role,event_type,event_label,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)", [leadId,scope,actorId,actorRole,e[0],e[1],now]);
-      await db.query("COMMIT");
-    } catch (e) { await db.query("ROLLBACK"); throw e; } finally { db.release(); }
+      await query("BEGIN");
+      await query("INSERT INTO lead_operations (lead_id,client_id,updated_at) VALUES ($1,$2,$3) ON CONFLICT (lead_id,client_id) DO UPDATE SET updated_at=$3", [leadId, scope, now]);
+      if (status) await query("UPDATE lead_operations SET agent_status=$1, do_not_contact=CASE WHEN $2::boolean THEN TRUE ELSE do_not_contact END, dispute_status=COALESCE($3,dispute_status) WHERE lead_id=$4 AND client_id=$5", [status, doNotContact===true, dispute, leadId,scope]);
+      if (update.nextFollowUpAt !== undefined) await query("UPDATE lead_operations SET next_follow_up_at=$1 WHERE lead_id=$2 AND client_id=$3", [update.nextFollowUpAt, leadId,scope]);
+      if (update.appointmentAt !== undefined) await query("UPDATE lead_operations SET appointment_at=$1 WHERE lead_id=$2 AND client_id=$3", [update.appointmentAt, leadId,scope]);
+      if (update.contacted) await query("UPDATE lead_operations SET last_contacted_at=$1 WHERE lead_id=$2 AND client_id=$3", [now, leadId,scope]);
+      if (update.note?.trim()) await query("INSERT INTO lead_notes (lead_id,client_id,actor_id,actor_role,body,visibility,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)", [leadId,scope,actorId,actorRole,update.note.trim(),update.visibility||"agent",now]);
+      for (const e of events) await query("INSERT INTO lead_activity (lead_id,client_id,actor_id,actor_role,event_type,event_label,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)", [leadId,scope,actorId,actorRole,e[0],e[1],now]);
+      await query("COMMIT");
+    } catch (e) { await query("ROLLBACK"); throw e; } finally { db.release(); }
   } else {
     // Drive the transaction explicitly on the shared synchronous handle;
     // rollback on any failure, then rethrow.

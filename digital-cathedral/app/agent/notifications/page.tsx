@@ -28,5 +28,5 @@ function deriveReminders(leads: Lead[]): Reminder[] {
     if (lead.nextFollowUpAt) { const at = Date.parse(lead.nextFollowUpAt); if (at <= now + day) items.push({ type: "Follow-up", title: at < now ? `Follow-up overdue for ${name}` : `Follow-up due for ${name}`, message: "Open the lead to review the next step.", href, urgent: at < now, at: lead.nextFollowUpAt }); }
     if (lead.appointmentAt) { const at = Date.parse(lead.appointmentAt); if (at <= now + day && at >= now - day) items.push({ type: "Appointment", title: at < now ? `Appointment may be overdue for ${name}` : `Appointment today for ${name}`, message: "Open the authorized lead workspace for appointment details.", href, urgent: at < now, at: lead.appointmentAt }); }
   }
-  return items.sort((a, b) => Number(b.urgent) - Number(a.urgent) || Date.parse(a.at ?? "9999") - Date.parse(b.at ?? "9999"));
+  return [...items].sort((a, b) => Number(b.urgent) - Number(a.urgent) || Date.parse(a.at ?? "9999") - Date.parse(b.at ?? "9999"));
 }

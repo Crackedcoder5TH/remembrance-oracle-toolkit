@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-08T00:55:03.642Z",
- "digest": "6901b55e8293755fdf08232184aafb91c92f10f321e7d37e15516808a086b528",
+ "lockedAt": "2026-09-08T19:58:55.163Z",
+ "digest": "1cd3ba2b7adcdddd9e3bb644692352ba834dcc5df9dc7469e05cdc1fa6903b92",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -27,7 +27,7 @@
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
   ".claude/skills/goggles/run.mjs": "4471711149d2c8da64e3634b3374b967b4df30478e7cc5def642fac07cee82c5",
   ".claude/skills/goggles/change-coin.py": "52f8af26f82b866d4a9a1e2a11acae6922c17e433e1b98e2e02da5228f1f2471",
-  "src/tools/goggles-bash-hook.js": "dfd50daa534e78c8527bcc5b6af1d32cfd14972488b5147b4873f4dc1cabe133"
+  "src/tools/goggles-bash-hook.js": "711c3ae4aa5d61551847854c14b72ac05bf758902804efb5d4bec1a510dbb8c6"
  },
  "history": [
   {
@@ -179,6 +179,15 @@
    "reason": "width gate: the L1 boundary is drawn by the form; the shape reading is recorded on every hit (--shape, shapeAt) and never decides — measured 5/9 on labelled holdouts; the decoder-layer allowlist was inert and is gone; trap 52 recorded",
    "changed": [
     "scripts/width-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T19:58:55.163Z",
+   "from": "6901b55e8293755fdf08232184aafb91c92f10f321e7d37e15516808a086b528",
+   "to": "1cd3ba2b7adcdddd9e3bb644692352ba834dcc5df9dc7469e05cdc1fa6903b92",
+   "reason": "Owner-approved covenant-gated denial logging for PR #355 review repair",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
    ]
   }
  ]

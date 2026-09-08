@@ -1900,6 +1900,64 @@
      "shape_sha256": "071b5d48b6563e4e62be86e5a79680f96a3c6908c010e978a8331fef460027c8"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "6e9208be97bd4062e79cb26578a647b9260cf48f9398b1cfda1b444f18ad5692",
+   "minted_at": "2026-09-08T22:52:56+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "toolkit-b5-clean",
+    "base_tree": "1ff6ea87f3bdbc6ad0753ad84aee0343e7c6c597",
+    "files": [
+     ".github/workflows/covenant-fractal-check.yml",
+     ".github/workflows/ratchet-battery.yml",
+     "digital-cathedral/app/admin/clients/page.tsx",
+     "digital-cathedral/app/admin/outcomes/page.tsx",
+     "digital-cathedral/app/admin/page.tsx",
+     "digital-cathedral/app/agent/notifications/page.tsx",
+     "digital-cathedral/app/lib/client-database/index.ts",
+     "digital-cathedral/app/lib/compliance.ts",
+     "digital-cathedral/app/lib/lead-distribution.ts",
+     "digital-cathedral/app/lib/lead-operations.ts",
+     "digital-cathedral/app/portal/marketplace/page.tsx",
+     "digital-cathedral/patterns/batch3/event-emitter.js",
+     "digital-cathedral/patterns/batch4/queue.js",
+     "digital-cathedral/patterns/batch4/sorted-array.js",
+     "seeds/gates.lock.json",
+     "src/tools/goggles-bash-hook.js"
+    ],
+    "diff_bytes": 33805,
+    "diff_sha256": "5fb24c92d68d74f94a81a4cf209096350db0400398c9dab9c63fed678c5520ac"
+   },
+   "reading": {
+    "coherency": 0.08541278822894288,
+    "ratio": 3.607405826485967,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "a392cd2e0cac4a4e",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "d631970a5c3eaafe0c5100b82ac0d86604c31ad6f734d3a37f2e8172db2bf1d3",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-09T01:52:56",
+     "coin": null,
+     "sig": "a392cd2e0cac4a4e3b23050188bcf78639885682feb118a511e8fe6053f14378"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 33805,
+     "compressed_size": 9371,
+     "coherency": 0.08541278822894288,
+     "data_sha256": "2d884c9ba8ecb90118299c81de97a6a00bec0f4353ef8b9d462a6e300236894b",
+     "compressed_sha256": "f7fac1f585efd7340dd35a88e0c53dee2930ad4ed26baf0ec6138afc3648ff4f",
+     "shape_sha256": "5bbaa4f17ae24de36381a2ddef28999f8ac822ee062f20bd69a50d52bdd45f32"
+    }
+   }
   }
  ]
 }

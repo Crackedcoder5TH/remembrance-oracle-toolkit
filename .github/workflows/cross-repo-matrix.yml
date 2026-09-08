@@ -39,6 +39,7 @@ jobs:
           repository: Crackedcoder5TH/Reflector-oracle-
           path: reflector
           fetch-depth: 1
+          token: ${{ secrets.ECOSYSTEM_PAT }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -81,6 +82,7 @@ jobs:
           repository: Crackedcoder5TH/Void-Data-Compressor
           path: void
           fetch-depth: 1
+          token: ${{ secrets.ECOSYSTEM_PAT }}
 
       - name: Setup Python
         uses: actions/setup-python@v5

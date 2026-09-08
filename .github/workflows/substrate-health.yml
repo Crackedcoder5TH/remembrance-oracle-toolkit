@@ -51,6 +51,7 @@ jobs:
           path: Void-Data-Compressor
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 1
+          token: ${{ secrets.ECOSYSTEM_PAT }}
         continue-on-error: true
 
       - name: fall back to void main
@@ -60,6 +61,7 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/Void-Data-Compressor
           path: Void-Data-Compressor
+          token: ${{ secrets.ECOSYSTEM_PAT }}
 
       # #42 — when same-branch fell through AND the PR diff touches a
       # cross-repo-coupled file (one whose API contract spans both

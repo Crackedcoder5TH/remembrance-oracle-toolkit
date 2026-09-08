@@ -47,14 +47,18 @@ const CLAIMS = {
   // encoders, not by trusting a comment.
   dims: [
     {
-      id: 'L1 fractal — toFractalWaveform',
-      expect: 29,
-      get: () => require('../../core/fractal-waveform').toFractalWaveform(SAMPLE).length,
+      // ONE representation: the oracle's encoder IS the decoder at its active depth.
+      id: 'canonical encoder — code-to-waveform.codeToWaveform',
+      expect: 232,
+      get: () => require('../../core/code-to-waveform').codeToWaveform(SAMPLE).length,
     },
     {
-      id: 'composed depth-4 — decoder-stack.composedAtDepth(_, 4)',
-      expect: 116,
-      get: () => require('../../core/decoder-stack').composedAtDepth(SAMPLE, 4).length,
+      // THE canonical vector: the decoder at its active depth (8 × 29 = 232-D).
+      // Every resonance in the ecosystem reads this width, in the one
+      // whitened space; the depth-4 checkpoint above is an intermediate.
+      id: 'composed canonical — decoder-stack.composedAtDepth(_, currentDepth())',
+      expect: 232,
+      get: () => { const ds = require('../../core/decoder-stack'); return ds.composedAtDepth(SAMPLE, ds.currentDepth()).length; },
     },
   ],
 };
@@ -70,6 +74,7 @@ function _ecosystemPath() {
   }
   return null;
 }
+_ecosystemPath.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function registerOnboardCommands(handlers, _context) {
   handlers['onboard'] = async () => {

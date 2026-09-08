@@ -39,6 +39,7 @@ let lastFiredAt = 0;
 function _resetCooldown() {
   lastFiredAt = 0;
 }
+_resetCooldown.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function clamp01(n) {
   if (typeof n !== 'number' || !isFinite(n)) return 0;
@@ -183,4 +184,4 @@ module.exports = { relaxIfHot, _resetCooldown };
 // own extractAtomicProperties over the function body.
 clamp01.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 mean.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-relaxIfHot.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+relaxIfHot.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

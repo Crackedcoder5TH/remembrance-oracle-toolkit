@@ -19,10 +19,12 @@ function buildCredentialPattern(assignOp) {
     '\\s*[\'"](?!(?:' + exemptions.join('|') + ')[\'"])[^\'"]{8,}', 'i'
   );
 }
+buildCredentialPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildDocWritePattern() {
   return new RegExp(_k('document\\.wr', 'ite\\s*\\('));
 }
+_buildDocWritePattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildJsDeepPatterns() {
   return [
@@ -43,6 +45,7 @@ function _buildJsDeepPatterns() {
     { pattern: new RegExp('NODE_TLS_REJECT_' + 'UNAUTHORIZED\\s*=\\s*[\'"]0[\'"]'), reason: _k('TLS validation disabled ', 'globally'), severity: 'high' },
   ];
 }
+_buildJsDeepPatterns.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 3, harmPotential: "minimal", alignment: "degrading", intention: "benevolent", domain: "utility" };
 
 function _buildPyDeepPatterns() {
   return [
@@ -58,6 +61,7 @@ function _buildPyDeepPatterns() {
     { pattern: buildCredentialPattern('='), reason: _k('Hardcoded sec', 'ret/cred', 'ential detected'), severity: 'high' },
   ];
 }
+_buildPyDeepPatterns.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildGoDeepPatterns() {
   return [
@@ -68,6 +72,7 @@ function _buildGoDeepPatterns() {
     { pattern: /fmt\.Sprintf\s*\(\s*\w+/, reason: _k('Format string from variable (potential ', 'format string attack)'), severity: 'medium' },
   ];
 }
+_buildGoDeepPatterns.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 const DEEP_SECURITY_PATTERNS = {
   javascript: _buildJsDeepPatterns(),

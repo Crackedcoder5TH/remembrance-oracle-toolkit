@@ -40,12 +40,7 @@ function integrateInto(lexicon) {
     },
   };
 }
-integrateInto.atomicProperties = {
-  charge: 1, valence: 2, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'stable', electronegativity: 0.7, group: 18, period: 5,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
+integrateInto.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function approve(name, kind = 'function') {
   const all = readProposals();

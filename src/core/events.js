@@ -171,6 +171,7 @@ function _reportError(event, err) {
     console.warn(`[events:${event}] handler error:`, err?.message || err);
   }
 }
+_reportError.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Standard event name catalog ────────────────────────────────────────────
 

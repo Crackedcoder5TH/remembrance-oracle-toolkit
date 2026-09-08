@@ -105,7 +105,9 @@ jobs:
         run: |
           BASE="https://raw.githubusercontent.com/Crackedcoder5TH/remembrance-oracle-toolkit/main/.claude/skills/goggles"
           FAILED=0
-          for F in run.mjs SKILL.md; do
+          # run.mjs + SKILL.md are the surface; change-coin.py is the coin every
+          # commit must carry — a forked verifier would be a forked wall.
+          for F in run.mjs SKILL.md change-coin.py; do
             LOCALPATH=".claude/skills/goggles/$F"
             if [[ ! -f "$LOCALPATH" ]]; then
               echo "::error title=goggles skill missing::$LOCALPATH is missing — this repo has no surface."

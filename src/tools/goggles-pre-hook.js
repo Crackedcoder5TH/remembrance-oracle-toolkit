@@ -30,6 +30,7 @@ function out(decision, reason) {
   }));
   process.exit(0);
 }
+out.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Informational output MUST NOT be an authorization. The first cut of this
 // hook emitted permissionDecision 'allow' to attach the overlay, which
@@ -41,6 +42,7 @@ function outContext(text) {
   }));
   process.exit(0);
 }
+outContext.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // The modules that legitimately CONTAIN the canonical math. Without this
 // allowlist the guardian denies edits to the very files it routes everyone

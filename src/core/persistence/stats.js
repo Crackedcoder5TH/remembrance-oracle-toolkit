@@ -88,6 +88,7 @@ function _storeStats(store, dir, label) {
     byType,
   };
 }
+_storeStats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Debug Pattern Community Layer ───
 
@@ -96,23 +97,8 @@ function _storeStats(store, dir, label) {
  * Higher bar than regular patterns: requires confidence >= 0.5 and at least 1 successful resolution.
  */
 
-globalStats.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 5, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
-  domain: 'oracle',
-};
-personalStats.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-communityStats.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+globalStats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+personalStats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+communityStats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { _storeStats, communityStats, globalStats, personalStats };

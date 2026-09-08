@@ -39,6 +39,7 @@ function _bearerOk(header, token) {
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
 }
+_bearerOk.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function startHTTPServer({ host = '127.0.0.1', port = 7787, token = null, oracle } = {}) {
   const mcpServer = new MCPServer(oracle || new RemembranceOracle());
@@ -132,11 +133,6 @@ function startHTTPServer({ host = '127.0.0.1', port = 7787, token = null, oracle
   return { mcpServer, httpServer };
 }
 
-startHTTPServer.atomicProperties = {
-  charge: 1, valence: 8, mass: 'medium', spin: 'even', phase: 'plasma',
-  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 5,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'mcp-transport-http',
-};
+startHTTPServer.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 7, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { startHTTPServer };

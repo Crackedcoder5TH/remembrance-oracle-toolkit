@@ -82,6 +82,7 @@ function parseComments(comments, totalLines) {
   // If file-level wildcard was requested, collapse everything.
   return { byLine, fileRules };
 }
+parseComments.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Check whether a finding should be suppressed.
@@ -108,6 +109,7 @@ function isSuppressed(finding, table) {
   if (ruleId && lineSet.has(ruleId)) return true;
   return false;
 }
+isSuppressed.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── .oracle-ignore file ─────────────────────────────────────────────────────
 
@@ -138,6 +140,7 @@ function loadIgnoreFile(repoRoot) {
   }
   return compileIgnore('', repoRoot);
 }
+loadIgnoreFile.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function compileIgnore(raw, repoRoot) {
   const patterns = [];
@@ -160,6 +163,7 @@ function compileIgnore(raw, repoRoot) {
     },
   };
 }
+compileIgnore.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function globToRegex(glob) {
   let re = '^';
@@ -179,6 +183,7 @@ function globToRegex(glob) {
   re += '$';
   return new RegExp(re);
 }
+globToRegex.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   parseComments,

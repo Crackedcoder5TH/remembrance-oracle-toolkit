@@ -2,35 +2,40 @@
 
 /**
  * void-library.js — reader for Void-Data-Compressor's canonical
- * pattern library at the composed fractal layer.
+ * pattern library at the ONE representation: the 232-D fractal decoder
+ * at its active depth.
  *
- * AGENTS: patterns here are COMPRESSED, not text. Each entry is `fractal`
- * (29-D) + `composed_v1…v4` vectors — there is NO source text. The library
- * was built by running input through the void compressor once; the encoder
- * layers on the compressed waveform to catch residual. Never assume you need
- * (or that the substrate retained) the raw text. See Void-Data-Compressor's
- * AGENTS.md "READ THIS FIRST" block.
+ * AGENTS: patterns here are COMPRESSED, not text. Each entry is one
+ * `composed` vector (232-D) — there is NO source text. The library was
+ * built by running input through the void compressor once; the encoder
+ * layers on the compressed waveform to catch residual. Never assume you
+ * need (or that the substrate retained) the raw text. See
+ * Void-Data-Compressor's AGENTS.md "READ THIS FIRST" block.
  *
- * The 256-D byte-stretch layer is deprecated. It gave false positives
- * (any text input scored ~0.9 against any text-derived library, the
- * encoder's known noise floor). The canonical encoder is the composed
- * fractal stack: 116-D = L1-structural + L2-lexical + L3-numerical +
- * L4-spectral (4 × 29-D depths; see decoder-stack.js). The 29-D L1
- * fractal is the base layer and the JS↔Python parity anchor (contract
- * C-71, verified against to_fractal_waveform.py). The index
- * (pattern_index_fractal.json) stores BOTH per pattern: `fractal`
- * (29-D L1) and `composed_v1` (116-D).
+ * Retired representations, never read here: the 256-D byte-stretch (any
+ * text scored ~0.9 against any text-derived library — the encoder's noise
+ * floor) and the 29-D L1 carried as a vector of its own (it is the first
+ * block of the one vector and is read FROM it, never beside it). The
+ * depth checkpoints (composed_v1 116-D, composed_v2 145-D, composed_v4
+ * 203-D) are never read as a fallback either: an entry without the one
+ * vector is not compared at all, and census() says how many there are.
+ *
+ * THE LIBRARY IS THE INDEX PLUS THE STORE. The substrate index holds the
+ * witnessed files (~2.6k). The pattern library itself — 45,547 patterns as
+ * 232-D vectors in Void's data/ store — is loaded beside it through
+ * src/core/store-export.js (numpy exports it once per store version; node
+ * reads the float32 rows). Rows are named `store/<stem>#<row>`.
  *
  * What this module does:
- *   - Load both the 29-D L1 map and the 116-D composed map lazily on
- *     the first scoring call
- *   - scoreWithFlow(): the default — cosine FLOW across all four depths
- *     (d1=29, d2=58, d3=87, d4=116) per match, plus a shape label
- *   - score(): backward-compat single-cosine at L1 (29-D) only
+ *   - Load the composed map lazily on the first scoring call — index
+ *     entries and store rows alike — and build ONE FractalIndex over it
+ *   - scoreWithFlow(): the read — cosine FLOW across every active depth
+ *     per match, plus a shape label; d4 carries the deepest reading
+ *   - score(): the same read in the single-score shape older callers use
  *
  * What this module does NOT do:
- *   - Read the deprecated 256-D byte library at all
- *   - Encode inputs (callers pre-encode via the encoder stack)
+ *   - Read any retired representation
+ *   - Encode inputs (callers pre-encode via decoder-stack / codeToWaveform)
  *   - Mutate the library (growth happens when Void compresses new
  *     patterns and the fractal index is re-encoded)
  *
@@ -46,25 +51,25 @@ const { FractalIndex } = require('./fractal-index');
 // One decoder, one cosine (ECOSYSTEM §7). This module used to compute its
 // own checkpoints; tests/one-cosine-guard.test.js now fails CI if any
 // module outside decoder-stack does.
-const {
-  flowCosines: _flowCosines,
-  deepestFlow: _deepestFlow,
-  flowCheckpoints: _flowCheckpoints,
-} = require('./decoder-stack');
+const { currentDepth } = require('./decoder-stack');
 
 const DEFAULT_VOID_ROOT = process.env.VOID_ROOT
   || '/home/user/Void-Data-Compressor';
+
+const LAYER_DIM = 29; // one decoder layer; the canonical width is currentDepth() layers — asked for, never written down
+function _canonicalWidth() { return currentDepth() * LAYER_DIM; }
 
 class VoidLibrary {
   constructor(opts = {}) {
     this.voidRoot = opts.voidRoot || DEFAULT_VOID_ROOT;
     this.indexPath = path.join(this.voidRoot, 'pattern_index_fractal.json');
-    this._fractals = null;     // Map<name, Float64Array(29)>
-    this._composed = null;     // Map<name, Float64Array(116)> (composed_v1 when present)
+    this._fractals = null;     // loaded marker — the composed map below (ONE width; the 29-D L1 map is gone)
+    this._composed = null;     // Map<name, Float64Array(232)> — the canonical `composed` (232-D decoder) per entry
     this._fractalIndex = null; // FractalIndex over the composed vectors (the search engine)
     this._loadError = null;
     this._loadAttempted = false;
     this._meta = null;
+    this._store = null;        // { rows, width, sha } | { rows: 0, error } once loaded
   }
 
   /**
@@ -76,60 +81,65 @@ class VoidLibrary {
   }
 
   /**
-   * Score a pre-encoded 29-D fractal vector against the library.
-   * Backward-compatible — returns single-cosine matches at L1.
-   *
-   * @param {Float64Array|number[]} inputFractal — 29-D fractal vector
-   * @param {object} [opts]
-   * @returns single-cosine top-K result
+   * The substrate's memory of one index entry (stored reading, its source,
+   * width, witnessed-at), or null when the substrate has never seen it.
+   * @param {string} name — the index key, e.g. `oracle/src/core/x.js`
    */
-  score(inputFractal, opts = {}) {
-    const m = this._ensureLoaded();
-    if (!m || m.size === 0) return null;
-    if (!inputFractal || inputFractal.length === 0) return null;
-    if (inputFractal.length !== 29) return null;
+  entryMeta(name) {
+    this._ensureLoaded();
+    return (this._entryMeta && this._entryMeta.get(name)) || null;
+  }
 
-    const k = Math.max(1, opts.k || 5);
-    const filter = typeof opts.filter === 'function' ? opts.filter : null;
+  /**
+   * Census of the library: index entries (and how many carry a compressor
+   * reading), store rows, and the store this came from. Triggers warmup.
+   */
+  census() {
+    this._ensureLoaded();
+    const entries = this._entryMeta ? this._entryMeta.size : 0;
+    let withReading = 0, fromCompressor = 0;
+    for (const m of (this._entryMeta ? this._entryMeta.values() : [])) {
+      if (typeof m.coherence === 'number') withReading++;
+      if (m.coherenceSource && String(m.coherenceSource).startsWith('void:')) fromCompressor++;
+    }
+    return { entries, withReading, fromCompressor, store: this._store || { rows: 0 }, loadError: this._loadError };
+  }
 
-    const scores = [];
-    for (const [name, vec] of m) {
-      if (filter && !filter(name)) continue;
-      const cos = _cosine29(inputFractal, vec);
-      if (Number.isFinite(cos)) {
-        scores.push({ name, score: cos });
-      }
-    }
-    if (scores.length === 0) {
-      return {
-        score: 0, meanTopK: 0, bestMatch: 0,
-        topMatches: [], librarySize: m.size, filteredSize: 0,
-      };
-    }
-    scores.sort((a, b) => b.score - a.score);
-    const topMatches = scores.slice(0, k);
-    const meanTopK = topMatches.reduce((s, mt) => s + mt.score, 0) / topMatches.length;
+  /**
+   * Score a pre-encoded canonical vector against the library — the same
+   * flow read as scoreWithFlow, published in the single-score shape older
+   * callers read (`score`, `bestMatch` as a number, `topMatches[].score`).
+   * This used to be a separate 29-D L1-only cosine; ONE width now.
+   *
+   * @param {Float64Array|number[]} vec — the 232-D decoder vector
+   * @param {object} [opts]
+   * @returns top-K result or null (no library, or not a canonical vector)
+   */
+  score(vec, opts = {}) {
+    const r = this.scoreWithFlow(vec, opts);
+    if (!r) return null;
     return {
-      score: meanTopK,
-      meanTopK,
-      bestMatch: topMatches[0].score,
-      topMatches,
-      librarySize: m.size,
-      filteredSize: scores.length,
+      ...r,
+      score: r.meanTopK,
+      bestMatch: r.bestMatch ? r.bestMatch.d4 : 0,
+      filteredSize: r.topMatches.length,
     };
   }
 
   /**
-   * Score with FULL coherency flow at every depth (L1, L1+L2, L1+L2+L3,
-   * L1+L2+L3+L4). For each top match, returns {d1, d2, d3, d4, shape}
-   * rather than a single cosine. This is the flow-aware default.
+   * Score with FULL coherency flow at every active depth. For each top
+   * match, returns {d1, d2, d3, d4, shape} rather than a single cosine —
+   * d4 carries the DEEPEST reading (232-D today), not the fourth checkpoint.
+   * This is the flow-aware default, and the only read.
    *
-   * Caller provides the input encoded at both L1 (29-D fractal) and
-   * composed (up to 116-D). If the library doesn't have composed
-   * vectors for a match, the flow falls back to d1 at every depth.
+   * ONE width: the caller provides the canonical vector — the 232-D decoder
+   * at its active depth. The L1 is its first 29 dims and is read FROM it
+   * (FractalIndex.searchFlow), never handed in beside it. The old call
+   * shape (inputL1, inputComposed, opts) is still accepted; the L1 argument
+   * is dropped. A vector that is not canonical is not a reading → null.
+   * There is no L1-only fallback loop any more: no index → null.
    *
-   * @param {Float64Array|number[]} inputL1        — 29-D L1 vector
-   * @param {Float64Array|number[]} inputComposed  — full composed vector (up to 116-D)
+   * @param {Float64Array|number[]} vec — the canonical 232-D decoder vector
    * @param {object} [opts]
    *   k?: number = 5
    *   filter?: (name) => boolean
@@ -138,85 +148,37 @@ class VoidLibrary {
    *   meanTopK: number,
    *   topMatches: Array<{name, d1, d2, d3, d4, shape, score}>,
    *   librarySize: number,
-   *   composedCoverage: number,   // fraction of matches with composed vectors
-   * }}
+   *   composedCoverage: number,   // every loaded entry carries the canonical vector: 1
+   * }} | null
    */
-  scoreWithFlow(inputL1, inputComposed, opts = {}) {
+  scoreWithFlow(vec, opts = {}, legacyOpts) {
+    // Legacy call shape (inputL1, inputComposed, opts): the composed vector
+    // is the reading; the L1 handed in beside it is dropped.
+    if (opts && typeof opts.length === 'number' && (Array.isArray(opts) || ArrayBuffer.isView(opts))) {
+      vec = opts; opts = legacyOpts || {};
+    }
     const m = this._ensureLoaded();
     if (!m || m.size === 0) return null;
-    if (!inputL1 || inputL1.length !== 29) return null;
+    if (!vec || vec.length !== _canonicalWidth()) return null;
 
     const k = Math.max(1, opts.k || 5);
     const filter = typeof opts.filter === 'function' ? opts.filter : null;
 
-    // Primary path — the field-tool default carries a composed query vector.
-    // Serve it from the FractalIndex (precomputed-norm engine), so the whole
-    // substrate runs ONE search engine instead of a second per-comparison loop
-    // here. Identical cosines (composed[:29] == the L1 fractal), just without
-    // recomputing both norms on every comparison.
-    const fi = (inputComposed && inputComposed.length >= 116) ? this._ensureFractalIndex() : null;
-    if (fi && fi.size() > 0) {
-      const raw = fi.searchFlow(inputComposed, { k, filter });
-      if (raw.length === 0) {
-        return { bestMatch: null, meanTopK: 0, topMatches: [], librarySize: m.size, composedCoverage: 0 };
-      }
-      const top = raw.map((r) => ({
-        name: r.id, d1: r.d1, d2: r.d2, d3: r.d3, d4: r.d4,
-        shape: _classifyFlow(r), score: r.d4,
-      }));
-      const meanTopK = top.reduce((s, mt) => s + mt.d4, 0) / top.length;
-      const composedCoverage = this._composed ? this._composed.size / m.size : 0;
-      return { bestMatch: top[0], meanTopK, topMatches: top, librarySize: m.size, composedCoverage };
+    // Served from the FractalIndex (precomputed-norm engine), so the whole
+    // substrate runs ONE search engine — the same one oracle's substrate
+    // search uses — instead of a per-comparison loop here.
+    const fi = this._ensureFractalIndex();
+    if (!fi || fi.size() === 0) return null;
+    const raw = fi.searchFlow(vec, { k, filter });
+    if (raw.length === 0) {
+      return { bestMatch: null, meanTopK: 0, topMatches: [], librarySize: m.size, composedCoverage: 1 };
     }
-
-    // Fallback — no composed query vector (L1-only callers): single cosine at L1.
-    const composed = this._composed;
-    const scored = [];
-    let composedHits = 0, composedMisses = 0;
-    for (const [name, l1Vec] of m) {
-      if (filter && !filter(name)) continue;
-      const d1 = _cosine29(inputL1, l1Vec);
-      if (!Number.isFinite(d1)) continue;
-      const cVec = composed ? composed.get(name) : null;
-      let flow;
-      if (cVec && inputComposed && inputComposed.length > 29) {
-        composedHits++;
-        // The canonical sweep, not four checkpoints computed here. This
-        // block used to call _cosineN at a written-down 58 and 87 with a
-        // "deepest shared" d4, under a comment that said "up to 203 …
-        // full 7-layer stack" — written at seven layers, stale at eight.
-        // flowCosines reads at every ACTIVE boundary and, for a pair where
-        // one side is narrower, repeats its deepest available checkpoint —
-        // which is the same deepest-shared semantic, without the number.
-        flow = _flowCosines(inputComposed, cVec);
-      } else {
-        composedMisses++;
-        flow = _flowCheckpoints().map(() => d1);
-      }
-      const shape = _classifyFlow(flow);
-      const deep = _deepestFlow(flow);
-      // Published keys stay d1..d4 — goggles-hook and the topMatches
-      // consumers read them — but d4 now carries the DEEPEST reading
-      // rather than the fourth checkpoint.
-      scored.push({
-        name, d1: flow[0], d2: flow[1], d3: flow[2], d4: deep,
-        flow, shape, score: deep,
-      });
-    }
-    if (scored.length === 0) {
-      return { bestMatch: null, meanTopK: 0, topMatches: [], librarySize: m.size, composedCoverage: 0 };
-    }
-    scored.sort((a, b) => b.d4 - a.d4);
-    const top = scored.slice(0, k);
+    const top = raw.map((r) => ({
+      name: r.id, d1: r.d1, d2: r.d2, d3: r.d3, d4: r.d4,
+      shape: _classifyFlow(r), score: r.d4,
+    }));
     const meanTopK = top.reduce((s, mt) => s + mt.d4, 0) / top.length;
-    const total = composedHits + composedMisses;
-    return {
-      bestMatch: top[0],
-      meanTopK,
-      topMatches: top,
-      librarySize: m.size,
-      composedCoverage: total > 0 ? composedHits / total : 0,
-    };
+    return { bestMatch: top[0], meanTopK, topMatches: top, librarySize: m.size, composedCoverage: 1 };
   }
 
   /**
@@ -259,29 +221,48 @@ class VoidLibrary {
         patterns_translated: data.patterns_translated,
         composed_v1_meta: data.composed_v1_meta || null,
       };
-      const fractals = new Map();
       const composed = new Map();
+      // What the substrate REMEMBERS about each entry besides its vectors: the
+      // compressor's stored reading and where it came from, the stored width,
+      // when it was witnessed. The goggles' STATE line reads this per file.
+      const meta = new Map();
       for (const [name, entry] of Object.entries(data.index)) {
-        if (entry && Array.isArray(entry.fractal) && entry.fractal.length === 29) {
-          fractals.set(name, Float64Array.from(entry.fractal));
+        if (entry) {
+          meta.set(name, {
+            coherence: typeof entry.coherence === 'number' ? entry.coherence : null,
+            coherenceSource: entry.coherence_source || null,
+            width: entry.composed_width || (Array.isArray(entry.composed) ? entry.composed.length : null),
+            ingestedAt: (entry.ledger && entry.ledger.ingested_at) || entry.ingested_at || null,
+          });
         }
-        // Load the DEEPEST available composed signature per pattern:
-        // composed_v4 (203-D, full 7-layer) > composed_v2 (145-D) > composed_v1
-        // (116-D). A re-encoded pattern (composed_v4[0:116] === composed_v1
-        // exactly — verified) lights up L5-L7; the rest keep their identical
-        // 116-D base. Each is compared at its OWN real depth (fractal-index
-        // searchFlow), so shallow patterns score exactly as before and deep
-        // ones fold in the residual layers — no mixing bias.
-        const deep = entry && (
-          (Array.isArray(entry.composed_v4) && entry.composed_v4.length % 29 === 0 && entry.composed_v4)
-          || (Array.isArray(entry.composed_v2) && entry.composed_v2.length % 29 === 0 && entry.composed_v2)
-          || (Array.isArray(entry.composed_v1) && entry.composed_v1.length >= 29 && entry.composed_v1)
-        );
+        // ONE WIDTH. Only the canonical vector under its own name — `composed`,
+        // the 232-D decoder at the active depth (redecode / harvest write it;
+        // `--do redecode all` measured every entry canonical on 2026-09-07) —
+        // enters the library. The old checkpoints (composed_v1 116-D,
+        // composed_v2 145-D, composed_v4 203-D) are never read as a fallback:
+        // an entry without the one vector is not compared at all, and the
+        // census below says how many there are.
+        const deep = entry && Array.isArray(entry.composed) && entry.composed.length % 29 === 0 && entry.composed.length >= 116 && entry.composed;
         if (deep) composed.set(name, Float64Array.from(deep));
       }
-      this._fractals = fractals;
+      // The pattern library proper: every store row, at the canonical width.
+      const { loadStore } = require('./store-export');
+      const store = loadStore();
+      if (store.error) {
+        this._store = { rows: 0, error: store.error };
+      } else {
+        const { rows, width, data, stems } = store;
+        for (let i = 0; i < rows; i++) {
+          const row = data.subarray(i * width, (i + 1) * width);
+          const name = `store/${stems[i] || 'unknown'}#${i}`;
+          composed.set(name, row);
+        }
+        this._store = { rows, width, sha: store.sha };
+      }
+      this._fractals = composed; // the loaded marker holds the ONE map
       this._composed = composed;
-      return fractals;
+      this._entryMeta = meta;
+      return composed;
     } catch (err) {
       this._loadError = err && err.message ? err.message : 'unknown';
       return null;
@@ -289,21 +270,14 @@ class VoidLibrary {
   }
 
   /**
-   * Lazily build the FractalIndex over the composed (116-D) vectors and
-   * cache it for the process lifetime. This is the same precomputed-norm
-   * search engine oracle's substrate uses — wiring the field-tool library
-   * onto it means the WHOLE instrument runs one search engine, not two
-   * parallel implementations that can drift.
-   *
-   * The vectors are already encoded (loaded from pattern_index_fractal.json),
-   * so we hand them to FractalIndex pre-encoded via `vec` — no re-encode,
-   * no encoder dependency, byte-identical to what scoreWithFlow read before.
-   * The 5 L1-only entries that carry no composed_v1 are simply absent from
-   * the index (46,529 of 46,534 have composed); they were never reachable by
-   * the composed flow path anyway.
-   *
-   * Returns null when there is nothing composed to index, so the caller
-   * falls back to the L1-only loop.
+   * Lazily build the FractalIndex over the canonical vectors and cache it
+   * for the process lifetime. This is the same precomputed-norm search
+   * engine oracle's substrate uses — wiring the field-tool library onto it
+   * means the WHOLE instrument runs one search engine, not two parallel
+   * implementations that can drift. The vectors are already encoded, so
+   * they are handed to FractalIndex pre-encoded via `vec` — no re-encode.
+   * Returns null when there is nothing to index (the caller reads null:
+   * no resonance, never a narrower one).
    */
   _ensureFractalIndex() {
     if (this._fractalIndex) return this._fractalIndex;
@@ -317,30 +291,8 @@ class VoidLibrary {
     return fi;
   }
 }
+_canonicalWidth.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-function _cosine29(a, b) {
-  // Specialized for 29-D — branchless tight loop, no length checks
-  let dot = 0, na = 0, nb = 0;
-  for (let i = 0; i < 29; i++) {
-    const x = a[i] || 0, y = b[i] || 0;
-    dot += x * y; na += x * x; nb += y * y;
-  }
-  if (na === 0 || nb === 0) return 0;
-  return dot / (Math.sqrt(na) * Math.sqrt(nb));
-}
-
-// Cosine over the first N dims of two (possibly longer) vectors.
-// Used for depth-aware reads (29 = d1, 58 = d2, 87 = d3, 116 = d4).
-function _cosineN(a, b, n) {
-  if (a.length < n || b.length < n) return 0;
-  let dot = 0, na = 0, nb = 0;
-  for (let i = 0; i < n; i++) {
-    const x = a[i] || 0, y = b[i] || 0;
-    dot += x * y; na += x * x; nb += y * y;
-  }
-  if (na === 0 || nb === 0) return 0;
-  return dot / (Math.sqrt(na) * Math.sqrt(nb));
-}
 
 // Shape of the coherency flow across the four depths.
 // Mirrors classifyFlow in coherency-mapper to keep void-library
@@ -370,15 +322,16 @@ function _classifyFlow(f) {
   if (inc >= 2 && dec <= 1) return 'ASCENDING';
   return 'OSCILLATING';
 }
+_classifyFlow.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const _default = new VoidLibrary();
 
 module.exports = {
   VoidLibrary,
-  /** L1-only score (backward-compat). */
+  /** The flow read in the single-score shape (backward-compat). */
   score: (fractalVec, opts) => _default.score(fractalVec, opts),
-  /** Flow-aware score across all four depths. The default for new callers. */
-  scoreWithFlow: (l1, composed, opts) => _default.scoreWithFlow(l1, composed, opts),
+  /** Flow-aware score across every active depth over the canonical vector. The read. */
+  scoreWithFlow: (vec, opts, legacyOpts) => _default.scoreWithFlow(vec, opts, legacyOpts),
   /** Current library size (triggers lazy warmup). */
   size: () => _default.size(),
   /** Load status + diagnostics (does not trigger warmup). */

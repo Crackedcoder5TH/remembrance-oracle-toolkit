@@ -43,10 +43,12 @@ function _clip(x) {
   if (x > 1) return 1;
   return x;
 }
+_clip.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _safe(x, fallback = 0) {
   return Number.isFinite(x) ? x : fallback;
 }
+_safe.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _extractNumbers(input) {
   const out = [];
@@ -58,6 +60,7 @@ function _extractNumbers(input) {
   }
   return out;
 }
+_extractNumbers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 1, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _stats(nums) {
   const n = nums.length;
@@ -94,6 +97,7 @@ function _stats(nums) {
     intFrac: ints / n,
   };
 }
+_stats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _sequenceDynamics(nums) {
   const n = nums.length;
@@ -161,6 +165,7 @@ function _sequenceDynamics(nums) {
     decFrac: dec / (n - 1),
   };
 }
+_sequenceDynamics.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _distributionShape(nums, st) {
   const n = nums.length;
@@ -199,6 +204,7 @@ function _distributionShape(nums, st) {
   const uniqueFrac = unique / n;
   return { medRatio, logScale, dominantBin, tailHeavy, uniqueFrac };
 }
+_distributionShape.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _structuralSequence(input) {
   // Positional structure on input characters
@@ -256,6 +262,7 @@ function _structuralSequence(input) {
   const runlen = 1 - runs / len;
   return { charEntropy, firstNonWS, lineLenEntropy, periodic: bestPeriod, runlen };
 }
+_structuralSequence.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _domainMarkers(nums) {
   const n = nums.length;
@@ -280,6 +287,7 @@ function _domainMarkers(nums) {
   const coordinate = coord / n;
   return { timestamp, ratio, coordinate };
 }
+_domainMarkers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function toNumericalWaveform(input) {
   const out = new Float64Array(LAYER_DIM);

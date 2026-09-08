@@ -12,10 +12,10 @@ const require = createRequire(new URL('.', import.meta.url).pathname + '../');
 const W = require('./src/core/whitening');
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
 const idx = JSON.parse(fs.readFileSync(VOID + '/pattern_index_fractal.json', 'utf8')).index;
-const DIM = 116;
+const DIM = 232 /* the ONE width */;
 
 const byDom = {};
-for (const n of Object.keys(idx)) { const v = idx[n].composed_v1; if (!Array.isArray(v) || v.length !== DIM) continue;
+for (const n of Object.keys(idx)) { const v = idx[n].composed; if (!Array.isArray(v) || v.length !== DIM) continue;
   const d = n.split(/[\/_]/)[0].toLowerCase(); (byDom[d] = byDom[d] || []).push(v); }
 const domains = Object.keys(byDom).filter(d => byDom[d].length >= 40).sort((a, b) => byDom[b].length - byDom[a].length).slice(0, 8);
 console.log('domains (>=40 patterns): ' + domains.map(d => d + '(' + byDom[d].length + ')').join(', ') + '\n');

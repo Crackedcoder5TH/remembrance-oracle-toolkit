@@ -11,6 +11,10 @@
 
 name: Cross-Repo Matrix
 
+concurrency:
+  group: cross-repo-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   # Private peers require ECOSYSTEM_PAT. Keep that credential away from
   # pull-request-controlled code: this matrix runs only on trusted pushes to
@@ -31,6 +35,7 @@ jobs:
   reflector-against-toolkit:
     name: Reflector tests against toolkit PR
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout toolkit (this PR)
         uses: actions/checkout@v4
@@ -75,6 +80,7 @@ jobs:
   void-against-toolkit:
     name: Void tests and strict ecosystem contracts
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       ORACLE_TOOLKIT: ${{ github.workspace }}/ecosystem/remembrance-oracle-toolkit
     steps:

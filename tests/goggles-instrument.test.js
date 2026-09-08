@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — mutations are confined to temporary test fixtures.
 /**
  * goggles-instrument — the sections every read carries beside the file.
  *
@@ -13,8 +12,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+const { createGate, requireGate } = require('../src/core/covenant-fractal');
 
 const gi = require('../src/tools/goggles-instrument');
+const FIXTURE_GATE = createGate().seal({ charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid', reactivity: 'inert', electronegativity: 0.3, group: 18, period: 3, harmPotential: 'none', alignment: 'healing', intention: 'benevolent', domain: 'testing' });
+const writeFixture = requireGate((gate, file, data) => fs.writeFileSync(file, data));
 
 test('age() states minutes, hours, days — and never invents one for a bad stamp', () => {
   assert.strictEqual(gi.age(new Date(Date.now() - 5 * 60000).toISOString()), '5m ago');
@@ -36,12 +38,12 @@ test('wallLines: a repo without a coin ledger reads pre-epoch; a modified file r
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'gi-'));
   const git = (...a) => execFileSync('git', ['-C', repo, ...a], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   git('init', '-q', '.'); git('config', 'user.email', 't@t'); git('config', 'user.name', 't');
-  fs.writeFileSync(path.join(repo, 'a.txt'), 'one\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'a.txt'), 'one\n');
   git('add', 'a.txt'); git('commit', '-q', '--no-verify', '-m', 'no coin');
   let lines = gi.wallLines(repo, 'a.txt').join('\n');
   assert.match(lines, /carries NO coin — pre-epoch/);
   assert.match(lines, /unchanged since HEAD/);
-  fs.writeFileSync(path.join(repo, 'a.txt'), 'two\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'a.txt'), 'two\n');
   lines = gi.wallLines(repo, 'a.txt').join('\n');
   assert.match(lines, /MODIFIED since HEAD — unminted until: git add → goggles --do mint/);
   assert.match(lines, /gates\s+/);

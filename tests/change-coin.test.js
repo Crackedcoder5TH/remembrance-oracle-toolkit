@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — mutations are confined to throwaway test repositories.
 /**
  * change-coin — the coin every change must carry.
  *
@@ -16,12 +15,17 @@ const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
 const { execFileSync, spawnSync } = require('node:child_process');
+const { createGate, requireGate } = require('../src/core/covenant-fractal');
 
 const CC = path.join(__dirname, '..', '.claude', 'skills', 'goggles', 'change-coin.py');
 // A test coin is not a memory: every mint below (and every hook the commits
 // run) stays off the Witness. Inherited by the python and git children.
 process.env.CHANGE_COIN_NO_CHAIN = '1';
 process.env.ORACLE_TOOLKIT = path.join(__dirname, '..');
+
+const FIXTURE_GATE = createGate().seal({ charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid', reactivity: 'inert', electronegativity: 0.3, group: 18, period: 3, harmPotential: 'none', alignment: 'healing', intention: 'benevolent', domain: 'testing' });
+const writeFixture = requireGate((gate, file, data) => fs.writeFileSync(file, data));
+const appendFixture = requireGate((gate, file, data) => fs.appendFileSync(file, data));
 
 // Fixed commands, argument arrays, no shell: execFile is the instrument's own
 // prescription for a child process; exit status and output come back either way.
@@ -32,8 +36,11 @@ function run(cmd, argv) {
     return { code: typeof e.status === 'number' ? e.status : 1, out: (e.stdout || '') + (e.stderr || '') };
   }
 }
+run.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function cc(repo, ...args) { return run('python3', [CC, ...args, '--repo', repo]); }
+cc.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function git(repo, ...args) { return run('git', ['-C', repo, ...args]); }
+git.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function freshRepo() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'change-coin-'));
   git(repo, 'init', '-q', '.');
@@ -42,6 +49,7 @@ function freshRepo() {
   assert.strictEqual(cc(repo, 'install-hooks').code, 0);
   return repo;
 }
+freshRepo.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function serviceUp() {
   return new Promise((resolve) => {
     const req = http.get('http://127.0.0.1:8765/health', (res) => { res.resume(); resolve(res.statusCode === 200); });
@@ -49,10 +57,11 @@ function serviceUp() {
     req.setTimeout(1500, () => { req.destroy(); resolve(false); });
   });
 }
+serviceUp.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 7, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 test('a commit with no coin is refused by the commit-msg hook', () => {
   const repo = freshRepo();
-  fs.writeFileSync(path.join(repo, 'a.txt'), 'first\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'a.txt'), 'first\n');
   git(repo, 'add', 'a.txt');
   const r = git(repo, 'commit', '-q', '-m', 'no coin');
   assert.notStrictEqual(r.code, 0);
@@ -62,7 +71,7 @@ test('a commit with no coin is refused by the commit-msg hook', () => {
 
 test('verify: a commit that slipped past the hook (--no-verify) is refused; an empty-diff commit needs no coin', () => {
   const repo = freshRepo();
-  fs.writeFileSync(path.join(repo, 'a.txt'), 'first\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'a.txt'), 'first\n');
   git(repo, 'add', 'a.txt');
   assert.strictEqual(git(repo, 'commit', '-q', '--no-verify', '-m', 'slipped').code, 0);
   // pre-epoch: no ledger anywhere yet → skipped, not refused
@@ -70,10 +79,10 @@ test('verify: a commit that slipped past the hook (--no-verify) is refused; an e
   assert.strictEqual(v.code, 0, v.out);
   assert.match(v.out, /pre-epoch/);
   // once a ledger exists, a later coinless commit is refused
-  fs.writeFileSync(path.join(repo, 'coins.ledger.json'), JSON.stringify({ coins: [] }) + '\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'coins.ledger.json'), JSON.stringify({ coins: [] }) + '\n');
   git(repo, 'add', 'coins.ledger.json');
   assert.strictEqual(git(repo, 'commit', '-q', '--no-verify', '-m', 'epoch (ledger only)').code, 0);
-  fs.writeFileSync(path.join(repo, 'b.txt'), 'second\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'b.txt'), 'second\n');
   git(repo, 'add', 'b.txt');
   assert.strictEqual(git(repo, 'commit', '-q', '--no-verify', '-m', 'coinless after epoch').code, 0);
   v = cc(repo, 'verify', '--since-epoch');
@@ -90,7 +99,7 @@ test('verify: a commit that slipped past the hook (--no-verify) is refused; an e
 test('mint through the instrument → hook writes the trailer → verify recomputes everything', async (t) => {
   if (!(await serviceUp())) { t.skip('compressor service DOWN — cannot mint; start it: goggles --do service start --wait'); return; }
   const repo = freshRepo();
-  fs.writeFileSync(path.join(repo, 'add.js'), 'function add(a, b) {\n  return a + b;\n}\nmodule.exports = { add };\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'add.js'), 'function add(a, b) {\n  return a + b;\n}\nmodule.exports = { add };\n');
   git(repo, 'add', 'add.js');
   const m = cc(repo, 'mint');
   assert.strictEqual(m.code, 0, m.out);
@@ -127,7 +136,7 @@ test('mint through the instrument → hook writes the trailer → verify recompu
   const deep = cc(repo, 'verify', 'HEAD', '--deep');
   assert.strictEqual(deep.code, 0, deep.out);
   // change the index after minting → the coin no longer covers it
-  fs.appendFileSync(path.join(repo, 'add.js'), '\n// drift\n');
+  appendFixture(FIXTURE_GATE, path.join(repo, 'add.js'), '\n// drift\n');
   git(repo, 'add', 'add.js');
   const r = git(repo, 'commit', '-q', '-m', 'drifted');
   assert.notStrictEqual(r.code, 0);
@@ -135,7 +144,7 @@ test('mint through the instrument → hook writes the trailer → verify recompu
   // edit a past coin → append-only refuses it
   const doc = JSON.parse(fs.readFileSync(path.join(repo, 'coins.ledger.json'), 'utf8'));
   doc.coins[0].reading.coherency = 0.99;
-  fs.writeFileSync(path.join(repo, 'coins.ledger.json'), JSON.stringify(doc, null, 1) + '\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'coins.ledger.json'), JSON.stringify(doc, null, 1) + '\n');
   git(repo, 'add', 'coins.ledger.json');
   git(repo, 'reset', '-q', 'add.js');
   assert.strictEqual(git(repo, 'commit', '-q', '--no-verify', '-m', 'tidy the ledger').code, 0);
@@ -147,14 +156,14 @@ test('mint through the instrument → hook writes the trailer → verify recompu
 test('verify: a coin whose seal covers other bytes is refused (the reading must be of THIS patch)', async (t) => {
   if (!(await serviceUp())) { t.skip('compressor service DOWN — cannot mint'); return; }
   const repo = freshRepo();
-  fs.writeFileSync(path.join(repo, 'a.txt'), 'the first change, read by the instrument\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'a.txt'), 'the first change, read by the instrument\n');
   git(repo, 'add', 'a.txt');
   assert.strictEqual(cc(repo, 'mint').code, 0);
   const doc = JSON.parse(fs.readFileSync(path.join(repo, 'coins.ledger.json'), 'utf8'));
   const coin = doc.coins[0];
   // forge: point the coin at a different patch but keep the seal — the runner
   // rebuilds the patch from the trees and the quantised bytes the seal covers
-  fs.writeFileSync(path.join(repo, 'a.txt'), 'a different change, never read\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'a.txt'), 'a different change, never read\n');
   git(repo, 'add', 'a.txt');
   const crypto = require('node:crypto');
   const patch = spawnSync('git', ['-C', repo, '-c', 'diff.noprefix=false', '-c', 'diff.mnemonicPrefix=false', '-c', 'core.quotePath=true',
@@ -164,7 +173,7 @@ test('verify: a coin whose seal covers other bytes is refused (the reading must 
   coin.change.diff_sha256 = crypto.createHash('sha256').update(patch).digest('hex');
   coin.change.diff_bytes = patch.length;
   coin.coin_id = crypto.createHash('sha256').update(`${coin.change.diff_sha256}|${coin.reading.void_seal.sig}|${coin.reading.commitment.shape_sha256}`).digest('hex');
-  fs.writeFileSync(path.join(repo, 'coins.ledger.json'), JSON.stringify(doc, null, 1) + '\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'coins.ledger.json'), JSON.stringify(doc, null, 1) + '\n');
   git(repo, 'add', 'coins.ledger.json');
   assert.strictEqual(git(repo, 'commit', '-q', '--no-verify', '-m', `forged\n\nRemembrance-Coin: ${coin.coin_id}`).code, 0);
   const v = cc(repo, 'verify', 'HEAD');

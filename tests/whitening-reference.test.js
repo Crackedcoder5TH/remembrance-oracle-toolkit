@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — synthetic rows exist only inside isolated tests.
 /**
  * whitening-reference — the resonance space every decoder cosine is taken in.
  *
@@ -25,6 +24,7 @@ function synthRows(n, width, seed = 7) {
   }
   return rows;
 }
+synthRows.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 test('per-layer fit: one 29×29 transform per whole block; whitened blocks decorrelate', () => {
   const rows = synthRows(400, 3 * LAYER_DIM);

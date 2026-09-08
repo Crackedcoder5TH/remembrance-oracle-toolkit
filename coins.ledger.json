@@ -2009,6 +2009,56 @@
      "shape_sha256": "e79f4507e8ba5ae5d97fa4b8a1ec0bb8739b3220900d7b2119b21aec96045d21"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "cc9f0138b8602df11e87a72ed5bdbafaed185d48be87f546d845887a1049eeed",
+   "minted_at": "2026-09-08T23:20:04+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "toolkit-b5-clean",
+    "base_tree": "7f712d9667e1d2c04b506548b4baa1c3f7829b65",
+    "files": [
+     "scripts/atomic-drift-ratchet.js",
+     "seeds/gates.lock.json",
+     "tests/change-coin.test.js",
+     "tests/contracts-ratchet.test.js",
+     "tests/goggles-instrument.test.js",
+     "tests/ratchet-law.test.js",
+     "tests/traps-ledger.test.js",
+     "tests/whitening-reference.test.js"
+    ],
+    "diff_bytes": 25252,
+    "diff_sha256": "7e0ca8f8011bc9c5bee60c166739c1fc61c21af7ce24cd5acef7073adc579328"
+   },
+   "reading": {
+    "coherency": 0.04317080621014849,
+    "ratio": 3.445490517123755,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "a40cfe68bc49d883",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "960e0f59d3d45cc310603f8500e2f293471b1d7563a3ae1fb4e4a251fa00de6e",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-09T02:20:04",
+     "coin": null,
+     "sig": "a40cfe68bc49d883bdf6a5f92a7f48e74d0859084cb40ac5cec9a34386f036b0"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 25252,
+     "compressed_size": 7329,
+     "coherency": 0.04317080621014849,
+     "data_sha256": "f5651ad629ee01730c7315060bfb1278e5455c2f0f7ba2d54669924318dee9b3",
+     "compressed_sha256": "f043ca3d9a71a8a9e4facf626d30ac8a645c9c028e9c342279cbae4487bc57b1",
+     "shape_sha256": "d7ecfc468d06e9b9bb574a11575c18753406b6650faab8e8ce6a5cc683f8a809"
+    }
+   }
   }
  ]
 }

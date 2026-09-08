@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-08T23:09:25.638Z",
- "digest": "01979b082cbd6c8e25d69b10d08483c66b3e57226a9fbb1684ffb1bde4f55c3d",
+ "lockedAt": "2026-09-08T23:19:49.476Z",
+ "digest": "a4231bc820e584cdecba084d39a6623f3461f5b520d9c479142a15553b61ab51",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -16,7 +16,7 @@
   "scripts/orphan-ratchet.js": "2cc9e9055f1d073fa89e5323a6ba1c09c7b12e09b2ddad58dde44b9426bfeb67",
   "scripts/silent-catch-ratchet.js": "fbe0191becb8e53ef490c398183ac03af8f97ae6eec34e688d6ff68ee1475ffc",
   "scripts/console-ratchet.js": "4c4ba3d6742a0910713d413f52e4870b94bba634e0a8ecd594318ccc8f6d13a4",
-  "scripts/atomic-drift-ratchet.js": "f9f71e20c7b3215743a7b638585572a6c40e64e33dd428450c67e25ccef3cbea",
+  "scripts/atomic-drift-ratchet.js": "2b759df51c995ea8dd39dfba6833c2d9e1024ec15c9cfc0562f028b1409b1092",
   "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
   "scripts/contracts-ratchet.js": "c6f7345ad81aa57b3d00118a36846e3a6af469780a120d421558bf38fed2949d",
   "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
@@ -195,6 +195,15 @@
    "from": "1cd3ba2b7adcdddd9e3bb644692352ba834dcc5df9dc7469e05cdc1fa6903b92",
    "to": "01979b082cbd6c8e25d69b10d08483c66b3e57226a9fbb1684ffb1bde4f55c3d",
    "reason": "Owner-approved atomic declarations, shell-free Git inspection, and isolated-test annotations for PR #355 gate repair",
+   "changed": [
+    "scripts/atomic-drift-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T23:19:49.477Z",
+   "from": "01979b082cbd6c8e25d69b10d08483c66b3e57226a9fbb1684ffb1bde4f55c3d",
+   "to": "a4231bc820e584cdecba084d39a6623f3461f5b520d9c479142a15553b61ab51",
+   "reason": "Owner-approved shell-free atomic census and covenant-gated test fixtures for PR #355 gate repair",
    "changed": [
     "scripts/atomic-drift-ratchet.js"
    ]

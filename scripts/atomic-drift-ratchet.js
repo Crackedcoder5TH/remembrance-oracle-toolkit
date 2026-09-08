@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 'use strict';
-// @oracle-infrastructure — static Git argv and gate-owned baseline writes only.
 
 /**
  * atomic-drift-ratchet — a function's declared identity must not drift
@@ -44,7 +43,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
 const { refuseIfLoosening } = require('./lib/ratchet-law');
 
@@ -62,6 +60,22 @@ const _sealedGate = () => createGate().seal({
   harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
   domain: 'utility',
 });
+
+function _walkJs(dir, out) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const absolute = path.join(dir, entry.name);
+    if (entry.isDirectory()) _walkJs(absolute, out);
+    else if (entry.isFile() && entry.name.endsWith('.js')) out.push(path.relative(ROOT, absolute).split(path.sep).join('/'));
+  }
+}
+
+/** Every JavaScript source file in src/, without invoking a shell. */
+function sourceFiles() {
+  const files = [];
+  _walkJs(path.join(ROOT, 'src'), files);
+  return files.sort();
+}
+sourceFiles.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Balanced {...} at or after token i → [startOffset, endOffset]. */
 function braceSpan(ex, i) {
@@ -146,8 +160,7 @@ compare.atomicProperties = {
 function censusDrift() {
   const { tokenize } = require('../src/audit/parser');
   const { extractAtomicProperties } = require('../src/atomic/property-extractor');
-  const files = execFileSync('git', ['ls-files', 'src'], { cwd: ROOT, encoding: 'utf8' })
-    .split('\n').filter((f) => f.endsWith('.js'));
+  const files = sourceFiles();
 
   const byFile = {};
   const unparseable = [];
@@ -262,7 +275,7 @@ function syncAndGrow(current, doSync, doGrow) {
     }
   }
   if (doGrow) {
-    const files = execFileSync('git', ['ls-files', 'src'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter((f) => f.endsWith('.js'));
+    const files = sourceFiles();
     for (const rel of files) {
       let code = load(rel);
       const declared = new Set([...code.matchAll(/^\s*([A-Za-z_$][\w$]*)\.atomicProperties\s*=/gm)].map((m) => m[1]));

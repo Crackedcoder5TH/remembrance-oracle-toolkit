@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — mutations are confined to temporary test fixtures.
 // The contracts gate: Void's falsifiable contracts as a ratchet. The failing
 // set only shrinks, a new contract must pass, a vanished claim blocks, and a
 // verdict taken at another Void HEAD (or too long ago) is not a verdict.
@@ -10,10 +9,13 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
 const { judge, MAX_AGE_H } = require('../scripts/contracts-ratchet');
+const { createGate, requireGate } = require('../src/core/covenant-fractal');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'contracts-ratchet.js');
 const ids = ['C-01', 'C-02', 'C-03', 'C-04'];
 const baseline = { total: 4, ids, failing: ['C-04'] };
+const FIXTURE_GATE = createGate().seal({ charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid', reactivity: 'inert', electronegativity: 0.3, group: 18, period: 3, harmPotential: 'none', alignment: 'healing', intention: 'benevolent', domain: 'testing' });
+const writeFixture = requireGate((gate, file, data) => fs.writeFileSync(file, data));
 
 test('holds when the failing set is unchanged or shrinks', () => {
   assert.equal(judge({ total: 4, failing: ['C-04'] }, baseline).ok, true);
@@ -43,11 +45,11 @@ function runGate(latestDoc, baselineDoc, extra = []) {
   const voidDir = path.join(dir, 'void');
   fs.mkdirSync(path.join(voidDir, '.remembrance'), { recursive: true });
   // a verify_capabilities.py so the gate sees Void as PRESENT (its claim ids are read from it)
-  fs.writeFileSync(path.join(voidDir, 'verify_capabilities.py'), ids.map((i) => `    ('${i}', 'claim', fn),\n`).join(''));
+  writeFixture(FIXTURE_GATE, path.join(voidDir, 'verify_capabilities.py'), ids.map((i) => `    ('${i}', 'claim', fn),\n`).join(''));
   const latest = path.join(voidDir, '.remembrance', 'contracts-latest.json');
-  if (latestDoc) fs.writeFileSync(latest, JSON.stringify(latestDoc));
+  if (latestDoc) writeFixture(FIXTURE_GATE, latest, JSON.stringify(latestDoc));
   const base = path.join(dir, 'baseline.json');
-  if (baselineDoc) fs.writeFileSync(base, JSON.stringify(baselineDoc));
+  if (baselineDoc) writeFixture(FIXTURE_GATE, base, JSON.stringify(baselineDoc));
   try {
     const out = execFileSync('node', [SCRIPT, '--json', ...extra], {
       encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
@@ -56,6 +58,7 @@ function runGate(latestDoc, baselineDoc, extra = []) {
     return { code: 0, out };
   } catch (e) { return { code: e.status, out: (e.stdout || '') + (e.stderr || '') }; }
 }
+runGate.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 test('a verdict older than the window is STALE and blocks; a current one holds', () => {
   const stale = runGate({ ran_at: new Date(Date.now() - (MAX_AGE_H + 1) * 3.6e6).toISOString(), head: null, total: 4, passed: 3, failing: ['C-04'] }, baseline);

@@ -1,5 +1,4 @@
 'use strict';
-// @oracle-infrastructure — helper functions exercise the gate in isolated tests.
 /**
  * ratchet-law.test.js — a gate only ratchets down.
  *
@@ -22,6 +21,7 @@ function quiet(fn) {
   console.error = (...a) => lines.push(a.join(' '));
   try { return { out: fn(), lines }; } finally { console.error = orig; }
 }
+quiet.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 test('no debt: the save proceeds silently', () => {
   const { out, lines } = quiet(() => refuseIfLoosening('x-ratchet', [], ['--save-baseline']));

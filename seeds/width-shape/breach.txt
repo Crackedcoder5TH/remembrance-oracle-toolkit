@@ -1,0 +1,55 @@
+// REFERENCE SHAPE — the BREACH: the 29-D L1 sliced off the one vector and
+// carried as a vector of its own (compared, stored, handed to a scorer).
+// These are the sites the 2026-09-08 sweep removed, kept as the pattern of
+// what a consumer looks like. Read by scripts/width-ratchet.js as a pattern,
+// never as a name.
+
+function _cosine29(a, b) {
+  // Specialized for 29-D — branchless tight loop, no length checks
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < 29; i++) {
+    const x = a[i] || 0, y = b[i] || 0;
+    dot += x * y; na += x * x; nb += y * y;
+  }
+  if (na === 0 || nb === 0) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+  score(inputFractal, opts = {}) {
+    const m = this._ensureLoaded();
+    if (!m || m.size === 0) return null;
+    if (!inputFractal || inputFractal.length === 0) return null;
+    if (inputFractal.length !== 29) return null;
+    const scores = [];
+    for (const [name, vec] of m) {
+      if (filter && !filter(name)) continue;
+      const cos = _cosine29(inputFractal, vec);
+      if (Number.isFinite(cos)) scores.push({ name, score: cos });
+    }
+  }
+
+  scoreWithFlow(inputL1, inputComposed, opts = {}) {
+    if (!inputL1 || inputL1.length !== 29) return null;
+    for (const [name, l1Vec] of m) {
+      const d1 = _cosine29(inputL1, l1Vec);
+      if (!Number.isFinite(d1)) continue;
+      flow = _flowCheckpoints().map(() => d1);
+    }
+  }
+
+        if (entry && Array.isArray(entry.composed) && entry.composed.length >= 29) {
+          fractals.set(name, Float64Array.from(entry.composed.slice(0, 29)));
+        }
+          fractals.set(name, row.subarray(0, 29));
+
+    const waveform = Array.from(toFractalWaveform(content));
+        if (composed && _voidLib.scoreWithFlow) {
+          const flowResult = _voidLib.scoreWithFlow(waveform, composed, { k: merged.topK });
+        }
+        if (!voidResonance) {
+          voidResonance = _voidLib.score(waveform, { k: merged.topK });
+          if (voidResonance) voidResonance.flowAware = false;
+        }
+
+    const r = lib.scoreWithFlow(waveform.slice(0, LAYER_DIM), waveform, { k: k + 1 });
+      const r = new VoidLibrary().scoreWithFlow(composed.slice(0, 29), composed, { k: 3 });

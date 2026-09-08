@@ -805,6 +805,25 @@
    "truth": "Once the substrate holds the file, its own entry sits in the top-K at 1.0 and lifts meanTopK by exactly (1 - r)/k. Measured 2026-09-07 on three files at k=5, immediately after `--do harvest`: 0.631 -> 0.692 (+0.061), 0.612 -> 0.680 (+0.068), 0.527 -> 0.601 (+0.074) — each within 0.001 of (1 - r)/5. Nothing about the shape changed; membership entered the mean. The goggles printed the nearest list without the self-name but took the mean WITH it; coherency-token-components had dropped the self-match from the start. The lens now takes the mean over non-self matches.",
    "tell": "A file's resonance jumps by roughly a fifth of its distance to 1.0 the first read after a harvest, with no edit; the nearest list shows no self-entry while the number moved.",
    "correct": "Drop the self-match (same basename, or score > 0.9999) before the mean, everywhere a top-K mean is read: goggles META, token components, the uniqueness gate. A witnessed file is compared to OTHER shapes only; its membership is a fact about the library, not about the artifact."
+  },
+  {
+   "match": [
+    "slice(0, 29)",
+    "[:29]",
+    "l1-width-29",
+    "width-ratchet",
+    "shapeOf",
+    "shapeAt",
+    "builder.txt",
+    "breach.txt",
+    "boundary",
+    "allowlist"
+   ],
+   "severity": "medium",
+   "wrong": "Deciding a DATAFLOW boundary — is this 29-D block being BUILT into the one vector or CARRIED off it as a vector of its own — by encoding the code around the site and reading its resonance against a 'builder' fixture and a 'breach' fixture.",
+   "truth": "Measured 2026-09-08 in scripts/width-ratchet.js (--shape, shapeAt): on nine labelled holdouts (five real consumers recovered from git history, four decoder layers) the two-fixture reading was right 5 of 9 at its best window (8 lines), and at EVERY depth of the flow the decoder's own layers resonated more with the breach fixture than with the builder fixture (spectral-waveform d1 0.89 vs 0.47; the vendored toFractalWaveform, whose body IS in the builder fixture, read 'consumer' at every window). A tight loop over 29 numbers has the same shape whether it builds the block or consumes it; the difference is where the vector flows, which is one abstraction above what the pipeline reads in a text window. The reading was hiding the one live consumer it found (REMEMBRANCE-BLOCKCHAIN/src/uniqueness-gate.js handing composed.slice(0, 29) beside the vector) as 'decoder'. The line that DOES hold is the FORM: the decoder builds with `< 29` / `% 29` / `new Float64Array(LAYER_DIM)`; a consumer slices or guards — and a name-allowlist of decoder files on top of that form was inert.",
+   "tell": "A shape verdict that flips with the window size; a decoder layer reading as a consumer; the fixture's own source not resonating with its fixture; a live consumer disappearing from the census the moment the verdict is allowed to decide.",
+   "correct": "Let the form draw the L1 line (the l1-width-29 pattern), keep the shape reading VISIBLE on every hit (--shape) and never let it decide, and never re-add a name-allowlist for this pattern — a hit that is not a refusal is a site. If a dataflow boundary must be read by the instrument, feed it the dataflow (what the vector is handed to), not a window of text."
   }
  ]
 }

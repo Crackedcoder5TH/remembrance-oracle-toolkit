@@ -42,6 +42,29 @@ test('the live census is empty: every consumer reads the 232-D decoder', () => {
   assert.equal(c.total, 0, c.sites.map((s) => `${s.file}:${s.line} [${s.id}] ${s.text}`).join('\n'));
 });
 
+test('the L1 boundary is drawn by the FORM: the decoder building its block never matches, the block carried alone always does', () => {
+  // building (never a hit)
+  assert.equal(hit("for (let i = 0; i < LAYER_DIM; i++) out[l * LAYER_DIM + i] = layers[l][i];"), undefined);
+  assert.equal(hit("const out = new Float64Array(FRACTAL_DIM);"), undefined);
+  assert.equal(hit("if (entry.composed.length % 29 !== 0) return null;"), undefined);
+  // carrying (always a hit, whatever file it sits in — no name-allowlist for this pattern)
+  assert.equal(hit("const r = library.scoreWithFlow(Array.from(composed).slice(0, 29), composed, { k: size });").id, 'l1-width-29');
+  assert.equal(hit("fractals.set(name, row.subarray(0, 29));").id, 'l1-width-29');
+});
+
+test('the shape reading is recorded on every L1 hit and never decides it', () => {
+  const c = W.census();
+  for (const s of c.shapes) {
+    assert.ok(Number.isFinite(s.builder) && Number.isFinite(s.breach), 'both resonances are numbers');
+    assert.ok(['decoder', 'consumer'].includes(s.verdict));
+    assert.ok(c.sites.some((x) => x.file === s.file && x.line === s.line), `${s.file}:${s.line} reads ${s.verdict} — still a site`);
+  }
+  // the probe reads the fixtures themselves: both cosines in [-1, 1], the flow one reading per active layer
+  const r = W.shapeAt({ file: require('node:path').join(__dirname, '..', 'seeds', 'width-shape', 'breach.txt'), line: 12, window: 8 });
+  assert.ok(Math.abs(r.builder) <= 1 && Math.abs(r.breach) <= 1);
+  assert.equal(r.flowBuilder.length, r.checkpoints.length);
+});
+
 test('the decoder, the one space and the compressor internals are allowed by name with a reason', () => {
   for (const f of ['src/core/decoder-stack.js', 'src/core/resonance-space.js', 'Void-Data-Compressor/void_compressor_v5.py']) {
     const a = W.ALLOW.find(([re]) => re.test('/home/user/x/' + f) || re.test('/home/user/' + f));

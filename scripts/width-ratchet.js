@@ -30,12 +30,35 @@
  * representation of the pattern), byte histograms for entropy, sha256, and
  * completed migrations kept as record.
  *
+ * THE L1 BOUNDARY. A `29` is legitimate where the decoder BUILDS its L1
+ * block into the one vector, and a breach where the block is sliced off and
+ * carried as a vector of its own. What draws that line, measured:
+ *   - the FORM draws it. The decoder builds with `< 29` / `% 29` / `* 29`
+ *     loops and `new Float64Array(LAYER_DIM)`; a consumer slices
+ *     (`.slice(0, 29)`, `[:29]`) or guards (`.length !== 29`). The pattern
+ *     matches only the second family, so the decoder-layer name-allowlist
+ *     that used to sit here was inert — it shielded nothing — and is gone.
+ *   - the SHAPE does not draw it. The gate encodes the code around every
+ *     hit as the 232-D decoder vector and reads it, in the one space,
+ *     against two fixtures (seeds/width-shape/builder.txt — the decoder
+ *     building the block; breach.txt — the consumers the 2026-09-08 sweep
+ *     removed). On nine labelled holdouts (five real consumers from git
+ *     history, four decoder layers) the reading was right 5 of 9 at its
+ *     best window, and at every depth of the flow the decoder's own layers
+ *     resonated MORE with the breach (spectral-waveform d1 0.89 vs 0.47): a
+ *     tight loop over 29 numbers has the same shape whether it builds the
+ *     block or consumes it. The difference is where the vector FLOWS, and
+ *     that is one abstraction above what the pipeline reads in a window.
+ *     So the reading is recorded on every hit and shown by `--shape`, and
+ *     never decides: a hit that is not a refusal is a site.
+ *
  *   node scripts/width-ratchet.js                 check
  *   node scripts/width-ratchet.js --report        every site
+ *   node scripts/width-ratchet.js --shape         every L1 hit with its shape reading (decoder vs breach)
  *   node scripts/width-ratchet.js --json
  *   node scripts/width-ratchet.js --save-baseline ratchet the floor down
  *
- * Reached through the goggles: `--do gate width [--report]`.
+ * Reached through the goggles: `--do gate width [--report|--shape]`.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -103,8 +126,6 @@ const ALLOW = [
   [/Void-Data-Compressor\/(rag_query|score_v3_records|score_for_bugs|score_cross_repo_records|build_pattern_store|merge_cross_repo_to_store|merge_crawler_inbox|substrate_serf|seed_language_substrate|oracle_bridge|refine_loop|fractal_compute|fractal_retro_search|scripts\/harvest_to_store|scripts\/ingest_gate)\.py$/, 'rewritten to canonical_vector on 2026-09-07; the census still reads them (a regression here counts)'],
   [/Void-Data-Compressor\/tests\/(test_coherency_token_v1|test_living_remembrance_space)\.py$/, 'tests that assert the refusal of the retired width'],
   [/Void-Data-Compressor\/\.claude\//, 'the surface'],
-  [/remembrance-oracle-toolkit\/(src\/core\/(fractal-waveform|fractal-index|compose|lexical-waveform|numerical-waveform|spectral-waveform|redundancy-waveform|content-projection|dimensional-waveform|dynamical-waveform|relational-waveform)\.js|packages\/field-tool\/src\/[^/]+\.js)$/, 'the decoder layers themselves and the vendored field-tool decoder: they BUILD the 29-D block that becomes the one vector'],
-  [/Void-Data-Compressor\/(fractal_decoder|fractal_encoder|to_fractal_waveform|verify_fractal_parity)\.py$/, 'the Python decoder and its JS-parity check: they build the 29-D block, never carry it as a reading'],
   [/(remembrance-oracle-toolkit\/scripts\/migrate-waveforms-to-fractal\.js|Void-Data-Compressor\/rebuild_pattern_store_fractal\.py)$/, 'completed migrations off the 256-sample waveform; they name the retired width only as the history they replaced'],
   [/Void-Data-Compressor\/scripts\/(benchmark_|coherence_decomposition|equation_morphing|depth_vs_breadth|other_half_of_entropy|verify_compression_equation|compression_equation_guard|desaturation_test|whitening_separability|reencode-v5|domain-overlap-check|universal-structure-test|coherency-flow-map|lens-block-analysis|ingest-real-domains|ingest-genomes-languages)/, 'experiment records and completed re-encodes that name the old keys as history'],
 ];
@@ -127,10 +148,73 @@ walk.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", ph
 
 const isComment = (line) => /^\s*(\/\/|\*|\/\*|#)/.test(line);
 const refusesIt = (line) => /retired|RETIRED|refus|never (a|the)|not (a|the) (decoder|canonical)|canonical|the ONE|one width|is not the/i.test(line);
+// This gate and its test quote the patterns in order to census them; they are the census, not a site.
+const SELF = /scripts\/width-ratchet\.js$|tests\/width-ratchet\.test\.js$/;
 
-/** Every live site: { file, line, id, text }. */
+// ── The L1 boundary as a reading ─────────────────────────────────────────
+// Two reference shapes, encoded once through the decoder itself.
+const SHAPE_DIR = path.join(ROOT, 'seeds', 'width-shape');
+const SHAPE_WINDOW = 24; // lines either side of the hit: the pattern around the breach
+let _refs = null;
+function _shapeRefs() {
+  if (_refs) return _refs;
+  const { codeToWaveform } = require('../src/core/code-to-waveform');
+  const read = (f) => fs.readFileSync(path.join(SHAPE_DIR, f), 'utf8');
+  _refs = { builder: codeToWaveform(read('builder.txt')), breach: codeToWaveform(read('breach.txt')) };
+  return _refs;
+}
+_shapeRefs.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/**
+ * Read the shape of the code around one L1 hit against the two references,
+ * in the one space. `decoder` when it resonates more with the decoder
+ * building its block; `consumer` when it resonates more with the breach.
+ * @returns {{ builder: number, breach: number, margin: number, verdict: 'decoder'|'consumer' }}
+ */
+function shapeOf(lines, i) {
+  const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
+  const refs = _shapeRefs();
+  const window = lines.slice(Math.max(0, i - SHAPE_WINDOW), i + SHAPE_WINDOW + 1).join('\n');
+  const v = codeToWaveform(window);
+  const builder = waveformCosine(v, refs.builder);
+  const breach = waveformCosine(v, refs.breach);
+  const margin = builder - breach;
+  return { builder: +builder.toFixed(4), breach: +breach.toFixed(4), margin: +margin.toFixed(4), verdict: margin > 0 ? 'decoder' : 'consumer' };
+}
+shapeOf.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/**
+ * Probe: the shape reading of one file:line at a chosen window, for measuring
+ * the boundary on labelled sites through `--do call` (never by hand).
+ * @param {string} file absolute path  @param {number} line 1-based  @param {number} [window]
+ */
+function shapeAt(file, line, window) {
+  // `--do call` hands one JSON value: accept {file, line, window} or [file, line, window].
+  if (Array.isArray(file)) [file, line, window] = file;
+  else if (file && typeof file === 'object') ({ file, line, window } = file);
+  const lines = fs.readFileSync(file, 'utf8').split('\n');
+  const w = Number.isFinite(window) ? window : SHAPE_WINDOW;
+  const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
+  const { flowCosines, flowCheckpoints } = require('../src/core/decoder-stack');
+  const refs = _shapeRefs();
+  const i = line - 1;
+  const v = codeToWaveform(lines.slice(Math.max(0, i - w), i + w + 1).join('\n'));
+  const builder = waveformCosine(v, refs.builder), breach = waveformCosine(v, refs.breach);
+  return {
+    file: path.relative(HOME, file), line, window: w, text: (lines[i] || '').trim().slice(0, 100),
+    builder: +builder.toFixed(4), breach: +breach.toFixed(4), margin: +(builder - breach).toFixed(4),
+    verdict: builder - breach > 0 ? 'decoder' : 'consumer',
+    flowBuilder: flowCosines(v, refs.builder).map((x) => +x.toFixed(3)),
+    flowBreach: flowCosines(v, refs.breach).map((x) => +x.toFixed(3)),
+    checkpoints: flowCheckpoints(),
+  };
+}
+shapeAt.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/** Every live site: { file, line, id, text[, shape] }; every L1 hit's reading under `shapes`. */
 function census() {
   const sites = [];
+  const shapes = [];
   for (const scope of SCOPES) {
     const base = path.join(HOME, scope.repo);
     if (!fs.existsSync(base)) continue;
@@ -148,7 +232,21 @@ function census() {
         for (const p of PATTERNS) {
           if (!p.re.test(line)) continue;
           if (refusesIt(line)) continue;                       // a refusal names the width to refuse it
-          if (allow && !((p.id === 'byte-waveform-256' || p.id === 'width-256' || p.id === 'l1-width-29') && NEVER_ALLOW_BUILD.test(abs))) continue;
+          if (p.id === 'l1-width-29') {
+            // No NAME decides an L1 hit (the old decoder-layer allowlist was
+            // inert: the decoder builds its block with `< 29` / `% 29` loops,
+            // which this pattern never matches; it matches the block being
+            // sliced off or guarded on). The shape reading is recorded beside
+            // every hit and printed by --shape, but it does NOT decide — see
+            // the header: measured 2026-09-08, it cannot tell building from
+            // carrying. Every hit that is not a refusal is a site.
+            if (SELF.test(abs)) break;
+            const shape = shapeOf(lines, i);
+            shapes.push({ file: rel, line: i + 1, text: line.trim().slice(0, 120), ...shape });
+            sites.push({ file: rel, line: i + 1, id: p.id, why: p.why, text: line.trim().slice(0, 120), shape });
+            break;
+          }
+          if (allow && !((p.id === 'byte-waveform-256' || p.id === 'width-256') && NEVER_ALLOW_BUILD.test(abs))) continue;
           sites.push({ file: rel, line: i + 1, id: p.id, why: p.why, text: line.trim().slice(0, 120) });
           break;
         }
@@ -157,7 +255,7 @@ function census() {
   }
   const byFile = {};
   for (const s of sites) byFile[s.file] = (byFile[s.file] || 0) + 1;
-  return { sites, byFile, total: sites.length };
+  return { sites, byFile, total: sites.length, shapes };
 }
 census.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
@@ -169,7 +267,18 @@ function main() {
   const current = census();
   if (argv.includes('--report')) {
     console.log(`== consumers of a non-canonical vector: ${current.total} site(s) in ${Object.keys(current.byFile).length} file(s) ==`);
-    for (const s of current.sites) console.log(`  ${s.file}:${s.line}  [${s.id}]  ${s.text}`);
+    for (const s of current.sites) console.log(`  ${s.file}:${s.line}  [${s.id}]  ${s.text}${s.shape ? `   shape decoder ${s.shape.builder} · breach ${s.shape.breach}` : ''}`);
+    return 0;
+  }
+  if (argv.includes('--shape')) {
+    // The boundary, visible: every L1 hit, its resonance with the decoder
+    // building its block and with the breach, sorted from most-decoder to
+    // most-consumer. A hit reads as a site only when the breach wins.
+    const rows = current.shapes.slice().sort((a, b) => b.margin - a.margin);
+    const decoder = rows.filter((r) => r.verdict === 'decoder').length;
+    console.log(`== the L1 boundary as a reading: ${rows.length} hit(s) — ${decoder} read as the decoder building its block, ${rows.length - decoder} as a consumer ==`);
+    console.log('  margin   decoder  breach   site');
+    for (const r of rows) console.log(`  ${(r.margin >= 0 ? '+' : '') + r.margin.toFixed(4)}  ${r.builder.toFixed(4)}   ${r.breach.toFixed(4)}   ${r.file}:${r.line}  ${r.text.slice(0, 70)}`);
     return 0;
   }
   if (argv.includes('--save-baseline')) {
@@ -214,4 +323,4 @@ function main() {
 main.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 if (require.main === module) process.exit(main());
-module.exports = { census, PATTERNS, ALLOW };
+module.exports = { census, shapeOf, shapeAt, PATTERNS, ALLOW };

@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — helper functions exercise the gate in isolated tests.
 /**
  * ratchet-law.test.js — a gate only ratchets down.
  *

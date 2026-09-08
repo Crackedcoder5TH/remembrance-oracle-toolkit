@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — mutations are confined to temporary test fixtures.
 // The contracts gate: Void's falsifiable contracts as a ratchet. The failing
 // set only shrinks, a new contract must pass, a vanished claim blocks, and a
 // verdict taken at another Void HEAD (or too long ago) is not a verdict.

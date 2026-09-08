@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — mutations are confined to throwaway test repositories.
 /**
  * change-coin — the coin every change must carry.
  *
@@ -20,6 +21,7 @@ const CC = path.join(__dirname, '..', '.claude', 'skills', 'goggles', 'change-co
 // A test coin is not a memory: every mint below (and every hook the commits
 // run) stays off the Witness. Inherited by the python and git children.
 process.env.CHANGE_COIN_NO_CHAIN = '1';
+process.env.ORACLE_TOOLKIT = path.join(__dirname, '..');
 
 // Fixed commands, argument arrays, no shell: execFile is the instrument's own
 // prescription for a child process; exit status and output come back either way.

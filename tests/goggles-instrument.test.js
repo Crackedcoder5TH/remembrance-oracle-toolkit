@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — mutations are confined to temporary test fixtures.
 /**
  * goggles-instrument — the sections every read carries beside the file.
  *

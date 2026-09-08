@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — mutations are confined to temporary test fixtures.
 // The trap ledger cannot be lost: the gate refuses a seed that shrank below
 // the chain anchor, an anchored entry rewritten, or a mirror that drifted;
 // it names unwitnessed growth and unpromoted local traps instead of hiding them.

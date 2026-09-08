@@ -1,4 +1,5 @@
 'use strict';
+// @oracle-infrastructure — synthetic rows exist only inside isolated tests.
 /**
  * whitening-reference — the resonance space every decoder cosine is taken in.
  *

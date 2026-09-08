@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+// @oracle-infrastructure — static Git argv and gate-owned baseline writes only.
 
 /**
  * atomic-drift-ratchet — a function's declared identity must not drift
@@ -43,7 +44,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
 const { refuseIfLoosening } = require('./lib/ratchet-law');
 
@@ -74,6 +75,7 @@ function braceSpan(ex, i) {
   }
   return null;
 }
+braceSpan.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Index just past a balanced (...) at or after i.
@@ -99,6 +101,7 @@ function skipParams(ex, i) {
   }
   return -1;
 }
+skipParams.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Source of NAME's body: `function NAME(p) {...}` or `NAME = (p) => {...}`. */
 function functionBody(ex, code, name) {
@@ -117,6 +120,7 @@ function functionBody(ex, code, name) {
   }
   return null;
 }
+functionBody.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Which declared dimensions disagree with the computed ones. */
 function compare(declared, computed) {
@@ -142,7 +146,7 @@ compare.atomicProperties = {
 function censusDrift() {
   const { tokenize } = require('../src/audit/parser');
   const { extractAtomicProperties } = require('../src/atomic/property-extractor');
-  const files = execSync('git ls-files src', { cwd: ROOT, encoding: 'utf8' })
+  const files = execFileSync('git', ['ls-files', 'src'], { cwd: ROOT, encoding: 'utf8' })
     .split('\n').filter((f) => f.endsWith('.js'));
 
   const byFile = {};
@@ -219,6 +223,7 @@ function loadBaseline() {
   try { return JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8')); }
   catch { return null; }
 }
+loadBaseline.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** One canonical declaration literal from a computed identity (the DIMS, in order). */
 function literalOf(computed) {
@@ -257,7 +262,7 @@ function syncAndGrow(current, doSync, doGrow) {
     }
   }
   if (doGrow) {
-    const files = execSync('git ls-files src', { cwd: ROOT, encoding: 'utf8' }).split('\n').filter((f) => f.endsWith('.js'));
+    const files = execFileSync('git', ['ls-files', 'src'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter((f) => f.endsWith('.js'));
     for (const rel of files) {
       let code = load(rel);
       const declared = new Set([...code.matchAll(/^\s*([A-Za-z_$][\w$]*)\.atomicProperties\s*=/gm)].map((m) => m[1]));

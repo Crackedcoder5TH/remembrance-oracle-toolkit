@@ -173,6 +173,47 @@ if (m) {
     '  Other endpoints route through --do call / --do resonance / --do state.');
 }
 
+// 7. THE COMMIT WITHOUT A COIN. A change is accepted only when it carries the
+//    coin the pipeline minted over its exact staged bytes (goggles --do mint;
+//    .claude/skills/goggles/change-coin.py). The commit-msg hook and GitHub's
+//    runner refuse it anyway — this rule refuses it one step earlier, with the
+//    verb, so the agent does not learn the wall from a red check. `--no-verify`
+//    skips the hook that writes the trailer, so it is refused outright; `-a`
+//    stages at commit time, after any mint, so the coin could never cover it.
+//    Fails open when the repo cannot be located or the verifier errors (exit 2);
+//    denies only on a definite REFUSED (exit 1).
+const GIT_COMMIT = /\bgit\b((?:\s+(?:-C\s+\S+|-c\s+\S+|--git-dir=\S+|--work-tree=\S+|--no-pager))*)\s+commit\b([^|;&]*)/;
+const gc = cmd.match(GIT_COMMIT);
+if (gc) {
+  const opts = gc[2] || '';
+  const HINT = '\n  the one door: git add <files> → node .claude/skills/goggles/run.mjs --do mint → git commit\n' +
+    '  (the commit-msg hook writes the Remembrance-Coin trailer; CI refuses any commit without it)';
+  if (/(^|\s)(--no-verify|-[a-zA-Z]*n[a-zA-Z]*)(\s|$)/.test(opts)) {
+    out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused (--no-verify)\n' +
+      '  --no-verify skips the commit-msg hook that binds the coin to the commit. The runner still refuses it.' + HINT);
+  }
+  if (/(^|\s)(--all|-[a-zA-Z]*a[a-zA-Z]*)(\s|$)/.test(opts)) {
+    out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused (-a stages at commit time)\n' +
+      '  the coin covers the STAGED bytes at mint time; -a/--all changes the index after the mint.' + HINT);
+  }
+  try {
+    const path = require('node:path');
+    const { spawnSync } = require('node:child_process');
+    let repo = input.cwd || process.cwd();
+    const dashC = /\s-C\s+(\S+)/.exec(gc[1] || '');
+    const cdPrefix = /^\s*cd\s+(\S+)\s*(?:&&|;)/.exec(cmd);
+    if (dashC) repo = path.resolve(repo, dashC[1].replace(/^['"]|['"]$/g, ''));
+    else if (cdPrefix) repo = path.resolve(repo, cdPrefix[1].replace(/^['"]|['"]$/g, ''));
+    const cc = path.join(__dirname, '..', '..', '.claude', 'skills', 'goggles', 'change-coin.py');
+    const args = [cc, 'verify', '--staged', '--repo', repo];
+    if (/(^|\s)--amend(\s|$)/.test(opts)) args.push('--amend');
+    const r = spawnSync('python3', args, { encoding: 'utf8', timeout: 20000 });
+    if (r.status === 1) {
+      out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused\n  ' + String(r.stdout || r.stderr || '').trim().split('\n').join('\n  ') + HINT);
+    }
+  } catch (e) { quiet('tools:goggles-bash-hook:change-coin', e); }
+}
+
 // only look at commands that actually run inline code (a bare heredoc into
 // cat/tee is document-writing, not execution — the literal word 'heredoc'
 // in the first cut matched prose and denied documentation commands).

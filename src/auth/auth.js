@@ -37,6 +37,7 @@ function _getDefaultAdminPassword() {
   // Generate a random password so we never ship with a known default
   return crypto.randomBytes(16).toString('hex');
 }
+_getDefaultAdminPassword.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Paths that don't require authentication. */
 const publicPaths = ['/api/health', '/health', '/favicon.ico'];

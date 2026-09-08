@@ -78,11 +78,6 @@ function walkFiles(dir, opts = {}) {
   }
   return out;
 }
-walkFiles.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 12, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'utility',
-};
+walkFiles.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { walkFiles, DEFAULT_SKIP_DIRS };

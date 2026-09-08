@@ -30,6 +30,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_PATH = path.join(ROOT, '.silent-catch-baseline.json');
@@ -125,6 +126,17 @@ function main() {
 
   if (argv.includes('--save-baseline')) {
     const prev = loadBaseline();
+    // THE LAW: the silence only shrinks. Growth and unreadable files are DEBT.
+    if (prev) {
+      const debt = [];
+      for (const [f, n] of Object.entries(current.byFile)) {
+        const base = prev.byFile[f];
+        if (base === undefined) debt.push(`NEW file swallows: ${f} (${n})`);
+        else if (n > base) debt.push(`GREW: ${f} ${base} -> ${n}`);
+      }
+      for (const f of current.unparseable || []) debt.push(`UNPARSEABLE: ${f}`);
+      if (refuseIfLoosening('silent-catch', debt, argv)) return 1;
+    }
     const data = JSON.stringify({
       note: 'silent-catch baseline — catch blocks with zero executable body tokens, per file. Shrink-only: name the failure, never delete the try.',
       savedAt: new Date().toISOString(),

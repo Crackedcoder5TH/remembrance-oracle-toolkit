@@ -19,11 +19,6 @@ function rejectUnauthorized(reason, headers = {}) {
     body: JSON.stringify({ error: 'unauthorized', reason: String(reason || 'access denied') }),
   };
 }
-rejectUnauthorized.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.3, group: 9, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+rejectUnauthorized.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { rejectUnauthorized };

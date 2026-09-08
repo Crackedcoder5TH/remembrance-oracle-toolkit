@@ -34,12 +34,7 @@ function framingCheck(code, filePath) {
   return __retVal;
 }
 
-framingCheck.atomicProperties = {
-  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
+framingCheck.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Approved seals — promoted from proposed to active by self-improve
 const ACTIVE_SEALS = [

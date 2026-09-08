@@ -679,6 +679,7 @@ function createPatternLifecycle(store, options = {}) {
     subscribe,
   };
 }
+createPatternLifecycle.atomicProperties = { charge: 1, valence: 2, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 10, period: 6, harmPotential: "dangerous", alignment: "healing", intention: "benevolent", domain: "utility" };
 
 module.exports = {
   createPatternLifecycle,

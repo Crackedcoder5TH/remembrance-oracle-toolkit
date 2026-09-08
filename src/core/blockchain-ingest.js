@@ -58,12 +58,7 @@ function parseIssue(issue) {
   } catch (_) { quiet('core:blockchain-ingest:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
-parseIssue.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 5, period: 3,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'covenant',
-};
+parseIssue.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 async function loadCurrentLedger() {
   try {
@@ -139,12 +134,7 @@ async function runIngest() {
 
   return { ingested: events.length, before, after: before + events.length, issues: parsed.map(p => p.issueNumber) };
 }
-runIngest.atomicProperties = {
-  charge: 1, valence: 4, mass: 'heavy', spin: 'odd', phase: 'plasma',
-  reactivity: 'reactive', electronegativity: 0.95, group: 18, period: 7,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'orchestration',
-};
+runIngest.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 if (require.main === module) {
   runIngest()
@@ -157,6 +147,6 @@ module.exports = { runIngest, parseIssue, loadCurrentLedger, buildEvent };
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-gh.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+gh.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 loadCurrentLedger.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 buildEvent.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

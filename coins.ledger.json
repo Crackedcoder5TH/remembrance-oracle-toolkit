@@ -1,0 +1,1905 @@
+{
+ "_README": "THE CHANGE COINS. Append-only. Every commit in this repo since the epoch carries `Remembrance-Coin: <coin_id>` naming an entry here, minted by `goggles --do mint` over the staged patch read THROUGH the instrument (void_seal + void-seal/v3 commitment + fractal token). Verified by the commit-msg hook and by .github/workflows/change-coin-verify.yml on GitHub's runner. A change without a coin is refused; a coin cannot be minted without the pipeline. Never hand-edit.",
+ "coins": [
+  {
+   "v": "change-coin/v1",
+   "coin_id": "8ea8565e0c1db2576e058f6c44321b907fe2587f9826a04d15a6700a312e537a",
+   "minted_at": "2026-09-05T20:42:14+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "0e801dd73e573eb8238b326313f84743529e4f86",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/change-coin.py",
+     ".claude/skills/goggles/run.mjs",
+     ".github/workflows/change-coin-verify.yml",
+     ".github/workflows/ecosystem-protocol-sync.yml",
+     ".github/workflows/pr-trademark.yml",
+     "ECOSYSTEM.md",
+     "docs/GOGGLES-LEAK-MAP.md",
+     "scripts/ecosystem-orient.sh",
+     "scripts/gate-lock.js",
+     "scripts/ledger-append-ratchet.js",
+     "seeds/gates.lock.json",
+     "seeds/traps.seed.json",
+     "src/tools/goggles-bash-hook.js",
+     "tests/change-coin.test.js"
+    ],
+    "diff_bytes": 68050,
+    "diff_sha256": "b16ac1a99f07841557695ed92298c3ae876d33412479608be098559899cc271a"
+   },
+   "reading": {
+    "coherency": 0.09082634569580876,
+    "ratio": 3.127297794117647,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "e3f5d31ce34dea60",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "6b45ba10834926652f391efc74a71d1012ed47e71e7279693b2a15c956d2bb6f",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-05T20:42:14",
+     "coin": null,
+     "sig": "e3f5d31ce34dea604871cda0764d3c56aea6ed202f5258f1b8424a3932b28ace"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 68050,
+     "compressed_size": 21760,
+     "coherency": 0.09082634569580876,
+     "data_sha256": "d22d13ce48af28829b60e2f1bc671e69d0e7e929c3b0fe81734f5d566c433af4",
+     "compressed_sha256": "abb7594d1fd9120e2c3c73b122abf520d734e107b0a4367a6450dfc6fc41c688",
+     "shape_sha256": "4a061f02dc3c18cc189e3b3451bca04c244247f3244513724d87be821ded261f",
+     "shape": {
+      "blends": [
+       {
+        "name1": "triangle",
+        "name2": "cosine_4",
+        "alpha": 0.413818359375,
+        "beta": 0.264892578125
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "cosine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/bg_noise",
+        "name2": "seismic/bg_noise",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cubic",
+        "name2": "cubic",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "power_2.0",
+        "name2": "power_2.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/ramp_plateau",
+        "name2": "sensor/ramp_plateau",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_101",
+        "name2": "finance/gbm_101",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/crash_recovery",
+        "name2": "exp_grow_1",
+        "alpha": 0.498779296875,
+        "beta": 0.403564453125
+       },
+       {
+        "name1": "exp_grow_5",
+        "name2": "exp_grow_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/ecg_2beat",
+        "name2": "finance/gbm_102",
+        "alpha": 1.1162109375,
+        "beta": 0.2369384765625
+       },
+       {
+        "name1": "cosine_2",
+        "name2": "cosine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_4",
+        "name2": "sine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_12",
+        "name2": "medical/eeg_alpha_12",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/mean_reversion",
+        "name2": "finance/mean_reversion",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "audio/harmonics_3",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/adsr_envelope",
+        "name2": "audio/adsr_envelope",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "finance/vol_smile",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/p_wave",
+        "name2": "finance/mean_reversion",
+        "alpha": 0.611328125,
+        "beta": 0.237548828125
+       },
+       {
+        "name1": "exp_decay_10",
+        "name2": "exp_grow_5",
+        "alpha": 0.67626953125,
+        "beta": 0.32177734375
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "finance/vol_smile",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "power_0.5",
+        "name2": "power_0.5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "exp_grow_10",
+        "alpha": 0.20654296875,
+        "beta": 0.462890625
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_101",
+        "name2": "finance/gbm_101",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "power_2.0",
+        "name2": "power_2.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_101",
+        "name2": "medical/eeg_alpha_8",
+        "alpha": 0.40625,
+        "beta": 0.18359375
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "audio/harmonics_3",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "audio/adsr_envelope",
+        "alpha": 0.3056640625,
+        "beta": 0.40380859375
+       },
+       {
+        "name1": "sine_16",
+        "name2": "sine_16",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "cosine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "triangle",
+        "alpha": 0.3515625,
+        "beta": 0.348388671875
+       },
+       {
+        "name1": "power_2.0",
+        "name2": "power_2.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "power_0.5",
+        "name2": "power_0.5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sawtooth",
+        "name2": "walk/rw_202",
+        "alpha": 0.65234375,
+        "beta": 0.53759765625
+       },
+       {
+        "name1": "sawtooth",
+        "name2": "sawtooth",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/temp_daily",
+        "name2": "sensor/temp_daily",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_mixed",
+        "name2": "medical/eeg_mixed",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/respiration",
+        "name2": "seismic/p_wave",
+        "alpha": 0.207763671875,
+        "beta": 0.93701171875
+       },
+       {
+        "name1": "sine_2",
+        "name2": "sine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/pressure_weekly",
+        "name2": "sensor/pressure_weekly",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "cosine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "fractal",
+        "name2": "fractal",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "seismic/s_wave",
+        "alpha": 0.1783447265625,
+        "beta": 0.501953125
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "cubic",
+        "alpha": 0.278076171875,
+        "beta": 0.65673828125
+       },
+       {
+        "name1": "exp_decay_5",
+        "name2": "exp_grow_1",
+        "alpha": 0.9072265625,
+        "beta": 0.321533203125
+       },
+       {
+        "name1": "gaussian_0.5",
+        "name2": "gaussian_0.5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_100",
+        "name2": "seismic/s_wave",
+        "alpha": 0.193115234375,
+        "beta": 0.58251953125
+       },
+       {
+        "name1": "finance/gbm_100",
+        "name2": "finance/gbm_100",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_200",
+        "name2": "exp_grow_10",
+        "alpha": 0.28564453125,
+        "beta": 0.362060546875
+       },
+       {
+        "name1": "audio/chirp",
+        "name2": "audio/chirp",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_203",
+        "name2": "walk/rw_203",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_mixed",
+        "name2": "exp_grow_10",
+        "alpha": 0.243896484375,
+        "beta": 0.28857421875
+       },
+       {
+        "name1": "sine_2",
+        "name2": "sine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/crash_recovery",
+        "name2": "finance/crash_recovery",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_10",
+        "name2": "exp_grow_5",
+        "alpha": 0.88330078125,
+        "beta": -0.3955078125
+       },
+       {
+        "name1": "medical/eeg_alpha_8",
+        "name2": "medical/eeg_alpha_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/temp_daily",
+        "name2": "sensor/temp_daily",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_decay_10",
+        "name2": "exp_grow_5",
+        "alpha": 0.79443359375,
+        "beta": 0.33154296875
+       },
+       {
+        "name1": "exp_grow_10",
+        "name2": "cosine_4",
+        "alpha": 0.283935546875,
+        "beta": 0.1265869140625
+       },
+       {
+        "name1": "fractal",
+        "name2": "fractal",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_100",
+        "name2": "finance/gbm_100",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_204",
+        "name2": "walk/rw_204",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "square_2",
+        "name2": "square_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "cubic",
+        "alpha": 0.2244873046875,
+        "beta": 0.449462890625
+       },
+       {
+        "name1": "power_1.0",
+        "name2": "power_1.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_10",
+        "name2": "exp_grow_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_10",
+        "name2": "exp_decay_5",
+        "alpha": 0.3447265625,
+        "beta": 0.153076171875
+       },
+       {
+        "name1": "sine_4",
+        "name2": "sine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "finance/vol_smile",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_decay_5",
+        "name2": "exp_grow_2",
+        "alpha": 0.82373046875,
+        "beta": 0.2352294921875
+       },
+       {
+        "name1": "walk/rw_200",
+        "name2": "walk/rw_200",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "cosine_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/formant_a",
+        "name2": "audio/formant_a",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/bg_noise",
+        "name2": "seismic/bg_noise",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_201",
+        "name2": "finance/vol_smile",
+        "alpha": 0.68798828125,
+        "beta": 0.427978515625
+       },
+       {
+        "name1": "walk/rw_202",
+        "name2": "walk/rw_202",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/mean_reversion",
+        "name2": "finance/mean_reversion",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_12",
+        "name2": "medical/eeg_alpha_12",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_104",
+        "name2": "finance/gbm_104",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_5",
+        "name2": "exp_grow_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/formant_a",
+        "name2": "audio/formant_a",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/chirp",
+        "name2": "audio/chirp",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_1",
+        "name2": "sine_1",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/respiration",
+        "name2": "audio/adsr_envelope",
+        "alpha": 0.22607421875,
+        "beta": 0.29638671875
+       },
+       {
+        "name1": "cosine_2",
+        "name2": "cosine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "gaussian_2.0",
+        "name2": "finance/gbm_102",
+        "alpha": 0.52294921875,
+        "beta": 0.7236328125
+       },
+       {
+        "name1": "finance/mean_reversion",
+        "name2": "finance/mean_reversion",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "finance/gbm_104",
+        "alpha": 0.43115234375,
+        "beta": 0.6142578125
+       },
+       {
+        "name1": "gaussian_0.5",
+        "name2": "gaussian_0.5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/respiration",
+        "name2": "medical/respiration",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/bg_noise",
+        "name2": "seismic/bg_noise",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/chirp",
+        "name2": "audio/chirp",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "gaussian_0.3",
+        "name2": "gaussian_0.3",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_104",
+        "name2": "finance/gbm_104",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_1",
+        "name2": "sine_1",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cubic",
+        "name2": "cubic",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/adsr_envelope",
+        "name2": "audio/adsr_envelope",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_2",
+        "name2": "cosine_2",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_101",
+        "name2": "finance/gbm_101",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_3",
+        "name2": "audio/harmonics_3",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/adsr_envelope",
+        "name2": "audio/adsr_envelope",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/ramp_plateau",
+        "name2": "sensor/ramp_plateau",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_4",
+        "name2": "cosine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_100",
+        "name2": "finance/gbm_100",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "gaussian_2.0",
+        "name2": "gaussian_2.0",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_204",
+        "name2": "walk/rw_204",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "exp_grow_5",
+        "name2": "exp_grow_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/formant_a",
+        "name2": "audio/formant_a",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/temp_daily",
+        "name2": "sensor/temp_daily",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_16",
+        "name2": "cosine_16",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/temp_daily",
+        "name2": "sensor/temp_daily",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/vol_smile",
+        "name2": "finance/vol_smile",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "walk/rw_204",
+        "name2": "walk/rw_204",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_12",
+        "name2": "medical/eeg_alpha_12",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_102",
+        "name2": "finance/gbm_102",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cubic",
+        "name2": "cubic",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "triangle",
+        "name2": "cosine_4",
+        "alpha": 0.439697265625,
+        "beta": 0.28466796875
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "cosine_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/mean_reversion",
+        "name2": "audio/harmonics_2",
+        "alpha": 0.60546875,
+        "beta": 0.4501953125
+       },
+       {
+        "name1": "finance/crash_recovery",
+        "name2": "finance/crash_recovery",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/ramp_plateau",
+        "name2": "cosine_1",
+        "alpha": 0.677734375,
+        "beta": 0.496826171875
+       },
+       {
+        "name1": "exp_grow_5",
+        "name2": "exp_grow_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_16",
+        "name2": "sine_16",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "audio/formant_a",
+        "name2": "audio/formant_a",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_8",
+        "name2": "medical/eeg_alpha_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sensor/vibration",
+        "name2": "sensor/vibration",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_4",
+        "name2": "sine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "cosine_8",
+        "name2": "cosine_8",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_4",
+        "name2": "sine_4",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/eeg_alpha_10",
+        "name2": "medical/eeg_alpha_10",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "sine_16",
+        "name2": "sine_16",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/crash_recovery",
+        "name2": "finance/crash_recovery",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/bg_noise",
+        "name2": "seismic/bg_noise",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "finance/gbm_104",
+        "name2": "finance/gbm_104",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "medical/ecg_beat",
+        "name2": "medical/ecg_beat",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "seismic/p_wave",
+        "name2": "walk/rw_201",
+        "alpha": 0.9716796875,
+        "beta": 0.236572265625
+       },
+       {
+        "name1": "audio/harmonics_5",
+        "name2": "audio/harmonics_5",
+        "alpha": 1.0,
+        "beta": 0.0
+       },
+       {
+        "name1": "triangle",
+        "name2": "cosine_4",
+        "alpha": 0.84521484375,
+        "beta": 0.5078125
+       }
+      ],
+      "avg_l1_coherence": 0.09082634569580876,
+      "avg_l2_coherence": 0.2782135742730391,
+      "l2_improved": 86,
+      "num_chunks": 148,
+      "int8_chunks": 18
+     }
+    }
+   },
+   "fractal_token": {
+    "v": "fractal-token/v1",
+    "depth_dim": 232,
+    "token_sha256": "6e802ca945e2a462bc268274bcfcd9e547067fff64a821472d137784c2aa00a4",
+    "shape_sha256": "4a061f02dc3c18cc189e3b3451bca04c244247f3244513724d87be821ded261f"
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "85e4cbed7acbe9218e9d87ab667abfdb939fe0ed644d74d7118ed96dad04527b",
+   "minted_at": "2026-09-06T00:14:23+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "177471dcaadd775d59d8f62ea07241dba9b6a3e6",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/change-coin.py",
+     "ECOSYSTEM.md",
+     "scripts/field-from-store.js",
+     "seeds/gates.lock.json",
+     "src/core/store-export.js",
+     "src/core/void-library.js",
+     "tests/change-coin.test.js"
+    ],
+    "diff_bytes": 44982,
+    "diff_sha256": "bc480233e910a5e29748d26bae0e1d0a347831802a78573332a783863d64c8f0"
+   },
+   "reading": {
+    "coherency": 0.06446614604532998,
+    "ratio": 3.1986062717770034,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "b3479a95cd9188f8",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "0e8ae9980fd7f29c688c41d842652cc58ac8696c32122e670ef3c5c1c1c88869",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-06T00:14:23",
+     "coin": null,
+     "sig": "b3479a95cd9188f8ab2d38a984bdfceedb2076c3671d0dcc31597e497f5f7816"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 44982,
+     "compressed_size": 14063,
+     "coherency": 0.06446614604532998,
+     "data_sha256": "cb7c02f1a7c46176a15a2dcc709a7d6701793df27dc93e885df4839de66222e6",
+     "compressed_sha256": "0fe84782552d8192989d29d344c2a62b1e6ae623d35441745033fdbe820ea062",
+     "shape_sha256": "73e8b1232e30f780b6113ea4a6fd3ce6b531b19e799303796da0f4afc260d1d0"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "ca3241a0d1297ab296af23ec60856c68b9127ea3c651739deaf6ae8e6d278e0a",
+   "minted_at": "2026-09-06T14:26:16+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "ab04625f9eddca20f0e0235199f7bfeaaf8605ab",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/run.mjs",
+     "seeds/gates.lock.json",
+     "src/core/store-export.js",
+     "src/core/void-library.js",
+     "src/core/void-service.js",
+     "src/tools/goggles-instrument.js",
+     "src/tools/goggles.js",
+     "tests/goggles-instrument.test.js"
+    ],
+    "diff_bytes": 35509,
+    "diff_sha256": "070437a63f730c7b846a42cfb7c1983bbb6ec2cf49cd03731556dc11b5aa23cf"
+   },
+   "reading": {
+    "coherency": 0.054606804519940134,
+    "ratio": 2.980693360194745,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "1c350b348cee3a83",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "bd8361de364474edc3d58ecd191fff4cf5e150a781800a458722674a25dbbdc1",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-06T14:26:16",
+     "coin": null,
+     "sig": "1c350b348cee3a8312538d6ddb35d504b9c91d573015ae3e14c71fc88291e49f"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 35509,
+     "compressed_size": 11913,
+     "coherency": 0.054606804519940134,
+     "data_sha256": "8b81735760c50c1fa338ea2befa1085393851998e842c91c0f2dd46a31d9a083",
+     "compressed_sha256": "1846ffb3198335e5c61402959feb5db5867fe4ccfe5ef7ee69deb0d9cbe325b4",
+     "shape_sha256": "1a5af048911eccfe5772bd88c4fb538fede298114a1dbaffe5360565d76d85ed"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "da06869ffa4a132f3bebd6a03900153a2422aee65e0b152bbb105a36bc72ce8a",
+   "minted_at": "2026-09-06T18:00:37+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "9e4a01cd19ff9b705a3fa50e1d030536226ab9a5",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     "ECOSYSTEM.md",
+     "scripts/domain-separability-benchmark.mjs",
+     "seeds/traps.seed.json",
+     "src/core/decoder-stack.js",
+     "src/core/fractal-index.js",
+     "src/core/living-remembrance.js",
+     "src/core/substrate-density.js",
+     "src/core/whitening-reference.js",
+     "src/tools/goggles-hook.js",
+     "src/tools/goggles-instrument.js",
+     "src/tools/goggles.js",
+     "tests/whitening-reference.test.js"
+    ],
+    "diff_bytes": 59456,
+    "diff_sha256": "b11122533c6e50a18061feae96cd3cbc20658a20968f3d7d273b71cfa0eabcc7"
+   },
+   "reading": {
+    "coherency": 0.04452234377074163,
+    "ratio": 3.371668367925598,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "8746c7ca53367e99",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "1a05cd47ffea775d2b804c0512f146d77f6e72cc19de9cb5621bd7d19adb451e",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-06T18:00:37",
+     "coin": null,
+     "sig": "8746c7ca53367e9987ae6e2b0e9dbdb96ab5dd36359c8a024d6abd57cf29fb8b"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 59456,
+     "compressed_size": 17634,
+     "coherency": 0.04452234377074163,
+     "data_sha256": "cc023bd8ce9cdd6026e98a11b2bb4a4d39f94110f772df7021d5bb7ff725e9d4",
+     "compressed_sha256": "896284a99ef57b0f50b7f2b7a6de823c945b6fdcfa129fd9e419e8a6d6ae0356",
+     "shape_sha256": "a484396a81a1382b540c09b07e5e2f71862a5278f168b323626ab9184a7885b1"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "88a824c8f577afc2d4399fe722175e28461ae1f52273af71fa88afe3ea81ea42",
+   "minted_at": "2026-09-06T19:59:51+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "9d36ff29a5bf81e16f9bb0d6d45dd8dfb275b8de",
+    "files": [
+     "seeds/traps.seed.json"
+    ],
+    "diff_bytes": 2795,
+    "diff_sha256": "4f66050cc8b3a9f7affb1668c186a80667165d1c9593a1de26e81dfe22fc9d85"
+   },
+   "reading": {
+    "coherency": 0.055066090999944445,
+    "ratio": 1.9396252602359472,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "061e6874a89406a6",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "40d792c7556f032e8c73377a91b3c28afa79ff13855770289e6d4815c5caeec0",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-06T19:59:51",
+     "coin": null,
+     "sig": "061e6874a89406a6217046ecb41d317ffd6b48d8d84a2d79e4fe52f7d646bd17"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 2795,
+     "compressed_size": 1441,
+     "coherency": 0.055066090999944445,
+     "data_sha256": "7bc5871decd04a40f447045218988bf686535350f41223da3c4d28048525bd77",
+     "compressed_sha256": "9700e37abf49b10989c40ed536db4a01bb379ca1edf5882707dbd150b68b0aa1",
+     "shape_sha256": "f054303fdbce4cd408d5bfe6bf73d1fb0c813252f17ef6f21308e07220601a5f"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "862410375b79fc24ee693cbf589c28722b45319f13acaf795884354a53a59257",
+   "minted_at": "2026-09-07T10:31:33+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "2e750fcdb4643cd98607f950fa5ef64ee14ac621",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/run.mjs",
+     "scripts/fit-whitening-reference.js",
+     "seeds/gates.lock.json",
+     "src/core/decoder-stack.js",
+     "src/core/whitening-reference.js",
+     "src/unified/coherency-token-components.js",
+     "tests/coherency-token-components.test.js"
+    ],
+    "diff_bytes": 39406,
+    "diff_sha256": "6928601ac2593793cb411cfbfb87fe7bafdbd19d502c34e8188ab005d2e8a1a6"
+   },
+   "reading": {
+    "coherency": 0.049562358916750544,
+    "ratio": 3.4767954826186696,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "bc86bd33a5cb058b",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "b8a818933b7766da1b9b03d57060ce6d0cdee820bedc71dcbe883ec61345c4c2",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T10:31:33",
+     "coin": null,
+     "sig": "bc86bd33a5cb058bceed7f08513efe9268c65295603559648d2ff0cbb9328552"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 39406,
+     "compressed_size": 11334,
+     "coherency": 0.049562358916750544,
+     "data_sha256": "e21aea95b3969163bfb57e8014ca85d09df0e0acb1226170e06405a7a70feed1",
+     "compressed_sha256": "a4826fc31a9edbd0d1e642c8070777b7535056b4f75a9cd36c2fede17f7b5dbf",
+     "shape_sha256": "e0e6227faed0516431a87c4d3db62d5745f3651c80f6ba8a109667f157cde717"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "d695919a6830685ede7f656d5911442af0521f315aacad659373c1092542e272",
+   "minted_at": "2026-09-07T17:30:59+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "48af92cf8b74ce69f0e5384dacc0bccbbb514c2b",
+    "files": [
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/run.mjs",
+     ".contracts-baseline.json",
+     "scripts/contracts-ratchet.js",
+     "scripts/field-from-store.js",
+     "scripts/gate-lock.js",
+     "scripts/harvest-repo-to-substrate.js",
+     "scripts/ratchet-battery.js",
+     "seeds/gates.lock.json",
+     "src/cli/commands/onboard.js",
+     "src/cli/commands/verify.js",
+     "src/core/abundance-classifier.js",
+     "src/core/field-coupling/verbs.js",
+     "src/core/field-registry.js",
+     "src/core/field-tool.js",
+     "src/core/fractal-index.js",
+     "src/core/living-remembrance.js",
+     "src/core/resonance-space.js",
+     "src/core/substrate-density.js",
+     "src/core/void-library.js",
+     "src/core/void-service.js",
+     "src/unified/coherency-token-components.js",
+     "tests/contracts-ratchet.test.js",
+     "tests/healed-overlap-space.test.js"
+    ],
+    "diff_bytes": 66839,
+    "diff_sha256": "95c030cbab040069b0aa039358e0e57e24809e90061c8afe4727fdf25fc76648"
+   },
+   "reading": {
+    "coherency": 0.06774429509674756,
+    "ratio": 3.160385833845572,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "0db355802ca031f4",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "5b7438f695f852fedf867de10fc8a0f6a0bb72c5335b8da2c152079e1df54ede",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T17:30:59",
+     "coin": null,
+     "sig": "0db355802ca031f4eb78276995e45c931a1356510ffae926d8d2e9888828df7a"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 66839,
+     "compressed_size": 21149,
+     "coherency": 0.06774429509674756,
+     "data_sha256": "f6b7a58134b13d27139fb192c8b806db8ce25979d5b72e29afe76338144f4042",
+     "compressed_sha256": "bdf5c1f8e33f37b69949186021b22ac0664b07949a176eb44fca0628ba4771e8",
+     "shape_sha256": "8c2fa076197c50cac3612b4900fcdcbd93f0ab677ab47ab744d46c710c265f21"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "b350c5c1dcbc6c2133d0e0c0d0d4a00fa73ba7f2d89574ba8f5ee9e8e67f8195",
+   "minted_at": "2026-09-07T17:34:40+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "a3a21e2c095ca5712bd10c9333320282f56c0f54",
+    "files": [
+     "seeds/traps.seed.json",
+     "src/tools/goggles.js"
+    ],
+    "diff_bytes": 4114,
+    "diff_sha256": "338980248508f33f4d7dc8612f20d404d9eaad8ba222e6988215eaf6f0133b2c"
+   },
+   "reading": {
+    "coherency": 0.08017143337428392,
+    "ratio": 2.0416873449131514,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "da4066838dc60762",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "d9081b6946594ae316d46223b8ea871d76e9922d2af71b523d554d6d253696ae",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T17:34:40",
+     "coin": null,
+     "sig": "da4066838dc607623717bd8e10cd14a7d68200eb38093481c2da32322fc07d09"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 4114,
+     "compressed_size": 2015,
+     "coherency": 0.08017143337428392,
+     "data_sha256": "6fda5876502124442c414fad91ab9a079d0ffb8c72cb83913a211301a38bc612",
+     "compressed_sha256": "df361bfcdb469116e47aa7310169956bcc1f91668d0041c2279363d1dfe947cd",
+     "shape_sha256": "1c3e541b672ecc5f8be5f28d620399deb237e682cc1ea43ebf02cdbd7db1d9ea"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "11245032e3ad601ff7d392ef747cf32582366a71ea5a3e022aa3cb27f31296fd",
+   "minted_at": "2026-09-07T19:09:05+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "b662fc1e4943b18413955dc80aa219865071c253",
+    "files": [
+     ".atomic-drift-baseline.json",
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/run.mjs",
+     ".covenant-size-baseline.json",
+     ".traps-baseline.json",
+     "ECOSYSTEM.md",
+     "packages/field-tool/src/content-projection.js",
+     "packages/field-tool/src/dimensional-waveform.js",
+     "packages/field-tool/src/dynamical-waveform.js",
+     "packages/field-tool/src/lexical-waveform.js",
+     "packages/field-tool/src/numerical-waveform.js",
+     "packages/field-tool/src/redundancy-waveform.js",
+     "packages/field-tool/src/spectral-waveform.js",
+     "scripts/atomic-drift-ratchet.js",
+     "scripts/engine-entanglement-ratchet.js",
+     "scripts/gate-lock.js",
+     "scripts/ratchet-battery.js",
+     "scripts/traps-ledger-ratchet.js",
+     "seeds/debt-accepted.ledger.json",
+     "seeds/gates.lock.json",
+     "src/agent-integration.js",
+     "src/analytics/actionable-insights.js",
+     "src/analytics/insights.js",
+     "src/api/oracle-core-feedback.js",
+     "src/api/oracle-core-submit.js",
+     "src/api/oracle-core-whispers.js",
+     "src/api/oracle-llm.js",
+     "src/api/oracle-patterns-candidates.js",
+     "src/api/pattern-generator.js",
+     "src/atomic/batch-atomizer.js",
+     "src/atomic/element-discovery.js",
+     "src/atomic/element-growth.js",
+     "src/atomic/grounding-semantics.js",
+     "src/atomic/periodic-table.js",
+     "src/atomic/property-extractor.js",
+     "src/atomic/role-aware-coherence.js",
+     "src/atomic/self-introspect.js",
+     "src/atomic/temporal-projection.js",
+     "src/audit/ast-checkers.js",
+     "src/audit/auto-fix.js",
+     "src/audit/baseline.js",
+     "src/audit/bayesian-prior.js",
+     "src/audit/call-graph.js",
+     "src/audit/cascade-detector.js",
+     "src/audit/cross-reference.js",
+     "src/audit/dep-scanner.js",
+     "src/audit/explain.js",
+     "src/audit/feedback.js",
+     "src/audit/ground.js",
+     "src/audit/lint-checkers.js",
+     "src/audit/parser.js",
+     "src/audit/pattern-detectors.js",
+     "src/audit/prior-promoter.js",
+     "src/audit/program-cache.js",
+     "src/audit/repo-audit.js",
+     "src/audit/resolve-hook.js",
+     "src/audit/scope.js",
+     "src/audit/smell-checkers.js",
+     "src/audit/static-checkers.js",
+     "src/audit/suppressions.js",
+     "src/audit/taint-graph.js",
+     "src/audit/tier-coverage.js",
+     "src/audit/type-inference.js",
+     "src/audit/void-indirection.js",
+     "src/audit/void-scan.js",
+     "src/auth/auth.js",
+     "src/auth/github-oauth.js",
+     "src/blockchain/bridge.js",
+     "src/ci/auto-debug.js",
+     "src/ci/auto-register.js",
+     "src/ci/auto-seed.js",
+     "src/ci/auto-submit.js",
+     "src/ci/harvest.js",
+     "src/ci/hooks.js",
+     "src/ci/implicit-feedback.js",
+     "src/ci/open-source-registry.js",
+     "src/cli.js",
+     "src/cli/commands/admin.js",
+     "src/cli/commands/admin/atomic.js",
+     "src/cli/commands/admin/audit.js",
+     "src/cli/commands/admin/auto.js",
+     "src/cli/commands/admin/helpers.js",
+     "src/cli/commands/admin/loops.js",
+     "src/cli/commands/admin/quality.js",
+     "src/cli/commands/admin/session.js",
+     "src/cli/commands/admin/status.js",
+     "src/cli/commands/admin/tools.js",
+     "src/cli/commands/chromadb.js",
+     "src/cli/commands/core.js",
+     "src/cli/commands/debug.js",
+     "src/cli/commands/federation.js",
+     "src/cli/commands/fractals.js",
+     "src/cli/commands/integration.js",
+     "src/cli/commands/library.js",
+     "src/cli/commands/library/compress.js",
+     "src/cli/commands/library/evolve.js",
+     "src/cli/commands/library/exchange.js",
+     "src/cli/commands/library/inspect.js",
+     "src/cli/commands/library/publish.js",
+     "src/cli/commands/library/resolve.js",
+     "src/cli/commands/meditation.js",
+     "src/cli/commands/onboard.js",
+     "src/cli/commands/quality.js",
+     "src/cli/commands/reasoning.js",
+     "src/cli/commands/reflector.js",
+     "src/cli/commands/self-manage.js",
+     "src/cli/commands/swarm.js",
+     "src/cli/commands/transpile.js",
+     "src/cli/commands/versioning.js",
+     "src/cli/commands/void-store.js",
+     "src/cli/commands/void.js",
+     "src/cli/commands/voting.js",
+     "src/cloud/client.js",
+     "src/cloud/negotiation.js",
+     "src/compression/fractal-library-bridge.js",
+     "src/compression/fractal.js",
+     "src/compression/holographic.js",
+     "src/compression/index.js",
+     "src/compression/serf-integration.js",
+     "src/core/abundance-classifier.js",
+     "src/core/alignment-waveform.js",
+     "src/core/analyze.js",
+     "src/core/audit-logger.js",
+     "src/core/auth.js",
+     "src/core/auto-publish.js",
+     "src/core/auto-tagger.js",
+     "src/core/auto-workflow.js",
+     "src/core/blockchain-ingest.js",
+     "src/core/codex-ingest.js",
+     "src/core/coherency-uri.js",
+     "src/core/coherency.js",
+     "src/core/compliance.js",
+     "src/core/content-projection.js",
+     "src/core/covenant-checks.js",
+     "src/core/covenant-deep-security.js",
+     "src/core/covenant-entangled.js",
+     "src/core/covenant-evolution.js",
+     "src/core/covenant-fractal.js",
+     "src/core/covenant-harm.js",
+     "src/core/covenant-principles.js",
+     "src/core/covenant-remediator.js",
+     "src/core/covenant-spec.js",
+     "src/core/covenant-trust.js",
+     "src/core/covenant.js",
+     "src/core/dimensional-waveform.js",
+     "src/core/dynamical-waveform.js",
+     "src/core/ecosystem-bindings/void.js",
+     "src/core/ecosystem-review.js",
+     "src/core/ecosystem-sweep.js",
+     "src/core/ecosystem.js",
+     "src/core/entangle.js",
+     "src/core/event-field-bridge.js",
+     "src/core/events.js",
+     "src/core/feedback-coherency.js",
+     "src/core/feedback-covenant.js",
+     "src/core/feedback.js",
+     "src/core/field-coupling/bridge.js",
+     "src/core/field-coupling/engine.js",
+     "src/core/field-coupling/history.js",
+     "src/core/field-coupling/shapes.js",
+     "src/core/field-coupling/validate.js",
+     "src/core/field-coupling/verbs.js",
+     "src/core/field-gated-compose.js",
+     "src/core/field-ingest.js",
+     "src/core/field-memory.js",
+     "src/core/field-tool.js",
+     "src/core/field-workqueue-poller.js",
+     "src/core/field-workqueue.js",
+     "src/core/fractal-index.js",
+     "src/core/fractal-waveform.js",
+     "src/core/framing-patterns.js",
+     "src/core/function-record.js",
+     "src/core/heal.js",
+     "src/core/history.js",
+     "src/core/hooks-probe.js",
+     "src/core/lexical-waveform.js",
+     "src/core/lexicon-integrator.js",
+     "src/core/lexicon-watcher.js",
+     "src/core/living-remembrance.js",
+     "src/core/llm-healing.js",
+     "src/core/logger.js",
+     "src/core/mapper/config.js",
+     "src/core/mapper/deep-map.js",
+     "src/core/mapper/flow.js",
+     "src/core/mapper/format.js",
+     "src/core/mapper/namespace.js",
+     "src/core/mapper/pairs.js",
+     "src/core/mapper/substrate-map.js",
+     "src/core/numerical-waveform.js",
+     "src/core/oracle-config.js",
+     "src/core/parsers/code-validator.js",
+     "src/core/pattern-composer.js",
+     "src/core/pattern-uri-lookup.js",
+     "src/core/persistence/community.js",
+     "src/core/persistence/debug-share.js",
+     "src/core/persistence/repos.js",
+     "src/core/persistence/stats.js",
+     "src/core/persistence/stores.js",
+     "src/core/persistence/sync-candidates.js",
+     "src/core/persistence/sync-debug-archive.js",
+     "src/core/persistence/sync.js",
+     "src/core/persistence/transfer.js",
+     "src/core/preflight.js",
+     "src/core/proposal-expiry.js",
+     "src/core/quiet.js",
+     "src/core/reactions.js",
+     "src/core/redundancy-waveform.js",
+     "src/core/reflection-loop.js",
+     "src/core/reflection-scorers.js",
+     "src/core/reflection-serf.js",
+     "src/core/relational-waveform.js",
+     "src/core/relevance.js",
+     "src/core/residual-monitor.js",
+     "src/core/resilience.js",
+     "src/core/sandbox.js",
+     "src/core/seal-registry.js",
+     "src/core/search-intelligence.js",
+     "src/core/session-tracker.js",
+     "src/core/spectral-waveform.js",
+     "src/core/sso.js",
+     "src/core/storage.js",
+     "src/core/structured-description.js",
+     "src/core/substrate-density.js",
+     "src/core/substrate-ledger.js",
+     "src/core/validator.js",
+     "src/core/void-compression-layer.js",
+     "src/core/void-library.js",
+     "src/core/void-service.js",
+     "src/core/walk-files.js",
+     "src/core/whitening.js",
+     "src/dashboard/client-script.js",
+     "src/dashboard/middleware.js",
+     "src/dashboard/routes.js",
+     "src/dashboard/server.js",
+     "src/debug/debug-seeds.js",
+     "src/debug/defect-resonance.js",
+     "src/debug/goggles-learning.js",
+     "src/debug/goggles-memory.js",
+     "src/deploy.js",
+     "src/evolution/coverage-map.js",
+     "src/evolution/daemon.js",
+     "src/evolution/evolution.js",
+     "src/evolution/pattern-state-machine.js",
+     "src/evolution/self-optimize.js",
+     "src/evolution/temporal-memory.js",
+     "src/evolution/test-synth.js",
+     "src/fractals/alignment.js",
+     "src/fractals/engines.js",
+     "src/health/monitor.js",
+     "src/ide/mcp-install.js",
+     "src/market/market-crawler.js",
+     "src/market/market-encode.js",
+     "src/mcp/feedback-tracker.js",
+     "src/mcp/handlers/field-audit.js",
+     "src/mcp/http-server.js",
+     "src/mcp/openai-schema.js",
+     "src/mcp/void-tools.js",
+     "src/orchestrator/charge-balancer.js",
+     "src/orchestrator/coherency-director.js",
+     "src/orchestrator/entropy-relaxer.js",
+     "src/orchestrator/method-registry.js",
+     "src/orchestrator/priority-engine.js",
+     "src/orchestrator/reflex-engine.js",
+     "src/orchestrator/test-synthesizer.js",
+     "src/patterns/audit-patterns/security-scan-bypass.js",
+     "src/patterns/audit-patterns/shell-injection-detection.js",
+     "src/patterns/clustering.js",
+     "src/patterns/library.js",
+     "src/patterns/multi-file.js",
+     "src/patterns/seed-helpers.js",
+     "src/quality/feedback-store.js",
+     "src/quality/generate-gate.js",
+     "src/quality/planner.js",
+     "src/quality/risk-scanner.js",
+     "src/quality/risk-score.js",
+     "src/quantum/quantum-core.js",
+     "src/quantum/quantum-field.js",
+     "src/reflector/bridge.js",
+     "src/reflector/multi-analysis.js",
+     "src/reflector/multi-engine.js",
+     "src/reflector/multi-orchestrator.js",
+     "src/reflector/multi-scheduler.js",
+     "src/reflector/report-autocommit.js",
+     "src/reflector/report-dashboard.js",
+     "src/reflector/report-github.js",
+     "src/reflector/report-history.js",
+     "src/reflector/report-notifications.js",
+     "src/reflector/report-pattern-hook.js",
+     "src/reflector/report-safety.js",
+     "src/reflector/scoring-analysis-aggregate.js",
+     "src/reflector/scoring-analysis-security.js",
+     "src/reflector/scoring-coherence.js",
+     "src/reflector/scoring-errors.js",
+     "src/reflector/scoring-modes.js",
+     "src/scoring/evaluate.js",
+     "src/scoring/exec-verify.js",
+     "src/scoring/operational-signal.js",
+     "src/scoring/pattern-resonance.js",
+     "src/search/chromadb/bridge.js",
+     "src/search/embedding-engine.js",
+     "src/search/embeddings.js",
+     "src/security/access-control.js",
+     "src/security/covenant-utils.js",
+     "src/store/fractal-store.js",
+     "src/swarm/auto-register.js",
+     "src/swarm/cross-scoring.js",
+     "src/swarm/debate-visualization.js",
+     "src/swarm/dimension-router.js",
+     "src/swarm/env-loader.js",
+     "src/swarm/error-recovery.js",
+     "src/swarm/escalation.js",
+     "src/swarm/gated-generate.js",
+     "src/swarm/progress-emitter.js",
+     "src/swarm/prompt-templates.js",
+     "src/swarm/self-refinement.js",
+     "src/swarm/swarm-config.js",
+     "src/swarm/swarm-history.js",
+     "src/swarm/swarm-orchestrator.js",
+     "src/swarm/voice-io.js",
+     "src/tools/brief.js",
+     "src/tools/goggles-pre-hook.js",
+     "src/tools/goggles.js",
+     "src/unified/coherency-recalibrate.js",
+     "src/unified/coherency-token-components.js",
+     "src/unified/coherency-v1.js",
+     "src/unified/coherency.js",
+     "src/unified/debug-bridge.js",
+     "src/unified/decay.js",
+     "src/unified/emergent-coherency.js",
+     "src/unified/healing.js",
+     "src/unified/quantum-scorer.js",
+     "src/unified/similarity.js",
+     "src/utils/gap-filled-wave2.js",
+     "src/utils/gap-filled.js",
+     "tests/coherency-token-components.test.js",
+     "tests/covenant-utils.test.js",
+     "tests/dep-scanner.test.js",
+     "tests/engine-entanglement.test.js",
+     "tests/traps-ledger.test.js"
+    ],
+    "diff_bytes": 944617,
+    "diff_sha256": "c9da40ac59828fbbb8b9b38b72f7bc2fd6da9385044048e8d2025ce037506cdf"
+   },
+   "reading": {
+    "coherency": 0.05042358750749514,
+    "ratio": 6.608717249099241,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "b335f05d32311c7e",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "2eab1ea8124043c878eed080fc9002ccac3dcec165aecf8c45816946a29ae9af",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T19:09:04",
+     "coin": null,
+     "sig": "b335f05d32311c7e109a5ff62f16174ebc3ac5566b028ade0d4520e983545eeb"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 944617,
+     "compressed_size": 142935,
+     "coherency": 0.05042358750749514,
+     "data_sha256": "ea3aabab0174f3fe4298250cad7706c9eaa2a9308da37413ae37cac23e7cffc1",
+     "compressed_sha256": "6b21bd289e29bf6a69757c9884b252a432a57ba42511eae64b5551c72c5b54ef",
+     "shape_sha256": "5126357a8eaaaac84221eb3fa41d6b61e0972c8855efd909351f5a42ed8ed385"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "8e2d5f6440461a5f68c7995c5e86d2d96ba475ebfd51772dce0dcb96e465b4b3",
+   "minted_at": "2026-09-07T20:34:49+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "848ac7d1ec336e026e202764c94eb3487e9a510b",
+    "files": [
+     ".atomic-drift-baseline.json",
+     ".claude/skills/goggles/SKILL.md",
+     ".claude/skills/goggles/run.mjs",
+     ".width-baseline.json",
+     "scripts/build-capability-index.js",
+     "scripts/cognition-trajectory.cjs",
+     "scripts/cross-domain-universality-benchmark.mjs",
+     "scripts/domain-superfamilies.mjs",
+     "scripts/epc-phonon-run.mjs",
+     "scripts/field-self-read.cjs",
+     "scripts/gate-lock.js",
+     "scripts/harvest-falsifier-result.mjs",
+     "scripts/lre-attractor-sim2.mjs",
+     "scripts/market-crawl.mjs",
+     "scripts/market-resonance-report.mjs",
+     "scripts/moat-content-consensus.mjs",
+     "scripts/moat-metric.js",
+     "scripts/moat-uniqueness-gate.mjs",
+     "scripts/mp-structural-run.mjs",
+     "scripts/music-telescope.cjs",
+     "scripts/overlap-ceiling-benchmark.mjs",
+     "scripts/ratchet-battery.js",
+     "scripts/raw-compression-grouping.mjs",
+     "scripts/resonance-capacity-benchmark.mjs",
+     "scripts/retrieval-scaling-bench.mjs",
+     "scripts/sc-tests-full.mjs",
+     "scripts/stress-test-fractal-search.js",
+     "scripts/stress-test-substrate.js",
+     "scripts/substrate-connect.mjs",
+     "scripts/superfamily-coverage-sweep.mjs",
+     "scripts/width-ratchet.js",
+     "scripts/wire-encoder-into-field.js",
+     "seeds/gates.lock.json",
+     "src/compression/void-bridge.js",
+     "src/core/abundance-classifier.js",
+     "src/core/mapper/flow.js",
+     "src/core/residual-monitor.js",
+     "src/core/void-library.js",
+     "tests/abundance-classifier.test.js",
+     "tests/substrate-density.test.js",
+     "tests/width-ratchet.test.js"
+    ],
+    "diff_bytes": 93321,
+    "diff_sha256": "a35b92881ab23bc3707aab4ad2368ea5d0fa6b3a57589b56917d01d84299e37d"
+   },
+   "reading": {
+    "coherency": 0,
+    "ratio": 3.222410220994475,
+    "method": "void_symbolic",
+    "strategy": "void_symbolic",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "19cca6a27a0dfd54",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "cdc26cf59b75e4de2965a7a362ae56d33a46e8fce78925e91f0587a9cbd4f182",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T20:34:49",
+     "coin": null,
+     "sig": "19cca6a27a0dfd54de4aa584abc3ec28e6044f58251ef9a89b4029863523f7e9"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "void_symbolic",
+     "original_size": 93321,
+     "compressed_size": 28960,
+     "coherency": 0,
+     "data_sha256": "a3d28b0f7e195cf71a96e986c1f03a5eae6b31d299dca445aac754129c5754ca",
+     "compressed_sha256": "93dc97a100bf95c4f38455f25a12edb11bd80535c69c94518611511176ff0c1b",
+     "shape_sha256": "f52edc196ebc256eadf40ef713b69e7455e6ea4583fee6db582b66185794c7b5"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "5701741c2c87240bd04ced63c8dec31f34eb626112255535a563f597d0253f70",
+   "minted_at": "2026-09-07T22:49:15+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "7047f82f588cc2c9a1e3130dea2042d2bdca0a00",
+    "files": [
+     ".atomic-drift-baseline.json",
+     "scripts/code-coherence-test.js",
+     "scripts/export-code-substrate.js",
+     "scripts/field-self-debug.js",
+     "scripts/migrate-waveforms-to-fractal.js",
+     "scripts/moat-content-consensus.mjs",
+     "scripts/moat-uniqueness-gate.mjs",
+     "scripts/pr-field-check.js",
+     "scripts/raw-compression-grouping.mjs",
+     "scripts/width-ratchet.js",
+     "seeds/gates.lock.json",
+     "src/cli/commands/onboard.js",
+     "src/cli/commands/verify.js",
+     "src/compression/void-bridge.js",
+     "src/core/code-to-waveform.js",
+     "src/core/field-ingest.js",
+     "src/core/field-memory.js",
+     "src/core/field-tool.js",
+     "src/core/field-workqueue.js",
+     "src/core/void-library.js",
+     "src/unified/coherency-token-components.js",
+     "tests/code-to-waveform.test.js",
+     "tests/field-memory.test.js",
+     "tests/field-tool.test.js",
+     "tests/width-ratchet.test.js"
+    ],
+    "diff_bytes": 86681,
+    "diff_sha256": "be4316ba7cd0411133d87a37ca513e75a97ffb93eec73cd0f6f7466b27547062"
+   },
+   "reading": {
+    "coherency": 0,
+    "ratio": 3.3359375,
+    "method": "void_symbolic",
+    "strategy": "void_symbolic",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "ca15a998bbc76ebf",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "e80f4087098d3b97cc7b6c30e472b806a3d45e5b07a0811f799c1e52f443b9d0",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-07T22:49:15",
+     "coin": null,
+     "sig": "ca15a998bbc76ebfdf18147fe3e335ebef6eafb83efe9d4af148b8cbd70f14c3"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "void_symbolic",
+     "original_size": 86681,
+     "compressed_size": 25984,
+     "coherency": 0,
+     "data_sha256": "ee6f3cff8bb70af3b78dbdb20e114d5cdc12b4fd52e926356a7800cdd34daaca",
+     "compressed_sha256": "10f5a990fdce4ac985ec6b747e655cf3be06f5e8bd2725aee630cdb2c532f3ee",
+     "shape_sha256": "f52edc196ebc256eadf40ef713b69e7455e6ea4583fee6db582b66185794c7b5"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "ae3f8d301ee6f7b916d066dc5114388fc4e63b02bceb26812442ad9eaff4ecae",
+   "minted_at": "2026-09-08T00:56:09+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "8e05e2eb615ef0d3aade7111f3761109ef2b38a9",
+    "files": [
+     ".atomic-drift-baseline.json",
+     ".traps-baseline.json",
+     "scripts/width-ratchet.js",
+     "seeds/gates.lock.json",
+     "seeds/traps.seed.json",
+     "seeds/width-shape/breach.txt",
+     "seeds/width-shape/builder.txt",
+     "tests/width-ratchet.test.js"
+    ],
+    "diff_bytes": 27621,
+    "diff_sha256": "8b73756ed28e2866e223c1faf8f5c866dac51f32d8fc15fd0bb60c4d2c196f22"
+   },
+   "reading": {
+    "coherency": 0.06995122862437743,
+    "ratio": 2.7894364774792972,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "a934216c4aba91ff",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "c5bf0e1b867d4df612f7d7697c8348b52d89f2f7f4fcccac5432ef8b465dca13",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-08T00:56:09",
+     "coin": null,
+     "sig": "a934216c4aba91fff7a2fc7fddf4e3b818212a281575c69a5f4208fae2c91962"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 27621,
+     "compressed_size": 9902,
+     "coherency": 0.06995122862437743,
+     "data_sha256": "9b06ff9b0292516e46d08b156e65ce0fc26da010a488a5d6b1b25f95f68f17bd",
+     "compressed_sha256": "68d8080198653a7366045cf7368134937d498269db7159724a618a1f50b4b8d1",
+     "shape_sha256": "071b5d48b6563e4e62be86e5a79680f96a3c6908c010e978a8331fef460027c8"
+    }
+   }
+  }
+ ]
+}

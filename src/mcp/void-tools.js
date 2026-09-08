@@ -36,6 +36,7 @@ function _resolveVoidRepo() {
     'void_*: Void-Data-Compressor not found. Set VOID_REPO or place it as a sibling repo.'
   );
 }
+_resolveVoidRepo.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Service-routed fast path ────────────────────────────────────
 // When compressor_service.py is running, route through HTTP instead
@@ -55,6 +56,7 @@ function _goggleToken() {
   } catch (e) { quiet('mcp:void-tools:goggleToken', e); _vtTok = ''; }
   return _vtTok;
 }
+_goggleToken.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _serviceCall(routePath, body, timeoutMs = 60_000) {
   return new Promise((resolve, reject) => {
@@ -79,6 +81,7 @@ function _serviceCall(routePath, body, timeoutMs = 60_000) {
     req.write(data); req.end();
   });
 }
+_serviceCall.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 9, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _serviceAvailable() {
   // Cheap sync probe — open a TCP connection, immediate close
@@ -94,6 +97,7 @@ function _serviceAvailable() {
   ], { timeout: 2000 });
   return r.status === 0;
 }
+_serviceAvailable.atomicProperties = { charge: 1, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 7, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _serviceCallSync(routePath, body, timeoutMs = 60_000) {
   // The MCP handler API is synchronous; bridge with spawnSync inline node.
@@ -113,6 +117,7 @@ function _serviceCallSync(routePath, body, timeoutMs = 60_000) {
   if (r.status !== 0) throw new Error(`service call failed: ${r.stderr || r.stdout}`);
   return JSON.parse(r.stdout);
 }
+_serviceCallSync.atomicProperties = { charge: 1, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _runPython(scriptBody, cwd) {
   // Run a python3 -c snippet, return stdout as string. The snippet
@@ -134,6 +139,7 @@ function _runPython(scriptBody, cwd) {
   }
   throw new Error(`no JSON output from python: ${r.stdout.slice(0, 200)}`);
 }
+_runPython.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Tool definitions ────────────────────────────────────────────
 

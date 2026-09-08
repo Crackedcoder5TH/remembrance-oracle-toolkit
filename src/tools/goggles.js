@@ -62,7 +62,7 @@ const ft = require('../core/field-tool');
 // Moving numbers consolidated in the Living Remembrance Engine (the core).
 let GOG;
 try { GOG = require('../core/living-remembrance').gogglesParams(); }
-catch (_) { GOG = { coherencyRepeating: 0.90, coherencyMixed: 0.35, coherencyTypical: 0.10, resonanceConsonant: 0.90, resonanceFamiliar: 0.82, resonanceDistinct: 0.70 }; }
+catch (_) { GOG = { coherencyRepeating: 0.90, coherencyMixed: 0.35, coherencyTypical: 0.10, resonanceConsonant: 0.71, resonanceFamiliar: 0.67, resonanceDistinct: 0.64 }; }
 
 const LANG_BY_EXT = {
   '.js': 'javascript', '.jsx': 'javascript', '.mjs': 'javascript', '.cjs': 'javascript',
@@ -85,6 +85,7 @@ function parseArgs(argv) {
   }
   return out;
 }
+parseArgs.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Checkpoint the goggles' learned memory to the chain, or restore it.
 // The ledger becomes the memory of what the instrument learned, so a
@@ -108,6 +109,7 @@ async function runMemory(action) {
     console.log('  from checkpoint ' + r.from + ' · digest ' + String(r.digest).slice(0, 16) + '…');
   }
 }
+runMemory.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── MACRO lens — the whole codebase, compressed ─────────────────
 
@@ -120,10 +122,12 @@ function findRepoRoot(startDir) {
     d = parent;
   }
 }
+findRepoRoot.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function mapCachePath(root) {
   return path.join(root, '.remembrance', 'goggles-map.json');
 }
+mapCachePath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Build the macro map for a project, print it, and cache it.
@@ -206,6 +210,7 @@ function runMap(dir, { deep = false } = {}) {
     console.error('could not cache map: ' + e.message);
   }
 }
+runMap.atomicProperties = { charge: -1, valence: 1, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 1, group: 13, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // Canonical depth-flow cosine from the encoder stack (§7: one cosine).
 // Every call site sits behind a composedAtDepth guard, so decoder-stack
@@ -216,10 +221,12 @@ function runMap(dir, { deep = false } = {}) {
 function _deepest(f) {
   return require('../core/decoder-stack').deepestFlow(f);
 }
+_deepest.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _flowCosines(a, b) {
   return require('../core/decoder-stack').flowCosines(a, b);
 }
+_flowCosines.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _flowLabel(f) {
   // Pass the whole flow array — classifyFlow reads every active depth now.
@@ -228,10 +235,12 @@ function _flowLabel(f) {
   try { return require('../core/coherency-mapper').classifyFlow(f); }
   catch { return ''; }
 }
+_flowLabel.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _fmtFlow(f) {
   return f.map((x) => x.toFixed(2)).join('→');
 }
+_fmtFlow.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── META-DEBUG — the orthogonal correctness axis ────────────────────
 // Runs the toolkit's audit checkers on the goggled file and feeds the
@@ -379,6 +388,7 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
   }
   return { high: surfaced.length, medium: medium.length, suppressed, resolved };
 }
+runMetaDebug.atomicProperties = { charge: 0, valence: 4, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Reading history — how the edits changed everything ─────────────
 // Every goggle read persists its numbers; the next read of the same
@@ -387,10 +397,12 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
 function readingsPath(root) {
   return path.join(root, '.remembrance', 'goggles-readings.json');
 }
+readingsPath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function loadReadings(root) {
   try { return JSON.parse(fs.readFileSync(readingsPath(root), 'utf8')); } catch (_) { return {}; }
 }
+loadReadings.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Readings taken before coherency was rewired onto the Void compressor are
 // NOT comparable to readings taken after. Before the rewiring the number was
@@ -443,6 +455,7 @@ function printAndRecordDelta(root, rel, current) {
     fs.writeFileSync(readingsPath(root), JSON.stringify(all));
   } catch (_) { quiet('tools:goggles:readingsPath', _); /* history is best-effort */ }
 }
+printAndRecordDelta.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Print the MACRO section for a focused file: where it sits inside the
@@ -587,6 +600,7 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
     }
   } catch (_e) { quiet('tools:goggles:_deepest', _e); /* stat best-effort */ }
 }
+printMacro.atomicProperties = { charge: 0, valence: 4, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 1, group: 3, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * VERSION PROVENANCE — the first thing a reader must know.
@@ -630,6 +644,7 @@ function printCanonicalStatus(absFile) {
     return;
   }
 }
+printCanonicalStatus.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 /**
  * DOC CAVEATS — surface a document's own warnings BEFORE its content.
@@ -705,11 +720,13 @@ function printDocCaveats(absFile) {
   }
   console.log('     Do not quote this document without reconciling the above.');
 }
+printDocCaveats.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function bar(x, width = 22) {
   const n = Math.max(0, Math.min(width, Math.round((x || 0) * width)));
   return '█'.repeat(n) + '·'.repeat(width - n);
 }
+bar.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * What the coherency number MEANS, in the compressor's own terms.
@@ -734,6 +751,7 @@ function coherencyMeaning(c) {
   if (c >= GOG.coherencyTypical) return 'low self-repetition — normal for source code';
   return 'almost no self-repetition — near-random byte structure';
 }
+coherencyMeaning.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function consonanceVerdict(meanTopK, best) {
   // How well the section fits the established structure of the whole codebase.
@@ -742,6 +760,7 @@ function consonanceVerdict(meanTopK, best) {
   if (meanTopK >= GOG.resonanceDistinct) return ['DISTINCT', 'a shape the codebase uses only loosely — worth a second look'];
   return ['OUTLIER', 'structurally novel here — either genuinely new, or drifting from the codebase'];
 }
+consonanceVerdict.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Is auto-ingest on for this read? Default ON — looking witnesses.
@@ -778,6 +797,7 @@ function resolveAutoIngest(absFile) {
 
   return true;   // default ON
 }
+resolveAutoIngest.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 function main() {
   const { file, lines, top, map, deep, memory } = parseArgs(process.argv.slice(2));
@@ -824,7 +844,15 @@ function main() {
   const r = ft.read({ content, name: file, language },
     { source: 'goggles', growSubstrate: autoIngest, topK: top });
   const vr = r.voidResonance || r.resonance || {};
-  const meanTopK = vr.meanTopK ?? 0;
+  // SELF-MATCH (trap 51): once witnessed, the file's own entry sits in the top-K
+  // at 1.0 and lifts the mean by (1 − r)/k — membership, not shape (measured
+  // +0.061/+0.068/+0.074 at k=5). The mean is over the non-self matches.
+  const _selfBase = path.basename(file);
+  const _score = (mm) => (mm.d4 ?? mm.similarity ?? mm.score ?? 0);
+  const _nonSelf = (vr.topMatches || []).filter((mm) => path.basename(String(mm.name || '')) !== _selfBase && !(_score(mm) > 0.9999));
+  const meanTopK = _nonSelf.length
+    ? _nonSelf.reduce((s, mm) => s + _score(mm), 0) / _nonSelf.length
+    : (vr.meanTopK ?? 0);
   const [tag, gloss] = consonanceVerdict(meanTopK, vr.bestMatch);
 
   const W = 64;
@@ -864,6 +892,18 @@ function main() {
       + '                scale: 1.00 = one pattern repeats throughout · ~0.09 = random bytes\n'
       + '                       source code normally reads 0.10-0.28 — low here is CORRECT\n'
       + `                read in full: ${Buffer.byteLength(content, 'utf8')} bytes, no slice`);
+    // The compressor's token on THIS reading (what `--do read` shows) — proof
+    // the number above came through the instrument, off the same response.
+    try {
+      const lr = require('../core/void-service').lastReading();
+      if (lr && lr.seal && lr.seal.mint) {
+        const via = lr.route === 'signal' ? 'void:compress_signal' : (lr.route || 'compress');
+        const measures = lr.measures === 'library-membership' ? '  ⚠ SELF-MATCH: this reading measures library membership, not the artifact' : '';
+        console.log(`    sealed      mint ${lr.seal.mint} · via ${via}`
+          + (lr.seal.shapeSha256 ? ` · shape ${String(lr.seal.shapeSha256).slice(0, 12)}…` : '')
+          + '  (the compressor\'s token on this reading)' + measures);
+      }
+    } catch (_) { quiet('tools:goggles:seal', _); /* provenance is best-effort */ }
   }
   console.log('    ⚠ coherency measures SELF-REPETITION — how much of this is one pattern');
   console.log('      restated. It is not a grade, not correctness, not code quality. A');
@@ -975,32 +1015,17 @@ function main() {
     console.log(`    live field peers entangled: ${peers.length}`);
   }
 
-  // ── FIELD ──  the living field's reactive state, read AFTER this file's
-  // read contributed to it. The void term (delta_void + its provenance) is
-  // taken straight off the LRE's own contribution reading — not recomputed —
-  // and the entropy/cascade/∫p are the field's live response to the data
-  // just witnessed. This is the resonance-signature/void term the operator
-  // asked to surface actively.
-  try {
-    const fc = require('../core/field-coupling');
-    const state = fc.peekField ? fc.peekField() : null;
-    const last = fc.lastReading ? fc.lastReading() : null;
-    if (state) {
-      console.log('\n  FIELD  (the living field, live — reacts to what was just read)');
-      console.log(`    p (backdrop)     ${(state.coherence ?? 0).toFixed(4)}   0 = noise · 1 = unity`);
-      console.log(`    globalEntropy    ${(state.globalEntropy ?? 0).toFixed(4)}   cost / (coherence + ε) — the balancing field`);
-      console.log(`    cascadeFactor    ${(state.cascadeFactor ?? 0).toFixed(4)}   1 = baseline rate · >1 = a burst`);
-      console.log(`    ∫p (integral)    ${Math.round(state.coherenceIntegral ?? 0)}   total aligned order, no ceiling`);
-      if (last && typeof last.delta_void === 'number') {
-        const iso = last.void_source === 'field:resonance';
-        console.log(`    void term        ${last.delta_void.toFixed(4)}   [${last.void_source}]${iso ? '' : '  (no field measurement — derived from 1−p)'}`);
-        if (typeof last.r_eff === 'number') {
-          console.log(`    r_eff (retro)    ${last.r_eff.toFixed(4)}   pull toward the healed attractor`);
-        }
-      }
-      console.log(`    updates          ${state.updateCount ?? 0}`);
-    }
-  } catch (_) { quiet('tools:goggles:require', _); /* field optional — never block a read */ }
+  // ── FIELD · STATE · RESONANCE FIELD · CONTRACTS · WALL ──  everything the
+  // substrate knows that used to live behind a verb (--do field / state /
+  // resonance / contracts, the coin and the gates) rides on every read now.
+  // goggles-instrument.js returns the lines; this is the one print site.
+  {
+    const root = findRepoRoot(path.dirname(abs));
+    const rel = root ? path.relative(root, abs) : file;
+    let project = root ? path.basename(root) : '';
+    try { const m = JSON.parse(fs.readFileSync(mapCachePath(root), 'utf8')); if (m && m.project) project = m.project; } catch (e) { quiet('tools:goggles:map-project', e); /* no map yet — the repo name stands in */ }
+    for (const line of require('./goggles-instrument').instrumentLines({ root, project, rel, answered: r.coherence != null })) console.log(line);
+  }
 
   // ── MACRO ──  (zoomed out: this section inside the whole-codebase map)
   printMacro(abs, r.coherence, sectionText, fullText);
@@ -1026,5 +1051,6 @@ function main() {
   console.log('    above — they share this structure. Read them before you commit.');
   console.log('═'.repeat(W) + '\n');
 }
+main.atomicProperties = { charge: 0, valence: 4, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 main();

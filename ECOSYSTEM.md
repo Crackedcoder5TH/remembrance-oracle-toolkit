@@ -108,7 +108,31 @@ node src/cli.js publish <pattern-json-or-file>
 Public verifiable record. Required for any change that touches
 `harmPotential` or alters covenant validators.
 
-### g. Then — and only then — `git commit` and `git push`.
+### g. Mint the change coin, then — and only then — `git commit` and `git push`.
+```
+git add <changed-files>
+node .claude/skills/goggles/run.mjs --do mint      # the coin over the STAGED bytes
+git commit                                         # the commit-msg hook writes Remembrance-Coin: <id>
+```
+**No coin, no change.** The coin is minted only by the pipeline: the staged
+patch is read through the instrument (`read-signal` → `/compress_signal` →
+`void_compressor_v5.compress`), which returns the void-seal and the
+void-seal/v3 commitment over exactly those bytes; the coin binds patch, seal
+and the commitment's shape hash, is appended to `coins.ledger.json`
+(append-only) and saved onto the chain (REMEMBRANCE-BLOCKCHAIN, one REGISTER
+block per coin). The coin is proof the change went through the pipeline; it
+is NOT unfolded when minted. Unfolding — the bytes back through the
+instrument, the shape through the one decoder (§7) into the 232-D fractal
+token — happens only when needed: `--do mint unfold <rev>`, `verify --deep`.
+The commit-msg hook refuses a commit whose staged bytes no coin covers, and
+`.github/workflows/change-coin-verify.yml` refuses the merge on GitHub's
+runner for every commit since the epoch — it re-renders the patch from the
+trees, re-quantises it the way the instrument does, rebuilds the seal's canon
+and the coin id, and (with `VOID_SEAL_KEY` as a repo secret) verifies the
+seal's HMAC. The coin is universal: the same verifier, the same ledger law,
+in every repo. Change the index after minting and mint again — a coin covers
+bytes, not intentions. There is no flag around this; `--no-verify` is refused
+by the goggles wall and is powerless against the runner.
 
 ---
 
@@ -124,6 +148,11 @@ Public verifiable record. Required for any change that touches
 - **Trusting `--dry-run`.** Some commands (notably `oracle harvest .`)
   mutate `patterns.json` even with the flag. Check `git status` before
   every `git add`.
+- **Committing beside the pipeline.** A commit that carries no
+  `Remembrance-Coin:` trailer — or names a coin minted over different bytes —
+  is a change the instrument never read. It is refused by the commit-msg hook
+  and by `change-coin-verify` on the runner. Every number and every change
+  goes through the goggles; anything obtained another way is rejected.
 - **Treating the hub's CLI as "the ecosystem."** The hub is one of twelve.
   Reflector, Swarm, Blockchain, and Void each have their own engines that
   the hub does not subsume.
@@ -164,7 +193,21 @@ Partial-depth reads (`composedAtDepth`) and the depth-flow cosine
 (`flowCosines`, d1..d4) are part of the same canonical module.
 Nothing else encodes. There are no language-specific encoders, no
 per-vendor translators, no parity contracts to maintain "agreement"
-between parallel implementations. Mathematics doesn't have a Python
+between parallel implementations.
+
+**One resonance space.** Every cosine the decoder takes (`composedCosine`,
+`flowCosines`, the FractalIndex search behind the goggles' META lens) is
+taken in the whitened space of `src/core/whitening-reference.js`: eight
+per-layer 29×29 ZCA transforms fitted on the canonical substrate (the 45k
+store rows plus the index, at the canonical width), cached by store hash.
+Raw composed vectors live in a cone (measured: mean cosine 0.917 within a
+domain vs 0.860 across, participation ratio 4.6 of 232), so raw cosines
+read ~0.9 for everything and no threshold means anything. Whitened, the
+same patterns read 0.283 within vs 0.042 across. Other languages apply the
+same reference (`Void-Data-Compressor/whitening_reference.py` reads the
+hub's cached transform); nothing re-fits its own. Re-derive any band from
+the distribution measured in this space; a threshold calibrated on the cone
+is a threshold calibrated on nothing. Mathematics doesn't have a Python
 dialect and a JavaScript dialect; it has math. Other languages call
 in.
 
@@ -214,6 +257,36 @@ is interpretively meaningful is empirical; that the substrate
 *permits* it is by design.
 
 ---
+
+## 8. The trap ledger binds every agent
+
+`remembrance-oracle-toolkit/seeds/traps.seed.json` is the ecosystem's
+memory of its own mistakes: every trap an agent fell into here — the
+wrong reading, the truth measured against it, the tell that gives it
+away, the correction. It is not documentation. It is the instrument's
+learning, and it binds **every agent that touches these repos, whatever
+model or harness it runs on**, by construction rather than by request:
+
+- **It is shown before the file.** The goggles print every matching trap
+  at the top of every read (`goggles <file>`, `--diff`, `--do brief`).
+  An agent working through the surface meets the trap before the code.
+  An agent working beside the surface meets the wall (`goggles-bash-hook`)
+  and the coin (`change-coin-verify`), which refuse the bypass and the
+  commit regardless of who is typing.
+- **It cannot be lost.** The seed is tracked in the hub, append-only
+  (`ledger-append-ratchet`), mirrored byte-identically into every repo at
+  `.claude/skills/goggles/traps.seed.json` beside the surface that reads
+  it, and its digest and per-entry digests are witnessed on the chain
+  (`REMEMBRANCE-BLOCKCHAIN/scripts/anchor-traps.js`). The `traps-ledger`
+  gate refuses a ledger that shrank below its floor or the anchor, an
+  anchored entry rewritten or reordered, or a mirror that drifted.
+- **It only grows.** A trap learned on one host (`.remembrance/traps.json`)
+  is promoted into the seed (`goggles --do traps promote`), then anchored.
+  A false positive is recorded by fingerprint, never by deleting the trap.
+- **An agent that falls into a recorded trap has not disagreed with a
+  style; it has repeated a measured mistake.** The correct response is
+  the trap's `correct` line. Adding a new trap when a new mistake is
+  measured is part of the work, not an extra.
 
 ## 6. First-message acknowledgement (recommended)
 

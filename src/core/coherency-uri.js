@@ -59,6 +59,7 @@ function _loadNamespaceExtensions() {
     domains: [...domains].filter((d) => _NS_RE.test(d)),
   };
 }
+_loadNamespaceExtensions.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 const _ext = _loadNamespaceExtensions();
 const VALID_REPOS = new Set([..._BUILTIN_REPOS, ..._ext.repos]);
@@ -163,18 +164,8 @@ module.exports = {
   labelOraclePattern,
 };
 
-makeUri.atomicProperties = {
-  charge: 1, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
-  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
-  domain: 'core',
-};
-parseUri.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'core',
-};
+makeUri.atomicProperties = { charge: 1, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+parseUri.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 16, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's

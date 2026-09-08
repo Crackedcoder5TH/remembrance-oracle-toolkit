@@ -11,7 +11,7 @@ const IDX = process.env.VOID_INDEX || '/home/user/Void-Data-Compressor/pattern_i
 const j = JSON.parse(fs.readFileSync(IDX, 'utf8'));
 const idx = j.index; const keys = Object.keys(idx);
 const ns = (k) => k.split('/')[0];
-const DIM = 116, FIELD = 'composed_v1', MINP = 20;
+const DIM = 232 /* the ONE width */, FIELD = 'composed', MINP = 20;
 const has = (k) => Array.isArray(idx[k][FIELD]) && idx[k][FIELD].length === DIM;
 function mul(a){let s=a>>>0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const rnd = mul(77);

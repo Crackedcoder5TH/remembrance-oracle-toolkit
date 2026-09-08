@@ -843,6 +843,25 @@
    "truth": "Measured 2026-09-08 through the one verb at compressor library 72 (experiments/cold_contact/held_out_2026-09-08): Nottingham monthly temperature, a clean 20-year annual cycle, read 0.0231 — BELOW its own value-shuffled surrogate (0.0717) and at the random floor — while airline passengers read 0.8642 and UK gas 0.6643. A pure period-12 sinusoid read 0.1329 at 240 points and 0.0119 at 3,331; period 24 read 0.0678; period 64 read 0.7847; the same Nottingham series plus a linear trend read 0.6311. Coherency at this instrument state is self-repetition at the CHUNK scale: a shape that repeats slowly (a trend, a period of ~64 samples or more, the sunspots' 132-sample cycle) is structure; an oscillation faster than roughly a chunk is many cycles inside every window, the smooth blend basis has nothing that fits, and the residual reads as noise. The pre-registered ordering built on 'clean cycle = high' missed on that one series and held on the other three.",
    "tell": "A textbook-periodic series reading at or below its own shuffle while a trending series with the same seasonality reads high; a reading that jumps when a trend is added and nothing else changes; a synthetic sine whose reading rises with its period and falls with its length.",
    "correct": "State what the compressor reads at the chunk scale before predicting a reading: period relative to the chunk window, not periodicity in the abstract. Pin the compressor library size and the chunk window beside every held-out reading. For a fast-periodic series, read it at a cadence that puts one to a few cycles per chunk (resample, or read the cycle-to-cycle envelope), and say so in the pre-registration; never rescale after the reading to rescue the prediction."
+  },
+  {
+   "match": [
+    "service DOWN",
+    "compressor_service",
+    "service-ctl",
+    "start it first",
+    "--do service",
+    "went down",
+    "regression",
+    "under load",
+    "zombie",
+    "spawn"
+   ],
+   "severity": "high",
+   "wrong": "Reading the compressor service going down repeatedly as a regression in the compressor (\"it's a simple algorithm, it shouldn't be under load\") and hunting the code for what changed.",
+   "truth": "Measured 2026-09-08: the service died three times in one session with NO traceback and no exit record; every start stamp in the log was a manual restart. PID 1 (/process_api --firecracker-init) showed 22 minutes of uptime inside a 12-hour session — the host is recycled between calls and every process dies with it, cleanly. Nothing in the compressor changed. Two real defects were found beside it: service-ctl's _pids() matched any shell whose command text mentioned the service file (it reported the operator's own shell as \"already LOADING\" and refused to spawn while the service was down; `stop` would have SIGTERMed that shell), and the hub's void-service.js spawned the service itself (detached, unlogged) — a second manager beside the controller. The September-5 burst of `matmul … size 256 is different from 232` in the same log predates this session and the C-64 retirement commit; it is a different fault and was not the one killing the process.",
+   "tell": "Deaths with no traceback, no signal, no exit record; lifetimes that end at tool-call boundaries rather than under a request; /proc/uptime on PID 1 far shorter than the session; the controller reporting a pid that is not a python process.",
+   "correct": "Before blaming the algorithm, read /proc/uptime and PID 1's age against the session's first commit. Match service processes on the interpreter invocation, never on a filename anywhere in a command line. One spawner (scripts/service-ctl.py) — no module starts the service on its own. THE reading path (read-signal.py, which mint/read/token all go through) starts the instrument through the controller when it is down, so a recycled host costs one cold start, never a manual step and never a lost reading."
   }
  ]
 }

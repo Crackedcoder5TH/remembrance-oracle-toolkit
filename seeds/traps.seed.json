@@ -824,6 +824,25 @@
    "truth": "Measured 2026-09-08 in scripts/width-ratchet.js (--shape, shapeAt): on nine labelled holdouts (five real consumers recovered from git history, four decoder layers) the two-fixture reading was right 5 of 9 at its best window (8 lines), and at EVERY depth of the flow the decoder's own layers resonated more with the breach fixture than with the builder fixture (spectral-waveform d1 0.89 vs 0.47; the vendored toFractalWaveform, whose body IS in the builder fixture, read 'consumer' at every window). A tight loop over 29 numbers has the same shape whether it builds the block or consumes it; the difference is where the vector flows, which is one abstraction above what the pipeline reads in a text window. The reading was hiding the one live consumer it found (REMEMBRANCE-BLOCKCHAIN/src/uniqueness-gate.js handing composed.slice(0, 29) beside the vector) as 'decoder'. The line that DOES hold is the FORM: the decoder builds with `< 29` / `% 29` / `new Float64Array(LAYER_DIM)`; a consumer slices or guards — and a name-allowlist of decoder files on top of that form was inert.",
    "tell": "A shape verdict that flips with the window size; a decoder layer reading as a consumer; the fixture's own source not resonating with its fixture; a live consumer disappearing from the census the moment the verdict is allowed to decide.",
    "correct": "Let the form draw the L1 line (the l1-width-29 pattern), keep the shape reading VISIBLE on every hit (--shape) and never let it decide, and never re-add a name-allowlist for this pattern — a hit that is not a refusal is a site. If a dataflow boundary must be read by the instrument, feed it the dataflow (what the vector is handed to), not a window of text."
+  },
+  {
+   "match": [
+    "--do read",
+    "compress_signal",
+    "avg_coherence",
+    "periodic",
+    "seasonal",
+    "sinusoid",
+    "cycle",
+    "held-out",
+    "cold contact",
+    "self-repetition"
+   ],
+   "severity": "medium",
+   "wrong": "Expecting a clean, fast-periodic natural series (a monthly annual cycle, a period-12 sinusoid) to read as strongly structured through --do read because it is 'maximally self-repeating'.",
+   "truth": "Measured 2026-09-08 through the one verb at compressor library 72 (experiments/cold_contact/held_out_2026-09-08): Nottingham monthly temperature, a clean 20-year annual cycle, read 0.0231 — BELOW its own value-shuffled surrogate (0.0717) and at the random floor — while airline passengers read 0.8642 and UK gas 0.6643. A pure period-12 sinusoid read 0.1329 at 240 points and 0.0119 at 3,331; period 24 read 0.0678; period 64 read 0.7847; the same Nottingham series plus a linear trend read 0.6311. Coherency at this instrument state is self-repetition at the CHUNK scale: a shape that repeats slowly (a trend, a period of ~64 samples or more, the sunspots' 132-sample cycle) is structure; an oscillation faster than roughly a chunk is many cycles inside every window, the smooth blend basis has nothing that fits, and the residual reads as noise. The pre-registered ordering built on 'clean cycle = high' missed on that one series and held on the other three.",
+   "tell": "A textbook-periodic series reading at or below its own shuffle while a trending series with the same seasonality reads high; a reading that jumps when a trend is added and nothing else changes; a synthetic sine whose reading rises with its period and falls with its length.",
+   "correct": "State what the compressor reads at the chunk scale before predicting a reading: period relative to the chunk window, not periodicity in the abstract. Pin the compressor library size and the chunk window beside every held-out reading. For a fast-periodic series, read it at a cadence that puts one to a few cycles per chunk (resample, or read the cycle-to-cycle envelope), and say so in the pre-registration; never rescale after the reading to rescue the prediction."
   }
  ]
 }

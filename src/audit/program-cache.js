@@ -42,6 +42,7 @@ const CACHE_MAX = 500;
 function sourceHash(source) {
   return crypto.createHash('sha1').update(source || '').digest('hex').slice(0, 16);
 }
+sourceHash.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The empty-Program shape returned when a source cannot be parsed. */
 function emptyProgram(source) {
@@ -50,6 +51,7 @@ function emptyProgram(source) {
     lines: String(source || '').split('\n'), body: [], functions: [],
   };
 }
+emptyProgram.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Parsed program for a source, memoized per (filePath, source-hash).
@@ -85,20 +87,10 @@ function programCached(source, filePath) {
   }
   return program;
 }
-programCached.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'odd', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.4, group: 12, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'utility',
-};
+programCached.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 1, group: 10, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Drop every cached program. */
 function clearProgramCache() { _cache.clear(); }
-clearProgramCache.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.2, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+clearProgramCache.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { programCached, clearProgramCache };

@@ -63,7 +63,12 @@ function detectSubstrateNamespace(files, projectPath, opts = {}) {
       const name = String(m.name || '');
       if (score >= selfMatchAt && name.includes('/')
           && path.basename(name) === path.basename(rel)) {
-        const prefix = name.split('/')[0];
+        // The prefix is everything the index name carries AHEAD of this
+        // file's repo-relative path — which is not always one segment.
+        // See namespaceFromIndexNames for the sub-repo case this fixes.
+        const prefix = name.endsWith('/' + rel)
+          ? name.slice(0, name.length - rel.length - 1)
+          : name.split('/')[0];
         votes[prefix] = (votes[prefix] || 0) + 1;
       }
     }
@@ -74,17 +79,29 @@ function detectSubstrateNamespace(files, projectPath, opts = {}) {
   if (ranked.length && ranked[0][1] >= 2) return ranked[0][0];
   return null;
 }
-detectSubstrateNamespace.atomicProperties = {
-  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'liquid',
-  reactivity: 'stable', electronegativity: 0.6, group: 15, period: 4,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'analysis',
-};
+detectSubstrateNamespace.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Detect the substrate namespace with zero encoding: one pass over the
  * index names, voting for the prefix whose entries' relative paths
  * coincide with the repo's walked files.
+ *
+ * The prefix is NOT always one path segment. A project nested inside a
+ * harvested repo is indexed under the repo's alias PLUS its subdirectory
+ * — `oracle/digital-cathedral/app/loading.tsx` — while its own walk sees
+ * `app/loading.tsx`. Splitting at the first slash asked whether
+ * `digital-cathedral/app/loading.tsx` was a walked file (it never is),
+ * so every real entry abstained and the vote fell to the handful of
+ * root-level filenames the child shares with its parent: README.md,
+ * package.json, tsconfig.json. Those DID match — against the PARENT's
+ * files — so the namespace resolved to `oracle`, and the map then read
+ * the toolkit's own README as the website's, with the website's 479
+ * other files reported "unindexed" while sitting in the substrate the
+ * whole time. Wrong readings, not missing ones, which is worse.
+ *
+ * So: try every prefix boundary and let the longest true match win on
+ * count. `oracle/digital-cathedral` scores its whole file set; `oracle`
+ * scores only the shared basenames.
  *
  * @param {string[]} rels — repo-relative file paths
  * @param {Iterable<string>} indexNames — substrate pattern names
@@ -94,24 +111,23 @@ function namespaceFromIndexNames(rels, indexNames) {
   const relSet = new Set(rels);
   const votes = {};
   for (const name of indexNames) {
-    const i = name.indexOf('/');
-    if (i <= 0) continue;
-    if (relSet.has(name.slice(i + 1))) {
-      const prefix = name.slice(0, i);
-      votes[prefix] = (votes[prefix] || 0) + 1;
+    // Walk every '/' boundary: the remainder after it is a candidate
+    // repo-relative path, and what precedes it is that candidate's prefix.
+    let i = name.indexOf('/');
+    while (i > 0) {
+      if (relSet.has(name.slice(i + 1))) {
+        const prefix = name.slice(0, i);
+        votes[prefix] = (votes[prefix] || 0) + 1;
+      }
+      i = name.indexOf('/', i + 1);
     }
   }
-  const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+  const ranked = Object.entries(votes).sort((a, b) => (b[1] - a[1]) || (b[0].length - a[0].length));
   // Three coinciding paths make a quorum; one or two could be shared
   // boilerplate (bootstrap scripts, AGENTS.md) living in several repos.
   if (ranked.length && ranked[0][1] >= 3) return ranked[0][0];
   return null;
 }
-namespaceFromIndexNames.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 12, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'analysis',
-};
+namespaceFromIndexNames.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { detectSubstrateNamespace, namespaceFromIndexNames };

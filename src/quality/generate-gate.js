@@ -164,12 +164,7 @@ module.exports = {
 };
 
 // ── Atomic self-description (batch-generated) ────────────────────
-checkAgainstPlan.atomicProperties = {
-  charge: 1, valence: 1, mass: 'medium', spin: 'odd', phase: 'liquid',
-  reactivity: 'medium', electronegativity: 1, group: 13, period: 4,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
+checkAgainstPlan.atomicProperties = { charge: 1, valence: 1, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 13, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's

@@ -40,6 +40,7 @@ const LEARN_PATH = path.join(ROOT, '.remembrance', 'goggles-learning.json');
 function _readJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; }
 }
+_readJson.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function _writeJson(p, obj) {
   try {
     fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -47,6 +48,7 @@ function _writeJson(p, obj) {
     return true;
   } catch (_) { return false; }
 }
+_writeJson.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Resolve the REMEMBRANCE-BLOCKCHAIN Publisher — the same sibling-clone
@@ -68,6 +70,7 @@ function _publisher() {
   }
   return null;
 }
+_publisher.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Bundle the goggles' current learned state from the local files.
@@ -82,6 +85,7 @@ function collectLocalMemory() {
     meta: { host: process.env.HOSTNAME || 'unknown', root: ROOT },
   };
 }
+collectLocalMemory.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Merge two signature lists by id, keeping the higher hit/resolved
@@ -98,6 +102,7 @@ function _mergeSignatures(a, b) {
   }
   return [...byId.values()];
 }
+_mergeSignatures.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Merge two learning ledgers: union of patterns and remembered
@@ -111,6 +116,7 @@ function _mergeLearning(local, remote) {
   out.resolutions = Math.max(local.resolutions || 0, remote.resolutions || 0);
   return out;
 }
+_mergeLearning.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Checkpoint the goggles' learned memory to the chain.
@@ -135,6 +141,7 @@ async function checkpoint() {
     ledgerIndex: r.ledgerBlock && r.ledgerBlock.index,
   };
 }
+checkpoint.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Restore the goggles' learned memory from the chain, merging it into
@@ -174,5 +181,6 @@ function restore(opts = {}) {
     digest: remote.digest,
   };
 }
+restore.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { checkpoint, restore, collectLocalMemory, SIGS_PATH, LEARN_PATH };

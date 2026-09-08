@@ -109,6 +109,7 @@ function _stripCommentsLegacy(code) {
   }
   return out;
 }
+_stripCommentsLegacy.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Tokenizer-backed stripping (2026-08-08 upgrade, operator-approved) ──
 // The regex/hand-tokenizer strips above and below are BLIND to regex
@@ -124,11 +125,13 @@ function _tokensOf(code) {
   try { return require('../audit/parser').tokenize(code); }
   catch (_) { return null; }
 }
+_tokensOf.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function _blankSpan(chars, start, end) {
   for (let i = start; i <= end && i < chars.length; i++) {
     if (chars[i] !== '\n') chars[i] = ' ';
   }
 }
+_blankSpan.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 // Collapse a template token to its ${expr} pieces, interpolation FIRST —
 // the documented contract downstream rules depend on (innerHTML/SQL rules
 // expect `${` right after `=`). Padded with spaces and trailing newlines
@@ -156,6 +159,7 @@ function _collapseTemplate(chars, tok) {
   const repl = core + ' '.repeat(pad) + '\n'.repeat(Math.max(0, nl));
   for (let k = 0; k <= end - start; k++) chars[start + k] = repl[k] !== undefined ? repl[k] : ' ';
 }
+_collapseTemplate.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function stripNonExecutableContent(code) {
   const toks = _tokensOf(code);
@@ -185,11 +189,12 @@ function _stripNonExecutableLegacy(code) {
   stripped = stripped.replace(/"(?:[^"\\]|\\.)*"/g, '""');
   return stripped;
 }
+_stripNonExecutableLegacy.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { COVENANT_PRINCIPLES, stripNonExecutableContent, stripComments };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-stripComments.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-stripNonExecutableContent.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+stripComments.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+stripNonExecutableContent.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };

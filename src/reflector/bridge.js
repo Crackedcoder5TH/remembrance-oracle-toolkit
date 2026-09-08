@@ -79,6 +79,7 @@ function reflectorScore(source, filePath) {
   // list treated any numeric-looking return field as a coherence signal.
   return __retVal;
 }
+reflectorScore.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Produce a Reflector-style scan report (findings only, no score).
@@ -95,6 +96,7 @@ function reflectorScan(source, filePath) {
     coherency: env.coherency,
   };
 }
+reflectorScan.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Return the raw analysis envelope. Most Reflector code paths should
@@ -104,6 +106,7 @@ function reflectorScan(source, filePath) {
 function reflectorAnalyze(source, filePath, options) {
   return analyze(source, filePath, options);
 }
+reflectorAnalyze.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Run the unified heal pipeline on a Reflector target.
@@ -123,6 +126,7 @@ async function reflectorHeal(source, options = {}) {
   bus.emitSync('reflector.heal.end', { filePath: options.filePath, level: result.level, success: result.success });
   return result;
 }
+reflectorHeal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 8, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Walk a directory and produce an envelope per matching file.
@@ -144,6 +148,7 @@ function reflectorScanDirectory(rootDir, options = {}) {
 
   return analyzeFiles(files, options);
 }
+reflectorScanDirectory.atomicProperties = { charge: 0, valence: 4, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Produce a compact Reflector-style report from a set of envelopes.
@@ -174,6 +179,7 @@ function reflectorReport(envelopes) {
     },
   };
 }
+reflectorReport.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   reflectorScore,

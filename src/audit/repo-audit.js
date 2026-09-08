@@ -49,6 +49,7 @@ function _isGitUrl(target) {
   // and only the allowlisted transports may clone.
   return typeof target === 'string' && !target.startsWith('-') && ALLOWED_GIT_URL.test(target);
 }
+_isGitUrl.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // A target that looks URL-ish (has a scheme or user@host:) but is NOT an
 // allowed git URL is a rejected clone attempt, not a local path — catch
@@ -56,6 +57,7 @@ function _isGitUrl(target) {
 function _looksLikeRemote(target) {
   return typeof target === 'string' && (/^[a-z][a-z0-9+.-]*::/i.test(target) || /:\/\//.test(target) || /^[\w.-]+@[\w.-]+:/.test(target) || target.startsWith('-'));
 }
+_looksLikeRemote.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _walkSources(dir) {
   const out = [];
@@ -73,6 +75,7 @@ function _walkSources(dir) {
   }
   return out;
 }
+_walkSources.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Audit a repository.
@@ -234,5 +237,5 @@ module.exports = { auditRepo, formatReport };
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-auditRepo.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+auditRepo.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 formatReport.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };

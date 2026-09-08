@@ -387,11 +387,6 @@ function registerAtomicCommands(handlers, { oracle, jsonOut }) {
     out('');
   };
 }
-registerAtomicCommands.atomicProperties = {
-  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.5, group: 14, period: 4,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'orchestration',
-};
+registerAtomicCommands.atomicProperties = { charge: 1, valence: 8, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 0.94, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { registerAtomicCommands };

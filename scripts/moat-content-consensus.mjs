@@ -19,9 +19,8 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { composedAtDepth } = require('../src/core/decoder-stack');
 const { cosineSimilarity } = require('../src/compression/holographic');   // native cosine — not reimplemented
-const { toFractalWaveform } = require('../src/core/fractal-waveform');     // native fractal instrument
 
-const DEPTH = 4, DIM = 116;
+const DEPTH = 8, DIM = 232;   // the ONE width (the decoder at its active depth)
 const enc = (text) => Array.from(composedAtDepth(text, DEPTH)).slice(0, DIM);
 const gzipRatio = (text) => zlib.gzipSync(Buffer.from(text)).length / Math.max(1, Buffer.byteLength(text));
 function trigramEntropy(text) { const c = new Map(); let n = 0; for (let i = 0; i + 3 <= text.length; i++) { const g = text.slice(i, i + 3); c.set(g, (c.get(g) || 0) + 1); n++; } if (!n) return 0; let h = 0; for (const v of c.values()) { const p = v / n; h -= p * Math.log2(p); } return h / Math.log2(Math.max(2, c.size)); }
@@ -34,7 +33,7 @@ const ROOT = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 's
 const files = walk(ROOT).slice(0, 400);
 const items = [];
 for (const f of files) { let t; try { t = fs.readFileSync(f, 'utf8'); } catch { continue; } if (t.length < 200) continue; t = t.slice(0, 16000);
-  items.push({ f, dom: path.relative(ROOT, f).split(path.sep)[0], text: t, vec: enc(t), gz: gzipRatio(t), tri: trigramEntropy(t), frac: Array.from(toFractalWaveform(t)) }); }
+  items.push({ f, dom: path.relative(ROOT, f).split(path.sep)[0], text: t, vec: enc(t), gz: gzipRatio(t), tri: trigramEntropy(t) }); } // ONE vector per item (`vec`, the 232-D decoder); the L1 alone is never carried beside it
 console.log('MOAT — CONTENT-CONSENSUS re-run (leak-closed kill-test) · ' + items.length + ' real content items\n');
 
 // structured-text bands, learned from the honest population (mean ± 2σ)
@@ -72,10 +71,10 @@ let fi = null;
 try {
   const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
   const vidx = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8')).index;
-  const keys = Object.keys(vidx).filter((k) => Array.isArray(vidx[k].composed_v1) && vidx[k].composed_v1.length === 116).slice(0, 12000);
+  const keys = Object.keys(vidx).filter((k) => Array.isArray(vidx[k].composed) && vidx[k].composed.length === 232).slice(0, 12000);
   const pad = (v) => { const o = new Float64Array(232); for (let i = 0; i < v.length; i++) o[i] = v[i]; return o; };
   fi = new FractalIndex();
-  fi._ids = keys.slice(); fi._vecs = keys.map((k) => pad(vidx[k].composed_v1)); fi._idIndex = new Map(keys.map((k, i) => [k, i])); fi._realDepths = new Array(keys.length).fill(4); fi._rebuildNorms();
+  fi._ids = keys.slice(); fi._vecs = keys.map((k) => pad(vidx[k].composed)); fi._idIndex = new Map(keys.map((k, i) => [k, i])); fi._realDepths = new Array(keys.length).fill(8); fi._rebuildNorms();
 } catch (_) { /* novelty gate unavailable — report content-consensus only */ }
 const isNovel = (content) => { if (!fi) return true; const q = new Float64Array(232); const v = enc(content); for (let i = 0; i < v.length; i++) q[i] = v[i]; const r = fi.searchFlow(q, { topK: 1 }); return !(r[0] && r[0].d4 >= DEDUP); };
 

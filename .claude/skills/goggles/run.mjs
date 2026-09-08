@@ -66,11 +66,23 @@ if (argv[0] === '--do') {
     publish: () => run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/src/cli.js'), 'publish', ...rest], join(HOME, 'REMEMBRANCE-BLOCKCHAIN')),
     // mint the git-history recovery coin (+--publish to anchor on chain)
     coin: () => run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/scripts/git-history-coin.js'), ...rest], join(HOME, 'REMEMBRANCE-BLOCKCHAIN')),
+    // LAYER TWO — the coherency token for a PATTERN: its 232-D decoder vector,
+    // the three components through the instrument (text · resonance in the one
+    // whitened space · atomic), unified → tier → rate, the covenant and
+    // uniqueness gates, a REGISTER block on the chain. Paths must be absolute.
+    //   goggles --do token <file> [via] [--name n] [--language l] [--dry] [--json]
+    token: () => run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/bin/coherency-token.js'), ...rest], join(HOME, 'REMEMBRANCE-BLOCKCHAIN')),
     // export the data plane to a mounted drive (verify with `--do verify <snap>`)
     export: () => run('bash', [join(toolkit, 'scripts/export-data-plane.sh'), ...rest], toolkit),
     verify: () => run('bash', [join(toolkit, 'scripts/export-data-plane.sh'), '--verify', ...rest], toolkit),
-    // peek the Living Remembrance field state
-    field: () => run('node', ['-e', "console.log(JSON.stringify(require('./src/core/field-coupling').peekField(),null,1))"], toolkit),
+    // peek the Living Remembrance field state; `checkpoint` persists the live
+    // field on the Witness (REMEMBRANCE-BLOCKCHAIN `field checkpoint`) and
+    // `status` reads the committed durable field — a missing verb until 2026-09-07,
+    // when the re-fed field had no route to the chain but the raw CLI.
+    //   goggles --do field [checkpoint | status]
+    field: () => (rest[0] === 'checkpoint' || rest[0] === 'status')
+      ? run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/src/cli.js'), 'field', rest[0]], join(HOME, 'REMEMBRANCE-BLOCKCHAIN'))
+      : run('node', ['-e', "console.log(JSON.stringify(require('./src/core/field-coupling').peekField(),null,1))"], toolkit),
     // ── routed because they were being called directly ──────────────────
     // Every verb below already existed as a script. Nothing new was built;
     // they were simply unreachable from the one surface, so anyone needing
@@ -111,6 +123,57 @@ if (argv[0] === '--do') {
     // nearest-neighbour scan over composed vectors.
     //   goggles --do resonance [--top N] [--domain <d>]
     resonance: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'resonance-report.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // ONE CALL FROM "HERE IS MY DATA" TO A REAL READING. Numeric series go
+    // through /compress_signal (the canonical quantised path); anything else
+    // is read as artifact BYTES through the same endpoint. Output carries
+    // via:'void:compress_signal' — the label that separates a real reading
+    // from every look-alike number. Coherency only, honestly: no nearest-
+    // pattern endpoint exists yet, so this verb doesn't fake one.
+    //   goggles --do read <file> [--json]   |   --do read --series '[1,2,..]'
+    read: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'read-signal.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE SERVICE'S LIFECYCLE, WITH NO SILENT STATES. status is always one
+    // of HEALTHY / LOADING / DOWN / ZOMBIE with the evidence; start/stop are
+    // idempotent in every direction (no duplicate spawns, no error on no-op).
+    // Truth comes from the process table + the port, never a pidfile.
+    //   goggles --do service [status|start|stop|restart] [--wait]
+    service: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'service-ctl.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE COMMIT SEAL — the one wall an agent cannot edit around. Reads every
+    // declared input (seal.spec.json) THROUGH the reading surface and pins the
+    // derived coherency into seal.lock.json, bound to the input bytes and the
+    // substrate state. `--verify` re-derives and refuses on mismatch; CI runs
+    // exactly that as a required check, so a bypassed-but-wrong number is
+    // refused at GitHub's door, not the agent's. No key to forge: CI does not
+    // trust the number, it recomputes it.
+    //   goggles --do seal            (mint)     |   --do seal --verify   (check)
+    seal: () => run('python3', [join(HOME, 'Void-Data-Compressor', 'scripts', 'seal_commit.py'), ...rest], join(HOME, 'Void-Data-Compressor')),
+    // THE CHANGE COIN — the one door for a CHANGE. Reads the STAGED patch of
+    // the repo you stand in through the instrument (read-signal → /compress_signal
+    // → void_seal + void-seal/v3 commitment), unfolds the commitment's shape
+    // through the decoder (fractal token, exact hash) and appends the coin to
+    // coins.ledger.json, staged. The commit-msg hook writes the trailer
+    // `Remembrance-Coin: <coin_id>` and REFUSES a commit whose staged bytes no
+    // coin covers; change-coin-verify.yml does the same on GitHub's runner for
+    // every commit since the epoch. A number taken beside the pipeline has no
+    // seal; a change made beside it has no coin; neither gets in.
+    //   goggles --do mint                       mint over the staged change (repo = where you stand)
+    //   goggles --do mint verify [--staged | --since-epoch | A..B | <rev>] [--deep]
+    //   goggles --do mint install-hooks         the commit-msg hook, this repo
+    //   goggles --do mint anchor [--status]     witness every repo's coin ledger on the chain
+    mint: () => run('python3', [join(toolkit, '.claude/skills/goggles/change-coin.py'), ...(rest.length ? rest : ['mint']), '--repo', process.cwd()], toolkit),
+    // THE ONE RESONANCE SPACE — fit (or refresh) the per-layer whitening
+    // reference every decoder cosine is taken in, on the canonical substrate.
+    // Reads fit it on first use themselves; this is the explicit door.
+    //   goggles --do whiten [--force | --status]
+    whiten: () => run('node', [join(toolkit, 'scripts/fit-whitening-reference.js'), ...rest], toolkit),
+    // THE WALL'S OWN LEDGER. Every hook denial is one JSON line (ts · rule ·
+    // command) — the continuous leak map. A recurring rule is a weld working;
+    // a novel command shape is the next verb to build; silence across fresh
+    // sessions means the surface is closed.
+    //   goggles --do denials [N]     (last N lines, default 40)
+    denials: () => run('sh', ['-c',
+      'F=' + JSON.stringify(join(HOME, 'remembrance-oracle-toolkit', '.remembrance', 'goggles-denials.jsonl')) +
+      '; if [ -f "$F" ]; then echo "denials logged: $(wc -l < "$F")"; tail -' + (parseInt(rest[0], 10) || 40) + ' "$F"; ' +
+      'else echo "no denials logged yet — the wall has not been hit on this host"; fi']),
     // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
     // measures nothing: no reading is recomputed and no time dimension added.
     //   goggles --do merge [--apply]
@@ -149,14 +212,6 @@ if (argv[0] === '--do') {
       console.log('reacted to every read. Full cross-domain field: goggles --do resonance');
       return 0;
     },
-    // THE WHOLE GATE FAMILY, one read. ratchet-battery.js documents itself as
-    // "routed through the goggles as `--do ratchets`" — but the verb was never
-    // added, so the ten gates had no surface here and had to be run by hand
-    // from a path you already had to know. That is the same gap the other
-    // routed verbs below were added to close: a gate nobody can reach from the
-    // one surface is a gate that stops being run.
-    //   goggles --do ratchets [--json]
-    ratchets: () => run('node', [join(toolkit, 'scripts/ratchet-battery.js'), ...rest], toolkit),
     // THE SIZE SURFACE, ratcheted. 70 grandfathered monoliths (>500 lines);
     // the list only shrinks — no new monolith, no grandfathered growth.
     //   goggles --do size [--json | --save-baseline]
@@ -168,6 +223,45 @@ if (argv[0] === '--do') {
     // reading into the field: the entropy cost of widening the surface.
     //   goggles --do exemptions [--json | --save-baseline]
     exemptions: () => run('node', [join(toolkit, 'scripts/exemption-ratchet.js'), ...rest], toolkit),
+    // THE WHOLE GATE FAMILY, one read. Eight ratchets in check mode —
+    // covenant, exemption, size, cycle, suite-reachability, field-source,
+    // ledger-append, orphan — one verdict line each. Check-only: no
+    // baseline saved, nothing written, nothing fed to the field.
+    //   goggles --do ratchets [--json]
+    ratchets: () => run('node', [join(toolkit, 'scripts/ratchet-battery.js'), ...rest], toolkit),
+    // ONE GATE IN FULL. The battery prints one verdict line per gate; the
+    // items behind a ✗ (which catch, which declaration, which file) were only
+    // reachable by running the ratchet script by hand — a missing verb.
+    //   goggles --do gate <name> [--json | --save-baseline …]
+    //   names: covenant exemption size cycle suite-reachability field-source
+    //          ledger-append orphan silent-catch console atomic-drift ecosystem gate-lock
+    //          contracts [--run]   (the truth-spine as a gate: every falsifiable
+    //          contract, failing set shrink-only, verdict must be current)
+    //          engine-entanglement (the JS and Python engines agree on the
+    //          instrument's own sealed readings — binary)
+    //          traps-ledger        (the memory of mistakes: append-only, anchored
+    //          on the chain, mirrored into every repo, floor never lowered)
+    //          width [--report]    (ONE representation: no consumer reads anything
+    //          but the 232-D fractal decoder — the census is at 0 and only shrinks)
+    // THE TRAP LEDGER, driven. `promote` appends traps learned on this host into
+    // the tracked seed; `sync` writes the byte-identical mirror into every repo;
+    // `floor` raises the count floor; `anchor` witnesses the seed on the chain.
+    //   goggles --do traps [promote | sync | floor | anchor | status]
+    traps: () => {
+      const sub = rest[0] || 'status';
+      if (sub === 'anchor') return run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/scripts/anchor-traps.js'), ...rest.slice(1)], join(HOME, 'REMEMBRANCE-BLOCKCHAIN'));
+      const flag = { promote: '--promote', sync: '--sync', floor: '--save-baseline', status: '--json' }[sub];
+      if (!flag) { console.error('goggles --do traps [promote | sync | floor | anchor | status]'); return 1; }
+      return run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), flag, ...rest.slice(1)], toolkit);
+    },
+    gate: () => run('node', [join(toolkit, rest[0] === 'gate-lock' ? 'scripts/gate-lock.js' : `scripts/${rest[0] || 'covenant'}-ratchet.js`), ...rest.slice(1)], toolkit),
+    // THE TWO COVENANT GATES, ENTANGLED, over a file. Runs the fractal
+    // audit (byte + atomic) AND the covenant scanner (SQL / injection /
+    // harm) and reports CLEAN only when both pass — the shed-decision
+    // surface, so an exemption is never judged sheddable from one gate
+    // alone (trap 27). Read-only.
+    //   goggles --do covenant <file> [<file> ...]
+    covenant: () => run('node', [join(toolkit, 'scripts/covenant-audit.js'), ...rest], toolkit),
     // READ THE WEB through the substrate: fetch a URL, compress + score it,
     // contribute the reading to the field. Browsing was the last blind spot
     // (WebFetch matches no hook, so a fetched page was never witnessed).
@@ -218,32 +312,6 @@ for (const f of files) {
     process.stdout.write(execFileSync('node', [engine, abs], { cwd: toolkit, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
   } catch (e) {
     process.stdout.write((e.stdout || '') + (e.stderr || String(e)) + '\n');
-    failures++;
-  }
-}
-
-// ── THE GATES RIDE WITH THE READ ────────────────────────────────────────────
-//
-// The ten gates existed, held, and ran nowhere: no git hook installed them and
-// no workflow invoked them, so they only fired when someone typed the command
-// by hand — which is the condition under which a gate quietly stops being a
-// gate. Rather than add a SECOND surface (a hook, a workflow) that has to be
-// remembered and installed, the battery rides the read that already happens
-// before a commit: `--diff` IS the pre-commit surface, so the gates run there
-// automatically and the goggles stay the one way through.
-//
-// Scoped to --diff on purpose. A per-file read is a lens you point while
-// working, often many times a minute; running ten gates on each would make the
-// lens too expensive to keep wearing, and a gate people switch off is worse
-// than one that runs at the moment it matters. `--do ratchets` stays for an
-// explicit check, and `--no-gates` is the escape for a read mid-edit.
-if (argv[0] === '--diff' && !argv.includes('--no-gates')) {
-  process.stdout.write('\n');
-  try {
-    execFileSync('node', [join(toolkit, 'scripts/ratchet-battery.js')], { cwd: toolkit, stdio: 'inherit' });
-  } catch (e) {
-    // A gate that opens must fail the read it rode in on — otherwise the
-    // commit proceeds and the gate was decorative.
     failures++;
   }
 }

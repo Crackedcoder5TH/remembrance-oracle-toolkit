@@ -37,7 +37,6 @@ const DEFAULT_SUBSTRATE = path.join(__dirname, '..', '..', '..', 'Void-Data-Comp
 const FIT_SAMPLE = 60000;    // fit the FULLY-FILLED maximum library (covers all ~47.6k patterns).
                             // The R-term (retro pull) is anchored to the whole library's capacity,
                             // not a subsample — completing the meta-loop: Ψ_healed = the full substrate.
-const DIM = 116;
 
 // The cache path is overridable ($VOID_DENSITY_CACHE or opts.cachePath) so
 // tests isolate from the live cache and never clobber the real density signal.
@@ -45,10 +44,13 @@ function _cachePath(opts) { return (opts && opts.cachePath) || process.env.VOID_
 function _readCache(opts) {
   try { return JSON.parse(fs.readFileSync(_cachePath(opts), 'utf8')); } catch (_) { return null; }
 }
+_readCache.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_cachePath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function _writeCache(obj, opts) {
   const p = _cachePath(opts);
   try { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); } catch (_) { quiet('core:substrate-density:_cachePath', _); /* best-effort */ }
 }
+_writeCache.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * The current density factor — FAST (cache read). 1.0 when no cache yet
@@ -70,20 +72,19 @@ function getDensityFactor(opts) {
  */
 function refreshDensity(opts = {}) {
   if (!_whit) return null;
-  const substratePath = opts.substratePath || process.env.VOID_FRACTAL_INDEX || DEFAULT_SUBSTRATE;
-  const sample = Number.isFinite(opts.sample) ? opts.sample : FIT_SAMPLE;
-  let idx;
-  try { idx = JSON.parse(fs.readFileSync(substratePath, 'utf8')).index; } catch (_) { return null; }
-  const names = Object.keys(idx);
-  const vecs = [];
-  const step = Math.max(1, Math.floor(names.length / (sample || 1)));
-  for (let i = 0; i < names.length && vecs.length < sample; i += step) {
-    const v = idx[names[i]].composed_v1;
-    if (Array.isArray(v) && v.length === DIM) vecs.push(v);
-  }
-  if (vecs.length < DIM) return null; // too few to fit meaningfully
-  const W = _whit.fitWhitening(vecs, { epsilon: 1e-3 });
-  const effDim = _whit.participationRatio(vecs.map((v) => _whit.applyWhitening(v, W)));
+  // ONE REFERENCE. This used to fit its own 116-D transform on `composed_v1`
+  // read out of the index — a representation the index stopped carrying when
+  // the 45k patterns moved to the store (2026-08-04). The density now reads
+  // the effective dimensionality of the canonical reference
+  // (src/core/whitening-reference.js: per-layer ZCA fitted on the store +
+  // index at the canonical width) — the same transform every resonance path
+  // applies, so density and resonance describe one space.
+  let st = null;
+  try { st = require('./whitening-reference').status(); } catch (e) { quiet('core:substrate-density:reference', e); return null; }
+  if (!st || st.mode !== 'whitened' || !st.pr || !Number.isFinite(st.pr.whitened)) return null;
+  const effDim = st.pr.whitened;
+  const names = { length: st.fitted ? st.fitted.rows : 0 };
+  const vecs = { length: st.fitted ? st.fitted.rows : 0 };
 
   const prev = _readCache(opts);
   // Reference captured once, so the factor starts at 1.0 and rises with
@@ -98,7 +99,8 @@ function refreshDensity(opts = {}) {
     effectiveDim: +effDim.toFixed(3),
     reference: +reference.toFixed(3),
     factor: +factor.toFixed(4),
-    dim: DIM,
+    dim: st.width,
+    rawEffectiveDim: st.pr && Number.isFinite(st.pr.raw) ? +st.pr.raw.toFixed(3) : null,
   };
   _writeCache(entry, opts);
   return entry;
@@ -110,4 +112,4 @@ module.exports = { getDensityFactor,  refreshDensity, CACHE_PATH, FIT_SAMPLE };
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 getDensityFactor.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-refreshDensity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+refreshDensity.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 1, group: 10, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

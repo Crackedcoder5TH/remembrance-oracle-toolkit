@@ -12,6 +12,8 @@ import { getLeadPrice, PURCHASE_TIERS, getTierByIndex } from "@/app/lib/lead-dep
 import { stripe } from "@/app/lib/stripe";
 import { validateCsrfToken } from "@/app/lib/csrf";
 import { logger } from "@/app/lib/logger";
+import { getAcknowledgement, isSuppressed, recordAudit } from "@/app/lib/compliance";
+import { getLeadOperations } from "@/app/lib/lead-operations";
 
 /**
  * Client Purchase API
@@ -57,6 +59,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Lead not found." }, { status: 404 });
     }
     const lead = leadResult.value;
+
+    const [acknowledgement, operations, suppressed] = await Promise.all([
+      getAcknowledgement(auth.clientId), getLeadOperations(leadId), isSuppressed(lead.phone, lead.email),
+    ]);
+    if (!acknowledgement?.active) return NextResponse.json({ success:false, message:"Complete your compliance acknowledgement before purchasing leads." },{status:403});
+    if (operations.doNotContact) return NextResponse.json({ success:false, message:"This lead cannot be purchased because it is marked Do Not Contact." },{status:409});
+    if (suppressed || !lead.consentTcpa || !lead.consentPrivacy || !lead.consentTimestamp || !lead.consentText) return NextResponse.json({ success:false, message:"This lead is no longer available." },{status:409});
+    let licensedStates: string[] = [];
+    try { licensedStates = JSON.parse(client.stateLicenses || "[]"); } catch { licensedStates = []; }
+    if (licensedStates.length && !licensedStates.includes(lead.state)) return NextResponse.json({ success:false, message:"Your account is not currently eligible to purchase leads in this state." },{status:403});
 
     // Score check
     const score = scoreLead(lead);
@@ -135,6 +147,7 @@ export async function POST(req: NextRequest) {
       success_url: `${baseUrl}/portal/marketplace?tab=purchases&payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/portal/marketplace?tab=leads&payment=cancelled`,
     });
+    await recordAudit({ actorId:auth.clientId,actorRole:"agent",eventType:"purchase_checkout_started",targetType:"lead",targetId:leadId,summary:"Lead purchase checkout started",ip:req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||null,userAgent:req.headers.get("user-agent") });
 
     return NextResponse.json({
       success: true,

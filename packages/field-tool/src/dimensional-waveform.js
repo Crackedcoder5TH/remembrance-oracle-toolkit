@@ -56,6 +56,7 @@ function _series(kind, seed, n = 256) {
   }
   return Buffer.from(v);
 }
+_series.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 const ARCHETYPES = Object.freeze([
   _series('osc', 1), _series('osc', 4),
   _series('walk', 2), _series('walk', 9),
@@ -76,6 +77,9 @@ function _filter2D(buf, Win) {
   }
   return res;
 }
+_filter2D.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_paeth.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_deflate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Parse a numeric series out of input and quantise to bytes; null when the
 // input is not a series (fewer than MIN_SERIES numbers) — i.e. it is 1D.
@@ -88,6 +92,7 @@ function _parseSeries(input) {
   const rng = (hi - lo) || 1;
   return Buffer.from(v.map((x) => Math.round((x - lo) / rng * 255)));
 }
+_parseSeries.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Dominant period by autocorrelation (the same reading L4 uses).
 function _period(buf) {
@@ -103,6 +108,7 @@ function _period(buf) {
   }
   return bl;
 }
+_period.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // 2D-compressed size of a byte series, reshaped to a period-matched grid.
 function _compress2DAt(buf, W) { return _deflate(_filter2D(buf, Math.max(2, W))); }
@@ -139,6 +145,7 @@ function toDimensionalWaveform(input) {
   for (let k = 0; k < raw.length && k < DIM_TARGET; k++) out[k] = (raw[k] / norm) * gain;
   return out;
 }
+_compress2DAt.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The measured period-aware 2D-gain of an input in [0, 1) — how 2D it is. */
 function dimensionalGain(input) {

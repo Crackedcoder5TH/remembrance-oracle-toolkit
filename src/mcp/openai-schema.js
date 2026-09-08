@@ -24,11 +24,6 @@ function toOpenAITools(tools = TOOLS) {
   }));
 }
 
-toOpenAITools.atomicProperties = {
-  charge: 0, valence: 8, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.7, group: 18, period: 4,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'mcp-schema-export',
-};
+toOpenAITools.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { toOpenAITools };

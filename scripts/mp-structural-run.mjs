@@ -86,7 +86,7 @@ if (!process.argv.includes('--no-harvest')) {
   const index = store.index; let seq = SL.nextSequence(index); const now = new Date().toISOString(); let added = 0;
   const ser = (ys) => { const m = Math.max(...ys.map(Math.abs)) || 1; return ys.map((y) => (y / m).toFixed(5)).join(','); };
   for (let i = 0; i < raw.length; i++) { const key = 'mp-structural/' + raw[i].fam + '/' + (raw[i].form || i).replace(/[^A-Za-z0-9.]/g, '') + '_' + i; if (index[key]) continue;
-    const entry = { composed_v2: Array.from(composedAtDepth(ser(X[i]), 8)), waveform: raw[i].vec, tc: raw[i].tc, family: raw[i].fam, source: '3dsc-mp' };
+    const entry = { composed: Array.from(composedAtDepth(ser(X[i]), 8)), waveform: raw[i].vec, tc: raw[i].tc, family: raw[i].fam, source: '3dsc-mp' };
     SL.stamp(entry, { sequence: seq++, now, series: raw[i].vec, cadence: 'event' }); index[key] = entry; added++; }
   fs.writeFileSync(path.join(VOID, 'pattern_index_fractal.json'), JSON.stringify(store));
   console.log('\nFED INTO SUBSTRATE: compressed ' + added + ' MP structural superconductors into Void (namespace mp-structural/), time-stamped.');

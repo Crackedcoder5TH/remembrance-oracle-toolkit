@@ -85,15 +85,17 @@ const THRESHOLD = Number.isFinite(args.threshold) ? args.threshold : 0.6;
 const IN_ACTIONS = !!process.env.GITHUB_ACTIONS;
 
 // ── Locate the field-tool modules ──────────────────────────────────
-let toFractalWaveform, fractalCoherency, fractalCoherencyOf;
+let codeToWaveform, fractalCoherency, fractalCoherencyOf;
 let scoreResonance, libraryStatus;
 let validateContribution;
 
 const TOOLKIT_ROOT = process.env.REMEMBRANCE_TOOLKIT_ROOT
   || path.resolve(__dirname, '..');
 try {
-  ({ toFractalWaveform, fractalCoherency, fractalCoherencyOf } =
+  ({ fractalCoherency, fractalCoherencyOf } =
     require(path.join(TOOLKIT_ROOT, 'src/core/fractal-waveform.js')));
+  // ONE representation: the structural read comes from the canonical encoder.
+  ({ codeToWaveform } = require(path.join(TOOLKIT_ROOT, 'src/core/code-to-waveform.js')));
   ({ scoreResonance, libraryStatus } =
     require(path.join(TOOLKIT_ROOT, 'src/scoring/pattern-resonance.js')));
   ({ validateContribution } =
@@ -161,9 +163,11 @@ function scoreFile(filePath, content) {
   } catch (err) {
     verdict.resonance = { error: err.message };
   }
-  // 2. Structural coherency — encode it and report the structurality reading.
+  // 2. Structural coherency — the structurality reading is dim 28 of the L1
+  //    block of the ONE vector (the 232-D decoder); read from it, never from
+  //    a separately encoded L1.
   try {
-    const wf = toFractalWaveform(content);
+    const wf = codeToWaveform(content);
     verdict.structurality = wf[28] || 0;
   } catch (err) {
     verdict.structurality = null;

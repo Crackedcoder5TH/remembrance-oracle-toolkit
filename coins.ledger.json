@@ -2360,6 +2360,49 @@
      "shape_sha256": "e586024482d8468fd45ab5c4bbdd71af7a932cf1153ae7a3c703b6d9e3041c9b"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "a0b2d3954d5e2c452e0b71f5ff8c2710a9e8c7f2db186f984ed8e6172b4b5091",
+   "minted_at": "2026-09-09T21:41:59+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "toolkit",
+    "base_tree": "e72ed27dad0cf8c07517ba1ba35aea785b1fe38d",
+    "files": [
+     ".github/workflows/cross-repo-matrix.yml"
+    ],
+    "diff_bytes": 3024,
+    "diff_sha256": "5bcf708614b7a267602e303ab2424efafc6f349158efa380c4ab033cadb567ee"
+   },
+   "reading": {
+    "coherency": 0.053152715979642495,
+    "ratio": 2.526315789473684,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "b9a2b28d878194b3",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "e1955fd48c4bb47a768e1d5307931b449bc19afe42c3e538c91216314dd05c30",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-09T21:41:59",
+     "coin": null,
+     "sig": "b9a2b28d878194b319c8f6ab8f78271e9224f1ce8859be5662a3cde06b725245"
+    },
+    "commitment": {
+     "canon": "void-seal/v3",
+     "method": "v4_chunked",
+     "original_size": 3024,
+     "compressed_size": 1197,
+     "coherency": 0.053152715979642495,
+     "data_sha256": "a36cf8b2595a3b773ac7ce0bd411ff09a5c9323da0db59405a4d672e6ff9244d",
+     "compressed_sha256": "d2c1b32ec77444e5ff5076a77223765f2bf370f3ae91375a4f853f631cd86731",
+     "shape_sha256": "39d3677ea67e5462998161aa2a569c8fd5401d4c9b40cd9cf5f8f443da815484"
+    }
+   }
   }
  ]
 }

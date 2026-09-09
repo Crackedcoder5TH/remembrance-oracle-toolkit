@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [compatibility, contracts-0, contracts-1, contracts-2, contracts-3, contracts-4, contracts-5, contracts-6]
+        suite: [compatibility, contracts]
     env:
       ORACLE_TOOLKIT: ${{ github.workspace }}/ecosystem/remembrance-oracle-toolkit
     steps:
@@ -100,7 +100,7 @@ jobs:
           repository: Crackedcoder5TH/Void-Data-Compressor
           ref: fix/pr-355-vdc-contracts-coined
           path: ecosystem/Void-Data-Compressor
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
           token: ${{ secrets.ECOSYSTEM_PAT }}
 
@@ -230,45 +230,11 @@ jobs:
           find tests -maxdepth 1 -name 'test_*.py' -print -quit | grep -q .
           python -m pytest tests/ -q
 
-      - name: Run every falsifiable contract strictly
-        if: startsWith(matrix.suite, 'contracts-')
-        working-directory: ecosystem/Void-Data-Compressor
-        env:
-          CONTRACT_SHARD: ${{ matrix.suite }}
+      - name: Run the full truth-spine and ratchet family through goggles
+        if: matrix.suite == 'contracts'
+        working-directory: ecosystem/remembrance-oracle-toolkit
         run: |
-          python -u - <<'PY'
-          import os
-          import sys
-          import verify_capabilities as verifier
-
-          shard = int(os.environ['CONTRACT_SHARD'].rsplit('-', 1)[1])
-          shard_claims = verifier.CLAIMS[shard::7]
-          verifier.CLAIMS = [claim for claim in shard_claims if claim[0] != 'C-65']
-          sys.argv = ['verify_capabilities.py', '--strict']
-          raise SystemExit(verifier.main())
-          PY
-
-  coin-history:
-    name: Void C-65 coin-history contract
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout full coined VDC history
-        uses: actions/checkout@v4
-        with:
-          repository: Crackedcoder5TH/Void-Data-Compressor
-          ref: fix/pr-355-vdc-contracts-coined
-          fetch-depth: 0
-          persist-credentials: false
-          token: ${{ secrets.ECOSYSTEM_PAT }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install coin verifier dependency
-        run: python -m pip install numpy
-
-      - name: Run C-65 strictly against full history
-        run: python -u verify_capabilities.py --strict --id C-65
+          node .claude/skills/goggles/run.mjs --do service start --wait
+          node .claude/skills/goggles/run.mjs --do contracts --strict
+          node .claude/skills/goggles/run.mjs --do gate contracts
+          node .claude/skills/goggles/run.mjs --do ratchets

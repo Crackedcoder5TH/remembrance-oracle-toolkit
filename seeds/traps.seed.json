@@ -862,6 +862,27 @@
    "truth": "Measured 2026-09-08: the service died three times in one session with NO traceback and no exit record; every start stamp in the log was a manual restart. PID 1 (/process_api --firecracker-init) showed 22 minutes of uptime inside a 12-hour session — the host is recycled between calls and every process dies with it, cleanly. Nothing in the compressor changed. Two real defects were found beside it: service-ctl's _pids() matched any shell whose command text mentioned the service file (it reported the operator's own shell as \"already LOADING\" and refused to spawn while the service was down; `stop` would have SIGTERMed that shell), and the hub's void-service.js spawned the service itself (detached, unlogged) — a second manager beside the controller. The September-5 burst of `matmul … size 256 is different from 232` in the same log predates this session and the C-64 retirement commit; it is a different fault and was not the one killing the process.",
    "tell": "Deaths with no traceback, no signal, no exit record; lifetimes that end at tool-call boundaries rather than under a request; /proc/uptime on PID 1 far shorter than the session; the controller reporting a pid that is not a python process.",
    "correct": "Before blaming the algorithm, read /proc/uptime and PID 1's age against the session's first commit. Match service processes on the interpreter invocation, never on a filename anywhere in a command line. One spawner (scripts/service-ctl.py) — no module starts the service on its own. THE reading path (read-signal.py, which mint/read/token all go through) starts the instrument through the controller when it is down, so a recycled host costs one cold start, never a manual step and never a lost reading."
+  },
+  {
+   "match": [
+    "kill-test",
+    "kill test",
+    "falsification",
+    "PARTIAL",
+    "decision rule",
+    "pre-registered",
+    "survival rate",
+    "null",
+    "my own rule",
+    "R1",
+    "R2",
+    "didn't run the instrument"
+   ],
+   "severity": "high",
+   "wrong": "Re-running a pinned falsification test at a new representation by writing a new statistic path and NEW decision rules for it on the same day, then reporting the instrument's claim as PARTIAL — and defending the number as honest because the rules were pre-registered that morning.",
+   "truth": "Measured 2026-09-09: the instrument's own resonance matrix (`--do resonance`: 732 domains, ResonanceDetector.scan(), _one_cosine over per-domain means) tested with the label-permutation hard null through the detector's own signature code and judged by the rule pinned in v2 (survival >= 5x alpha REAL, >= 2x PARTIAL) gives 35.75% survival at the 1% floor (35.7x), 71.15% against the shuffle null, 21/28 group pairs beyond the null: REAL. The v3 run of 2026-09-08 that said PARTIAL had computed its own whitened cosine of domain means, dropped 206 of the 732 domains, and judged by two rules it introduced (R2 demanded split-source domains separate). Pre-registering a rule the same day you invent it is not the pinned rule; the codebase's verdict is the one its own verbs and its own thresholds produce. The operator saw it before the agent did: \"if the kill test is now failing that means you just didn't run my instrument correctly.\"",
+   "tell": "A falsification script that imports the detector for its data but computes the statistic itself; a domain count that differs from what `--do resonance` reports; decision rules with today's date; a verdict word the pinned rule would not produce for the same survival rate.",
+   "correct": "Take the observed matrix from the instrument's own verb or the object that verb prints; recompute nulls through the same signature and cosine code (prove parity to float precision, abort otherwise); judge by the rule pinned in the prior run; if a new null is needed because the old one is meaningless at the new representation, say so and keep the pinned decision thresholds. Record the prior verdict and the corrected one side by side."
   }
  ]
 }

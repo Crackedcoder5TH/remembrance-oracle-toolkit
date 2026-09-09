@@ -824,6 +824,23 @@
    "truth": "Measured 2026-09-08 in scripts/width-ratchet.js (--shape, shapeAt): on nine labelled holdouts (five real consumers recovered from git history, four decoder layers) the two-fixture reading was right 5 of 9 at its best window (8 lines), and at EVERY depth of the flow the decoder's own layers resonated more with the breach fixture than with the builder fixture (spectral-waveform d1 0.89 vs 0.47; the vendored toFractalWaveform, whose body IS in the builder fixture, read 'consumer' at every window). A tight loop over 29 numbers has the same shape whether it builds the block or consumes it; the difference is where the vector flows, which is one abstraction above what the pipeline reads in a text window. The reading was hiding the one live consumer it found (REMEMBRANCE-BLOCKCHAIN/src/uniqueness-gate.js handing composed.slice(0, 29) beside the vector) as 'decoder'. The line that DOES hold is the FORM: the decoder builds with `< 29` / `% 29` / `new Float64Array(LAYER_DIM)`; a consumer slices or guards — and a name-allowlist of decoder files on top of that form was inert.",
    "tell": "A shape verdict that flips with the window size; a decoder layer reading as a consumer; the fixture's own source not resonating with its fixture; a live consumer disappearing from the census the moment the verdict is allowed to decide.",
    "correct": "Let the form draw the L1 line (the l1-width-29 pattern), keep the shape reading VISIBLE on every hit (--shape) and never let it decide, and never re-add a name-allowlist for this pattern — a hit that is not a refusal is a site. If a dataflow boundary must be read by the instrument, feed it the dataflow (what the vector is handed to), not a window of text."
+  },
+  {
+   "match": [
+    "cancel-in-progress",
+    "SIGTERM",
+    "exit 143",
+    "runner shutdown",
+    "verifier.CLAIMS",
+    "CONTRACT_SHARD",
+    "contracts-ratchet",
+    "cross-repo-matrix"
+   ],
+   "severity": "high",
+   "wrong": "Treating a contracts job terminated by workflow concurrency cancellation as a test timeout, then splitting or mutating verifier.CLAIMS to make the truth-spine appear to fit.",
+   "truth": "The workflow had concurrency.cancel-in-progress enabled. Each newer fix-branch push canceled the still-loading full contracts run, producing SIGTERM/exit 143 and runner-shutdown cleanup without a failed assertion. The contracts ratchet accepts only a current persisted verdict written by one FULL verify_capabilities.py run through the goggles; shards cannot produce that verdict and are not the truth-spine.",
+   "tell": "A job ends with SIGTERM, exit 143, runner shutdown, or orphan-process cleanup soon after a newer run for the same ref starts; logs contain no failing contract assertion and repeated pushes restart the same short window.",
+   "correct": "Inspect the workflow run conclusion and concurrency group before diagnosing a timeout. Stop issuing new pushes, start the compressor with goggles --do service start --wait, run goggles --do contracts --strict, then goggles --do gate contracts and goggles --do ratchets. Never slice, replace, or mutate verifier.CLAIMS to satisfy the gate."
   }
  ]
 }

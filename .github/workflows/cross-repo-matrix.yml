@@ -78,9 +78,13 @@ jobs:
         run: npm test
 
   void-against-toolkit:
-    name: Void tests and strict ecosystem contracts
+    name: Void  against toolkit
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [compatibility, contracts]
     env:
       ORACLE_TOOLKIT: ${{ github.workspace }}/ecosystem/remembrance-oracle-toolkit
     steps:
@@ -219,6 +223,7 @@ jobs:
           NODE
 
       - name: Run Void compatibility tests
+        if: matrix.suite == 'compatibility'
         working-directory: ecosystem/Void-Data-Compressor
         run: |
           test -d tests
@@ -226,5 +231,6 @@ jobs:
           python -m pytest tests/ -q
 
       - name: Run every falsifiable contract strictly
+        if: matrix.suite == 'contracts'
         working-directory: ecosystem/Void-Data-Compressor
-        run: python verify_capabilities.py --strict
+        run: python -u verify_capabilities.py --strict

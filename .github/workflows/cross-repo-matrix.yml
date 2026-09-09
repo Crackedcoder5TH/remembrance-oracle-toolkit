@@ -94,7 +94,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Crackedcoder5TH/Void-Data-Compressor
-          ref: fix/cross-repo-test-failures
+          ref: fix/pr-355-vdc-contracts-coined
           path: ecosystem/Void-Data-Compressor
           fetch-depth: 1
           persist-credentials: false

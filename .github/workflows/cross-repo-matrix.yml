@@ -78,7 +78,7 @@ jobs:
         run: npm test
 
   void-against-toolkit:
-    name: Void  against toolkit
+    name: Void ${{ matrix.suite }} against toolkit
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -234,7 +234,7 @@ jobs:
         if: startsWith(matrix.suite, 'contracts-')
         working-directory: ecosystem/Void-Data-Compressor
         env:
-          CONTRACT_SHARD: 
+          CONTRACT_SHARD: ${{ matrix.suite }}
         run: |
           python -u - <<'PY'
           import os

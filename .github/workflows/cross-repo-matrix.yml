@@ -242,7 +242,33 @@ jobs:
           import verify_capabilities as verifier
 
           shard = int(os.environ['CONTRACT_SHARD'].rsplit('-', 1)[1])
-          verifier.CLAIMS = verifier.CLAIMS[shard::7]
+          shard_claims = verifier.CLAIMS[shard::7]
+          verifier.CLAIMS = [claim for claim in shard_claims if claim[0] != 'C-65']
           sys.argv = ['verify_capabilities.py', '--strict']
           raise SystemExit(verifier.main())
           PY
+
+  coin-history:
+    name: Void C-65 coin-history contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout full coined VDC history
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/Void-Data-Compressor
+          ref: fix/pr-355-vdc-contracts-coined
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install coin verifier dependency
+        run: python -m pip install numpy
+
+      - name: Run C-65 strictly against full history
+        run: python -u verify_capabilities.py --strict --id C-65

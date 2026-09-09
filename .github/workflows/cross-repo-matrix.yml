@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [compatibility, contracts]
+        suite: [compatibility, contracts-0, contracts-1, contracts-2]
     env:
       ORACLE_TOOLKIT: ${{ github.workspace }}/ecosystem/remembrance-oracle-toolkit
     steps:
@@ -231,6 +231,18 @@ jobs:
           python -m pytest tests/ -q
 
       - name: Run every falsifiable contract strictly
-        if: matrix.suite == 'contracts'
+        if: startsWith(matrix.suite, 'contracts-')
         working-directory: ecosystem/Void-Data-Compressor
-        run: python -u verify_capabilities.py --strict
+        env:
+          CONTRACT_SHARD: 
+        run: |
+          python -u - <<'PY'
+          import os
+          import sys
+          import verify_capabilities as verifier
+
+          shard = int(os.environ['CONTRACT_SHARD'].rsplit('-', 1)[1])
+          verifier.CLAIMS = verifier.CLAIMS[shard::3]
+          sys.argv = ['verify_capabilities.py', '--strict']
+          raise SystemExit(verifier.main())
+          PY

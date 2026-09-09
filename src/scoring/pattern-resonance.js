@@ -45,6 +45,7 @@ function _tokenize(code) {
   for (const raw of m) set.add(raw.toLowerCase());
   return set;
 }
+_tokenize.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 12, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildIndex(rawPatterns) {
   const docs = [];
@@ -74,6 +75,7 @@ function _buildIndex(rawPatterns) {
   }
   return { docs, idf };
 }
+_buildIndex.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _loadFromSqlite() {
   const { SQLiteStore } = require('../store/sqlite');
@@ -85,6 +87,7 @@ function _loadFromSqlite() {
   store.close && store.close();
   return _buildIndex(rows);
 }
+_loadFromSqlite.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _loadFromPatternsJson() {
   const candidates = [
@@ -99,6 +102,7 @@ function _loadFromPatternsJson() {
   }
   return null;
 }
+_loadFromPatternsJson.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _load() {
   if (_index !== null) return _index;
@@ -118,6 +122,7 @@ function _load() {
   if (!_index) _loadError = _loadError || 'no patterns available (sqlite + patterns.json both empty/missing)';
   return _index;
 }
+_load.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _cosine(qToks, qL2, doc, idf) {
   let inter = 0;
@@ -129,6 +134,7 @@ function _cosine(qToks, qL2, doc, idf) {
   const den = qL2 * doc.l2;
   return den < 1e-12 ? 0 : inter / den;
 }
+_cosine.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Score `text` (typically code) by lexical TF-IDF resonance against the
@@ -219,5 +225,5 @@ module.exports = { scoreResonance, libraryStatus, _resetCache };
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-scoreResonance.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+scoreResonance.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 1, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 libraryStatus.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

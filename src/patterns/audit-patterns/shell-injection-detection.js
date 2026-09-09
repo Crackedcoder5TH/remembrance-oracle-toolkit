@@ -88,4 +88,4 @@ module.exports = { detectShellInjection };
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-detectShellInjection.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+detectShellInjection.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 3, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };

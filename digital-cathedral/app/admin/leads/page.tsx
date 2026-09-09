@@ -4,13 +4,15 @@
  * /admin/leads — the all-leads list.
  *
  * A focused, always-accessible view of every submitted lead: search by
- * name/email, filter by submission source, paginate, and export to CSV. Reads
- * the same /api/admin/leads endpoint the dashboard uses (only admitted leads
- * are stored; bot/fraud submissions are rejected at the gate and never persist).
+ * name/email/phone/id, filter by submission source, paginate, and export to
+ * CSV. Reads the same /api/admin/leads endpoint the dashboard uses (only
+ * admitted leads are stored; bot/fraud submissions are rejected at the gate and
+ * never persist). Rendered inside the shared PortalShell so it matches the rest
+ * of the admin portal.
  */
 
-import * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Panel, PortalShell } from "../../components/portal-shell";
 
 interface LeadRow {
   leadId: string;
@@ -36,6 +38,9 @@ const SOURCES = [
   { value: "agent", label: "Agent" },
   { value: "lattice", label: "Lattice" },
 ] as const;
+
+const th = "px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wide text-[#776e61]";
+const td = "border-t border-[#eee7da] px-3 py-3 text-sm align-middle";
 
 export default function AdminLeadsPage() {
   const [leads, setLeads] = useState<LeadRow[]>([]);
@@ -94,115 +99,109 @@ export default function AdminLeadsPage() {
   const to = Math.min((page + 1) * LIMIT, total);
 
   return (
-    <main className="min-h-screen text-[var(--text-primary)] px-6 py-8 max-w-6xl mx-auto">
-      <header className="flex items-baseline justify-between flex-wrap gap-3 mb-4">
-        <h1 className="text-xl font-light text-teal-cathedral">
-          All Leads {total > 0 && <span className="text-[var(--text-muted)] text-sm">· {total.toLocaleString()}</span>}
-        </h1>
-        <div className="flex items-baseline gap-4 text-xs">
-          <a href="/admin" className="text-teal-cathedral/80 hover:text-teal-cathedral">← dashboard</a>
-          <a href={exportHref} className="text-teal-cathedral/80 hover:text-teal-cathedral">export CSV</a>
+    <PortalShell
+      role="admin"
+      eyebrow="Lead center"
+      title="All Leads"
+      description="Every submitted lead — search, filter by source, and export. Only admitted leads are stored; bot and fraud submissions are rejected at the gate."
+    >
+      <Panel
+        title={total > 0 ? `All leads · ${total.toLocaleString()}` : "All leads"}
+        action={<a href={exportHref} className="text-xs font-bold text-[#176b65]">Export CSV →</a>}
+      >
+        <div className="mb-4 flex flex-wrap gap-2">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, phone, or lead ID…"
+            className="min-w-[220px] flex-1 rounded-lg border border-[#e2d9c9] bg-white px-3 py-2 text-sm text-[#211d18] placeholder:text-[#8a8175] outline-none focus:border-[#c9a75f]"
+          />
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            className="rounded-lg border border-[#e2d9c9] bg-white px-3 py-2 text-sm text-[#211d18] outline-none focus:border-[#c9a75f]"
+          >
+            {SOURCES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
         </div>
-      </header>
 
-      {/* Controls */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name, email, phone, or lead ID…"
-          className="flex-1 min-w-[200px] bg-black/20 border border-teal-cathedral/20 rounded px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-teal-cathedral outline-none"
-        />
-        <select
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          className="bg-black/20 border border-teal-cathedral/20 rounded px-3 py-2 text-sm text-[var(--text-primary)] focus:border-teal-cathedral outline-none"
-        >
-          {SOURCES.map((s) => (
-            <option key={s.value} value={s.value} className="bg-[#0e1525]">
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </div>
+        {errorMsg && (
+          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</p>
+        )}
 
-      {errorMsg && (
-        <div className="mb-4 px-3 py-2 rounded text-xs border border-rose-500/30 bg-rose-950/30 text-rose-200">
-          {errorMsg}
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="overflow-x-auto border border-teal-cathedral/10 rounded-lg">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-left text-[var(--text-muted)] border-b border-teal-cathedral/10">
-              <th className="px-3 py-2 font-normal">Name</th>
-              <th className="px-3 py-2 font-normal">State</th>
-              <th className="px-3 py-2 font-normal">Coverage</th>
-              <th className="px-3 py-2 font-normal">Veteran</th>
-              <th className="px-3 py-2 font-normal">Tier</th>
-              <th className="px-3 py-2 font-normal">Archetype</th>
-              <th className="px-3 py-2 font-normal">Submitted</th>
-              <th className="px-3 py-2 font-normal">Consent</th>
-              <th className="px-3 py-2 font-normal">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && leads.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-6 text-center text-[var(--text-muted)]">Loading…</td></tr>
-            ) : leads.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-10 text-center text-[var(--text-muted)]"><b className="block text-[var(--text-primary)]">No leads have been submitted yet.</b>Once customers complete the Protection Path form, they’ll appear here for review.</td></tr>
-            ) : (
-              leads.map((l) => (
-                <tr key={l.leadId} className="border-b border-teal-cathedral/5 hover:bg-black/20">
-                  <td className="px-3 py-2 text-[var(--text-primary)] whitespace-nowrap">{l.firstName} {l.lastName}</td>
-                  <td className="px-3 py-2">{l.state}</td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">{l.coverageInterest}</td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">{l.veteranStatus}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <span className="text-teal-cathedral/80">{l.tier}</span>
-                    {typeof l.score === "number" && <span className="text-[var(--text-muted)]"> · {l.score}</span>}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px]">
+            <thead>
+              <tr>
+                {["Name", "State", "Coverage", "Veteran", "Tier", "Archetype", "Submitted", "Consent", "Action"].map((h) => (
+                  <th key={h} className={th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading && leads.length === 0 ? (
+                <tr><td colSpan={9} className={`${td} text-center text-[#8a8175]`}>Loading…</td></tr>
+              ) : leads.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-3 py-12 text-center">
+                    <b className="block text-[#211d18]">No leads have been submitted yet.</b>
+                    <span className="mt-1 block text-sm text-[#8a8175]">Once customers complete the Protection Path form, they’ll appear here for review.</span>
                   </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">{l.archetype ?? "—"}</td>
-                  <td className="px-3 py-2 text-[var(--text-muted)] whitespace-nowrap">
-                    {l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-emerald-300">Recorded</td>
-                  <td className="px-3 py-2"><a href={`/admin/leads/${l.leadId}`} className="rounded border border-teal-cathedral/30 px-2 py-1 text-teal-cathedral">View</a></td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                leads.map((l) => (
+                  <tr key={l.leadId} className="hover:bg-[#faf7f0]">
+                    <td className={`${td} whitespace-nowrap font-semibold text-[#211d18]`}>{l.firstName} {l.lastName}</td>
+                    <td className={td}>{l.state}</td>
+                    <td className={`${td} text-[#776e61]`}>{l.coverageInterest}</td>
+                    <td className={`${td} text-[#776e61]`}>{l.veteranStatus}</td>
+                    <td className={`${td} whitespace-nowrap`}>
+                      <span className="font-semibold text-[#176b65]">{l.tier}</span>
+                      {typeof l.score === "number" && <span className="text-[#8a8175]"> · {l.score}</span>}
+                    </td>
+                    <td className={`${td} text-[#776e61]`}>{l.archetype ?? "—"}</td>
+                    <td className={`${td} whitespace-nowrap text-[#776e61]`}>
+                      {l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—"}
+                    </td>
+                    <td className={`${td} text-emerald-600`}>Recorded</td>
+                    <td className={td}>
+                      <a href={`/admin/leads/${l.leadId}`} className="rounded-lg border border-[#e2d9c9] px-3 py-1.5 text-sm text-[#176b65] hover:border-[#c9a75f]">View</a>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Pagination */}
-      {total > LIMIT && (
-        <nav className="flex items-center justify-between mt-4 text-xs" aria-label="Leads pagination">
-          <span className="text-[var(--text-muted)]">
-            Showing {from}–{to} of {total.toLocaleString()}
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="px-3 py-1.5 rounded border border-teal-cathedral/20 text-teal-cathedral/80 hover:border-teal-cathedral/40 disabled:opacity-40"
-            >
-              ← prev
-            </button>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={to >= total}
-              className="px-3 py-1.5 rounded border border-teal-cathedral/20 text-teal-cathedral/80 hover:border-teal-cathedral/40 disabled:opacity-40"
-            >
-              next →
-            </button>
-          </div>
-        </nav>
-      )}
-    </main>
+        {total > LIMIT && (
+          <nav className="mt-5 flex items-center justify-between text-sm" aria-label="Leads pagination">
+            <span className="text-[#8a8175]">Showing {from}–{to} of {total.toLocaleString()}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="rounded-lg border border-[#e2d9c9] px-3 py-1.5 text-[#211d18] hover:border-[#c9a75f] disabled:opacity-40"
+              >
+                ← Prev
+              </button>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={to >= total}
+                className="rounded-lg border border-[#e2d9c9] px-3 py-1.5 text-[#211d18] hover:border-[#c9a75f] disabled:opacity-40"
+              >
+                Next →
+              </button>
+            </div>
+          </nav>
+        )}
+      </Panel>
+    </PortalShell>
   );
 }
 

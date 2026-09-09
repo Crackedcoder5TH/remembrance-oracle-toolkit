@@ -15,12 +15,7 @@ function loadAuditBackend() {
   }
   return require('../../../audit/ast-checkers');
 }
-loadAuditBackend.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+loadAuditBackend.atomicProperties = { charge: 0, valence: 2, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Compute the mean Phase 2 risk score across the repo's src/
@@ -40,11 +35,6 @@ function computeSessionMeanRisk(repoRoot) {
     return null;
   }
 }
-computeSessionMeanRisk.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.4, group: 11, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
+computeSessionMeanRisk.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { loadAuditBackend, computeSessionMeanRisk };

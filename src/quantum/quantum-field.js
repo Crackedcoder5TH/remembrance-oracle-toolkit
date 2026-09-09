@@ -66,6 +66,7 @@ const {
 function safeParse(str, fallback) {
   try { return JSON.parse(str || JSON.stringify(fallback)); } catch { return fallback; }
 }
+safeParse.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Tables that participate in the quantum field
 const QUANTUM_TABLES = ['patterns', 'entries', 'candidates', 'debug_patterns'];

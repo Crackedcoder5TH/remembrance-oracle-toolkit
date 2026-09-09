@@ -61,6 +61,7 @@ function _compose(input) {
   }
   return out;
 }
+_compose.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Zero-pad any whole-block vector (116-D v1, 145-D v2, or a future
  *  deeper stack truncated) up to COMPOSED_DIM. Returns null when the
@@ -73,6 +74,7 @@ function _padToMax(vec) {
   for (let i = 0; i < vec.length; i++) out[i] = vec[i];
   return out;
 }
+_padToMax.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Precompute the L2 norm of a signature so the cosine inner loop
@@ -84,6 +86,21 @@ function _norm(vec) {
   for (let i = 0; i < vec.length; i++) s += vec[i] * vec[i];
   return Math.sqrt(s);
 }
+_norm.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/**
+ * THE RESONANCE SPACE. Patterns are stored, and queries taken, in the
+ * whitened space of src/core/whitening-reference.js (per-layer ZCA fitted on
+ * the canonical substrate), so the precomputed-norm search discriminates
+ * instead of reading the raw cone (~0.9+ for everything). Applied BEFORE
+ * padding: an all-zero padding block must stay zero. Call-time require —
+ * the reference loads the library, which loads this module.
+ */
+function _whitenRaw(vec) {
+  try { return require('./whitening-reference').whitenComposed(vec); }
+  catch (e) { quiet('core:fractal-index:whiten', e); return vec; }
+}
+_whitenRaw.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Cosine over the first `dims` elements of two Float64Arrays.
@@ -96,6 +113,7 @@ function _cosineAt(q, qn, p, pn, dims) {
   for (let i = 0; i < dims; i++) dot += q[i] * p[i];
   return dot / (qn * pn);
 }
+_cosineAt.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 class FractalIndex {
   /**
@@ -106,10 +124,10 @@ class FractalIndex {
   constructor(opts = {}) {
     this._encode = opts.encoder || _compose;
     this._ids = [];                              // parallel arrays — packed
-    this._vecs = [];                             // Float64Array(116) per pattern
+    this._vecs = [];                             // Float64Array(232) per pattern (canonical width, padded)
     this._norms = new Float64Array(0);           // precomputed ||p|| per pattern
     this._normsByDepth = new Array(MAX_DEPTH).fill(null); // ||p|| at depths 1..MAX_DEPTH
-    this._realDepths = [];                       // pre-pad whole-block depth per pattern (4=116-D … 7=203-D)
+    this._realDepths = [];                       // pre-pad whole-block depth per pattern (4=116-D … 8=232-D)
     this._idIndex = new Map();                   // id → array position
   }
 
@@ -132,7 +150,7 @@ class FractalIndex {
    * to SQLite for cold-start rebuild.
    */
   add(id, text) {
-    const raw = this._encode(text);
+    const raw = _whitenRaw(this._encode(text));
     const vec = _padToMax(raw);
     if (!vec) {
       throw new Error(`FractalIndex.add: encoder must return a whole-block vector of at most ${COMPOSED_DIM} dims (multiple of ${LAYER_DIM})`);
@@ -162,7 +180,7 @@ class FractalIndex {
     this._realDepths = [];
     this._idIndex = new Map();
     for (const { id, text, vec } of items) {
-      const raw = vec || this._encode(text);
+      const raw = _whitenRaw(vec || this._encode(text));
       const v = _padToMax(raw);
       if (!v) continue;
       this._idIndex.set(id, this._ids.length);
@@ -227,7 +245,7 @@ class FractalIndex {
     const minScore = opts.minScore || 0;
     const dims = depth * LAYER_DIM;
 
-    const qVec = this._encode(text);
+    const qVec = _whitenRaw(this._encode(text));
     let qNorm = 0;
     for (let i = 0; i < dims; i++) qNorm += qVec[i] * qVec[i];
     qNorm = Math.sqrt(qNorm);
@@ -262,7 +280,7 @@ class FractalIndex {
   flow(text, id) {
     const idx = this._idIndex.get(id);
     if (idx === undefined) return null;
-    const qVec = this._encode(text);
+    const qVec = _whitenRaw(this._encode(text));
     const pVec = this._vecs[idx];
     const out = {};
     for (let d = 1; d <= MAX_DEPTH; d++) {
@@ -301,6 +319,7 @@ class FractalIndex {
     // is d1..d4, where d4 is the cosine at each pattern's OWN shared real depth
     // (see below) — so a 203-D query and a 116-D pattern meet at 116 with no bias.
     if (!qComposed || qComposed.length < 4 * LAYER_DIM || n === 0) return [];
+    qComposed = _whitenRaw(qComposed);   // the patterns were whitened at rebuild/add
     const qDepth = Math.min(MAX_DEPTH, Math.floor(qComposed.length / LAYER_DIM));
     const qDims = qDepth * LAYER_DIM;
 

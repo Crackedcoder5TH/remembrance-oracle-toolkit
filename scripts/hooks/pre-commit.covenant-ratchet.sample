@@ -22,6 +22,14 @@ fi
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
+echo "[covenant] gate zero: are the gates themselves untouched?"
+if ! node scripts/gate-lock.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — a gate script changed. Gates change only by the owner:"
+  echo "[covenant]   node scripts/gate-lock.js --relock --reason \"<why>\"   (ledgered, then anchor on the Witness)"
+  exit 1
+fi
+
 echo "[covenant] running cathedral diagnostic..."
 node scripts/cathedral-diagnostic.js --json-only >/dev/null
 
@@ -94,6 +102,11 @@ if ! node scripts/console-ratchet.js; then
   exit 1
 fi
 echo "[covenant] enforcing orphan ratchet..."
+if ! node scripts/atomic-drift-ratchet.js; then
+  echo "[covenant] ✗ commit BLOCKED — an atomic declaration drifted from its own body."
+  exit 1
+fi
+
 if ! node scripts/orphan-ratchet.js; then
   echo ""
   echo "[covenant] ✗ commit BLOCKED — an export was born with zero consumers and no verdict."

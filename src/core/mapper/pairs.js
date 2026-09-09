@@ -22,6 +22,7 @@ function _dedupePairs(results) {
   }
   return [...seen.values()];
 }
+_dedupePairs.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Annotate duplicate pairs of data files with payload identity.
@@ -105,6 +106,7 @@ function _annotateDataPairs(pairs, projectPath) {
   }
   return pairs;
 }
+_annotateDataPairs.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "solid", reactivity: "high", electronegativity: 1, group: 6, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _sortKeysDeep(v) {
   if (Array.isArray(v)) return v.map(_sortKeysDeep);
@@ -115,6 +117,7 @@ function _sortKeysDeep(v) {
   }
   return v;
 }
+_sortKeysDeep.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Annotate orphan rows with human-reviewed verdicts from the tracked
@@ -137,5 +140,6 @@ function _annotateOrphans(orphans, projectPath) {
   }
   return orphans;
 }
+_annotateOrphans.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { _dedupePairs, _annotateDataPairs, _annotateOrphans, _sortKeysDeep };

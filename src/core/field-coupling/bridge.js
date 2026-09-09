@@ -45,6 +45,7 @@ function _liveFieldTarget() {
   if (!/\/mcp\/?$/.test(u.pathname)) u.pathname = u.pathname.replace(/\/+$/, '') + '/mcp';
   return u;
 }
+_liveFieldTarget.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Fire-and-forget POST of one observation to the live field. Never throws. */
 function _bridgeToLiveField(obs) {
@@ -79,5 +80,6 @@ function _bridgeToLiveField(obs) {
     req.end(body);
   } catch (_) { quiet('core:field-coupling:bridge:require', _); /* best-effort */ }
 }
+_bridgeToLiveField.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 9, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { markFieldServer, _liveFieldTarget, _bridgeToLiveField };

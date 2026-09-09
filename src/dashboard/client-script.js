@@ -1113,5 +1113,6 @@ function getDashboardScript(resilientFetchSource) {
 
 })();`;
 }
+getDashboardScript.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 13, period: 6, harmPotential: "moderate", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { getDashboardScript };

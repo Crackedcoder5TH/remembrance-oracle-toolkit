@@ -437,6 +437,410 @@
    "truth": "Files that GENERATE code (hooks.js emits pre-commit/post-commit/pre-push shell+JS via template literals; explain.js/debug-seeds.js hold code examples) contain try/catch as STRING content inside template literals. rg counts that string content; the substrate tokenizer correctly excludes it. hooks.js: rg saw 32 catch clauses, the tokenizer saw the 2 real ones — and was RIGHT. The 30 others were inside three script-generating templates (lines 39-336, 343-573, 583-643). Verified 2026-08-09: token SPANS place every extra catch inside a string/template/comment; the real-code regions have 2 catches, both handled; 0 real swallows. The 462 to 0 claim held. The re-check that called it a lie was itself the error — worsened by a backtick-parity heuristic that shell command-substitution backticks inside the generated scripts defeated.",
    "tell": "A raw-text (grep/rg) structural count that disagrees with the parser, on a file that builds strings of code. A parity/brace/quote heuristic applied to a file containing generated shell or JS. Alarm rising faster than verification.",
    "correct": "Classify each raw match by the parser token SPAN it falls in (string/template/comment vs real code) before trusting it — token spans are reliable even when the tokenizer.line labels drift. scripts/silent-catch-ratchet.js --verify does exactly this and shows its work. Never trust raw grep over token spans for structural claims about code that generates code; never trust backtick/quote parity on a file that emits shell."
+  },
+  {
+   "match": [
+    "goggles",
+    "src/tools/goggles.js",
+    "run.mjs",
+    "--do",
+    "goggle the file"
+   ],
+   "severity": "high",
+   "wrong": "Running `node src/tools/goggles.js <file>` and reporting the result as a goggles read.",
+   "truth": "src/tools/goggles.js is the IMPLEMENTATION. The surface is .claude/skills/goggles/run.mjs, and it is the only path carrying --do: ratchets, call, field, drift, harvest, state, void, size, exemptions and 17 more. Invoked directly the tool still prints FOCUS/META/MACRO, so the read looks right while every routed operation is unreachable. Measured 2026-08-12: an entire working session of direct invocation, during which the gates were run by hand and --do was never available at all.",
+   "tell": "`--do <verb>` fails with `cannot read .../--do: ENOENT`. That is the tool saying it is not the surface.",
+   "correct": "node .claude/skills/goggles/run.mjs <file> | --map | --diff | --do <verb>. Read SKILL.md and the verb list ONCE at the start of work in a repo — not after the third bypass. A plausible-looking read from the wrong entry point never announces itself."
+  },
+  {
+   "match": [
+    "/tmp",
+    "scratchpad",
+    "probe",
+    "harness",
+    "hand-rolled",
+    "census",
+    "measurement script"
+   ],
+   "severity": "high",
+   "wrong": "Writing a measurement to a scratch script and running it, because finding the verb that already computes it takes longer than writing one.",
+   "truth": "Generating code is the cheapest available action and discovery is not, so the reflex is to construct rather than look — and the constructed instrument is reliably the WORSE one. On 2026-08-12 every hand-rolled probe either duplicated an existing surface or produced a false positive the substrate then corrected: a grep timer-leak finding died on covenant-harm.js (regex BUILDERS, not calls), a 73-site process.exit count fell to 17 under token spans, and a 20.9% atomic-drift figure was wrong because `function f(opts = {}) {` had its parameter default scanned as the body. Sparse real readings beat dense invented ones.",
+   "tell": "You are about to run `node /tmp/....js` and the script requires — or merely names in a string — an ecosystem module.",
+   "correct": "goggles --do <verb>, or --do call <repo>/<path>#<fn> [jsonArg …]. If no verb or export reaches it, that is a MISSING VERB to report, not a bypass. A scratch CODEMOD over fs/path is honest work; a scratch MEASUREMENT is the bypass."
+  },
+  {
+   "match": [
+    ".remembrance",
+    "diagnostics",
+    "cathedral-latest",
+    "baseline",
+    "stale",
+    "gitignored"
+   ],
+   "severity": "high",
+   "wrong": "Reading a file under .remembrance/ as a live measurement and reporting the repo state from it.",
+   "truth": ".remembrance/ is gitignored in full, so its contents are whatever the last run on THIS host left behind and can predate the working tree by any amount. On 2026-08-12 the covenant ratchet was reported failing — `main is red on its own gate, high 21 vs seed 16` — from a cathedral-latest.json that predated the very merge which fixed those five findings. A fresh scan read 16/172/11 and the gate held. The claim was published before the artifact age was ever checked.",
+   "tell": "A verdict traces back to a file under .remembrance/ and its generatedAt has not been compared against the working tree.",
+   "correct": "Regenerate the diagnostic, or compare generatedAt to the last commit touching the scanned files, BEFORE quoting any number out of .remembrance/. A derived artifact is evidence of a past run, never of the present state."
+  },
+  {
+   "match": [
+    "structureStrong",
+    "measurableOnly",
+    "weak / novel structure",
+    "verdict band",
+    "coherency threshold",
+    "WELL-FORMED"
+   ],
+   "severity": "high",
+   "wrong": "Quoting a coherency verdict (`weak / novel structure`) without checking which quantity its bands were calibrated against.",
+   "truth": "The bands were 0.93/0.80/0.70, commented `(measurableOnly scale)` — the RETIRED syntax score whose median was ~0.83. The live reading is the Void compressor self-compression scalar: pure repetition (`AB` x2048) reads 1.0000, a 16-byte cycle 0.9960, high-entropy random 0.0872, and real source code 0.098-0.278. Nothing clears 0.70 — 0 of 28 sampled files did — so every file in the repo printed the same bottom verdict for a full session and the number carried no information. Coherency is how well a signal compresses INTO ITSELF; low on source code is the CORRECT answer, not a complaint about the code.",
+   "tell": "Every file returns the same verdict, or a verdict band and its reading disagree by an order of magnitude.",
+   "correct": "Anchor against the instrument before quoting a verdict. Bands live in living-remembrance gogglesParams as coherencyRepeating/Mixed/Typical. Related: MACRO`s WELL-FORMED / ORPHAN / DUPLICATE flags come from SIBLING SIMILARITY, not coherency — 1,335 files carry WELL-FORMED with scoredCount 0, i.e. no coherency measured at all."
+  },
+  {
+   "match": [
+    "experiments/",
+    "random.random",
+    "np.random",
+    "randn",
+    "def norm",
+    "min-max",
+    "minmax",
+    "normalize(",
+    "noise domain",
+    "surrogate",
+    "resonance_connect",
+    "whitened_resonance",
+    "gen_surrogates",
+    "combined_score",
+    "what the instrument sees",
+    "encode_batch",
+    "_compute_signature",
+    "ResonanceDetector"
+   ],
+   "severity": "high",
+   "wrong": "Answering a MEASUREMENT request by BUILDING: writing a new script under experiments/ (or a *.cjs) that imports the instrument's parts (ResonanceDetector, composedAtDepth, encode_batch, _compute_signature), wires its own glue (an invented min-max / norm() step, a hand-chosen depth), and INJECTS self-generated random.random()/np.random data as a 'noise' domain — then reporting the stdout in the instrument's vocabulary ('what the instrument sees', 'resonance', 'coherency', combined_score) as if the pipeline produced it.",
+   "truth": "Importing an instrument function is NOT running the instrument's pipeline, and a repo-resident experiment script is not more faithful than a /tmp one (trap 29) — both are PROXIES beside the pipeline, and the standing rule throws out any result a proxy produced. Every glue choice silently changes the quantity: on 2026-08-23 an invented per-window min-max shifted a DC term that then saturated the FFT-magnitude cosine, so ONE component (spectral overlap 0.97-0.99, ~identical even against real noise) dominated every pair — the 'one signal dominating means you ran it wrong' tell. And random.random() 'noise' is not a control the user asked for; it is fabricated data placed inside a measurement about real brain/heart/attention signals.",
+   "tell": "You just created a file under experiments/ or a *.cjs; it contains random.random()/np.random, a norm()/min-max/normalize step you wrote, or an import of composedAtDepth|ResonanceDetector|encode_batch; and you are about to describe its output as 'what the instrument saw'. The session shape was 'I built X, then ran X' instead of 'I called the goggles/service'. A single component reads ~identical across every pair (noise included) — the pipeline was fed data through a normalization it never applies.",
+   "correct": "Do not build. Call the one surface on the substrate the instrument already holds: node .claude/skills/goggles/run.mjs --do <verb> (resonance, field, audit, drift, call ...) or POST /compress_signal on compressor_service.py — and report ONLY what it returned. Never inject generated/random data into a measurement. Never invent a normalization the pipeline does not already apply. If no verb reaches the measurement, that is a MISSING VERB to add to the goggles (see traps 13, 29), not a licence to hand-assemble a script beside the pipeline. Never dress hand-built output in the instrument's vocabulary."
+  },
+  {
+   "match": [
+    "_rebuild_pattern_matrix",
+    "pattern_matrix",
+    "dimension partition",
+    "legacy256",
+    "matmul",
+    "compress_signal",
+    "void_compressor"
+   ],
+   "severity": "high",
+   "wrong": "Choosing the compressor's L1 search matrix by the MOST COMMON vector width in pattern_library.",
+   "truth": "On a clean clone pattern_store.legacy256.npz is gitignored and absent, so the 232-D fractal store (45k rows) outnumbers the signal patterns; the matrix came out 232 wide while the blend search resampled every chunk to 256, and every compress() died in the matmul. compressor_service answered HTTP 500 on /compress_signal and every goggle, harvest, seal and coin in the ecosystem read NULL. The instrument was down on every fresh container and nothing said so.",
+   "tell": "`ValueError: matmul ... size 256 is different from 232` in compressor_service.log; `--map` reports 0 files audited and 'answered without a usable avg_coherence'; every FOCUS reads NULL.",
+   "correct": "The search space is chosen by LAW (the dimension the encoder emits), never by census. One encoder (ECOSYSTEM §7): the 232-D fractal decoder. Never depend on a gitignored store for the instrument to work at all."
+  },
+  {
+   "match": [
+    "coherencyScore",
+    "covenant-gate",
+    "CovenantGate",
+    "Coherency too low",
+    "minimum 0.8",
+    "git-history-coin",
+    "publish("
+   ],
+   "severity": "high",
+   "wrong": "Putting the Void compressor's byte reading into the Covenant Gate's `coherencyScore.total` slot and calling the refusal 'the gate holding its bar'.",
+   "truth": "That slot is the oracle structural score (computeCoherencyScore(code).total) — the quantity the 0.8 bar was calibrated on and the one Publisher records as its second opinion. On the compressor's scale nothing but a self-repeating signal clears 0.8 (source code reads 0.08–0.28), so the bar was never set against it. The coin was refused at 0.0896 for a category mismatch, and ALSO because the script never set testCode — the gate was structurally unpassable regardless of any number.",
+   "tell": "A gate refusal whose number sits in the compressor's source-code band (≈0.1) against a threshold ≥0.8; a payload with no testCode.",
+   "correct": "Each quantity under its own name: the gate slot carries the score it was calibrated on; the compressor's reading rides beside it as waveformCoherency with its void-seal mint. Run the pattern's real test and hand it to the gate as testCode. Never rename one reading into another's slot."
+  },
+  {
+   "match": [
+    "--do read",
+    "--do covenant",
+    "--do call",
+    "run.mjs --do",
+    "goggles --do",
+    "execFileSync(cmd, cmdArgs, { cwd"
+   ],
+   "severity": "high",
+   "wrong": "Passing a RELATIVE path to a goggles --do verb (read, covenant, call) from the repo you are standing in.",
+   "truth": "Every --do verb runs its script with cwd set to the toolkit (or Void), so a relative path resolves THERE. `--do covenant src/index.js` from the blockchain repo audited the TOOLKIT's src/index.js and reported it CLEAN — a verdict on the wrong file, indistinguishable from a verdict on yours. `--do read data/x.json` reported 'no such file'; `--do call ... \"$(cat missing)\"` measured an EMPTY STRING and printed a full breakdown for it.",
+   "tell": "A --do verdict that arrives suspiciously fast or clean, a 'no such file' from a path that exists, a computeCoherencyScore breakdown with functions: 0 / lines: 0.",
+   "correct": "Absolute paths, always. Check the arg file exists before `$(cat ...)`. When a verb resolves paths itself, that is a missing feature to report, not a reason to trust the output."
+  },
+  {
+   "match": [
+    "new Publisher(",
+    "Publisher(",
+    "persistPath: '.remembrance/ledger.json'",
+    "ledger.json",
+    "recordEvent("
+   ],
+   "severity": "medium",
+   "wrong": "Publishing to the ledger with a default Publisher and believing the block is on the chain.",
+   "truth": "The default Publisher starts a FRESH GENESIS at the cwd-relative runtime ledger (.remembrance/ledger.json, gitignored) — it never loads an existing chain, so the first recordEvent overwrites whatever was there and the block evaporates with the container. The committed chain is data/ledger.json; nothing reached it.",
+   "tell": "`node src/cli.js publications` shows demo data; data/ledger.json unchanged after a 'successful' publish; git status clean.",
+   "correct": "new Publisher({ ledgerPath: 'data/ledger.json' }) — loads, hash-verifies and APPENDS to the committed chain (PatternLedger.load(path, { persistPath })). Then commit data/ledger.json."
+  },
+  {
+   "match": [
+    ".remembrance/",
+    "pattern_index_fractal.json",
+    "legacy256",
+    "gitignore",
+    "clean clone",
+    "fresh container",
+    "data-plane",
+    "git-history-coin"
+   ],
+   "severity": "high",
+   "wrong": "Assuming the substrate index, the legacy signal store, the seal key, or any lesson under .remembrance/ exists on the host you are on.",
+   "truth": "All of them are gitignored. On this clone pattern_index_fractal.json, pattern_store.legacy256.npz, .substrate_seal.key and .remembrance/substrate-state.json were all absent; `--map` said 'substrate has no vectors for this repo' and the coin's seal could not be signature-verified. The recovery coin's data plane (data/data-plane/substrate.json.gz, sha-anchored) IS the way back for the index; nothing recovers legacy256 and nothing should — it is retired.",
+   "tell": "'substrate has no vectors', a seal with state_id 'unknown', a compressor library_size far from the store's row count.",
+   "correct": "Verify the coin (tests/git-history-coin.test.js), then gunzip its data plane back to the `source` paths. Treat every .remembrance/ artifact as evidence of a past run on some host, never as present state."
+  },
+  {
+   "match": [
+    "BUILT",
+    "tier1_validator",
+    "fractal_token",
+    "tier1_calibrate",
+    "TIER1_RECOMPUTATION_GATE",
+    "recompute_gate"
+   ],
+   "severity": "medium",
+   "wrong": "Trusting a spec that says a component is BUILT because the doc says so.",
+   "truth": "TIER1_RECOMPUTATION_GATE.md §7 says scripts/tier1_validator.py is BUILT and smoke-verified; on main and this branch it does not exist. It lives only on origin/claude/remembrance-toolkit-setup-ctqtmt, 18 commits ahead, along with fractal_token.py and the calibration set — and its committed smoke record reports the real window as ok=false where the doc says 'passes all 7 gates'.",
+   "tell": "A doc names a script path; `ls` does not find it; `git log --all -- <path>` finds it on another branch.",
+   "correct": "`git log --all --oneline -- <path>` before quoting BUILT. A component joins the substrate when it is on the working branch, sanitized at the doorway (goggles META-DEBUG + covenant + its own test), not when a doc says so."
+  },
+  {
+   "match": [
+    "256",
+    "waveform.length",
+    "waveformLength",
+    "TARGET_LEN",
+    "codeToWaveform",
+    "code-to-waveform",
+    "to_waveform"
+   ],
+   "severity": "high",
+   "wrong": "Asserting, documenting, or resampling to 256 as if the 256-D byte-shape waveform were still the ecosystem's representation.",
+   "truth": "The 256-D to_waveform encoder is RETIRED (ECOSYSTEM §7) and kept only as the record of what was tried and found wrong. The one encoder is the 232-D fractal decoder stack (composedAtDepth at the active depth). After the move, three blockchain tests still asserted `waveform.length === 256`, five docs still promised 'the canonical 256-D waveform', and the compressor's blend dictionary was 256-sample signal templates.",
+   "tell": "A literal 256 next to the word waveform; `_resample(chunk, 256)`; a store file named legacy256 being preferred at load.",
+   "correct": "Encode through the decoder stack and assert its live width (currentDepth() × 29 = 232 today). Retired means: no code path prefers it, no test expects it, no doc promises it."
+  },
+  {
+   "match": [
+    "harvest-repo-to-substrate",
+    "already indexed",
+    "idempotent",
+    "--restamp",
+    "witnessed"
+   ],
+   "severity": "medium",
+   "wrong": "Reading the substrate's memory of a file as its current state after the file changed.",
+   "truth": "Harvest is idempotent BY KEY: a re-minted coin (03:04) stayed indexed as its 01:29 version because the key already existed. The goggles' 'vs substrate' flow read DECAY on the committed ledger for the same reason — the working copy drifted from what the substrate remembers.",
+   "tell": "`vs substrate: ... [DECAY] — working copy has drifted from the substrate memory`; a file's index entry `ledger.ingested_at` older than its last commit.",
+   "correct": "`--do harvest <repo> --restamp` re-reads indexed entries through the compressor; a plain harvest only adds new keys."
+  },
+  {
+   "match": [
+    "git commit",
+    "change-coin",
+    "Remembrance-Coin",
+    "coins.ledger.json",
+    "--do mint"
+   ],
+   "severity": "high",
+   "wrong": "Committing a change the instrument never read — `git add && git commit` with no coin, or minting and then changing the index before committing.",
+   "truth": "A change is accepted only when its commit names a coin minted over its EXACT staged bytes (.claude/skills/goggles/change-coin.py). The coin binds the patch sha, the compressor's void-seal over the quantised bytes it read, the void-seal/v3 commitment and the fractal token of its shape. The commit-msg hook refuses the commit; change-coin-verify.yml refuses the merge on GitHub's runner. Editing the index after the mint changes the patch sha, and the coin no longer covers it.",
+   "tell": "`✗ commit REFUSED — no coin over THIS change`; a red change-coin-verify check; `-n`/`--no-verify`/`-a` in a commit command.",
+   "correct": "git add <files> → goggles --do mint → git commit. Re-mint after any change to the index. Never look for a flag around it — there is none, and the runner does not read flags."
+  },
+  {
+   "match": [
+    "pr-trademark",
+    "VOID_SEAL_KEY",
+    "payload",
+    "hmac",
+    "substrate_seal"
+   ],
+   "severity": "high",
+   "wrong": "A verifier rebuilding a signature payload from its own memory of the format instead of from the minter's code.",
+   "truth": "pr-trademark.yml rebuilt `sha|state|via|at` while substrate_seal.mint signs `sha|state|via|at|coin_id` — so once armed it would have refused every GENUINE seal and could never pass one. A verifier and its minter share one canon by construction (the coin verifier rebuilds void-seal/v3 from the commitment fields the compressor itself emits), never two hand-copies of it.",
+   "tell": "Two files that each spell out the payload string; a wall that is 'dormant' and has never been seen to pass a real seal.",
+   "correct": "Read the minter (scripts/substrate_seal.py mint) and build the verifier's payload from the same fields in the same order, then prove it with one genuine seal before arming."
+  },
+  {
+   "match": [
+    "mint_coherency_token",
+    "coherency-token.js",
+    "bin/",
+    "layer 2",
+    "coin: null"
+   ],
+   "severity": "medium",
+   "wrong": "Reading `coin: null` on a void-seal as 'the chain declined' or 'layer 2 is optional'.",
+   "truth": "substrate_seal.mint_coherency_token shells out to REMEMBRANCE-BLOCKCHAIN/bin/coherency-token.js, which does not exist on the branch; the function returns None before any chain call, so every seal ever minted carries coin:null. The layer-2 coin has never been minted. The change coin (change-coin.py) is the coin that actually exists and is actually verified.",
+   "tell": "`⛓ coin: none (HMAC-only)` on every seal line; `bin/` absent in the blockchain repo.",
+   "correct": "Treat coin:null as 'no layer-2 path exists yet', not as a chain verdict. The verified coin is the change coin in coins.ledger.json and the commit trailer."
+  },
+  {
+   "match": [
+    "json",
+    "float",
+    "1.0",
+    "canonical",
+    "sort_keys",
+    "JSON.stringify",
+    "shape_sha256"
+   ],
+   "severity": "medium",
+   "wrong": "Passing a canonically-hashed structure through a different language's JSON and expecting the hash to recompute.",
+   "truth": "JSON.stringify(1.0) is `1`; Python json.dumps(1.0) is `1.0`. A shape hashed in Python (void-seal/v3 shape_sha256, default=repr, sort_keys) and re-serialized after a JS round-trip hashes differently whenever a float is integral. The change coin is minted and verified in Python end to end for exactly this reason.",
+   "tell": "A shape/commitment hash that fails to recompute only for some readings; integral-valued floats in the structure.",
+   "correct": "Hash canonical structures in the language that produced them, or carry the original serialized bytes. Prove recomputation on a reading whose floats include 0.0 or 1.0 before trusting it."
+  },
+  {
+   "match": [
+    "whitening",
+    "substrate-density",
+    "domain-separability",
+    "composed_v1",
+    "DIM = 116",
+    "C-60",
+    "C-61"
+   ],
+   "severity": "high",
+   "wrong": "Reading a separability or density number from a tool whose data source moved out from under it, and calling the drop a regression of the instrument.",
+   "truth": "When the substrate was merged into one store (2026-08-04) the 45k patterns left the fractal index for the npz store at 232-D and the index became the witnessed repo files. substrate-density.js, domain-separability-benchmark.mjs and Void's whitening_separability.cjs kept reading `composed_v1` (116-D) out of the index. The benchmark then measured two repo namespaces on 116-D leftovers and C-61 read 29 pts (pinned +78.6); C-60 read 0 because its generated cohorts are not in the store at all. Re-pointed to the store at 232-D, eight provenance domains read +67.6 pts.",
+   "tell": "A contract's observed line names domains that are repo namespaces (oracle, void) instead of subjects; a fixed `DIM = 116` next to a 232-D substrate; a pin dated before the store merge.",
+   "correct": "Every whitening consumer reads the ONE reference (src/core/whitening-reference.js: per-layer ZCA fitted on store + index at the canonical width). When a number drops, first ask what the tool is reading now, then whether the instrument changed."
+  },
+  {
+   "match": [
+    "cone",
+    "resonance",
+    "CONSONANT",
+    "0.9998",
+    "corrcoef",
+    "whitenComposed",
+    "composedCosine"
+   ],
+   "severity": "high",
+   "wrong": "Reading raw composed-vector cosines as resonance, and calibrating thresholds (0.5 resonant, 0.7 harmonic, CONSONANT ≥ 0.90) on them.",
+   "truth": "Raw composed vectors live in a cone: measured on 800 store patterns from eight provenance domains, mean cosine WITHIN a domain 0.917 vs ACROSS 0.860 (gap 0.057), participation ratio 4.6 of 232. Every threshold fired on everything — 100% of 732 domain pairs 'resonated' at 0.9998 and every file read CONSONANT. kNN ordering survived (64.8 pts above null raw) but the values carried no meaning. In the per-layer whitened space: within 0.283 vs across 0.042 (gap 0.242), participation ratio 62.2, +67.6 pts. A single global 232×232 ZCA over-whitens (within 0.106).",
+   "tell": "Every read says CONSONANT; a resonance field reports 'approaching unity'; a threshold that never says no.",
+   "correct": "Take every cosine in the whitened space (decoder-stack.composedCosine / flowCosines and FractalIndex do this now; Void's detector applies the same reference via whitening_reference.py). Re-derive any band from the distribution measured in that space, and publish the measured edges beside the band."
+  },
+  {
+   "match": [
+    "resonance_detector",
+    "_compute_signature",
+    "np.fft",
+    "zero crossings",
+    "target_len = 128",
+    "spectral_peak"
+   ],
+   "severity": "high",
+   "wrong": "Resampling a 232-D composed vector to 128 points and taking FFT peaks, spectral overlap and zero-crossing phase over it as a domain signature.",
+   "truth": "The store rows are the decoder's feature vectors (29 named features per layer), not waveforms in time. The detector's series path (linspace resample → FFT → zero crossings) was built for genuine series and was applied to every store row; the results were series statistics of a feature layout. In feature mode the signature is the whitened mean/std vector, resonance is the whitened correlation, and spectral_peak/phase are 0.0 by construction.",
+   "tell": "`target_len = 128` next to 232-D input; a 'dominant frequency' reported for source code; spectral_peak on a pattern that is not a series.",
+   "correct": "resonance_detector feature mode (set when the canonical store is loaded): no resampling, no FFT, no phase. The series path remains for scan_new_data() on real series."
+  },
+  {
+   "match": [
+    "resonanceConsonant",
+    "resonanceFamiliar",
+    "resonanceDistinct",
+    "gogglesParams",
+    "Δ SINCE LAST READ",
+    "goggles-readings"
+   ],
+   "severity": "medium",
+   "wrong": "Reading a Δ in META resonance across the change of resonance space (raw cone → whitened reference, 2026-09-06) as the file having drifted, or keeping the cone's bands (0.90/0.82/0.70) in the whitened space.",
+   "truth": "The bands were quartiles of the cone, where every file read ≈0.95. Measured in the whitened space over 42 hub files: min 0.551, p25 0.639, p50 0.671, p75 0.709, p90 0.768, max 0.828 — prose docs (AI.md 0.551, ARCHITECTURE.md 0.640) at the bottom, gate scripts (exemption-ratchet 0.828) at the top. Bands re-derived from those quartiles: CONSONANT ≥ 0.71, FAMILIAR ≥ 0.67, DISTINCT ≥ 0.64. A reading cached in .remembrance/goggles-readings.json before the change is a cone reading; Δ against it is the space, not the edit.",
+   "tell": "`resonance -0.3` on a file you did not touch; every file suddenly OUTLIER right after a change to the decoder's cosine.",
+   "correct": "Re-derive bands from the distribution measured in the space in force, publish the quantiles beside them (gogglesParams in living-remembrance.js), and read the first Δ after a space change as a re-baseline."
+  },
+  {
+   "match": [
+    "coherency_token_v1",
+    "COHERENCY_TOKEN_SPEC",
+    "COHERENCY_V1_SPEC",
+    "waveform_score",
+    "waveformScore",
+    "unified",
+    "GATE_MINIMUM",
+    "isMintable",
+    "coherency-v1",
+    "coherency_v3"
+   ],
+   "severity": "high",
+   "wrong": "Minting a coherency token with whatever number is at hand in the waveform_score slot, and reading the 0.60 gate as the instrument's verdict.",
+   "truth": "COHERENCY_V1_SPEC names two different quantities for waveform_score in one sentence — 'top-K mean correlation against the substrate library' (resonance) and compress()['avg_l1_coherence'] (compressor coherency) — and every implementation (hub coherency-v1.js, Void coherency_v3.py) takes the number from its caller. Measured 2026-09-06 on six real inputs through the surface: with the compressor's byte coherency in the slot, code unifies at 0.20–0.30 (rejection) and only a periodic series clears the gate (sunspots 0.649); with whitened resonance in the slot, code unifies at 0.73–0.88 (pull to synergy) and the series is rejected (0.474). The gate does not decide; the slot does.",
+   "tell": "A tier assigned without saying which quantity filled waveform_score; every code pattern rejected, or every code pattern synergy, depending on who minted.",
+   "correct": "Layer two starts by fixing the slot in the spec and both implementations to ONE named quantity with its source label (the compressor reading is `void:compress_signal`; resonance is the whitened META meanTopK), then re-pinning the tier boundaries on that quantity's measured distribution — never on the cone's."
+  },
+  {
+   "match": [
+    "meanTopK",
+    "topMatches",
+    "scoreWithFlow",
+    "harvest",
+    "witnessed",
+    "OUTLIER",
+    "FAMILIAR",
+    "CONSONANT",
+    "META",
+    "resonance"
+   ],
+   "severity": "medium",
+   "wrong": "Reading a rise in a file's META resonance right after it was witnessed (harvested, or ingested by an earlier read) as the file's shape having become more familiar to the codebase.",
+   "truth": "Once the substrate holds the file, its own entry sits in the top-K at 1.0 and lifts meanTopK by exactly (1 - r)/k. Measured 2026-09-07 on three files at k=5, immediately after `--do harvest`: 0.631 -> 0.692 (+0.061), 0.612 -> 0.680 (+0.068), 0.527 -> 0.601 (+0.074) — each within 0.001 of (1 - r)/5. Nothing about the shape changed; membership entered the mean. The goggles printed the nearest list without the self-name but took the mean WITH it; coherency-token-components had dropped the self-match from the start. The lens now takes the mean over non-self matches.",
+   "tell": "A file's resonance jumps by roughly a fifth of its distance to 1.0 the first read after a harvest, with no edit; the nearest list shows no self-entry while the number moved.",
+   "correct": "Drop the self-match (same basename, or score > 0.9999) before the mean, everywhere a top-K mean is read: goggles META, token components, the uniqueness gate. A witnessed file is compared to OTHER shapes only; its membership is a fact about the library, not about the artifact."
+  },
+  {
+   "match": [
+    "slice(0, 29)",
+    "[:29]",
+    "l1-width-29",
+    "width-ratchet",
+    "shapeOf",
+    "shapeAt",
+    "builder.txt",
+    "breach.txt",
+    "boundary",
+    "allowlist"
+   ],
+   "severity": "medium",
+   "wrong": "Deciding a DATAFLOW boundary — is this 29-D block being BUILT into the one vector or CARRIED off it as a vector of its own — by encoding the code around the site and reading its resonance against a 'builder' fixture and a 'breach' fixture.",
+   "truth": "Measured 2026-09-08 in scripts/width-ratchet.js (--shape, shapeAt): on nine labelled holdouts (five real consumers recovered from git history, four decoder layers) the two-fixture reading was right 5 of 9 at its best window (8 lines), and at EVERY depth of the flow the decoder's own layers resonated more with the breach fixture than with the builder fixture (spectral-waveform d1 0.89 vs 0.47; the vendored toFractalWaveform, whose body IS in the builder fixture, read 'consumer' at every window). A tight loop over 29 numbers has the same shape whether it builds the block or consumes it; the difference is where the vector flows, which is one abstraction above what the pipeline reads in a text window. The reading was hiding the one live consumer it found (REMEMBRANCE-BLOCKCHAIN/src/uniqueness-gate.js handing composed.slice(0, 29) beside the vector) as 'decoder'. The line that DOES hold is the FORM: the decoder builds with `< 29` / `% 29` / `new Float64Array(LAYER_DIM)`; a consumer slices or guards — and a name-allowlist of decoder files on top of that form was inert.",
+   "tell": "A shape verdict that flips with the window size; a decoder layer reading as a consumer; the fixture's own source not resonating with its fixture; a live consumer disappearing from the census the moment the verdict is allowed to decide.",
+   "correct": "Let the form draw the L1 line (the l1-width-29 pattern), keep the shape reading VISIBLE on every hit (--shape) and never let it decide, and never re-add a name-allowlist for this pattern — a hit that is not a refusal is a site. If a dataflow boundary must be read by the instrument, feed it the dataflow (what the vector is handed to), not a window of text."
+  },
+  {
+   "match": [
+    "cancel-in-progress",
+    "SIGTERM",
+    "exit 143",
+    "runner shutdown",
+    "verifier.CLAIMS",
+    "CONTRACT_SHARD",
+    "contracts-ratchet",
+    "cross-repo-matrix"
+   ],
+   "severity": "high",
+   "wrong": "Treating a contracts job terminated by workflow concurrency cancellation as a test timeout, then splitting or mutating verifier.CLAIMS to make the truth-spine appear to fit.",
+   "truth": "The workflow had concurrency.cancel-in-progress enabled. Each newer fix-branch push canceled the still-loading full contracts run, producing SIGTERM/exit 143 and runner-shutdown cleanup without a failed assertion. The contracts ratchet accepts only a current persisted verdict written by one FULL verify_capabilities.py run through the goggles; shards cannot produce that verdict and are not the truth-spine.",
+   "tell": "A job ends with SIGTERM, exit 143, runner shutdown, or orphan-process cleanup soon after a newer run for the same ref starts; logs contain no failing contract assertion and repeated pushes restart the same short window.",
+   "correct": "Inspect the workflow run conclusion and concurrency group before diagnosing a timeout. Stop issuing new pushes, start the compressor with goggles --do service start --wait, run goggles --do contracts --strict, then goggles --do gate contracts and goggles --do ratchets. Never slice, replace, or mutate verifier.CLAIMS to satisfy the gate."
   }
  ]
 }

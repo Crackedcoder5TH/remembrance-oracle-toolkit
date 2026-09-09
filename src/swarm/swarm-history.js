@@ -61,6 +61,7 @@ function loadHistory(rootDir) {
   }
   return fallback;
 }
+loadHistory.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Save swarm history to .remembrance/swarm-history.json
@@ -87,6 +88,7 @@ function saveHistory(rootDir, history) {
   }
   fs.renameSync(tmpPath, filePath);
 }
+saveHistory.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Record a swarm run's results into history.
@@ -161,6 +163,7 @@ function recordRun(result, extra = {}, rootDir) {
   saveHistory(rootDir, history);
   return history;
 }
+recordRun.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Record user feedback for a specific swarm run.
@@ -189,6 +192,7 @@ function recordFeedback(runId, approved, rootDir) {
   saveHistory(rootDir, history);
   return { found: true, provider: run.winner };
 }
+recordFeedback.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Get provider reliability scores from history.
@@ -207,6 +211,7 @@ function getProviderReliability(rootDir) {
 
   return reliability;
 }
+getProviderReliability.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Get a summary of swarm history stats.
@@ -240,6 +245,7 @@ function getHistorySummary(rootDir) {
   // list treated any numeric-looking return field as a coherence signal.
   return __retVal;
 }
+getHistorySummary.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   loadHistory,

@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [compatibility, contracts-0, contracts-1, contracts-2, contracts-3, contracts-4]
+        suite: [compatibility, contracts-0, contracts-1, contracts-2, contracts-3, contracts-4, contracts-5, contracts-6]
     env:
       ORACLE_TOOLKIT: ${{ github.workspace }}/ecosystem/remembrance-oracle-toolkit
     steps:
@@ -242,7 +242,7 @@ jobs:
           import verify_capabilities as verifier
 
           shard = int(os.environ['CONTRACT_SHARD'].rsplit('-', 1)[1])
-          verifier.CLAIMS = verifier.CLAIMS[shard::5]
+          verifier.CLAIMS = verifier.CLAIMS[shard::7]
           sys.argv = ['verify_capabilities.py', '--strict']
           raise SystemExit(verifier.main())
           PY

@@ -16,8 +16,8 @@
 //   run.mjs --diff            goggle everything changed vs HEAD in this repo
 
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync, appendFileSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
 
 function findToolkit() {
   const candidates = [
@@ -53,6 +53,15 @@ if (argv[0] === '--do') {
   const run = (cmd, cmdArgs, cwd) => {
     try { execFileSync(cmd, cmdArgs, { cwd, stdio: 'inherit' }); return 0; }
     catch (e) { return e.status || 1; }
+  };
+  // THE SURFACE'S OWN LEDGER: one JSON line per search / exec / test taken
+  // through the goggles (the denial log holds the refused ones). Best-effort.
+  const _ledger = (file, record) => {
+    try {
+      const dir = join(toolkit, '.remembrance');
+      mkdirSync(dir, { recursive: true });
+      appendFileSync(join(dir, file), JSON.stringify({ ts: new Date().toISOString(), cwd: process.cwd(), ...record }) + '\n');
+    } catch (_) { /* the ledger never blocks the verb */ }
   };
   const VERBS = {
     // witness files into the substrate (sanitized at the doorway)
@@ -174,6 +183,53 @@ if (argv[0] === '--do') {
       'F=' + JSON.stringify(join(HOME, 'remembrance-oracle-toolkit', '.remembrance', 'goggles-denials.jsonl')) +
       '; if [ -f "$F" ]; then echo "denials logged: $(wc -l < "$F")"; tail -' + (parseInt(rest[0], 10) || 40) + ' "$F"; ' +
       'else echo "no denials logged yet — the wall has not been hit on this host"; fi']),
+    // THE SEARCH VERB. Inside the ecosystem the wall refuses grep/rg/find/ls/
+    // cat/sed on the tree (2026-09-11: default-deny); this is the one door
+    // for a search, and every search is one JSON line in the ledger, so the
+    // count of hand searches is itself a reading (--do denials shows the
+    // refused ones; this shows the taken ones). Prefer --do resonance when
+    // the question is "what does this resemble".
+    //   goggles --do find <regex> [path] [rg flags…]
+    find: () => {
+      if (!rest[0]) { console.error('usage: --do find <regex> [path] [rg flags…]'); return 2; }
+      _ledger('goggles-finds.jsonl', { regex: rest[0], path: rest[1] || process.cwd() });
+      const pat = rest[0]; const p = rest[1] && !rest[1].startsWith('-') ? rest[1] : process.cwd();
+      const flags = rest.slice(rest[1] && !rest[1].startsWith('-') ? 2 : 1);
+      return run('rg', ['-n', '--no-heading', '--glob', '!node_modules', '--glob', '!*.min.js', ...flags, '-e', pat, p], process.cwd());
+    },
+    // THE EXEC VERB. Running a script by hand (python3 x.py / node x.js) is
+    // refused inside the ecosystem; a COMMITTED script runs through here, and
+    // the run is one JSON line in the ledger. Scratch files are refused:
+    // committed scripts are the record, scratch scripts are the leak (trap 29).
+    //   goggles --do exec <script> [args…]
+    exec: () => {
+      const script = rest[0];
+      if (!script) { console.error('usage: --do exec <git-tracked script> [args…]'); return 2; }
+      const abs = resolve(process.cwd(), script);
+      let tracked = false;
+      try { execFileSync('git', ['ls-files', '--error-unmatch', abs], { cwd: dirname(abs), stdio: 'ignore' }); tracked = true; } catch (_) { tracked = false; }
+      if (!tracked) {
+        console.error('GOGGLES — exec refused: ' + script + ' is not tracked by git. Commit the script (it is the record), or use --do call for a capability.');
+        return 2;
+      }
+      _ledger('goggles-exec.jsonl', { script: abs, args: rest.slice(1) });
+      const interp = /\.(mjs|cjs|js)$/.test(abs) ? 'node' : 'python3';
+      return run(interp, [abs, ...rest.slice(1)], process.cwd());
+    },
+    // THE TEST VERB. unittest/pytest/node --test by hand are refused inside
+    // the ecosystem; the repo's own tests run through here and are recorded.
+    // Python repos (Void): unittest over tests/ or the modules given; JS
+    // repos: node --test over tests/ or the files given.
+    //   goggles --do test [module|file …]
+    test: () => {
+      const here = process.cwd();
+      _ledger('goggles-tests.jsonl', { cwd: here, args: rest });
+      if (existsSync(join(here, 'tests')) && !existsSync(join(here, 'package.json'))) {
+        return run('python3', ['-m', 'unittest', ...(rest.length ? rest : ['discover', '-s', 'tests', '-t', '.']), '-v'], here);
+      }
+      if (rest.length) return run('node', ['--test', ...rest], here);
+      return run('node', ['--test', 'tests/'], here);
+    },
     // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
     // measures nothing: no reading is recomputed and no time dimension added.
     //   goggles --do merge [--apply]

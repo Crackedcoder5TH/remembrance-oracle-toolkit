@@ -59,6 +59,52 @@ const ti = input.tool_input || {};
 const fp = ti.file_path || ti.path || '';
 const content = ti.content || ti.new_string || '';
 
+// ── GOGGLED-FIRST GATE ── no change to a file the goggles have not read this
+// session. The skill has said "wear the goggles at all times while working"
+// since it existed; until 2026-09-11 nothing enforced it, and a round of
+// hand edits went in with no reading before them. Now an EXISTING file inside
+// an ecosystem repo is edited only if `.remembrance/goggles-readings.json`
+// (the hub's, or the file's own repo's) carries a reading of that file taken
+// within the last two hours. A file that does not exist yet cannot be read
+// first; its creation is allowed and the post-write hook reads it. The
+// denial names the exact command. Fail closed: an unreadable ledger is no
+// reading.
+(function goggledFirst() {
+  if (!fp) return;
+  const abs = path.resolve(fp);
+  const ECO = path.resolve(__dirname, '..', '..', '..');
+  let roots = [];
+  try {
+    roots = fs.readdirSync(ECO).map((d) => path.join(ECO, d)).filter((d) =>
+      fs.existsSync(path.join(d, 'coins.ledger.json')) || fs.existsSync(path.join(d, '.claude', 'skills', 'goggles', 'run.mjs')));
+  } catch (_) { roots = []; }
+  const root = roots.find((r) => abs === r || abs.startsWith(r + path.sep));
+  if (!root) return;                              // outside the ecosystem: the scratchpad is yours
+  if (!fs.existsSync(abs)) return;                // a new file: nothing to read yet
+  if (/[\\/]\.remembrance[\\/]|[\\/]coins\.ledger\.json$|[\\/]seal\.lock\.json$/.test(abs)) return;   // the instrument's own ledgers
+  const WINDOW_MS = 2 * 60 * 60 * 1000;
+  const now = Date.now();
+  const ledgers = [path.join(__dirname, '..', '..', '.remembrance', 'goggles-readings.json'),
+                   path.join(root, '.remembrance', 'goggles-readings.json')];
+  const rel = path.relative(root, abs);
+  for (const lg of ledgers) {
+    let doc = null;
+    try { doc = JSON.parse(fs.readFileSync(lg, 'utf8')); } catch (_) { doc = null; }
+    if (!doc || typeof doc !== 'object') continue;
+    for (const [k, v] of Object.entries(doc)) {
+      const key = path.resolve(root, k);
+      const hit = key === abs || k === rel || abs.endsWith(path.sep + k) || (path.isAbsolute(k) && k === abs);
+      if (hit && v && Number(v.at) && now - Number(v.at) <= WINDOW_MS) return;
+    }
+  }
+  out('deny',
+    'GOGGLES — EDIT WITHOUT A READING refused: ' + rel + '\n' +
+    '  No goggle reading of this file in the last two hours. Read it first, then edit:\n' +
+    '        node .claude/skills/goggles/run.mjs ' + rel + '\n' +
+    '  (run from ' + path.basename(root) + '). The reading places the file in the map, the field and the\n' +
+    '  META-DEBUG findings before the change; an edit without it is a change made blind.');
+})();
+
 // ── BRIEF GATE ── the correction arrives BEFORE the edit, or not at all.
 //
 // Every large mistake made against this codebase came from editing or calling

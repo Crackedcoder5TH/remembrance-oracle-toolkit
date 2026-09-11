@@ -44,11 +44,129 @@ function out(decision, reason) {
   process.exit(0);
 }
 out.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "degrading", intention: "neutral", domain: "utility" };
+// FAIL CLOSED. This wall used to fail open on any internal error ("never
+// blocks"), and settings.json wraps it in `|| true` — so a crash, a parse
+// error or an unreadable stdin let the command through in silence. A wall
+// that opens when it breaks is a wall with a door in it (2026-09-11: three
+// denials in a round of hundreds of off-surface commands). Any internal
+// error is now a denial that names itself.
+process.on('uncaughtException', (e) => {
+  try {
+    process.stdout.write(JSON.stringify({
+      hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny',
+        permissionDecisionReason: 'GOGGLES — WALL FAULT refused (fail closed)\n  ' + String(e && e.message || e) },
+    }));
+  } catch (_) { /* nothing left to do */ }
+  process.exit(0);
+});
+
 let raw = '';
-try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { process.exit(0); }
-let input; try { input = JSON.parse(raw || '{}'); } catch (_) { process.exit(0); }
+try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { raw = ''; }
+let input = null;
+if (raw.trim()) { try { input = JSON.parse(raw); } catch (_) { input = null; } }
+if (!input || typeof input !== 'object') {
+  out('deny', 'GOGGLES — WALL FAULT refused (fail closed)\n  the hook received no parseable tool input; nothing runs on a blind wall.');
+}
 const cmd = (input.tool_input || {}).command || '';
 if (!cmd) process.exit(0);
+
+// ── 0. THE WALL IS DEFAULT-DENY INSIDE THE ECOSYSTEM ────────────────────────
+//
+// Until 2026-09-11 this hook was a list of known bypasses; everything else
+// ran. Measured over one round: 3 denials against hundreds of grep / sed /
+// git-log / hand-run-script commands, and two wrong turns that came straight
+// from searching by hand instead of asking the instrument. The operator's
+// rule: the goggles are the ONLY surface for anything done in the codebase,
+// for any model, without exception. So inside an ecosystem repo (the shell's
+// cwd, or any command that names a repo path) a command runs only if every
+// simple command in it is one of:
+//   · the goggles themselves          node …/.claude/skills/goggles/run.mjs …
+//   · git                             the coin hook already gates commit
+//   · shell glue                      cd pwd echo printf true false exit sleep test [ : export
+//   · a pure text filter AFTER A PIPE grep head tail cut sort uniq wc tr awk sed jq tee cat python3
+//     (filtering what the goggles printed is not a search of the codebase;
+//      the inline checks below still run on that python3)
+// Everything else — grep/rg/find/ls/cat/sed on the tree, python3 or node on
+// a file, npm, pytest, curl, rm, cp, mv — is refused with the verb to use.
+// Outside the ecosystem (the scratchpad) the shell is yours, and the
+// bypass-specific checks below still apply everywhere.
+(function defaultDeny() {
+  const path = require('node:path');
+  const ECO = path.resolve(__dirname, '..', '..', '..');
+  let roots = [];
+  try {
+    roots = fs.readdirSync(ECO).map((d) => path.join(ECO, d)).filter((d) => {
+      try { return fs.existsSync(path.join(d, 'coins.ledger.json')) || fs.existsSync(path.join(d, '.claude', 'skills', 'goggles', 'run.mjs')); }
+      catch (_) { return false; }
+    });
+  } catch (_) { roots = []; }
+  if (!roots.length) return;
+  const cwd = String(input.cwd || process.env.PWD || process.cwd() || '');
+  const within = (p) => roots.some((r) => p === r || p.startsWith(r + path.sep));
+  const inside = within(cwd) || roots.some((r) => cmd.includes(r));
+  if (!inside) return;
+
+  // Shape the text: heredoc bodies and quoted strings are data, not commands;
+  // $(…) and `…` hold commands, so they open a new segment.
+  let text = cmd.replace(/<<-?\s*['"]?(\w+)['"]?[^\n]*\n[\s\S]*?\n\1[ \t]*(?=\n|$)/g, ' ')
+    .replace(/'[^']*'/g, ' Q ').replace(/"(?:[^"\\]|\\.)*"/g, ' Q ')
+    .replace(/\$\(/g, ' ; ').replace(/`/g, ' ; ').replace(/[()]/g, ' ');
+  const parts = text.split(/(\|\||&&|;|\n|\|)/);
+  const GLUE = new Set(['cd', 'pwd', 'echo', 'printf', 'true', 'false', 'exit', 'return', 'sleep', 'test', '[', '[[', ':', 'export', 'break', 'continue', 'wait']);
+  const FILTER = new Set(['grep', 'egrep', 'fgrep', 'head', 'tail', 'cut', 'sort', 'uniq', 'wc', 'tr', 'awk', 'sed', 'jq', 'tee', 'cat', 'python3', 'python', 'xargs', 'column', 'nl', 'tac', 'rev']);
+  const KEYWORDS = new Set(['do', 'done', 'then', 'else', 'elif', 'fi', 'if', 'while', 'until', 'esac', '{', '}', '!', 'in']);
+  const GOGGLES = /\.claude\/skills\/goggles\/run\.mjs\b/;
+  let afterPipe = false;
+  for (const part of parts) {
+    if (part === '|') { afterPipe = true; continue; }
+    if (part === '||' || part === '&&' || part === ';' || part === '\n') { afterPipe = false; continue; }
+    let seg = part.trim();
+    if (!seg) continue;
+    let words = seg.split(/\s+/);
+    // strip keywords, env assignments and wrappers to reach the command word
+    for (;;) {
+      const w = words[0];
+      if (w === undefined) break;
+      if (KEYWORDS.has(w)) { words.shift(); continue; }
+      if (w === 'for' || w === 'case' || w === 'select') { words = []; break; }   // no command in the head
+      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(w)) { words.shift(); continue; }
+      if (w === 'timeout') { words.shift(); while (words.length && /^-/.test(words[0])) words.shift(); words.shift(); continue; }
+      if (w === 'env' || w === 'exec' || w === 'nice' || w === 'command' || w === 'builtin') { words.shift(); continue; }
+      break;
+    }
+    const word = words[0];
+    if (!word) continue;
+    const base = path.basename(word);
+    if (GLUE.has(base)) continue;
+    if (base === 'git') continue;
+    if (base === 'node' || base === 'nodejs') {
+      if (GOGGLES.test(seg)) continue;
+      out('deny',
+        'GOGGLES — OFF-SURFACE COMMAND refused (node on a file)\n' +
+        '  Inside the ecosystem, node runs only the goggles. To run a committed script or a capability:\n' +
+        '        node .claude/skills/goggles/run.mjs --do exec <script> [args]     (git-tracked scripts only)\n' +
+        '        node .claude/skills/goggles/run.mjs --do call <path>#<fn> \'<json>\'\n' +
+        '        node .claude/skills/goggles/run.mjs --do test [args]\n' +
+        '  segment: ' + seg.slice(0, 120));
+    }
+    if (afterPipe && FILTER.has(base)) continue;
+    out('deny',
+      'GOGGLES — OFF-SURFACE COMMAND refused (' + base + ')\n' +
+      '  Inside the ecosystem the goggles are the only surface, for any model, without exception.\n' +
+      '  The shell is allowed only for git, glue (cd/echo/…) and text filters AFTER a pipe from the goggles.\n' +
+      '  Use the verb for what you meant:\n' +
+      '        --do find <regex> [path]        search the tree (recorded)   — instead of grep/rg/find/ls/cat/sed\n' +
+      '        --do resonance | --do cluster    what a pattern resembles     — instead of searching by hand\n' +
+      '        --do read <file>                 a reading of data\n' +
+      '        --do state | --do contracts | --do gate <name> | --do ratchets | --do traps status\n' +
+      '        --do exec <script> [args]        run a git-tracked script (recorded) — instead of python3/node on a file\n' +
+      '        --do test [args]                 the repo\'s own tests           — instead of unittest/pytest/node --test\n' +
+      '        --do call <path>#<fn> \'<json>\'   run a capability\n' +
+      '        --do service status|start|stop   the instrument\'s lifecycle\n' +
+      '  Outside the ecosystem (the scratchpad) the shell is yours.\n' +
+      '  segment: ' + seg.slice(0, 120));
+  }
+})();
 // NOTE: the old `cmd.length < 40` early-exit lived HERE — which let every
 // short command skip every check, including RAW_GOGGLES (`node
 // src/tools/goggles.js x.js` is ~30 chars). The length gate now sits just

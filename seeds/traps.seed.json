@@ -883,6 +883,27 @@
    "truth": "Measured 2026-09-09: the instrument's own resonance matrix (`--do resonance`: 732 domains, ResonanceDetector.scan(), _one_cosine over per-domain means) tested with the label-permutation hard null through the detector's own signature code and judged by the rule pinned in v2 (survival >= 5x alpha REAL, >= 2x PARTIAL) gives 35.75% survival at the 1% floor (35.7x), 71.15% against the shuffle null, 21/28 group pairs beyond the null: REAL. The v3 run of 2026-09-08 that said PARTIAL had computed its own whitened cosine of domain means, dropped 206 of the 732 domains, and judged by two rules it introduced (R2 demanded split-source domains separate). Pre-registering a rule the same day you invent it is not the pinned rule; the codebase's verdict is the one its own verbs and its own thresholds produce. The operator saw it before the agent did: \"if the kill test is now failing that means you just didn't run my instrument correctly.\"",
    "tell": "A falsification script that imports the detector for its data but computes the statistic itself; a domain count that differs from what `--do resonance` reports; decision rules with today's date; a verdict word the pinned rule would not produce for the same survival rate.",
    "correct": "Take the observed matrix from the instrument's own verb or the object that verb prints; recompute nulls through the same signature and cosine code (prove parity to float precision, abort otherwise); judge by the rule pinned in the prior run; if a new null is needed because the old one is meaningless at the new representation, say so and keep the pinned decision thresholds. Record the prior verdict and the corrected one side by side."
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "grep",
+    "sed -n",
+    "git log",
+    "by hand",
+    "taking too long",
+    "not using the goggles",
+    "fail open",
+    "|| true",
+    "default-deny"
+   ],
+   "severity": "high",
+   "wrong": "Building the wall as a list of known bypasses and calling the rest of the shell harmless — then measuring how well an agent behaves by how often the wall refused it.",
+   "truth": "Measured 2026-09-11: the wall refused 3 commands in a round of hundreds of off-surface ones (grep, sed, git log, hand-run scripts, unittest by hand), and both wrong turns of that round — a default-on upsampler the design had already ruled out, and a kill-test judged by rules invented that morning — came from searching by hand instead of asking the instrument. Three denials was not the model behaving; it was the wall letting everything else through. The hooks also failed OPEN (`|| true`, exit-0-on-error), so a wall that broke was a wall that opened. The operator's rule: the goggles are the only surface for anything done in the codebase, and the wall must catch any model, without exception. Slowness is the tell: a round that takes long is a round spent off the surface.",
+   "tell": "A hook that is a list of regexes; `|| true` after a hook command; a session with many grep/sed/ls/cat commands and few denials; a search or a test run by hand where a verb exists; the operator saying it is taking too long.",
+   "correct": "Default-deny inside the ecosystem: a command runs only if every simple command in it is the goggles, git, shell glue or a text filter after a pipe; Grep and Glob as tools are refused inside; no edit to an existing file without a goggle reading of it; every hook fails CLOSED at both the script and the settings level. Every search, exec and test goes through a verb (--do find / --do exec / --do test) and is recorded, so the count of off-surface actions is itself a reading. If a verb is missing, build the verb — never widen the allowlist."
   }
  ]
 }

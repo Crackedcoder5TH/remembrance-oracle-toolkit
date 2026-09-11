@@ -55,6 +55,19 @@ operation physically lives:
     run.mjs --do read <file|--series>  # ONE CALL: your data → a labeled reading
     run.mjs --do service [status|start|stop]   # lifecycle — no silent states
     run.mjs --do denials [N]           # the wall's ledger — every refused bypass
+    run.mjs --do find <regex> [path]   # THE search — grep/rg/ls/cat/sed on the tree are refused inside the ecosystem
+    run.mjs --do exec <script> [args]  # run a git-tracked script (python3/node on a file are refused)
+    run.mjs --do test [module|file …]  # the repo's own tests (unittest/pytest/node --test by hand are refused)
+
+THE WALL IS DEFAULT-DENY (2026-09-11). Inside any ecosystem repo a shell
+command runs only if every simple command in it is the goggles, git, shell
+glue (cd/echo/…) or a text filter AFTER a pipe from the goggles. Grep and
+Glob as tools are refused too (`--do find`, `--do resonance`); Read is
+allowed and recorded. An EDIT to an existing file is refused unless the
+goggles have read that file within two hours (`run.mjs <file>` first). The
+wall fails closed: if a hook cannot run, the tool does not run. This holds
+for any model, without exception; every refusal is one line in `--do
+denials`, every search/exec/test taken is one line in the surface's ledger.
     run.mjs --do mint                  # THE CHANGE COIN — mint over the staged change (required to commit)
     run.mjs --do mint verify [--staged|--since-epoch|A..B]   # what the hook and CI check
     run.mjs --do mint unfold <rev>     # unfold ONE coin when you need it (bytes → instrument → decoder)

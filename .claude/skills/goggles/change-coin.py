@@ -457,8 +457,12 @@ def mint(repo: str, amend: bool) -> int:
         'minted_by': 'goggles --do mint',
         'change': {'repo': os.path.basename(os.path.abspath(repo)), 'base_tree': base,
                    'files': files, 'diff_bytes': len(patch), 'diff_sha256': diff_sha},
+        # library_size pins the blend basis the reading was taken against: the
+        # basis grows from what the instrument consumes (scripts/build_signal_basis.py),
+        # and a coin unfolded against a different basis reads the same bytes
+        # differently — the pin says which basis to unfold with.
         'reading': {**{k: reading.get(k) for k in ('coherency', 'ratio', 'method', 'strategy', 'lossless',
-                                                    'via', 'mint', 'void_seal')}, 'commitment': commitment},
+                                                    'via', 'mint', 'void_seal', 'library_size')}, 'commitment': commitment},
     }
     fails = verify_coin(coin, patch, seal_key(), deep=False)
     if fails:

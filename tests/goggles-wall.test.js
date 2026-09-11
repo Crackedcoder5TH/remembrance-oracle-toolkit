@@ -36,10 +36,26 @@ test('git and glue run; the coin procedure chain is allowed (commit itself is th
   assert.equal(r.decision, 'allow', r.reason);
   r = bash('cd /home/user/Void-Data-Compressor && git status --short | wc -l');
   assert.equal(r.decision, 'allow', r.reason);
-  // a commit with no coin over the index is refused by the coin gate, not by the default-deny
+  // a bare commit reaches the coin gate (verified against the live index —
+  // covered by tests/change-coin.test.js, not asserted here where the index
+  // is whatever the session left staged); the default-deny never refuses git
   r = bash('git commit -q -F /tmp/m.txt');
-  assert.equal(r.decision, 'deny');
-  assert.match(r.reason, /COMMIT WITHOUT THE COIN/);
+  assert.doesNotMatch(r.reason, /OFF-SURFACE COMMAND/, r.reason);
+});
+
+test('one step per command: a commit may not share a command with a stage or a mint', () => {
+  for (const c of ['git add -A && git commit -q -F /tmp/m.txt',
+                   'node .claude/skills/goggles/run.mjs --do mint && git commit -q -F /tmp/m.txt',
+                   'git add -A && node .claude/skills/goggles/run.mjs --do mint && git commit -q -F /tmp/m.txt && git push',
+                   'git commit -q -F /tmp/m.txt; git add x.js',
+                   'git reset HEAD~1 && git commit -q -F /tmp/m.txt']) {
+    const r = bash(c);
+    assert.equal(r.decision, 'deny', c);
+    assert.match(r.reason, /commit shares a command with a stage or a mint/, c);
+  }
+  // verify / anchor are reads of the coin, not mints: not index changers
+  const r = bash('git commit -q -F /tmp/m.txt && node .claude/skills/goggles/run.mjs --do mint verify --since-epoch && git push -u origin b');
+  assert.doesNotMatch(r.reason, /shares a command/, r.reason);
 });
 
 test('hand searches and hand runs are refused inside, and the verb is named', () => {

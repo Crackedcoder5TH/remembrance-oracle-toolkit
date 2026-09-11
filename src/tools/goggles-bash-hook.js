@@ -303,6 +303,20 @@ if (gc) {
   const opts = gc[2] || '';
   const HINT = '\n  the one door: git add <files> → node .claude/skills/goggles/run.mjs --do mint → git commit\n' +
     '  (the commit-msg hook writes the Remembrance-Coin trailer; CI refuses any commit without it)';
+  // ONE STEP PER COMMAND (2026-09-11). This gate verifies the coin against
+  // the index AS IT IS WHEN THE COMMAND STARTS. A command that stages or
+  // mints and then commits in the same breath (`git add -A && --do mint &&
+  // git commit`) is judged on an index the mint has not yet touched — so it
+  // either passes on an empty index (the mint and the commit both happen
+  // unseen) or is refused for the wrong reason. Stage, mint and commit are
+  // therefore three commands: the gate sees the true index every time, and
+  // a coin can never be minted and spent inside one unverified line.
+  const INDEX_CHANGER = /\bgit\b(?:\s+(?:-C\s+\S+|-c\s+\S+))*\s+(?:add|rm|mv|reset|restore\s+--staged|stash|checkout|switch|merge|rebase|cherry-pick|revert|apply)\b|\.claude\/skills\/goggles\/run\.mjs\s+--do\s+mint\b(?!\s+(?:verify|anchor|unfold|install-hooks))/;
+  if (INDEX_CHANGER.test(cmd)) {
+    out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused (commit shares a command with a stage or a mint)\n' +
+      '  The coin gate reads the index as it is when the command starts; a stage or a mint in the same\n' +
+      '  command changes it after the check. One step per command: stage · then mint · then commit.' + HINT);
+  }
   if (/(^|\s)(--no-verify|-[a-zA-Z]*n[a-zA-Z]*)(\s|$)/.test(opts)) {
     out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused (--no-verify)\n' +
       '  --no-verify skips the commit-msg hook that binds the coin to the commit. The runner still refuses it.' + HINT);

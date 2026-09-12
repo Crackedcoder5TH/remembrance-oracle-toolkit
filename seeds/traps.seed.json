@@ -904,6 +904,139 @@
    "truth": "Measured 2026-09-11: the wall refused 3 commands in a round of hundreds of off-surface ones (grep, sed, git log, hand-run scripts, unittest by hand), and both wrong turns of that round — a default-on upsampler the design had already ruled out, and a kill-test judged by rules invented that morning — came from searching by hand instead of asking the instrument. Three denials was not the model behaving; it was the wall letting everything else through. The hooks also failed OPEN (`|| true`, exit-0-on-error), so a wall that broke was a wall that opened. The operator's rule: the goggles are the only surface for anything done in the codebase, and the wall must catch any model, without exception. Slowness is the tell: a round that takes long is a round spent off the surface.",
    "tell": "A hook that is a list of regexes; `|| true` after a hook command; a session with many grep/sed/ls/cat commands and few denials; a search or a test run by hand where a verb exists; the operator saying it is taking too long.",
    "correct": "Default-deny inside the ecosystem: a command runs only if every simple command in it is the goggles, git, shell glue or a text filter after a pipe; Grep and Glob as tools are refused inside; no edit to an existing file without a goggle reading of it; every hook fails CLOSED at both the script and the settings level. Every search, exec and test goes through a verb (--do find / --do exec / --do test) and is recorded, so the count of off-surface actions is itself a reading. If a verb is missing, build the verb — never widen the allowlist."
+  },
+  {
+   "match": [
+    "resonance memory",
+    "decoder space",
+    "chunk",
+    "bytes resonate",
+    "library profile",
+    "per pattern",
+    "232-D",
+    "served pair"
+   ],
+   "severity": "high",
+   "wrong": "Building a memory that serves a chunk another chunk's fit because the two resonate as decoder vectors of their own bytes — comparing a chunk to a chunk, bytes to bytes.",
+   "truth": "Measured 2026-09-12: in the decoder's whitened 232-D space at the detector's 0.50, 5,177 of 5,187 chunks resonated with one of 189 remembered shapes (10 void — the threshold never said no), and the served pair fitted fresh bytes at a fifth to a twentieth of the search (living-remembrance.js 0.0589 vs 0.1976). The operator: a chunk compared to a chunk has the same shape and of course resonates; bytes resonate with bytes. The shape is the chunk's resonance PER PATTERN against the pattern library and the field's held patterns (VoidCompressorV3._library_correlations, the search's own product). Rebuilt on that: 4,707 shapes from 400 files, 10.8% resonant, served fits within 0.002–0.016 of the search on four of five files.",
+   "tell": "A resonance memory whose void count is ~0 over a corpus; a served reading far below the search's; a chunk keyed by a vector of its own bytes rather than by its correlations with the library.",
+   "correct": "Key a chunk's shape on its resonance with the patterns (the library profile), never on a vector of its bytes; resonance between chunks is the cosine of their profiles; the decoder space is the field's, not the fit's.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.106Z",
+   "last": "2026-09-12T22:06:00.107Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "served fit",
+    "l1r",
+    "key",
+    "space",
+    "stale",
+    "remembered 10",
+    "seed"
+   ],
+   "severity": "high",
+   "wrong": "Remembering fits served by one memory under a key that does not name the memory that served them, so a later, different memory hits them first and returns without ever placing the chunk.",
+   "truth": "Measured 2026-09-12: the decoder-space run left 5,177 'l1r:' served fits in the shape store; the library-space reading hit those keys before its own path, served the stale fits and never placed the chunk in the new space — the seed remembered 10 shapes from 400 files and read 0 resonant / 0 void everywhere. The key now carries the space (l1r.library:…). Found only when a counter (carried / already_known / no_profile) was added to the reading.",
+   "tell": "A memory that reports served fits and no computation while its own index does not grow; a served-kind key without the serving space in it; a counter that stays flat across hundreds of files.",
+   "correct": "Every derived entry names the process that derived it (space, basis, search version) in its key; when a counter stays flat, add the counter that would explain it before touching the logic.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.118Z",
+   "last": "2026-09-12T22:06:00.118Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "tolerance",
+    "0.05",
+    "invented threshold",
+    "test",
+    "assertGreaterEqual",
+    "today's date"
+   ],
+   "severity": "medium",
+   "wrong": "Writing a numeric tolerance into a test on the day the mechanism was built (served reading within 0.05 of the search) and failing the build on a number nobody measured.",
+   "truth": "Measured 2026-09-12: the synthetic relative read 0.886 served against 0.941 searched, a gap of 0.055 — the invented 0.05 failed it. The gap is a measurement to record beside the mechanism (experiments/resonance_memory/), not a gate; the tests pin the mechanism (served, lossless, sealed) and the record pins the numbers.",
+   "tell": "A threshold in a test with the same date as the code it tests; a test failure whose only cause is a number the author chose.",
+   "correct": "Tests assert the mechanism; measured numbers go to the record with their date and their inputs; a tolerance enters a test only after it was measured and pinned.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.119Z",
+   "last": "2026-09-12T22:06:00.119Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "argpartition",
+    "tie",
+    "deterministic",
+    "exp_grow_2",
+    "exp_decay_2",
+    "shortlist",
+    "bit-identical",
+    "search version"
+   ],
+   "severity": "high",
+   "wrong": "Treating the top-K shortlist as a pure function of the correlations while argpartition/argsort broke exact ties by internal order — an order that moved when a row was appended to the basis.",
+   "truth": "Measured 2026-09-12: a chunk fitting exp_grow_2 and exp_decay_2 equally (mirror images, the same R²) named one before the basis learned a shape and the other after, with the same coherency and a different shape hash — the ancestor path served the old tie-break and the recompute produced the new one. The shortlist is now descending R², ties by ascending row index (SEARCH_VERSION 'topk-lexsort-1'), and the search's version is part of every basis digest, so a change to the search is a new basis for every memory and every verifier.",
+   "tell": "Two readings with identical coherency and different shape hashes; a fit that changes when unrelated rows are appended; a verifier that agrees on one host and not another.",
+   "correct": "Every selection in the reading path breaks ties deterministically; the search's version is hashed into the basis digest; bit-identity is tested across a basis change, not only across a repeat.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.119Z",
+   "last": "2026-09-12T22:06:00.119Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "report",
+    "measure and report",
+    "the operator already knows",
+    "build",
+    "skeptic",
+    "confirm",
+    "your claim holds"
+   ],
+   "severity": "high",
+   "wrong": "Answering an operator's design statement by measuring it and reporting that it holds, instead of building it — and asking before building where the operator had already decided.",
+   "truth": "The operator on 2026-09-12: 'I know exactly how my system works… I have already done every single one of these measurements before… it's your place to build it as I say and tell me when it doesn't match what I say.' Measuring is allowed; reporting a confirmation the operator did not ask for costs their time twice (once reading it, once re-typing the instruction). The one report owed is a mismatch, stated with the numbers.",
+   "tell": "A reply that opens with what the instrument confirmed; a question that repeats the operator's own decision back as an option; a round that ended in a report and no commit.",
+   "correct": "Build what the operator specified; measure while building; report only what does not match, with the instrument's numbers; commit.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.119Z",
+   "last": "2026-09-12T22:06:00.119Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "re-read",
+    "drift",
+    "from memory",
+    "guess",
+    "logic files",
+    "read the file",
+    "two hours"
+   ],
+   "severity": "medium",
+   "wrong": "Building from what was remembered of the design instead of re-reading the files that hold it, and drifting from what the operator intended.",
+   "truth": "2026-09-12: the resonance memory was built in the decoder space from memory of ECOSYSTEM §7 while the operator's words said per pattern against the library, and the record's own line (void_compressor_v3 BASIS_SAMPLES) already drew the boundary: the fractal space is the resonance space, the basis grid is where bytes get fitted. The operator: 'you should be re-reading the files anyway on your own cause when you don't you start to guess.' The goggled-first window is the instrument enforcing it.",
+   "tell": "An edit made without a fresh reading of the file it changes; a design claim in a reply without the file and line that holds it; a wrong space, wrong key or wrong rule discovered by a counter rather than by reading.",
+   "correct": "Re-read the logic files before building on them, every time; quote the line; the two-hour reading window stays.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.120Z",
+   "last": "2026-09-12T22:06:00.120Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

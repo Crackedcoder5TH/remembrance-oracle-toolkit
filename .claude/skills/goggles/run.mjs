@@ -16,8 +16,10 @@
 //   run.mjs --diff            goggle everything changed vs HEAD in this repo
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, appendFileSync } from 'node:fs';
+import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
 
 function findToolkit() {
   const candidates = [
@@ -168,7 +170,26 @@ if (argv[0] === '--do') {
     //   goggles --do mint verify [--staged | --since-epoch | A..B | <rev>] [--deep]
     //   goggles --do mint install-hooks         the commit-msg hook, this repo
     //   goggles --do mint anchor [--status]     witness every repo's coin ledger on the chain
-    mint: () => run('python3', [join(toolkit, '.claude/skills/goggles/change-coin.py'), ...(rest.length ? rest : ['mint']), '--repo', process.cwd()], toolkit),
+    mint: () => {
+      const code = run('python3', [join(toolkit, '.claude/skills/goggles/change-coin.py'), ...(rest.length ? rest : ['mint']), '--repo', process.cwd()], toolkit);
+      // THE TRAP LEDGER GROWS ON ITS OWN (the operator's rule, 2026-09-12): a
+      // mint in the hub promotes every candidate trap that has earned it —
+      // the wall's repeated denials, the instrument's tells, an agent's own
+      // account (--do traps learn) — into the seed and syncs the mirrors, so
+      // a round that minted a coin also grew the ledger. Best-effort.
+      if (code === 0 && (!rest.length || rest[0] === 'mint') && resolve(process.cwd()) === resolve(toolkit)) {
+        try {
+          const tl = _require(join(toolkit, 'src/tools/trap-learner.js'));
+          const staged = tl.stageEarned();
+          if (staged.earned) {
+            run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), '--promote'], toolkit);
+            run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), '--sync'], toolkit);
+          }
+          tl.unstage();
+        } catch (e) { console.error('[traps] learner unavailable: ' + (e && e.message)); }
+      }
+      return code;
+    },
     // THE ONE RESONANCE SPACE — fit (or refresh) the per-layer whitening
     // reference every decoder cosine is taken in, on the canonical substrate.
     // Reads fit it on first use themselves; this is the explicit door.
@@ -303,9 +324,38 @@ if (argv[0] === '--do') {
     // the tracked seed; `sync` writes the byte-identical mirror into every repo;
     // `floor` raises the count floor; `anchor` witnesses the seed on the chain.
     //   goggles --do traps [promote | sync | floor | anchor | status]
+    //   goggles --do traps learn <json | json-file>   record a mistake as a candidate
+    //          trap (wrong/truth/tell/correct[/match/severity]); an agent's own
+    //          account counts in full and is promoted by the next hub mint
     traps: () => {
       const sub = rest[0] || 'status';
       if (sub === 'anchor') return run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/scripts/anchor-traps.js'), ...rest.slice(1)], join(HOME, 'REMEMBRANCE-BLOCKCHAIN'));
+      if (sub === 'learn') {
+        if (!rest[1]) { console.error('usage: --do traps learn <json | json-file>'); return 2; }
+        _ledger('goggles-traps-learned.jsonl', { arg: rest[1].slice(0, 200) });
+        return run('node', [join(toolkit, 'src/tools/trap-learner.js'), rest[1]], toolkit);
+      }
+      // retract UNWITNESSED seed entries by `wrong` prefix (never below the
+      // floor, never past the chain anchor) — the way back when a promote
+      // took in what it should not have
+      if (sub === 'retract') {
+        if (!rest[1]) { console.error('usage: --do traps retract <wrong-prefix>'); return 2; }
+        const tl = _require(join(toolkit, 'src/tools/trap-learner.js'));
+        const r = tl.retract(rest[1]);
+        console.log(`[traps] retracted ${r.dropped} unwitnessed seed entr${r.dropped === 1 ? 'y' : 'ies'} (${r.kept} kept, ${r.witnessed} witnessed on the chain), ${r.localDropped} local candidate(s) dropped — sync the mirrors: --do traps sync`);
+        return 0;
+      }
+      // promote is EARNED-ONLY: a candidate enters the seed with count ≥ 3
+      // (an agent's own account counts in full; a wall denial counts one)
+      if (sub === 'promote') {
+        const tl = _require(join(toolkit, 'src/tools/trap-learner.js'));
+        const staged = tl.stageEarned();
+        let code = 0;
+        try { code = run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), '--promote', ...rest.slice(1)], toolkit); }
+        finally { tl.unstage(); }
+        if (staged.pending) console.log(`[traps] ${staged.pending} candidate(s) not yet earned (count < ${tl.REPEAT_TO_TRAP}) stay local`);
+        return code;
+      }
       const flag = { promote: '--promote', sync: '--sync', floor: '--save-baseline', status: '--json' }[sub];
       if (!flag) { console.error('goggles --do traps [promote | sync | floor | anchor | status]'); return 1; }
       return run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), flag, ...rest.slice(1)], toolkit);

@@ -36,6 +36,15 @@ function out(decision, reason) {
         rule: String(reason).split('\n')[0].trim(),
         cmd: String(cmd).slice(0, 300),
       }) + '\n');
+      // THE LEDGER LEARNS FROM THE WALL (2026-09-12): every denial is a
+      // candidate trap in the local learned store; the same rule hit three
+      // times on a host earns promotion at the next hub mint (trap-learner.js).
+      // (the wall's own tests exercise denials on purpose: GOGGLES_NO_TRAP_LEARN=1
+      // keeps a test run from teaching the ledger — found 2026-09-12 when
+      // thirteen test denials were promoted into the seed)
+      if (!process.env.GOGGLES_NO_TRAP_LEARN) {
+        try { require('./trap-learner').learnDenial(reason, cmd); } catch (e) { quiet('tools:goggles-bash-hook:trap-learn', e); }
+      }
     } catch (e) { quiet('tools:goggles-bash-hook:denial-log', e); }
   }
   process.stdout.write(JSON.stringify({

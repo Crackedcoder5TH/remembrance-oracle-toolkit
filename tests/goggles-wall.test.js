@@ -17,7 +17,10 @@ const TOOLS = path.join(HUB, 'src', 'tools');
 const OUTSIDE = fs.mkdtempSync(path.join(os.tmpdir(), 'wall-outside-'));
 
 function hook(file, input) {
-  const r = spawnSync('node', [path.join(TOOLS, file)], { input: input === null ? '' : JSON.stringify(input), encoding: 'utf8' });
+  // GOGGLES_NO_TRAP_LEARN: these denials are the test's, not a mistake — they
+  // must not teach the trap ledger (thirteen of them were promoted once)
+  const r = spawnSync('node', [path.join(TOOLS, file)], { input: input === null ? '' : JSON.stringify(input), encoding: 'utf8',
+    env: { ...process.env, GOGGLES_NO_TRAP_LEARN: '1' } });
   const out = (r.stdout || '').trim();
   if (!out) return { decision: 'allow', reason: '' };
   const j = JSON.parse(out);

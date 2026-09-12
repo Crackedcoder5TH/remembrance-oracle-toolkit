@@ -154,6 +154,23 @@ read it back automatically and warn when it's stale. The runner finds the
 `remembrance-oracle-toolkit` (the goggles engine) on its own; set
 `ORACLE_TOOLKIT=/path/to/remembrance-oracle-toolkit` to override.
 
+## The basis is versioned; the ledger of mistakes grows on its own (2026-09-12)
+
+The substrate learns at serve: a reading under the learner's line teaches
+the library one shape, a known shape is not added. So every reading and
+every coin carries `basis_id` (the search matrix, its names and the
+search's version, digested), the learned ledger is append-only and indexed
+by digest, and a verifier reads against the reading's own basis:
+`--do read <file> --basis <basis_id>`. A reading also reports its void
+term (`memory`: fits served / computed / served from an earlier basis /
+resonant / void) and `--resonance` serves resonant chunks by the shape
+they resonate with in the pattern library.
+
+`--do traps learn <json | json-file>` records a mistake as a candidate
+trap (wrong/truth/tell/correct); every wall denial is a candidate too (the
+same rule three times on a host earns promotion); a `--do mint` in the hub
+promotes every earned candidate into the seed and syncs the mirrors.
+
 ## What one read hands you (nothing behind a verb)
 
 Every per-file read prints, in this order, without being asked: **TRAPS**

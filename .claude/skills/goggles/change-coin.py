@@ -265,15 +265,19 @@ def verify_coin(coin: dict, patch: bytes, key: bytes | None, deep: bool) -> list
     return f
 
 
-def read_through_instrument(void: str, patch: bytes, scratch_dir: str) -> dict:
+def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: str | None = None) -> dict:
     """THE reading path: the bytes go to scripts/read-signal.py (→ /compress_signal
-    → void_compressor_v5.compress) and come back sealed, with the commitment."""
+    → void_compressor_v5.compress) and come back sealed, with the commitment.
+    `basis`: read against a RECORDED basis (the coin's basis_id) — the unfold
+    path, now that the basis grows at serve."""
     os.makedirs(scratch_dir, exist_ok=True)
     patch_file = os.path.join(scratch_dir, 'bytes.patch')
     with open(patch_file, 'wb') as f:
         f.write(patch)
-    proc = subprocess.run([sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json'],
-                          cwd=void, capture_output=True, text=True, timeout=900)
+    args = [sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json']
+    if basis:
+        args += ['--basis', basis]
+    proc = subprocess.run(args, cwd=void, capture_output=True, text=True, timeout=900)
     if proc.returncode != 0:
         raise RuntimeError('the instrument refused or is down — no reading:\n' + (proc.stdout + proc.stderr).strip()
                            + '\n  goggles --do service status   ·   goggles --do service start --wait')
@@ -295,10 +299,15 @@ def unfold(coin: dict, patch: bytes) -> dict:
     cm = (coin.get('reading') or {}).get('commitment') or {}
     shape = cm.get('shape')
     if shape is None:
-        fresh = read_through_instrument(void, patch, os.path.join(void, '.remembrance', 'change-coin-unfold'))
+        # against the coin's own basis when it names one (coins minted before
+        # 2026-09-12 carry none and unfold against the basis in force)
+        fresh = read_through_instrument(void, patch, os.path.join(void, '.remembrance', 'change-coin-unfold'),
+                                        basis=cm.get('basis_id') or (coin.get('reading') or {}).get('basis_id'))
         fcm = fresh['commitment']
         if fcm.get('shape_sha256') != cm.get('shape_sha256'):
-            return {'error': f"regenerated shape {str(fcm.get('shape_sha256'))[:12]}… ≠ coin's shape_sha256 {str(cm.get('shape_sha256'))[:12]}… — the substrate reads these bytes differently now"}
+            return {'error': f"regenerated shape {str(fcm.get('shape_sha256'))[:12]}… ≠ coin's shape_sha256 {str(cm.get('shape_sha256'))[:12]}… — "
+                             + ('the substrate reads these bytes differently now' if not cm.get('basis_id')
+                                else f"read against the coin's basis {cm.get('basis_id')} and still different")}
         shape = fcm.get('shape')
         cm = dict(cm, shape=shape)
     sys.path.insert(0, os.path.join(void, 'scripts'))
@@ -466,9 +475,14 @@ def mint(repo: str, amend: bool) -> int:
         # the cost of a coin falls and bottoms out as the substrate remembers;
         # a coin that takes long with a small void term is paying for
         # structure already held — the tell. Recorded, never hashed.
+        # basis_id: THE BASIS THE COIN WAS READ ON. The substrate learns at
+        # serve (2026-09-12), so the basis in force moves; the coin names its
+        # basis and unfolds against it (read-signal --basis), never against
+        # whatever the substrate holds later.
         'reading': {**{k: reading.get(k) for k in ('coherency', 'ratio', 'method', 'strategy', 'lossless',
                                                     'via', 'mint', 'void_seal', 'library_size',
-                                                    'memory', 'elapsed_s')}, 'commitment': commitment},
+                                                    'memory', 'elapsed_s', 'basis_id', 'learned_n',
+                                                    'learned_this_reading')}, 'commitment': commitment},
     }
     fails = verify_coin(coin, patch, seal_key(), deep=False)
     if fails:

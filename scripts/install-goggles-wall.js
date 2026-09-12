@@ -83,7 +83,10 @@ for (const r of repos) {
   if (r === HUB) continue;
   const dir = path.join(r, '.claude', 'skills', 'goggles');
   if (!fs.existsSync(dir)) continue;
-  for (const f of ['run.mjs', 'SKILL.md']) {
+  // change-coin.py is the minter every copy of run.mjs invokes from its own
+  // directory; a copy behind the hub's mints coins missing the fields the
+  // hub's coins carry (library_size, memory, elapsed_s — found 2026-09-12).
+  for (const f of ['run.mjs', 'SKILL.md', 'change-coin.py']) {
     const src = fs.readFileSync(path.join(HUB, '.claude', 'skills', 'goggles', f));
     const dst = path.join(dir, f);
     if (!fs.existsSync(dst) || !fs.readFileSync(dst).equals(src)) { fs.writeFileSync(dst, src); synced++; }

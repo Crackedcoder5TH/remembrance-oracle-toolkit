@@ -461,8 +461,14 @@ def mint(repo: str, amend: bool) -> int:
         # basis grows from what the instrument consumes (scripts/build_signal_basis.py),
         # and a coin unfolded against a different basis reads the same bytes
         # differently — the pin says which basis to unfold with.
+        # memory / elapsed_s: the void term of the reading (chunk fits the
+        # substrate had no memory of) and what it cost. The operator's rule:
+        # the cost of a coin falls and bottoms out as the substrate remembers;
+        # a coin that takes long with a small void term is paying for
+        # structure already held — the tell. Recorded, never hashed.
         'reading': {**{k: reading.get(k) for k in ('coherency', 'ratio', 'method', 'strategy', 'lossless',
-                                                    'via', 'mint', 'void_seal', 'library_size')}, 'commitment': commitment},
+                                                    'via', 'mint', 'void_seal', 'library_size',
+                                                    'memory', 'elapsed_s')}, 'commitment': commitment},
     }
     fails = verify_coin(coin, patch, seal_key(), deep=False)
     if fails:
@@ -476,6 +482,10 @@ def mint(repo: str, amend: bool) -> int:
     git(repo, 'add', LEDGER)
     print(f"reading: coherency {reading['coherency']:.4f} via void:compress_signal · seal mint {reading['mint']} · "
           f"strategy {reading.get('strategy')} · lossless {reading.get('lossless')} · shape {str(cm.get('shape_sha256'))[:12]}…")
+    mem = reading.get('memory') or {}
+    if mem:
+        print(f"cost:    {reading.get('elapsed_s')}s in the compressor · {mem.get('fits')} fits, "
+              f"{mem.get('served')} served from memory, {mem.get('computed')} computed — the void term of this coin")
     print(f"MINTED coin {coin['coin_id'][:12]}… → {LEDGER} (staged; {len(doc['coins'])} coins)")
     save_on_chain(coin)
     print('Commit now — the commit-msg hook writes the trailer, or add it yourself:')

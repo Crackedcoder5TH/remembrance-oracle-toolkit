@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   // use the summary reader (one query) rather than getLeadOperations (ops + notes
   // + activity = 3 queries each) — over 200 leads that was ~600 queries + note
   // over-fetch on every load.
-  const leads = leadResult.ok ? await Promise.all(leadResult.value.leads.map(async lead => ({ ...lead, operations: await getLeadOperationsSummary(lead.leadId) }))) : [];
+  const leads = leadResult.ok ? await Promise.all(leadResult.value.leads.map(async lead => ({ ...lead, operations: await getLeadOperationsSummary(lead.leadId,{admin:true}) }))) : [];
   const agents = clientResult.ok ? clientResult.value.clients.map(({passwordHash: _passwordHash,...client}) => client) : [];
   return NextResponse.json({ success:true, leads, agents, ...compliance });
 }

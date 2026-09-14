@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!leadResult.ok) return NextResponse.json({ success: false, message: "Unable to load lead." }, { status: 500 });
   if (!leadResult.value) return NextResponse.json({ success: false, message: "Lead not found." }, { status: 404 });
   const [operations, compliance] = await Promise.all([
-    getLeadOperations(params.id, true),
+    getLeadOperations(params.id, { admin: true, includeInternal: true }),
     getLeadComplianceView(params.id, leadResult.value.phone, leadResult.value.email),
   ]);
   await recordAudit({actorId:"admin",actorRole:"admin",eventType:"lead_viewed",targetType:"lead",targetId:params.id,summary:"Admin viewed lead compliance detail",ip:req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||null,userAgent:req.headers.get("user-agent")});

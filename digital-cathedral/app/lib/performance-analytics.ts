@@ -30,8 +30,8 @@ function summarizePerformance(leads: LeadRecord[], purchases: LeadPurchase[], da
 
   // Speed-to-lead and not-contacted are scoped to PURCHASED leads only, so
   // unsold inventory (which trivially has no contact) never inflates them.
-  const contactedByLead = new Map(dataset.ops.map(op => [op.leadId, op.lastContactedAt]));
-  const purchasedAtByLead = new Map(purchases.map(p => [p.leadId, p.purchasedAt]));
+  const contactedByLead = new Map(dataset.ops.map(op => [`${op.clientId}:${op.leadId}`, op.lastContactedAt]));
+  const purchasedAtByLead = new Map(purchases.map(p => [`${p.clientId}:${p.leadId}`, p.purchasedAt]));
   const purchasedLeadIds = [...purchasedAtByLead.keys()];
   const notContacted = purchasedLeadIds.filter(id => !contactedByLead.get(id)).length;
   const firstActionMinutes = purchasedLeadIds.flatMap(id => {
@@ -91,7 +91,7 @@ export async function getAgentPerformanceSnapshot(clientId: string) {
   const leadIds = [...new Set(purchases.map(p => p.leadId))];
   const [leadResult, dataset] = await Promise.all([
     getLeadsByIds(leadIds),
-    getOperationsDataset(leadIds), // scoped to this agent's purchased leads
+    getOperationsDataset(leadIds, clientId), // scoped to this agent's purchased leads and operations
   ]);
   const leads = leadResult.ok ? leadResult.value : [];
   return summarizePerformance(leads, purchases, dataset);

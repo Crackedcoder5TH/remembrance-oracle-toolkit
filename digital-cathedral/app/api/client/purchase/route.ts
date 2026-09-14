@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const lead = leadResult.value;
 
     const [acknowledgement, operations, suppressed] = await Promise.all([
-      getAcknowledgement(auth.clientId), getLeadOperations(leadId), isSuppressed(lead.phone, lead.email),
+      getAcknowledgement(auth.clientId), getLeadOperations(leadId, { admin: true }), isSuppressed(lead.phone, lead.email),
     ]);
     if (!acknowledgement?.active) return NextResponse.json({ success:false, message:"Complete your compliance acknowledgement before purchasing leads." },{status:403});
     if (operations.doNotContact) return NextResponse.json({ success:false, message:"This lead cannot be purchased because it is marked Do Not Contact." },{status:409});

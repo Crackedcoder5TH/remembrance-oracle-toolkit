@@ -3,7 +3,7 @@
  * createQueue() → { enqueue, dequeue, peek, size, isEmpty }
  */
 function createQueue() {
-  const items = [];
+  let items = [];
   let front = 0;
 
   function enqueue(value) {
@@ -17,7 +17,7 @@ function createQueue() {
     front++;
     // compact when half the array is empty
     if (front > items.length / 2 && front > 10) {
-      items.splice(0, front);
+      items = items.slice(front);
       front = 0;
     }
     return value;

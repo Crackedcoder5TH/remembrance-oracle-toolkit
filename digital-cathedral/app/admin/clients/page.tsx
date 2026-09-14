@@ -133,7 +133,7 @@ export default function AdminClientsPage() {
     else { setMessage(data.message || "Failed to seed test agent."); }
   };
 
-  const totalPages = Math.ceil(totalClients / LIMIT);
+  const totalPages = Math.ceil(totalClients * 0.04);
   const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
   return (
@@ -304,9 +304,9 @@ export default function AdminClientsPage() {
             <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
               <div><p className="text-xs uppercase text-[#776e61]">Status</p><span className={`mt-1 inline-block rounded border px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[selectedClient.status] || ""}`}>{selectedClient.status}</span></div>
               <div><p className="text-xs uppercase text-[#776e61]">Balance</p><p className="text-[#211d18]">{formatCents(selectedClient.balance)}</p></div>
-              <div><p className="text-xs uppercase text-[#776e61]">Price / lead</p><p className="text-[#211d18]">{formatCents(selectedClient.pricePerLead)}</p></div>
+              <div><p className="text-xs uppercase text-[#776e61]">Price per lead</p><p className="text-[#211d18]">{formatCents(selectedClient.pricePerLead)}</p></div>
               <div><p className="text-xs uppercase text-[#776e61]">Exclusive price</p><p className="text-[#211d18]">{formatCents(selectedClient.exclusivePrice)}</p></div>
-              <div><p className="text-xs uppercase text-[#776e61]">Caps (D / M)</p><p className="text-[#211d18]">{selectedClient.dailyCap} / {selectedClient.monthlyCap}</p></div>
+              <div><p className="text-xs uppercase text-[#776e61]">Caps (daily and monthly)</p><p className="text-[#211d18]">{selectedClient.dailyCap} daily · {selectedClient.monthlyCap} monthly</p></div>
               <div><p className="text-xs uppercase text-[#776e61]">Min score</p><p className="text-[#211d18]">{selectedClient.minScore}</p></div>
             </div>
             <div className="mb-6 flex flex-wrap gap-2">
@@ -365,7 +365,7 @@ export default function AdminClientsPage() {
                     <option value="standard">Standard</option><option value="premium">Premium</option><option value="enterprise">Enterprise</option>
                   </select>
                 </div>
-                <div><label className="mb-1 block text-xs text-[#776e61]">Price/lead (cents)</label><input type="number" value={createForm.pricePerLead} onChange={(e) => setCreateForm({ ...createForm, pricePerLead: parseInt(e.target.value) || 0 })} className={inputCls} /></div>
+              <div><label className="mb-1 block text-xs text-[#776e61]">Price per lead (cents)</label><input type="number" value={createForm.pricePerLead} onChange={(e) => setCreateForm({ ...createForm, pricePerLead: parseInt(e.target.value) || 0 })} className={inputCls} /></div>
                 <div><label className="mb-1 block text-xs text-[#776e61]">Exclusive (cents)</label><input type="number" value={createForm.exclusivePrice} onChange={(e) => setCreateForm({ ...createForm, exclusivePrice: parseInt(e.target.value) || 0 })} className={inputCls} /></div>
               </div>
               <div className="grid grid-cols-3 gap-3">

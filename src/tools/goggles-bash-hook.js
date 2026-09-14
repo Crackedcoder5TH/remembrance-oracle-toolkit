@@ -18,6 +18,9 @@
  */
 const fs = require('node:fs');
 const { quiet } = require('../core/quiet');
+const { createGate, requireGate } = require('../core/covenant-fractal');
+const _appendDenial = requireGate((gate, file, line) => fs.appendFileSync(file, line));
+const _denialGate = () => createGate().seal({ charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid', reactivity: 'inert', electronegativity: 0.2, group: 12, period: 2, harmPotential: 'none', alignment: 'neutral', intention: 'benevolent', domain: 'audit' });
 
 function out(decision, reason) {
   // THE DENIAL LOG (leak map: "the measurement that makes this durable").
@@ -31,7 +34,7 @@ function out(decision, reason) {
       const path = require('node:path');
       const dir = path.join(__dirname, '..', '..', '.remembrance');
       fs.mkdirSync(dir, { recursive: true });
-      fs.appendFileSync(path.join(dir, 'goggles-denials.jsonl'), JSON.stringify({
+      _appendDenial(_denialGate(), path.join(dir, 'goggles-denials.jsonl'), JSON.stringify({
         ts: new Date().toISOString(),
         rule: String(reason).split('\n')[0].trim(),
         cmd: String(cmd).slice(0, 300),

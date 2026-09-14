@@ -1233,6 +1233,29 @@
    "sources": [
     "agent"
    ]
+  },
+  {
+   "match": [
+    "cancel-in-progress",
+    "SIGTERM",
+    "exit 143",
+    "runner shutdown",
+    "verifier.CLAIMS",
+    "CONTRACT_SHARD",
+    "contracts-ratchet",
+    "cross-repo-matrix"
+   ],
+   "severity": "high",
+   "wrong": "Treating a contracts job terminated by workflow concurrency cancellation as a test timeout, then splitting or mutating verifier.CLAIMS to make the truth-spine appear to fit.",
+   "truth": "The workflow had concurrency.cancel-in-progress enabled. Each newer fix-branch push canceled the still-loading full contracts run, producing SIGTERM/exit 143 and runner-shutdown cleanup without a failed assertion. The contracts ratchet accepts only a current persisted verdict written by one FULL verify_capabilities.py run through the goggles; shards cannot produce that verdict and are not the truth-spine.",
+   "tell": "A job ends with SIGTERM, exit 143, runner shutdown, or orphan-process cleanup soon after a newer run for the same ref starts; logs contain no failing contract assertion and repeated pushes restart the same short window.",
+   "correct": "Inspect the workflow run conclusion and concurrency group before diagnosing a timeout. Stop issuing new pushes, start the compressor with goggles --do service start --wait, run goggles --do contracts --strict, then goggles --do gate contracts and goggles --do ratchets. Never slice, replace, or mutate verifier.CLAIMS to satisfy the gate.",
+   "count": 3,
+   "first": "2026-09-14T14:00:39.876Z",
+   "last": "2026-09-14T14:00:39.876Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

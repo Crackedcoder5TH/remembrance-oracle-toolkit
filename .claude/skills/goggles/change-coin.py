@@ -303,7 +303,13 @@ def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: st
     args = [sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json']
     if basis:
         args += ['--basis', basis]
-    proc = subprocess.run(args, cwd=void, capture_output=True, text=True, timeout=900)
+    # The instrument's time is proportional to the input (read-signal's own
+    # rule: one second per 4k points, and a container patch is then read
+    # series by series). A fixed 900 s here killed the reading of a 47 MB
+    # ledger patch at 15 minutes (2026-09-14) while the service went on
+    # computing a request nobody would receive. Floor 900, then the size.
+    proc = subprocess.run(args, cwd=void, capture_output=True, text=True,
+                          timeout=max(900.0, len(patch) * 64 / 4000.0 * 2))
     if proc.returncode != 0:
         raise RuntimeError('the instrument refused or is down — no reading:\n' + (proc.stdout + proc.stderr).strip()
                            + '\n  goggles --do service status   ·   goggles --do service start --wait')

@@ -3533,6 +3533,75 @@
      "shape_sha256": "4dc7139ad331e05871c1d7f1457ec97be513110396c9eafcf52cdfb773b8e402"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "b296982ec3f25618f2f839f12da026371c3d91a8bcda0f39370d1e06b0f89706",
+   "minted_at": "2026-09-14T14:03:01+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "69aab596c5ad72271c78d6efe5296736924d6b4c",
+    "files": [
+     "src/atomic/periodic-table-additions.js"
+    ],
+    "diff_bytes": 593,
+    "diff_sha256": "69a7cb284c2e49d1d58d93006fa7cc9ff2982d3047c51c87113266d5ffeb8283",
+    "excludes": [
+     "coins.ledger.json",
+     "learned_patterns.jsonl",
+     "basis_index.jsonl"
+    ]
+   },
+   "reading": {
+    "coherency": 0.24692018036328717,
+    "ratio": 1.5442708333333333,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "4b099b002cc024a2",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "363e9658f6d102de0fbd334e0ab9416c9e1ff76f25bb3da20ca3d158da29498a",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-14T14:03:00",
+     "coin": null,
+     "sig": "4b099b002cc024a2449df3d7b0174d9c8b36c9449d986b7d63a1625d559e12f3"
+    },
+    "library_size": 17233,
+    "memory": {
+     "fits": 25,
+     "served": 7,
+     "computed": 18,
+     "served_ancestor": 0,
+     "chunkings": 7,
+     "chunkings_served": 4,
+     "entries": 481926,
+     "void_chunks": 3,
+     "ingested": 3,
+     "served_single": 0,
+     "searched": 3,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 0.099,
+    "basis_id": "8b60f360c5c572b7",
+    "learned_n": 17158,
+    "learned_this_reading": 3,
+    "basis_after": "3a7716ce19f26add",
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "8b60f360c5c572b7",
+     "method": "v4_chunked",
+     "original_size": 593,
+     "compressed_size": 384,
+     "coherency": 0.24692018036328717,
+     "data_sha256": "f8c0d59890862cbaa933cfa92dc85e4ae737d28d744724276b2c6b03c429d581",
+     "compressed_sha256": "ea4c891a39427d155a536259708627b57398f17cf699252e2f7a40cdeac2fc3d",
+     "shape_sha256": "a248b64932cc242e99b2c6df68694eca32111a62a844f7ef74cc45fe211b4f52"
+    }
+   }
   }
  ]
 }

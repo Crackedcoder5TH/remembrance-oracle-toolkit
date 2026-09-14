@@ -79,16 +79,21 @@ import subprocess
 import sys
 
 LEDGER = 'coins.ledger.json'
-# THE INSTRUMENT'S MEMORY IS NOT A CHANGE (2026-09-14). The coin reads the
-# change to the codebase; the learned ledger and the basis index are what
-# the instrument learned FROM readings — the same rule as the coin ledger
-# itself. Left inside the patch they were a loop: a mint's reading ingested
-# the ledger's own number text as void shapes (13,388 rows, 31 MB), the
-# next mint's patch carried that text, whose diff cut new chunks, void
-# again — 2,896 → 13,388 → 13,388 rows in three mints, 722 s of reading.
+# THE COIN READS THE WHOLE CHANGE (the operator's ruling, 2026-09-14): the
+# instrument ingests information no matter the source or type and saves it
+# as a pattern — so the learned ledger and the basis index are NOT cut out
+# of the patch. For a few hours that day they were (MEMORY_RULE), to stop a
+# loop: a mint's reading ingested the ledger's own number text as void
+# shapes (13,388 rows, 31 MB), the next mint's patch carried that text,
+# void again. The cure was never the exclusion; it was reading a data
+# container's DATA rather than its ASCII: read-signal now recognises a
+# JSON/JSONL file or a record-adding patch as a file, reads its bytes with
+# ingestion off, and runs every series it holds through the instrument —
+# where a waveform the library already holds reads as known.
 MEMORY_FILES = ('learned_patterns.jsonl', 'basis_index.jsonl')
-EXCLUDES = [LEDGER, *MEMORY_FILES]          # the rule for coins minted from now on
-LEGACY_EXCLUDES = [LEDGER]                  # the rule every earlier coin was minted under
+MEMORY_RULE = [LEDGER, *MEMORY_FILES]       # the rule of 2026-09-14 — the coins that carry it verify under it
+EXCLUDES = [LEDGER]                         # the rule: only the coin ledger is not a change
+LEGACY_EXCLUDES = [LEDGER]                  # the rule every coin before 2026-09-14 was minted under
 # A coin records the rule it was minted under (change.excludes) and verifies
 # under it: changing the rule must never refuse a commit that held.
 
@@ -311,6 +316,16 @@ def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: st
     return reading
 
 
+def _data_summary(data: dict | None) -> dict | None:
+    """A container's data reading as the coin keeps it: the container type,
+    how many series, the totals (counts, never a mean) and the basis the
+    data left in force."""
+    if not data:
+        return None
+    return {'container': data.get('container'), 'series_n': len(data.get('series') or []),
+            'totals': data.get('totals'), 'basis_after': data.get('basis_after')}
+
+
 def unfold(coin: dict, patch: bytes) -> dict:
     """Unfold a coin WHEN IT IS NEEDED: the bytes go back through the instrument,
     the regenerated shape must hash to the coin's shape_sha256 (the compressor is
@@ -394,7 +409,7 @@ def verify_commit(repo: str, commit: str, key: bytes | None, deep: bool):
         # a coin that records no rule was minted under one of the two: the
         # one coin cut under the memory-file rule before coins recorded it
         # (Void 94d81aeebd, 2026-09-14) verifies under that rule
-        alt = patch_between(repo, base, rev_tree(repo, commit), EXCLUDES)
+        alt = patch_between(repo, base, rev_tree(repo, commit), MEMORY_RULE)
         if alt and not verify_coin(coin, alt, key, deep):
             patch, fails = alt, []
     if fails:
@@ -524,10 +539,19 @@ def mint(repo: str, amend: bool) -> int:
         # memory.void_chunks / ingested (2026-09-14): the chunks of this change
         # the library had no memory of, ingested into it during the reading —
         # the coin's void term in the design's own terms (STEP2 §5).
+        # read_as / ingest / data (2026-09-14): what the instrument took the
+        # patch for. A patch adding data records is a container: its bytes
+        # are the reading (ingest false — the library never learns the ASCII
+        # of a ledger) and the series it holds were read one by one; `data`
+        # keeps the container type, the totals and the basis the data left
+        # in force — never the per-series list (a 13k-row ledger patch is
+        # 13k readings; a verifier re-reads them at the coin's basis).
         'reading': {**{k: reading.get(k) for k in ('coherency', 'ratio', 'method', 'strategy', 'lossless',
                                                     'via', 'mint', 'void_seal', 'library_size',
                                                     'memory', 'elapsed_s', 'basis_id', 'learned_n',
-                                                    'learned_this_reading', 'basis_after')},
+                                                    'learned_this_reading', 'basis_after',
+                                                    'read_as', 'ingest')},
+                    'data': _data_summary(reading.get('data')),
                     'commitment': commitment},
     }
     fails = verify_coin(coin, patch, seal_key(), deep=False)
@@ -542,6 +566,12 @@ def mint(repo: str, amend: bool) -> int:
     git(repo, 'add', LEDGER)
     print(f"reading: coherency {reading['coherency']:.4f} via void:compress_signal · seal mint {reading['mint']} · "
           f"strategy {reading.get('strategy')} · lossless {reading.get('lossless')} · shape {str(cm.get('shape_sha256'))[:12]}…")
+    dt = coin['reading'].get('data')
+    if dt:
+        t = dt.get('totals') or {}
+        print(f"data:    a {dt.get('container')} container — {dt.get('series_n')} series the patch adds, run into the "
+              f"instrument: {t.get('known')} known · {t.get('void_chunks')} void chunks, {t.get('ingested')} ingested · "
+              f"{t.get('elapsed_s')}s · basis after {dt.get('basis_after')}")
     mem = reading.get('memory') or {}
     if mem:
         print(f"cost:    {reading.get('elapsed_s')}s in the compressor · {mem.get('fits')} fits, "

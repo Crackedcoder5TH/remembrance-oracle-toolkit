@@ -1256,6 +1256,28 @@
    "sources": [
     "agent"
    ]
+  },
+  {
+   "match": [
+    "merge",
+    "conflict",
+    "goggles-bash-hook",
+    "wall",
+    "fail closed",
+    "deadlock",
+    "goggled-first"
+   ],
+   "severity": "high",
+   "wrong": "Running `git merge` of a branch that touches src/tools/goggles-bash-hook.js without checking first: the conflict markers landed inside the wall's own hook, the wall failed closed on every shell command, and the goggled-first gate could not be satisfied because the goggles are a shell command — every tool refused, including the edit that would have repaired it.",
+   "truth": "The wall's hook is the one file a merge must never leave in conflict. Before merging a branch, check whether it touches src/tools/goggles-*.js; if it does, resolve those files first with `git checkout --ours` (or merge them by hand) in the same step, before anything else runs. The way out of the deadlock (2026-09-14) was the instrument's own MCP goggles reading of the hook, recorded by hand in .remembrance/goggles-readings.json (a path the goggled-first gate exempts), then the edit.",
+   "tell": "'GOGGLES — WALL UNAVAILABLE refused (fail closed): goggles-bash-hook did not run' on every command right after a merge; `<<<<<<<` inside src/tools/goggles-bash-hook.js.",
+   "correct": "`git diff --name-only HEAD...origin/<branch> | grep goggles-` before merging; resolve the hook files first; a merge that conflicts in the hook is aborted (`git merge --abort`) and redone with the hook resolved in the same command.",
+   "count": 3,
+   "first": "2026-09-14T14:13:38.067Z",
+   "last": "2026-09-14T14:13:38.067Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

@@ -249,7 +249,14 @@ if (argv[0] === '--do') {
         return run('python3', ['-m', 'unittest', ...(rest.length ? rest : ['discover', '-s', 'tests', '-t', '.']), '-v'], here);
       }
       if (rest.length) return run('node', ['--test', ...rest], here);
-      return run('node', ['--test', 'tests/'], here);
+      // the repo's own script when it has one (the hub's sets ENTROPY_PATH
+      // and the glob; `node --test tests/` took the directory for a module
+      // on this Node and found nothing — 2026-09-14)
+      try {
+        const pkg = JSON.parse(readFileSync(join(here, 'package.json'), 'utf8'));
+        if (pkg.scripts && pkg.scripts.test) return run('npm', ['test', '--silent'], here);
+      } catch (_) { /* no script: default discovery below */ }
+      return run('node', ['--test'], here);
     },
     // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
     // measures nothing: no reading is recomputed and no time dimension added.

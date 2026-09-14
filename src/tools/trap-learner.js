@@ -81,7 +81,7 @@ function learn(trap, weight = REPEAT_TO_TRAP, source = 'agent') {
   writeLocal(doc);
   return { added: !doc.traps.includes(entry) ? false : true, count: entry.count, key };
 }
-learn.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "solid", reactivity: "low", electronegativity: 0.2, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "benevolent", domain: "utility" };
+learn.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The wall's denial as a candidate: called by the bash hook on every deny. */
 function learnDenial(rule, cmd) {
@@ -97,14 +97,14 @@ function learnDenial(rule, cmd) {
   };
   return learn(trap, 1, 'wall');
 }
-learnDenial.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0.2, group: 3, period: 2, harmPotential: "none", alignment: "healing", intention: "benevolent", domain: "utility" };
+learnDenial.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 /** Candidates that have earned promotion: count ≥ REPEAT_TO_TRAP. */
 function earned() {
   const doc = readLocal();
   return (Array.isArray(doc.traps) ? doc.traps : []).filter((t) => (t.count || 0) >= REPEAT_TO_TRAP);
 }
-earned.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+earned.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Keep only the earned candidates in the local file (the ratchet promotes by `wrong`). */
 function stageEarned() {
@@ -115,7 +115,7 @@ function stageEarned() {
   writeLocal({ traps: keep, pending: rest });
   return { earned: keep.length, pending: rest.length };
 }
-stageEarned.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "solid", reactivity: "low", electronegativity: 0.2, group: 3, period: 2, harmPotential: "none", alignment: "healing", intention: "benevolent", domain: "utility" };
+stageEarned.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Restore pending candidates beside the promoted ones after a promote. */
 function unstage() {
@@ -124,7 +124,7 @@ function unstage() {
   const traps = Array.isArray(doc.traps) ? doc.traps : [];
   writeLocal({ traps: traps.concat(pending) });
 }
-unstage.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "solid", reactivity: "low", electronegativity: 0.2, group: 3, period: 2, harmPotential: "none", alignment: "healing", intention: "benevolent", domain: "utility" };
+unstage.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Retract UNWITNESSED seed entries whose `wrong` starts with `prefix`, and
@@ -160,7 +160,7 @@ function retract(prefix) {
   writeLocal(local);
   return { dropped: dropped.length, kept: keep.length, localDropped: before - local.traps.length - local.pending.length, witnessed };
 }
-retract.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0.4, group: 3, period: 3, harmPotential: "low", alignment: "healing", intention: "benevolent", domain: "utility" };
+retract.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 13, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { learn, learnDenial, earned, stageEarned, unstage, retract, readLocal, LOCAL, DENIALS, REPEAT_TO_TRAP };
 

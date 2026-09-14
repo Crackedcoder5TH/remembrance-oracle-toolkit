@@ -1037,6 +1037,202 @@
    "sources": [
     "agent"
    ]
+  },
+  {
+   "match": [
+    "_fit_named_pair",
+    "single",
+    "lstsq",
+    "singular",
+    "alpha",
+    "beta"
+   ],
+   "severity": "high",
+   "wrong": "Refitting a served single pattern (name, name) through the pair least-squares solve, which returns the min-norm split (½, ½) for a singular design, so a chunk served by its own key read a different shape than the search had recorded (alpha 1, beta 0).",
+   "truth": "The search records a single as alpha 1, beta 0 with the single's R² from the library correlations. A served fit must use the search's own arithmetic for the same case or the shape commitment differs bit-for-bit.",
+   "tell": "assertEqual on two shapes of the same bytes fails with alpha 0.497/0.497 against 1.0/0.0.",
+   "correct": "In _fit_named_pair, idx_i == idx_j → PatternBlend(name, name, 1.0, 0.0, corr[idx], residual), the correlation from _library_correlations.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.323Z",
+   "last": "2026-09-14T04:29:35.323Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "ledger",
+    "jsonl",
+    "append",
+    "memory_id",
+    "writer",
+    "concurrent",
+    "test suite",
+    "digest"
+   ],
+   "severity": "high",
+   "wrong": "Versioning an append-only ledger by line count and chain digest while more than one process appends to it (the test suite beside the service), so the writer's memory_id named a prefix that did not exist on disk.",
+   "truth": "A versioned append-only ledger has one writer. Every other opener is frozen (reads, remembers in-process, writes nothing); the writer checks the file size it believes against the file before every append and freezes, saying why, when the file grew under it.",
+   "tell": "'the resonance memory on this host digests X at N lines, the reading was taken at Y' right after a test run.",
+   "correct": "open_resonance(writer=False) by default; the service is the one writer; a size check before each append; tests on ledgers of their own.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.323Z",
+   "last": "2026-09-14T04:29:35.323Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "git stash",
+    "stash pop",
+    "ledger",
+    "basis_index",
+    "self-writing",
+    "working tree"
+   ],
+   "severity": "high",
+   "wrong": "Running `git stash` inside a repo whose tracked ledgers write themselves (basis_index.jsonl, learned_patterns.jsonl) to check whether a failure predates the change: the test run rewrote a ledger, `git stash pop` refused to merge, and every uncommitted edit of the round sat in the stash.",
+   "truth": "A repo whose instrument writes tracked files under any run cannot be stashed and popped around a run. Ask the question another way (read the test, read git log, run the test on a worktree of HEAD) or restore the ledger first and pop.",
+   "tell": "'Your local changes to the following files would be overwritten by merge: basis_index.jsonl … The stash entry is kept.'",
+   "correct": "Never stash in Void or the chain. To compare against HEAD, use a worktree or read the history; if a stash exists, `git checkout -- <ledger>` then `git stash pop`.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.324Z",
+   "last": "2026-09-14T04:29:35.324Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "learned_rows",
+    "load_learned",
+    "explicit path",
+    "ledger",
+    "test_learned_basis"
+   ],
+   "severity": "medium",
+   "wrong": "Making learned_rows(path) append the jsonl ledger after an explicit path's rows (2026-09-12), so load_learned(<file>) loaded the file plus the whole ledger and a missing file was no longer a no-op — and running only a subset of the tests, so the two tests that pinned this stayed red for a round.",
+   "truth": "An explicit path is that file alone; the seed-plus-ledger order is the no-argument case (the service's bootstrap, at_basis). A round is verified by the whole suite, not the tests the round touched.",
+   "tell": "tests/test_learned_basis fails with 'loaded rows must enter the search matrix' at n0 + ledger, not n0 + 2; the round's own tests were green.",
+   "correct": "learned_rows(path): explicit path → only that file. Run `--do test` with no arguments before a commit.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.324Z",
+   "last": "2026-09-14T04:29:35.324Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "--do test",
+    "node --test",
+    "tests/",
+    "package.json",
+    "npm test",
+    "ERR_TEST_FAILURE"
+   ],
+   "severity": "medium",
+   "wrong": "The hub's `--do test` verb ran `node --test tests/`, which this Node took as a module path — 'Cannot find module …/tests', one failing pseudo-test — and the round reported the hub green from a subset run by file.",
+   "truth": "A JS repo with a test script in package.json runs its own script (the hub's sets ENTROPY_PATH and the glob); a bare `node --test` discovers by default. The verb must run what the repo runs.",
+   "tell": "'# tests 1 / # fail 1' with 'Cannot find module' on the tests directory.",
+   "correct": "test verb: explicit files → node --test <files>; package.json test script → npm test --silent; otherwise node --test.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.326Z",
+   "last": "2026-09-14T04:29:35.326Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "resonance",
+    "memory",
+    "library",
+    "STEP2",
+    "void",
+    "ingest",
+    "basis_id",
+    "memory_id",
+    "ledger"
+   ],
+   "severity": "high",
+   "wrong": "Building a SECOND memory beside the pattern library — a ledger of chunk profiles and pairs keyed on the chunk's data key, with a 1:1 'known key' path, its own versioning (memory_id) and its own single-writer rule — to make similar chunks resonate, instead of reading the design: the library IS the memory.",
+   "truth": "STEP2_DESIGN §5: 'If no pattern matches well, this chunk IS a new pattern. Add it to the library for future use… First occurrence: stored raw. Future occurrences: stored as reference + tiny delta.' The search's first step — the chunk's R² against every held pattern — is the resonance; a chunk nothing resonates with above the detector's 0.50 (living_remembrance: 'the field has no memory here') is ingested into the library after the reading; the library is already versioned by basis_id and its ledger is tracked, so every host replays every reading. A byte-keyed 1:1 path was the very thing the operator had just refused.",
+   "tell": "A new .remembrance/*.jsonl beside learned_patterns.jsonl; a `memory_id` beside `basis_id`; a 'one writer' rule for a file the design never had; a `known_pair(data_key)` lookup.",
+   "correct": "Read STEP2_DESIGN.md, COMPRESSION-EQUATION.md, living_remembrance.py and resonance_detector.py before building a memory. Void chunk → on_void → queued → ingested into the basis after the reading (append_basis_row, the learned ledger, the basis index); replay = at_basis(id, replay=True) with the same queue, frozen.",
+   "count": 3,
+   "first": "2026-09-14T04:56:37.539Z",
+   "last": "2026-09-14T04:56:37.539Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "ingest",
+    "mid-reading",
+    "self-match",
+    "poisoning",
+    "G0",
+    "coherency 1.0",
+    "strategies"
+   ],
+   "severity": "high",
+   "wrong": "Ingesting a void chunk into the basis DURING the reading, so the strategies after the first matched the chunks to the patterns just ingested from them and a never-seen 10-chunk file read coherency 0.99999.",
+   "truth": "That is the self-match Tier-1's G0 gate calls poisoning ('compress a blob once, resubmit it, it matches ITSELF at ~1.0'), inside one reading. STEP2 §5: the first occurrence is stored raw. A reading is taken on the basis it names; what it found void enters the library when it is over; the next occurrence resonates.",
+   "tell": "A first reading of a novel file at ~1.0 with void_chunks == served_single; basis_after ≠ basis_id while the winning strategy already uses learned/ rows.",
+   "correct": "Queue void chunks; _ingest_queued at the end of compress(); the reading's basis_id is the basis before, basis_after the basis it left.",
+   "count": 3,
+   "first": "2026-09-14T04:56:37.550Z",
+   "last": "2026-09-14T04:56:37.550Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "replay",
+    "cache",
+    "shape_store",
+    "void term",
+    "at_basis",
+    "served"
+   ],
+   "severity": "medium",
+   "wrong": "Replaying a reading with the host's fit cache attached: the cache answered every fit the original reading computed, the search never ran, and the replay reproduced the shape but none of the void term (0 of 18 void chunks).",
+   "truth": "The cache is pure for the shape, not for the void: the void is found by the search. A verifier's replay carries a fresh, in-memory cache.",
+   "tell": "Replay: shape_sha equal, coherency equal, void_chunks 0, basis_after == basis_id while the original ingested.",
+   "correct": "at_basis(replay=True) / replay(): ShapeStore(path=None).",
+   "count": 3,
+   "first": "2026-09-14T04:56:37.550Z",
+   "last": "2026-09-14T04:56:37.550Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "parallel",
+    "cd",
+    "git",
+    "bash",
+    "race",
+    "stage",
+    "mint",
+    "wrong repo"
+   ],
+   "severity": "high",
+   "wrong": "Issuing two Bash commands in one response that each `cd` into a different repo and run git/mint: the second ran in the first's directory and staged and minted the hub instead of Void.",
+   "truth": "The shell's working directory is one per session; parallel commands race on it. Git and mint operations are serialised, one repo per response.",
+   "tell": "`git status` output naming another repo's files right after a `cd <repo> && git add -A`.",
+   "correct": "One git-touching command per response; verify the repo in the output before the next step.",
+   "count": 3,
+   "first": "2026-09-14T04:56:37.551Z",
+   "last": "2026-09-14T04:56:37.551Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

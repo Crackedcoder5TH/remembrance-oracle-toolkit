@@ -52,7 +52,7 @@ function out(decision, reason) {
   }));
   process.exit(0);
 }
-out.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "degrading", intention: "neutral", domain: "utility" };
+out.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "degrading", intention: "neutral", domain: "utility" };
 // FAIL CLOSED. This wall used to fail open on any internal error ("never
 // blocks"), and settings.json wraps it in `|| true` — so a crash, a parse
 // error or an unreadable stdin let the command through in silence. A wall

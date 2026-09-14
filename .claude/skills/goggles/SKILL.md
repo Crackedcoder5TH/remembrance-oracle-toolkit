@@ -162,9 +162,24 @@ every coin carries `basis_id` (the search matrix, its names and the
 search's version, digested), the learned ledger is append-only and indexed
 by digest, and a verifier reads against the reading's own basis:
 `--do read <file> --basis <basis_id>`. A reading also reports its void
-term (`memory`: fits served / computed / served from an earlier basis /
-resonant / void) and `--resonance` serves resonant chunks by the shape
-they resonate with in the pattern library.
+term (`memory`: fits served / computed / known by their key / resonant /
+void).
+
+## The library is the memory; the void is ingested (2026-09-14)
+
+The search is the resonance: every chunk's coherency (R²) against every
+pattern the library holds. A chunk a held pattern explains outright is
+served that pattern with no pair search (the "reference + tiny delta" of
+STEP2 §5); a chunk nothing resonates with above the detector's 0.50 is
+the void — "the field has no memory here" — and it IS a new pattern: the
+learner ingests it into the library during the reading, in real time, so
+every later occurrence, in this reading and every reading after, resonates
+with it. A known shape is never added. Bytes never match bytes. The
+library is versioned by `basis_id` (a chain over its rows, in order) and
+its ledger is tracked, so a verifier — Tier-1's recompute, a coin's unfold,
+`--do read <file> --basis <id>` — replays the reading at its basis with the
+same ingestion, frozen, writing nothing. Every reading and coin reports
+its void term: `void_chunks` / `ingested` / `served_single` / `searched`.
 
 `--do traps learn <json | json-file>` records a mistake as a candidate
 trap (wrong/truth/tell/correct); every wall denial is a candidate too (the

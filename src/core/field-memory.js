@@ -604,7 +604,20 @@ _restoreFromLedgerFile.atomicProperties = { charge: 0, valence: 0, mass: "medium
  */
 function _restoreFromLedger() {
   const local = _restoreFromLedgerFile(_ledgerPath());
-  const committed = _restoreFromLedgerFile(_committedLedgerPath());
+  // The committed chain is walked only when the seed beside it is older
+  // than it. The seed IS the chain's latest witnessed field, written by
+  // the same checkpoint that appends the block (field-checkpoint.js), and
+  // it answers in 3 ms; the chain answers the same question in 3,035 ms
+  // (109,600,719 chars read and parsed — measured 2026-09-15) and every
+  // process that opens the field paid it: each goggle reading, each wall
+  // hook on each shell command, each post-edit hook.
+  let committed = null;
+  try {
+    const lp = _committedLedgerPath(), sp = _seedPath();
+    const walk = !fs.existsSync(sp) || !fs.existsSync(lp)
+      || fs.statSync(lp).mtimeMs > fs.statSync(sp).mtimeMs;
+    committed = walk ? _restoreFromLedgerFile(lp) : null;
+  } catch (_) { committed = _restoreFromLedgerFile(_committedLedgerPath()); }
   if (!local) return committed;
   if (!committed) return local;
   return (committed.updateCount > local.updateCount) ? committed : local;

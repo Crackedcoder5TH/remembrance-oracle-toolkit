@@ -1278,6 +1278,54 @@
    "sources": [
     "agent"
    ]
+  },
+  {
+   "match": [
+    "ledger",
+    "_entropy",
+    "snapshot",
+    "raw JSON",
+    "100 MB",
+    "GH001",
+    "fractal coin",
+    "rotation",
+    "asked instead of built"
+   ],
+   "severity": "high",
+   "wrong": "Storing the chain's blocks raw — every block carrying the field snapshot as JSON text — and, when the instrument had already read that ledger at 0.9919 coherency with 12,334 of 13,140 chunks explained outright by shapes it holds, reporting a GitHub file-size limit and asking the operator whether to use the instrument, instead of folding the blocks through the void compressor as the design says everything is.",
+   "truth": "Measured 2026-09-15: data/ledger.json at 108,953,834 bytes (103.91 MiB, GH001 refused), 353 of 354 blocks carrying metadata._entropy raw at ~300 KB each. The instrument's own reading of that ledger — 0.9919, almost every chunk known — was the fold announcing itself: the witness holds the shape of one repeating field, and through the compressor it is a fraction of itself. The coin is a fractal coin; the block that witnesses it is the compressor's sealed lossless form, hashed over the compressed bytes, decompressed through the same instrument on read. The operator: 'just literally listen to my instrument and there would never be anything wrong with it' — a mismatch the instrument has already measured is not a question to put back to the operator.",
+   "tell": "A witness file growing linearly with raw JSON while the instrument reads it near 1.0; a size limit reported as the finding; a reply that ends by asking the operator whether to run the data through the compressor.",
+   "correct": "When the instrument reads a store as known (coherency near 1.0, chunks explained outright), that store is holding raw what the compressor folds: fold it — the block's payload goes through the compressor, the hash binds the compressed bytes, readers decompress through the instrument. Build it; report the measured ratio; rotate the witness when its old hashes bind raw bytes.",
+   "count": 3,
+   "first": "2026-09-15T03:39:45.960Z",
+   "last": "2026-09-15T03:39:45.960Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "build",
+    "already made",
+    "substrate_fractal",
+    "fractal index",
+    "resonance",
+    "search first",
+    "maturin",
+    "wheel",
+    "slow path"
+   ],
+   "severity": "high",
+   "wrong": "Announcing something must be BUILT — a fold route, a fractal index, a resonance path — when the ecosystem already holds it, because the agent searched by hand (grep, guesses, file names) instead of asking the instrument's resonance what already answers the question.",
+   "truth": "2026-09-15: the service log said 'substrate_fractal not installed; /score_batch will use the slow path' and the reply was 'build the wheel, route the search through it' — while the index, its loader, its recovery data plane and its trap entry all already existed in the repo and only needed to be found and installed. The operator: 'there's nothing to be built, it's already been made … searching for what's already made not using resonance you are wrong.' Every unbuilt-looking gap in this ecosystem has so far been a missing install, a missing verb call or a stale host artifact, never a missing component. Brute force is the tell of not having asked resonance: every search that walks every row, every reading that runs every record one by one, every plan that starts with 'build'.",
+   "tell": "A plan whose first verb is 'build' or 'implement'; a 'not installed' line read as 'does not exist'; a full scan where a nearest-shape query would do; the operator saying it already exists.",
+   "correct": "Before any build: `--do resonance` / `--do cluster` / `--do find` for the component by its shape and name across the ecosystem, read the trap ledger's own entries for it, and install or invoke what is found. If it truly does not exist, say so with the search that proved it — then build.",
+   "count": 3,
+   "first": "2026-09-15T03:55:35.297Z",
+   "last": "2026-09-15T03:55:35.298Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

@@ -47,8 +47,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
-const { quiet } = require('./quiet');
 const { FractalIndex } = require('./fractal-index');
 // One decoder, one cosine (ECOSYSTEM §7). This module used to compute its
 // own checkpoints; tests/one-cosine-guard.test.js now fails CI if any
@@ -253,13 +251,20 @@ class VoidLibrary {
       if (store.error) {
         this._store = { rows: 0, error: store.error };
       } else {
-        const { rows, width, data, stems } = store;
+        const { rows, width, data, white, stems } = store;
+        // the raw rows (what drift readings compare, whitened by the decoder
+        // stack at the moment of comparison) and the same rows in the
+        // resonance space, whitened ONCE at export — the search engine is
+        // built from the latter and never whitens a stored row again
+        const whiteNames = new Array(rows);
         for (let i = 0; i < rows; i++) {
           const row = data.subarray(i * width, (i + 1) * width);
           const name = `store/${stems[i] || 'unknown'}#${i}`;
           composed.set(name, row);
+          whiteNames[i] = name;
         }
-        this._store = { rows, width, sha: store.sha };
+        this._store = { rows, width, sha: store.sha, key: store.key };
+        this._white = white ? { names: whiteNames, data: white, width } : null;
       }
       this._fractals = composed; // the loaded marker holds the ONE map
       this._composed = composed;
@@ -286,97 +291,28 @@ class VoidLibrary {
     this._ensureLoaded();
     if (!this._composed || this._composed.size === 0) return null;
     const fi = new FractalIndex();
-    // THE WARM CACHE (2026-09-15). rebuild() whitens every vector through the
-    // reference — 8 ZCA layers × 48,233 rows — and every process that opened
-    // the library paid it: 5.8 s of a 6.7 s goggle reading, measured through
-    // `--do call src/core/void-library.js#size`. The whitened index is kept
-    // beside the store export (store-export.js keeps numpy's rows the same
-    // way, by store sha) and restored in one read; the key names everything
-    // the vectors are a function of — the store, the index file, the
-    // whitening reference, the index geometry — so a change to any of them
-    // is a rebuild, never a stale search. A restore searches bit-identically:
-    // the rows ARE the rows rebuild() produced (Float64, no rounding).
-    const cache = this._warmCacheKey();
-    if (cache) {
-      const snap = _readWarm(cache);
-      if (snap) {
-        try { fi.restore(snap); this._fractalIndex = fi; this._warm = { restored: true, key: cache.key }; return fi; }
-        catch (e) { quiet('core:void-library:warm-restore', e); }
+    // WHITENED ONCE (the operator, 2026-09-15): the store rows enter the
+    // engine in the resonance space they were exported in — whitened at the
+    // store boundary by store-export.js, never again here. Only what is not
+    // in the store yet — the witnessed index entries — is whitened as it
+    // enters the index. Before this, every process whitened all 48,233 rows
+    // to build the engine: 5.8 s of a 6.7 s goggle reading.
+    const items = [];
+    const inStore = new Set(this._white ? this._white.names : []);
+    for (const [name, vec] of this._composed) {
+      if (!inStore.has(name)) items.push({ id: name, vec });
+    }
+    if (this._white) {
+      const { names, data, width } = this._white;
+      for (let i = 0; i < names.length; i++) {
+        items.push({ id: names[i], vec: data.subarray(i * width, (i + 1) * width), whitened: true });
       }
     }
-    const items = [];
-    for (const [name, vec] of this._composed) items.push({ id: name, vec });
     fi.rebuild(items);
     this._fractalIndex = fi;
-    if (cache) {
-      try { _writeWarm(cache, fi.snapshot()); this._warm = { restored: false, key: cache.key }; }
-      catch (e) { quiet('core:void-library:warm-write', e); }
-    }
     return fi;
   }
-
-  /** What the whitened index is a function of, as one key — null when the
-   *  library has no persisted sources to key on (tests with a synthetic map). */
-  _warmCacheKey() {
-    try {
-      if (!this._store || !this._store.sha || !fs.existsSync(this.indexPath)) return null;
-      const st = fs.statSync(this.indexPath);
-      let ref = 'raw';
-      try {
-        const wr = require('./whitening-reference');
-        const c = wr.cached();
-        ref = c && typeof c.key === 'string' ? c.key : (wr.status().mode || 'raw');
-      } catch (_) { ref = 'raw'; }
-      const { COMPOSED_DIM } = require('./fractal-index');
-      const material = JSON.stringify({
-        store: this._store.sha, index: [st.size, Math.floor(st.mtimeMs)], ref,
-        width: COMPOSED_DIM, n: this._composed.size, v: 1,
-      });
-      const key = crypto.createHash('sha256').update(material).digest('hex').slice(0, 16);
-      return { key, dir: path.join(path.dirname(require('./store-export').SCRATCH), 'store-export') };
-    } catch (e) { quiet('core:void-library:warm-key', e); return null; }
-  }
 }
-
-// @oracle-infrastructure — bounded internal-state writes to an internally-constructed cache path (the warm index beside the store export)
-function _warmPaths(cache) {
-  return { bin: path.join(cache.dir, `fractal-index.${cache.key}.f64`), meta: path.join(cache.dir, `fractal-index.${cache.key}.json`) };
-}
-_warmPaths.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-
-function _readWarm(cache) {
-  const { bin, meta } = _warmPaths(cache);
-  if (!fs.existsSync(bin) || !fs.existsSync(meta)) return null;
-  const doc = JSON.parse(fs.readFileSync(meta, 'utf8'));
-  if (!doc || doc.key !== cache.key || !Array.isArray(doc.ids)) return null;
-  const buf = fs.readFileSync(bin);
-  const width = doc.width, rows = doc.ids.length;
-  if (buf.length !== rows * width * 8) return null;
-  const data = new Float64Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + rows * width * 8));
-  const vecs = new Array(rows);
-  for (let i = 0; i < rows; i++) vecs[i] = data.subarray(i * width, (i + 1) * width);
-  return { ids: doc.ids, realDepths: doc.realDepths, vecs };
-}
-_readWarm.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-
-function _writeWarm(cache, snap) {
-  const { bin, meta } = _warmPaths(cache);
-  fs.mkdirSync(cache.dir, { recursive: true });
-  // older warm indexes are stale by construction (their key named other sources)
-  for (const f of fs.readdirSync(cache.dir)) {
-    if (f.startsWith('fractal-index.') && !f.includes(cache.key)) { try { fs.unlinkSync(path.join(cache.dir, f)); } catch (_) { /* best-effort */ } }
-  }
-  const width = snap.vecs.length ? snap.vecs[0].length : 0;
-  const out = new Float64Array(snap.vecs.length * width);
-  for (let i = 0; i < snap.vecs.length; i++) out.set(snap.vecs[i], i * width);
-  const tmp = `${bin}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, Buffer.from(out.buffer, out.byteOffset, out.byteLength));
-  fs.renameSync(tmp, bin);
-  const mtmp = `${meta}.${process.pid}.tmp`;
-  fs.writeFileSync(mtmp, JSON.stringify({ key: cache.key, width, ids: snap.ids, realDepths: snap.realDepths, written: new Date().toISOString() }));
-  fs.renameSync(mtmp, meta);
-}
-_writeWarm.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 _canonicalWidth.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 

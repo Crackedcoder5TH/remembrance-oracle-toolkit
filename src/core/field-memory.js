@@ -582,8 +582,17 @@ function _restoreFromLedgerFile(lp) {
     if (!lp || !fs.existsSync(lp)) return null;
     const chain = JSON.parse(fs.readFileSync(lp, 'utf8'));
     if (!Array.isArray(chain)) return null;
+    // Blocks since 2026-09-15 carry the snapshot folded through the void
+    // compressor (REMEMBRANCE-BLOCKCHAIN/src/void-fold.js); earlier blocks
+    // carry it raw. The chain's own reader tells them apart and unfolds
+    // through the instrument.
+    let entropyOf = (meta) => (meta && meta._entropy) || null;
+    try { ({ entropyOf } = require(path.join(path.dirname(_committedBlockchainData('ledger.json')), '..', 'src', 'void-fold'))); }
+    catch (e) { quiet('core:field-memory:void-fold', e); }
     for (let i = chain.length - 1; i >= 0; i--) {
-      const e = chain[i] && chain[i].data && chain[i].data.metadata && chain[i].data.metadata._entropy;
+      let e = null;
+      try { e = chain[i] && chain[i].data && entropyOf(chain[i].data.metadata); }
+      catch (err) { quiet('core:field-memory:unfold', err); e = null; }
       const state = _coerceFieldState(e);
       if (state) return state;
     }

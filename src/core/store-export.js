@@ -45,27 +45,55 @@ const _sealedGate = () => createGate().seal({
  * Export the store's rows and stems through numpy (cached by store sha).
  * @returns {{ npy: string, stems: string, sha: string, cached: boolean }}
  */
+/** The resonance space in force, as a key: the whitening reference's own key
+ *  (store sha + census, fitted by scripts/fit-whitening-reference.js) or 'raw'
+ *  when there is none. Call-time require — the reference module reads STORE
+ *  from here. */
+function _referenceKey() {
+  try {
+    const wr = require('./whitening-reference');
+    const c = wr.cached();
+    return c && typeof c.key === 'string' ? c.key : 'raw';
+  } catch (_) { return 'raw'; }
+}
+_referenceKey.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
 function exportStore() {
   fs.mkdirSync(SCRATCH, { recursive: true });
   const npy = path.join(SCRATCH, 'waveforms.f32.npy');
+  const white = path.join(SCRATCH, 'waveforms.white.f64.npy');
   const stems = path.join(SCRATCH, 'stems.json');
   const stamp = path.join(SCRATCH, 'store.sha256');
   const sha = crypto.createHash('sha256').update(fs.readFileSync(STORE)).digest('hex');
-  if (fs.existsSync(npy) && fs.existsSync(stems) && fs.existsSync(stamp) && fs.readFileSync(stamp, 'utf8').trim() === sha) {
-    return { npy, stems, sha, cached: true };
+  // WHITENED ONCE, AT THE STORE BOUNDARY (the operator, 2026-09-15: "whitening
+  // should be a void function — once you've whitened it once there's no reason
+  // to do it over and over, only on novel data"). The export carries the rows
+  // in the resonance space beside the raw rows, written by numpy through
+  // Void's whitening_reference.py (the same per-layer ZCA the hub's decoder
+  // applies), so no reader whitens 45,619 rows again — a goggle reading paid
+  // 5.8 s for exactly that on every process. The stamp names the store AND
+  // the reference: a refit is a re-export, never a stale space.
+  const key = sha + ':' + _referenceKey();
+  if (fs.existsSync(npy) && fs.existsSync(white) && fs.existsSync(stems) && fs.existsSync(stamp)
+      && fs.readFileSync(stamp, 'utf8').trim() === key) {
+    return { npy, white, stems, sha, key, cached: true };
   }
   execFileSync('python3', ['-c', [
     'import numpy as np, json, sys',
+    `sys.path.insert(0, ${JSON.stringify(VOID)})`,
+    'from whitening_reference import whiten_rows',
     `s = np.load(${JSON.stringify(STORE)}, allow_pickle=True)`,
-    `np.save(${JSON.stringify(npy)}, s['waveforms'].astype(np.float32))`,
+    'w = s[\'waveforms\'].astype(np.float64)',
+    `np.save(${JSON.stringify(npy)}, w.astype(np.float32))`,
+    `np.save(${JSON.stringify(white)}, whiten_rows(w))`,
     `json.dump([str(x) for x in s['source_stems']], open(${JSON.stringify(stems)}, 'w'))`,
-  ].join('\n')], { stdio: ['ignore', 'ignore', 'inherit'] });
-  _writeStamp(_sealedGate(), stamp, sha + '\n');
-  return { npy, stems, sha, cached: false };
+  ].join('\n')], { stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, ORACLE_TOOLKIT: HUB } });
+  _writeStamp(_sealedGate(), stamp, key + '\n');
+  return { npy, white, stems, sha, key, cached: false };
 }
 exportStore.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-/** Read a little-endian float32 .npy (C order) into { rows, width, data }. */
+/** Read a little-endian float32 or float64 .npy (C order) into { rows, width, data }. */
 function readNpyF32(file) {
   const buf = fs.readFileSync(file);
   if (buf.toString('latin1', 0, 6) !== '\x93NUMPY') throw new Error('not a .npy file: ' + file);
@@ -74,12 +102,15 @@ function readNpyF32(file) {
   const hstart = major === 1 ? 10 : 12;
   const header = buf.toString('latin1', hstart, hstart + hlen);
   const shape = /'shape':\s*\((\d+),\s*(\d+)\)/.exec(header);
-  if (!shape || !/'<f4'/.test(header) || /'fortran_order':\s*True/.test(header)) {
+  const f4 = /'<f4'/.test(header), f8 = /'<f8'/.test(header);
+  if (!shape || !(f4 || f8) || /'fortran_order':\s*True/.test(header)) {
     throw new Error('unexpected .npy header: ' + header.trim());
   }
   const rows = Number(shape[1]), width = Number(shape[2]);
   const off = hstart + hlen;
-  const data = new Float32Array(buf.buffer.slice(buf.byteOffset + off, buf.byteOffset + off + rows * width * 4));
+  const bytes = f8 ? 8 : 4;
+  const slice = buf.buffer.slice(buf.byteOffset + off, buf.byteOffset + off + rows * width * bytes);
+  const data = f8 ? new Float64Array(slice) : new Float32Array(slice);
   return { rows, width, data };
 }
 readNpyF32.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
@@ -96,7 +127,10 @@ function loadStore() {
     const exp = exportStore();
     const { rows, width, data } = readNpyF32(exp.npy);
     const stems = JSON.parse(fs.readFileSync(exp.stems, 'utf8'));
-    return { rows, width, data: Float64Array.from(data), stems, sha: exp.sha };
+    // the same rows in the resonance space, whitened once at export
+    const w = readNpyF32(exp.white);
+    if (w.rows !== rows || w.width !== width) throw new Error('whitened export does not match the raw export');
+    return { rows, width, data: Float64Array.from(data), white: w.data, stems, sha: exp.sha, key: exp.key };
   } catch (e) {
     return { error: `store export failed: ${e && e.message ? e.message : e}` };
   }

@@ -191,6 +191,36 @@ class FractalIndex {
     this._rebuildNorms();
   }
 
+  /**
+   * The index as built — ids, pre-pad depths and the WHITENED, padded
+   * vectors — so a caller can keep it across processes (void-library's
+   * warm cache). rebuild() whitens every vector through the reference
+   * (8 ZCA layers each); on 48,233 rows that was ~5 s paid by every
+   * process that opened the library — each goggle reading, measured
+   * 2026-09-15. The snapshot is exactly what rebuild() produced, so a
+   * restore() from it searches bit-identically.
+   */
+  snapshot() {
+    return { ids: this._ids.slice(), realDepths: this._realDepths.slice(), vecs: this._vecs.slice() };
+  }
+
+  /**
+   * Load a snapshot() back — no encoding, no whitening: the vectors are the
+   * whitened, padded rows rebuild() made. Norm tables are rebuilt once.
+   */
+  restore({ ids, realDepths, vecs }) {
+    if (!Array.isArray(ids) || !Array.isArray(vecs) || ids.length !== vecs.length) {
+      throw new Error('FractalIndex.restore: ids and vecs must be parallel arrays');
+    }
+    this._ids = ids.slice();
+    this._vecs = vecs.map((v) => (v instanceof Float64Array && v.length === COMPOSED_DIM) ? v : _padToMax(Float64Array.from(v)));
+    this._realDepths = Array.isArray(realDepths) && realDepths.length === ids.length
+      ? realDepths.slice() : ids.map(() => MAX_DEPTH);
+    this._idIndex = new Map();
+    for (let i = 0; i < this._ids.length; i++) this._idIndex.set(this._ids[i], i);
+    this._rebuildNorms();
+  }
+
   remove(id) {
     const idx = this._idIndex.get(id);
     if (idx === undefined) return false;

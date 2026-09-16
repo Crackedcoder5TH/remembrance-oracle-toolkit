@@ -292,15 +292,18 @@ def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: st
     """THE reading path: the bytes go to scripts/read-signal.py (→ /compress_signal
     → void_compressor_v5.compress) and come back sealed, with the commitment.
     The search is the resonance: every chunk's coherency against every
-    pattern the library holds; a chunk the library has no memory of is
-    ingested during the reading (STEP2 §5), so a coin's cost is its void
-    term. `basis`: read against a RECORDED basis (the coin's basis_id) — the
-    unfold path: the same ingestion, frozen, nothing written."""
+    pattern the library holds. `--witness`: a coin NEVER teaches the library
+    (the operator's ruling, 2026-09-16 — the pattern library exists
+    separately from the coins and is derived from data, not from the ledger
+    of changes; before this, six rotation coins ingested 6,300 chain-JSON
+    chunks and every later reading paid a full library product per
+    remembered fit to prove it against them). `basis`: read against a
+    RECORDED basis (the coin's basis_id) — the unfold path, frozen."""
     os.makedirs(scratch_dir, exist_ok=True)
     patch_file = os.path.join(scratch_dir, 'bytes.patch')
     with open(patch_file, 'wb') as f:
         f.write(patch)
-    args = [sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json']
+    args = [sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json', '--witness']
     if basis:
         args += ['--basis', basis]
     # The instrument's time is proportional to the input (read-signal's own

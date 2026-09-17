@@ -28,7 +28,7 @@ const { quiet } = require('./quiet');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawn } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const PORT = process.env.VOID_SVC_PORT || '8765';
 const VOID_ROOT = process.env.VOID_ROOT
@@ -198,9 +198,16 @@ function ensureUp(opts = {}) {
       + '(first start loads the pattern library, ~65-100s; then reads are ~1.5s)');
   }
   try {
-    spawn('python3', [path.join(VOID_ROOT, 'compressor_service.py'),
-      '--host', '127.0.0.1', '--port', String(PORT)],
-    { cwd: VOID_ROOT, detached: true, stdio: 'ignore' }).unref();
+    // ONE spawner. This used to spawn compressor_service.py itself (detached,
+    // stdio ignored) — a second manager beside Void's scripts/service-ctl.py,
+    // with no start stamp in the service log, no pid discipline, and a
+    // process that lived and died with whatever hub process happened to call
+    // ensureUp first. Measured 2026-09-08: the service went down three times
+    // in one session and no start in the log matched the instance that died.
+    // The controller is the only thing that starts it now (start_new_session,
+    // stdout/stderr into the service log, duplicate-start refused).
+    execFileSync('python3', [path.join(VOID_ROOT, 'scripts', 'service-ctl.py'), 'start'],
+      { cwd: VOID_ROOT, stdio: 'ignore', timeout: 30000 });
   } catch (e) {
     if (!opts.quiet) console.error('[void] could not start the service — ' + e.message);
     return false;
@@ -379,6 +386,7 @@ _reset.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", 
  * @returns {object|null}
  */
 function lastReading() { return LAST_READING; }
+lastReading.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { coherencyOf, ensureUp, isUp, lastReading, _reset };
 
@@ -386,5 +394,5 @@ module.exports = { coherencyOf, ensureUp, isUp, lastReading, _reset };
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 isUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

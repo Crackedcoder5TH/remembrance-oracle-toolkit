@@ -15,6 +15,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!result.ok) return NextResponse.json({ success: false, message: "Unable to load lead." }, { status: 500 });
   if (!result.value) return NextResponse.json({ success: false, message: "Lead not found." }, { status: 404 });
   const lead = result.value;
-  const operations = await getLeadOperations(params.id);
+  const operations = await getLeadOperations(params.id, { clientId: auth.clientId });
   return NextResponse.json({ success: true, lead: { ...lead, ...operations, consentIp: undefined, consentUserAgent: undefined, consentText: undefined, consentSummary: lead.consentTcpa && lead.consentPrivacy ? `Consent recorded ${lead.consentTimestamp}` : "Consent requires admin review" } });
 }

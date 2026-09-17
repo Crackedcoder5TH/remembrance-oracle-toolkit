@@ -179,8 +179,11 @@ class FractalIndex {
     this._vecs = [];
     this._realDepths = [];
     this._idIndex = new Map();
-    for (const { id, text, vec } of items) {
-      const raw = _whitenRaw(vec || this._encode(text));
+    for (const { id, text, vec, whitened } of items) {
+      // `whitened: true` — the vector is already in the resonance space
+      // (whitened once where it entered the store, store-export.js); it is
+      // not whitened again. Only novel data is whitened here.
+      const raw = whitened ? vec : _whitenRaw(vec || this._encode(text));
       const v = _padToMax(raw);
       if (!v) continue;
       this._idIndex.set(id, this._ids.length);

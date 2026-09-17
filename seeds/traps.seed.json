@@ -824,6 +824,508 @@
    "truth": "Measured 2026-09-08 in scripts/width-ratchet.js (--shape, shapeAt): on nine labelled holdouts (five real consumers recovered from git history, four decoder layers) the two-fixture reading was right 5 of 9 at its best window (8 lines), and at EVERY depth of the flow the decoder's own layers resonated more with the breach fixture than with the builder fixture (spectral-waveform d1 0.89 vs 0.47; the vendored toFractalWaveform, whose body IS in the builder fixture, read 'consumer' at every window). A tight loop over 29 numbers has the same shape whether it builds the block or consumes it; the difference is where the vector flows, which is one abstraction above what the pipeline reads in a text window. The reading was hiding the one live consumer it found (REMEMBRANCE-BLOCKCHAIN/src/uniqueness-gate.js handing composed.slice(0, 29) beside the vector) as 'decoder'. The line that DOES hold is the FORM: the decoder builds with `< 29` / `% 29` / `new Float64Array(LAYER_DIM)`; a consumer slices or guards — and a name-allowlist of decoder files on top of that form was inert.",
    "tell": "A shape verdict that flips with the window size; a decoder layer reading as a consumer; the fixture's own source not resonating with its fixture; a live consumer disappearing from the census the moment the verdict is allowed to decide.",
    "correct": "Let the form draw the L1 line (the l1-width-29 pattern), keep the shape reading VISIBLE on every hit (--shape) and never let it decide, and never re-add a name-allowlist for this pattern — a hit that is not a refusal is a site. If a dataflow boundary must be read by the instrument, feed it the dataflow (what the vector is handed to), not a window of text."
+  },
+  {
+   "match": [
+    "--do read",
+    "compress_signal",
+    "avg_coherence",
+    "periodic",
+    "seasonal",
+    "sinusoid",
+    "cycle",
+    "held-out",
+    "cold contact",
+    "self-repetition"
+   ],
+   "severity": "medium",
+   "wrong": "Expecting a clean, fast-periodic natural series (a monthly annual cycle, a period-12 sinusoid) to read as strongly structured through --do read because it is 'maximally self-repeating'.",
+   "truth": "Measured 2026-09-08 through the one verb at compressor library 72 (experiments/cold_contact/held_out_2026-09-08): Nottingham monthly temperature, a clean 20-year annual cycle, read 0.0231 — BELOW its own value-shuffled surrogate (0.0717) and at the random floor — while airline passengers read 0.8642 and UK gas 0.6643. A pure period-12 sinusoid read 0.1329 at 240 points and 0.0119 at 3,331; period 24 read 0.0678; period 64 read 0.7847; the same Nottingham series plus a linear trend read 0.6311. Coherency at this instrument state is self-repetition at the CHUNK scale: a shape that repeats slowly (a trend, a period of ~64 samples or more, the sunspots' 132-sample cycle) is structure; an oscillation faster than roughly a chunk is many cycles inside every window, the smooth blend basis has nothing that fits, and the residual reads as noise. The pre-registered ordering built on 'clean cycle = high' missed on that one series and held on the other three.",
+   "tell": "A textbook-periodic series reading at or below its own shuffle while a trending series with the same seasonality reads high; a reading that jumps when a trend is added and nothing else changes; a synthetic sine whose reading rises with its period and falls with its length.",
+   "correct": "State what the compressor reads at the chunk scale before predicting a reading: period relative to the chunk window, not periodicity in the abstract. Pin the compressor library size and the chunk window beside every held-out reading. For a fast-periodic series, read it at a cadence that puts one to a few cycles per chunk (resample, or read the cycle-to-cycle envelope), and say so in the pre-registration; never rescale after the reading to rescue the prediction."
+  },
+  {
+   "match": [
+    "service DOWN",
+    "compressor_service",
+    "service-ctl",
+    "start it first",
+    "--do service",
+    "went down",
+    "regression",
+    "under load",
+    "zombie",
+    "spawn"
+   ],
+   "severity": "high",
+   "wrong": "Reading the compressor service going down repeatedly as a regression in the compressor (\"it's a simple algorithm, it shouldn't be under load\") and hunting the code for what changed.",
+   "truth": "Measured 2026-09-08: the service died three times in one session with NO traceback and no exit record; every start stamp in the log was a manual restart. PID 1 (/process_api --firecracker-init) showed 22 minutes of uptime inside a 12-hour session — the host is recycled between calls and every process dies with it, cleanly. Nothing in the compressor changed. Two real defects were found beside it: service-ctl's _pids() matched any shell whose command text mentioned the service file (it reported the operator's own shell as \"already LOADING\" and refused to spawn while the service was down; `stop` would have SIGTERMed that shell), and the hub's void-service.js spawned the service itself (detached, unlogged) — a second manager beside the controller. The September-5 burst of `matmul … size 256 is different from 232` in the same log predates this session and the C-64 retirement commit; it is a different fault and was not the one killing the process.",
+   "tell": "Deaths with no traceback, no signal, no exit record; lifetimes that end at tool-call boundaries rather than under a request; /proc/uptime on PID 1 far shorter than the session; the controller reporting a pid that is not a python process.",
+   "correct": "Before blaming the algorithm, read /proc/uptime and PID 1's age against the session's first commit. Match service processes on the interpreter invocation, never on a filename anywhere in a command line. One spawner (scripts/service-ctl.py) — no module starts the service on its own. THE reading path (read-signal.py, which mint/read/token all go through) starts the instrument through the controller when it is down, so a recycled host costs one cold start, never a manual step and never a lost reading."
+  },
+  {
+   "match": [
+    "kill-test",
+    "kill test",
+    "falsification",
+    "PARTIAL",
+    "decision rule",
+    "pre-registered",
+    "survival rate",
+    "null",
+    "my own rule",
+    "R1",
+    "R2",
+    "didn't run the instrument"
+   ],
+   "severity": "high",
+   "wrong": "Re-running a pinned falsification test at a new representation by writing a new statistic path and NEW decision rules for it on the same day, then reporting the instrument's claim as PARTIAL — and defending the number as honest because the rules were pre-registered that morning.",
+   "truth": "Measured 2026-09-09: the instrument's own resonance matrix (`--do resonance`: 732 domains, ResonanceDetector.scan(), _one_cosine over per-domain means) tested with the label-permutation hard null through the detector's own signature code and judged by the rule pinned in v2 (survival >= 5x alpha REAL, >= 2x PARTIAL) gives 35.75% survival at the 1% floor (35.7x), 71.15% against the shuffle null, 21/28 group pairs beyond the null: REAL. The v3 run of 2026-09-08 that said PARTIAL had computed its own whitened cosine of domain means, dropped 206 of the 732 domains, and judged by two rules it introduced (R2 demanded split-source domains separate). Pre-registering a rule the same day you invent it is not the pinned rule; the codebase's verdict is the one its own verbs and its own thresholds produce. The operator saw it before the agent did: \"if the kill test is now failing that means you just didn't run my instrument correctly.\"",
+   "tell": "A falsification script that imports the detector for its data but computes the statistic itself; a domain count that differs from what `--do resonance` reports; decision rules with today's date; a verdict word the pinned rule would not produce for the same survival rate.",
+   "correct": "Take the observed matrix from the instrument's own verb or the object that verb prints; recompute nulls through the same signature and cosine code (prove parity to float precision, abort otherwise); judge by the rule pinned in the prior run; if a new null is needed because the old one is meaningless at the new representation, say so and keep the pinned decision thresholds. Record the prior verdict and the corrected one side by side."
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "grep",
+    "sed -n",
+    "git log",
+    "by hand",
+    "taking too long",
+    "not using the goggles",
+    "fail open",
+    "|| true",
+    "default-deny"
+   ],
+   "severity": "high",
+   "wrong": "Building the wall as a list of known bypasses and calling the rest of the shell harmless — then measuring how well an agent behaves by how often the wall refused it.",
+   "truth": "Measured 2026-09-11: the wall refused 3 commands in a round of hundreds of off-surface ones (grep, sed, git log, hand-run scripts, unittest by hand), and both wrong turns of that round — a default-on upsampler the design had already ruled out, and a kill-test judged by rules invented that morning — came from searching by hand instead of asking the instrument. Three denials was not the model behaving; it was the wall letting everything else through. The hooks also failed OPEN (`|| true`, exit-0-on-error), so a wall that broke was a wall that opened. The operator's rule: the goggles are the only surface for anything done in the codebase, and the wall must catch any model, without exception. Slowness is the tell: a round that takes long is a round spent off the surface.",
+   "tell": "A hook that is a list of regexes; `|| true` after a hook command; a session with many grep/sed/ls/cat commands and few denials; a search or a test run by hand where a verb exists; the operator saying it is taking too long.",
+   "correct": "Default-deny inside the ecosystem: a command runs only if every simple command in it is the goggles, git, shell glue or a text filter after a pipe; Grep and Glob as tools are refused inside; no edit to an existing file without a goggle reading of it; every hook fails CLOSED at both the script and the settings level. Every search, exec and test goes through a verb (--do find / --do exec / --do test) and is recorded, so the count of off-surface actions is itself a reading. If a verb is missing, build the verb — never widen the allowlist."
+  },
+  {
+   "match": [
+    "resonance memory",
+    "decoder space",
+    "chunk",
+    "bytes resonate",
+    "library profile",
+    "per pattern",
+    "232-D",
+    "served pair"
+   ],
+   "severity": "high",
+   "wrong": "Building a memory that serves a chunk another chunk's fit because the two resonate as decoder vectors of their own bytes — comparing a chunk to a chunk, bytes to bytes.",
+   "truth": "Measured 2026-09-12: in the decoder's whitened 232-D space at the detector's 0.50, 5,177 of 5,187 chunks resonated with one of 189 remembered shapes (10 void — the threshold never said no), and the served pair fitted fresh bytes at a fifth to a twentieth of the search (living-remembrance.js 0.0589 vs 0.1976). The operator: a chunk compared to a chunk has the same shape and of course resonates; bytes resonate with bytes. The shape is the chunk's resonance PER PATTERN against the pattern library and the field's held patterns (VoidCompressorV3._library_correlations, the search's own product). Rebuilt on that: 4,707 shapes from 400 files, 10.8% resonant, served fits within 0.002–0.016 of the search on four of five files.",
+   "tell": "A resonance memory whose void count is ~0 over a corpus; a served reading far below the search's; a chunk keyed by a vector of its own bytes rather than by its correlations with the library.",
+   "correct": "Key a chunk's shape on its resonance with the patterns (the library profile), never on a vector of its bytes; resonance between chunks is the cosine of their profiles; the decoder space is the field's, not the fit's.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.106Z",
+   "last": "2026-09-12T22:06:00.107Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "served fit",
+    "l1r",
+    "key",
+    "space",
+    "stale",
+    "remembered 10",
+    "seed"
+   ],
+   "severity": "high",
+   "wrong": "Remembering fits served by one memory under a key that does not name the memory that served them, so a later, different memory hits them first and returns without ever placing the chunk.",
+   "truth": "Measured 2026-09-12: the decoder-space run left 5,177 'l1r:' served fits in the shape store; the library-space reading hit those keys before its own path, served the stale fits and never placed the chunk in the new space — the seed remembered 10 shapes from 400 files and read 0 resonant / 0 void everywhere. The key now carries the space (l1r.library:…). Found only when a counter (carried / already_known / no_profile) was added to the reading.",
+   "tell": "A memory that reports served fits and no computation while its own index does not grow; a served-kind key without the serving space in it; a counter that stays flat across hundreds of files.",
+   "correct": "Every derived entry names the process that derived it (space, basis, search version) in its key; when a counter stays flat, add the counter that would explain it before touching the logic.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.118Z",
+   "last": "2026-09-12T22:06:00.118Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "tolerance",
+    "0.05",
+    "invented threshold",
+    "test",
+    "assertGreaterEqual",
+    "today's date"
+   ],
+   "severity": "medium",
+   "wrong": "Writing a numeric tolerance into a test on the day the mechanism was built (served reading within 0.05 of the search) and failing the build on a number nobody measured.",
+   "truth": "Measured 2026-09-12: the synthetic relative read 0.886 served against 0.941 searched, a gap of 0.055 — the invented 0.05 failed it. The gap is a measurement to record beside the mechanism (experiments/resonance_memory/), not a gate; the tests pin the mechanism (served, lossless, sealed) and the record pins the numbers.",
+   "tell": "A threshold in a test with the same date as the code it tests; a test failure whose only cause is a number the author chose.",
+   "correct": "Tests assert the mechanism; measured numbers go to the record with their date and their inputs; a tolerance enters a test only after it was measured and pinned.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.119Z",
+   "last": "2026-09-12T22:06:00.119Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "argpartition",
+    "tie",
+    "deterministic",
+    "exp_grow_2",
+    "exp_decay_2",
+    "shortlist",
+    "bit-identical",
+    "search version"
+   ],
+   "severity": "high",
+   "wrong": "Treating the top-K shortlist as a pure function of the correlations while argpartition/argsort broke exact ties by internal order — an order that moved when a row was appended to the basis.",
+   "truth": "Measured 2026-09-12: a chunk fitting exp_grow_2 and exp_decay_2 equally (mirror images, the same R²) named one before the basis learned a shape and the other after, with the same coherency and a different shape hash — the ancestor path served the old tie-break and the recompute produced the new one. The shortlist is now descending R², ties by ascending row index (SEARCH_VERSION 'topk-lexsort-1'), and the search's version is part of every basis digest, so a change to the search is a new basis for every memory and every verifier.",
+   "tell": "Two readings with identical coherency and different shape hashes; a fit that changes when unrelated rows are appended; a verifier that agrees on one host and not another.",
+   "correct": "Every selection in the reading path breaks ties deterministically; the search's version is hashed into the basis digest; bit-identity is tested across a basis change, not only across a repeat.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.119Z",
+   "last": "2026-09-12T22:06:00.119Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "report",
+    "measure and report",
+    "the operator already knows",
+    "build",
+    "skeptic",
+    "confirm",
+    "your claim holds"
+   ],
+   "severity": "high",
+   "wrong": "Answering an operator's design statement by measuring it and reporting that it holds, instead of building it — and asking before building where the operator had already decided.",
+   "truth": "The operator on 2026-09-12: 'I know exactly how my system works… I have already done every single one of these measurements before… it's your place to build it as I say and tell me when it doesn't match what I say.' Measuring is allowed; reporting a confirmation the operator did not ask for costs their time twice (once reading it, once re-typing the instruction). The one report owed is a mismatch, stated with the numbers.",
+   "tell": "A reply that opens with what the instrument confirmed; a question that repeats the operator's own decision back as an option; a round that ended in a report and no commit.",
+   "correct": "Build what the operator specified; measure while building; report only what does not match, with the instrument's numbers; commit.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.119Z",
+   "last": "2026-09-12T22:06:00.119Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "re-read",
+    "drift",
+    "from memory",
+    "guess",
+    "logic files",
+    "read the file",
+    "two hours"
+   ],
+   "severity": "medium",
+   "wrong": "Building from what was remembered of the design instead of re-reading the files that hold it, and drifting from what the operator intended.",
+   "truth": "2026-09-12: the resonance memory was built in the decoder space from memory of ECOSYSTEM §7 while the operator's words said per pattern against the library, and the record's own line (void_compressor_v3 BASIS_SAMPLES) already drew the boundary: the fractal space is the resonance space, the basis grid is where bytes get fitted. The operator: 'you should be re-reading the files anyway on your own cause when you don't you start to guess.' The goggled-first window is the instrument enforcing it.",
+   "tell": "An edit made without a fresh reading of the file it changes; a design claim in a reply without the file and line that holds it; a wrong space, wrong key or wrong rule discovered by a counter rather than by reading.",
+   "correct": "Re-read the logic files before building on them, every time; quote the line; the two-hour reading window stays.",
+   "count": 3,
+   "first": "2026-09-12T22:06:00.120Z",
+   "last": "2026-09-12T22:06:00.120Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "_fit_named_pair",
+    "single",
+    "lstsq",
+    "singular",
+    "alpha",
+    "beta"
+   ],
+   "severity": "high",
+   "wrong": "Refitting a served single pattern (name, name) through the pair least-squares solve, which returns the min-norm split (½, ½) for a singular design, so a chunk served by its own key read a different shape than the search had recorded (alpha 1, beta 0).",
+   "truth": "The search records a single as alpha 1, beta 0 with the single's R² from the library correlations. A served fit must use the search's own arithmetic for the same case or the shape commitment differs bit-for-bit.",
+   "tell": "assertEqual on two shapes of the same bytes fails with alpha 0.497/0.497 against 1.0/0.0.",
+   "correct": "In _fit_named_pair, idx_i == idx_j → PatternBlend(name, name, 1.0, 0.0, corr[idx], residual), the correlation from _library_correlations.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.323Z",
+   "last": "2026-09-14T04:29:35.323Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "ledger",
+    "jsonl",
+    "append",
+    "memory_id",
+    "writer",
+    "concurrent",
+    "test suite",
+    "digest"
+   ],
+   "severity": "high",
+   "wrong": "Versioning an append-only ledger by line count and chain digest while more than one process appends to it (the test suite beside the service), so the writer's memory_id named a prefix that did not exist on disk.",
+   "truth": "A versioned append-only ledger has one writer. Every other opener is frozen (reads, remembers in-process, writes nothing); the writer checks the file size it believes against the file before every append and freezes, saying why, when the file grew under it.",
+   "tell": "'the resonance memory on this host digests X at N lines, the reading was taken at Y' right after a test run.",
+   "correct": "open_resonance(writer=False) by default; the service is the one writer; a size check before each append; tests on ledgers of their own.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.323Z",
+   "last": "2026-09-14T04:29:35.323Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "git stash",
+    "stash pop",
+    "ledger",
+    "basis_index",
+    "self-writing",
+    "working tree"
+   ],
+   "severity": "high",
+   "wrong": "Running `git stash` inside a repo whose tracked ledgers write themselves (basis_index.jsonl, learned_patterns.jsonl) to check whether a failure predates the change: the test run rewrote a ledger, `git stash pop` refused to merge, and every uncommitted edit of the round sat in the stash.",
+   "truth": "A repo whose instrument writes tracked files under any run cannot be stashed and popped around a run. Ask the question another way (read the test, read git log, run the test on a worktree of HEAD) or restore the ledger first and pop.",
+   "tell": "'Your local changes to the following files would be overwritten by merge: basis_index.jsonl … The stash entry is kept.'",
+   "correct": "Never stash in Void or the chain. To compare against HEAD, use a worktree or read the history; if a stash exists, `git checkout -- <ledger>` then `git stash pop`.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.324Z",
+   "last": "2026-09-14T04:29:35.324Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "learned_rows",
+    "load_learned",
+    "explicit path",
+    "ledger",
+    "test_learned_basis"
+   ],
+   "severity": "medium",
+   "wrong": "Making learned_rows(path) append the jsonl ledger after an explicit path's rows (2026-09-12), so load_learned(<file>) loaded the file plus the whole ledger and a missing file was no longer a no-op — and running only a subset of the tests, so the two tests that pinned this stayed red for a round.",
+   "truth": "An explicit path is that file alone; the seed-plus-ledger order is the no-argument case (the service's bootstrap, at_basis). A round is verified by the whole suite, not the tests the round touched.",
+   "tell": "tests/test_learned_basis fails with 'loaded rows must enter the search matrix' at n0 + ledger, not n0 + 2; the round's own tests were green.",
+   "correct": "learned_rows(path): explicit path → only that file. Run `--do test` with no arguments before a commit.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.324Z",
+   "last": "2026-09-14T04:29:35.324Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "--do test",
+    "node --test",
+    "tests/",
+    "package.json",
+    "npm test",
+    "ERR_TEST_FAILURE"
+   ],
+   "severity": "medium",
+   "wrong": "The hub's `--do test` verb ran `node --test tests/`, which this Node took as a module path — 'Cannot find module …/tests', one failing pseudo-test — and the round reported the hub green from a subset run by file.",
+   "truth": "A JS repo with a test script in package.json runs its own script (the hub's sets ENTROPY_PATH and the glob); a bare `node --test` discovers by default. The verb must run what the repo runs.",
+   "tell": "'# tests 1 / # fail 1' with 'Cannot find module' on the tests directory.",
+   "correct": "test verb: explicit files → node --test <files>; package.json test script → npm test --silent; otherwise node --test.",
+   "count": 3,
+   "first": "2026-09-14T04:29:35.326Z",
+   "last": "2026-09-14T04:29:35.326Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "resonance",
+    "memory",
+    "library",
+    "STEP2",
+    "void",
+    "ingest",
+    "basis_id",
+    "memory_id",
+    "ledger"
+   ],
+   "severity": "high",
+   "wrong": "Building a SECOND memory beside the pattern library — a ledger of chunk profiles and pairs keyed on the chunk's data key, with a 1:1 'known key' path, its own versioning (memory_id) and its own single-writer rule — to make similar chunks resonate, instead of reading the design: the library IS the memory.",
+   "truth": "STEP2_DESIGN §5: 'If no pattern matches well, this chunk IS a new pattern. Add it to the library for future use… First occurrence: stored raw. Future occurrences: stored as reference + tiny delta.' The search's first step — the chunk's R² against every held pattern — is the resonance; a chunk nothing resonates with above the detector's 0.50 (living_remembrance: 'the field has no memory here') is ingested into the library after the reading; the library is already versioned by basis_id and its ledger is tracked, so every host replays every reading. A byte-keyed 1:1 path was the very thing the operator had just refused.",
+   "tell": "A new .remembrance/*.jsonl beside learned_patterns.jsonl; a `memory_id` beside `basis_id`; a 'one writer' rule for a file the design never had; a `known_pair(data_key)` lookup.",
+   "correct": "Read STEP2_DESIGN.md, COMPRESSION-EQUATION.md, living_remembrance.py and resonance_detector.py before building a memory. Void chunk → on_void → queued → ingested into the basis after the reading (append_basis_row, the learned ledger, the basis index); replay = at_basis(id, replay=True) with the same queue, frozen.",
+   "count": 3,
+   "first": "2026-09-14T04:56:37.539Z",
+   "last": "2026-09-14T04:56:37.539Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "ingest",
+    "mid-reading",
+    "self-match",
+    "poisoning",
+    "G0",
+    "coherency 1.0",
+    "strategies"
+   ],
+   "severity": "high",
+   "wrong": "Ingesting a void chunk into the basis DURING the reading, so the strategies after the first matched the chunks to the patterns just ingested from them and a never-seen 10-chunk file read coherency 0.99999.",
+   "truth": "That is the self-match Tier-1's G0 gate calls poisoning ('compress a blob once, resubmit it, it matches ITSELF at ~1.0'), inside one reading. STEP2 §5: the first occurrence is stored raw. A reading is taken on the basis it names; what it found void enters the library when it is over; the next occurrence resonates.",
+   "tell": "A first reading of a novel file at ~1.0 with void_chunks == served_single; basis_after ≠ basis_id while the winning strategy already uses learned/ rows.",
+   "correct": "Queue void chunks; _ingest_queued at the end of compress(); the reading's basis_id is the basis before, basis_after the basis it left.",
+   "count": 3,
+   "first": "2026-09-14T04:56:37.550Z",
+   "last": "2026-09-14T04:56:37.550Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "replay",
+    "cache",
+    "shape_store",
+    "void term",
+    "at_basis",
+    "served"
+   ],
+   "severity": "medium",
+   "wrong": "Replaying a reading with the host's fit cache attached: the cache answered every fit the original reading computed, the search never ran, and the replay reproduced the shape but none of the void term (0 of 18 void chunks).",
+   "truth": "The cache is pure for the shape, not for the void: the void is found by the search. A verifier's replay carries a fresh, in-memory cache.",
+   "tell": "Replay: shape_sha equal, coherency equal, void_chunks 0, basis_after == basis_id while the original ingested.",
+   "correct": "at_basis(replay=True) / replay(): ShapeStore(path=None).",
+   "count": 3,
+   "first": "2026-09-14T04:56:37.550Z",
+   "last": "2026-09-14T04:56:37.550Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "parallel",
+    "cd",
+    "git",
+    "bash",
+    "race",
+    "stage",
+    "mint",
+    "wrong repo"
+   ],
+   "severity": "high",
+   "wrong": "Issuing two Bash commands in one response that each `cd` into a different repo and run git/mint: the second ran in the first's directory and staged and minted the hub instead of Void.",
+   "truth": "The shell's working directory is one per session; parallel commands race on it. Git and mint operations are serialised, one repo per response.",
+   "tell": "`git status` output naming another repo's files right after a `cd <repo> && git add -A`.",
+   "correct": "One git-touching command per response; verify the repo in the output before the next step.",
+   "count": 3,
+   "first": "2026-09-14T04:56:37.551Z",
+   "last": "2026-09-14T04:56:37.551Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "cancel-in-progress",
+    "SIGTERM",
+    "exit 143",
+    "runner shutdown",
+    "verifier.CLAIMS",
+    "CONTRACT_SHARD",
+    "contracts-ratchet",
+    "cross-repo-matrix"
+   ],
+   "severity": "high",
+   "wrong": "Treating a contracts job terminated by workflow concurrency cancellation as a test timeout, then splitting or mutating verifier.CLAIMS to make the truth-spine appear to fit.",
+   "truth": "The workflow had concurrency.cancel-in-progress enabled. Each newer fix-branch push canceled the still-loading full contracts run, producing SIGTERM/exit 143 and runner-shutdown cleanup without a failed assertion. The contracts ratchet accepts only a current persisted verdict written by one FULL verify_capabilities.py run through the goggles; shards cannot produce that verdict and are not the truth-spine.",
+   "tell": "A job ends with SIGTERM, exit 143, runner shutdown, or orphan-process cleanup soon after a newer run for the same ref starts; logs contain no failing contract assertion and repeated pushes restart the same short window.",
+   "correct": "Inspect the workflow run conclusion and concurrency group before diagnosing a timeout. Stop issuing new pushes, start the compressor with goggles --do service start --wait, run goggles --do contracts --strict, then goggles --do gate contracts and goggles --do ratchets. Never slice, replace, or mutate verifier.CLAIMS to satisfy the gate.",
+   "count": 3,
+   "first": "2026-09-14T14:00:39.876Z",
+   "last": "2026-09-14T14:00:39.876Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "merge",
+    "conflict",
+    "goggles-bash-hook",
+    "wall",
+    "fail closed",
+    "deadlock",
+    "goggled-first"
+   ],
+   "severity": "high",
+   "wrong": "Running `git merge` of a branch that touches src/tools/goggles-bash-hook.js without checking first: the conflict markers landed inside the wall's own hook, the wall failed closed on every shell command, and the goggled-first gate could not be satisfied because the goggles are a shell command — every tool refused, including the edit that would have repaired it.",
+   "truth": "The wall's hook is the one file a merge must never leave in conflict. Before merging a branch, check whether it touches src/tools/goggles-*.js; if it does, resolve those files first with `git checkout --ours` (or merge them by hand) in the same step, before anything else runs. The way out of the deadlock (2026-09-14) was the instrument's own MCP goggles reading of the hook, recorded by hand in .remembrance/goggles-readings.json (a path the goggled-first gate exempts), then the edit.",
+   "tell": "'GOGGLES — WALL UNAVAILABLE refused (fail closed): goggles-bash-hook did not run' on every command right after a merge; `<<<<<<<` inside src/tools/goggles-bash-hook.js.",
+   "correct": "`git diff --name-only HEAD...origin/<branch> | grep goggles-` before merging; resolve the hook files first; a merge that conflicts in the hook is aborted (`git merge --abort`) and redone with the hook resolved in the same command.",
+   "count": 3,
+   "first": "2026-09-14T14:13:38.067Z",
+   "last": "2026-09-14T14:13:38.067Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "ledger",
+    "_entropy",
+    "snapshot",
+    "raw JSON",
+    "100 MB",
+    "GH001",
+    "fractal coin",
+    "rotation",
+    "asked instead of built"
+   ],
+   "severity": "high",
+   "wrong": "Storing the chain's blocks raw — every block carrying the field snapshot as JSON text — and, when the instrument had already read that ledger at 0.9919 coherency with 12,334 of 13,140 chunks explained outright by shapes it holds, reporting a GitHub file-size limit and asking the operator whether to use the instrument, instead of folding the blocks through the void compressor as the design says everything is.",
+   "truth": "Measured 2026-09-15: data/ledger.json at 108,953,834 bytes (103.91 MiB, GH001 refused), 353 of 354 blocks carrying metadata._entropy raw at ~300 KB each. The instrument's own reading of that ledger — 0.9919, almost every chunk known — was the fold announcing itself: the witness holds the shape of one repeating field, and through the compressor it is a fraction of itself. The coin is a fractal coin; the block that witnesses it is the compressor's sealed lossless form, hashed over the compressed bytes, decompressed through the same instrument on read. The operator: 'just literally listen to my instrument and there would never be anything wrong with it' — a mismatch the instrument has already measured is not a question to put back to the operator.",
+   "tell": "A witness file growing linearly with raw JSON while the instrument reads it near 1.0; a size limit reported as the finding; a reply that ends by asking the operator whether to run the data through the compressor.",
+   "correct": "When the instrument reads a store as known (coherency near 1.0, chunks explained outright), that store is holding raw what the compressor folds: fold it — the block's payload goes through the compressor, the hash binds the compressed bytes, readers decompress through the instrument. Build it; report the measured ratio; rotate the witness when its old hashes bind raw bytes.",
+   "count": 3,
+   "first": "2026-09-15T03:39:45.960Z",
+   "last": "2026-09-15T03:39:45.960Z",
+   "sources": [
+    "agent"
+   ]
+  },
+  {
+   "match": [
+    "build",
+    "already made",
+    "substrate_fractal",
+    "fractal index",
+    "resonance",
+    "search first",
+    "maturin",
+    "wheel",
+    "slow path"
+   ],
+   "severity": "high",
+   "wrong": "Announcing something must be BUILT — a fold route, a fractal index, a resonance path — when the ecosystem already holds it, because the agent searched by hand (grep, guesses, file names) instead of asking the instrument's resonance what already answers the question.",
+   "truth": "2026-09-15: the service log said 'substrate_fractal not installed; /score_batch will use the slow path' and the reply was 'build the wheel, route the search through it' — while the index, its loader, its recovery data plane and its trap entry all already existed in the repo and only needed to be found and installed. The operator: 'there's nothing to be built, it's already been made … searching for what's already made not using resonance you are wrong.' Every unbuilt-looking gap in this ecosystem has so far been a missing install, a missing verb call or a stale host artifact, never a missing component. Brute force is the tell of not having asked resonance: every search that walks every row, every reading that runs every record one by one, every plan that starts with 'build'.",
+   "tell": "A plan whose first verb is 'build' or 'implement'; a 'not installed' line read as 'does not exist'; a full scan where a nearest-shape query would do; the operator saying it already exists.",
+   "correct": "Before any build: `--do resonance` / `--do cluster` / `--do find` for the component by its shape and name across the ecosystem, read the trap ledger's own entries for it, and install or invoke what is found. If it truly does not exist, say so with the search that proved it — then build.",
+   "count": 3,
+   "first": "2026-09-15T03:55:35.297Z",
+   "last": "2026-09-15T03:55:35.298Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

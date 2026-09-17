@@ -111,6 +111,16 @@ export async function distributeLead(
   return result;
 }
 
+function safeStringArray(value: string | null | undefined): string[] {
+  if (typeof value !== "string" || !value.trim()) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 async function matchClientToLead(
   client: ClientRecord,
   lead: LeadRecord,
@@ -122,13 +132,13 @@ async function matchClientToLead(
   }
 
   // Check state licenses
-  const licenses: string[] = JSON.parse(client.stateLicenses || "[]");
+  const licenses = safeStringArray(client.stateLicenses);
   if (licenses.length > 0 && !licenses.includes(lead.state)) {
     return { match: false, exclusive: false, reason: `Not licensed in ${lead.state}` };
   }
 
   // Check coverage types
-  const coverageTypes: string[] = JSON.parse(client.coverageTypes || "[]");
+  const coverageTypes = safeStringArray(client.coverageTypes);
   if (coverageTypes.length > 0 && !coverageTypes.includes(lead.coverageInterest)) {
     return { match: false, exclusive: false, reason: `Coverage ${lead.coverageInterest} not wanted` };
   }
@@ -153,13 +163,13 @@ async function matchClientToLead(
     const filters = filtersResult.value;
 
     // State filter
-    const filterStates: string[] = JSON.parse(filters.states || "[]");
+    const filterStates = safeStringArray(filters.states);
     if (filterStates.length > 0 && !filterStates.includes(lead.state)) {
       return { match: false, exclusive: false, reason: `State ${lead.state} not in filter` };
     }
 
     // Coverage filter
-    const filterCoverage: string[] = JSON.parse(filters.coverageTypes || "[]");
+    const filterCoverage = safeStringArray(filters.coverageTypes);
     if (filterCoverage.length > 0 && !filterCoverage.includes(lead.coverageInterest)) {
       return { match: false, exclusive: false, reason: `Coverage not in filter` };
     }

@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-08T00:55:03.642Z",
- "digest": "6901b55e8293755fdf08232184aafb91c92f10f321e7d37e15516808a086b528",
+ "lockedAt": "2026-09-17T08:35:50.551Z",
+ "digest": "4b05f5cc7d0f6874215e2c50cd8955ae99080c2ff3200c34ff23792ccd5f5b02",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -16,7 +16,7 @@
   "scripts/orphan-ratchet.js": "2cc9e9055f1d073fa89e5323a6ba1c09c7b12e09b2ddad58dde44b9426bfeb67",
   "scripts/silent-catch-ratchet.js": "fbe0191becb8e53ef490c398183ac03af8f97ae6eec34e688d6ff68ee1475ffc",
   "scripts/console-ratchet.js": "4c4ba3d6742a0910713d413f52e4870b94bba634e0a8ecd594318ccc8f6d13a4",
-  "scripts/atomic-drift-ratchet.js": "8f0d288bbd4feb0c5e024b70e41f2ccc3bba17db9061077cb99de11057943a99",
+  "scripts/atomic-drift-ratchet.js": "2b759df51c995ea8dd39dfba6833c2d9e1024ec15c9cfc0562f028b1409b1092",
   "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
   "scripts/contracts-ratchet.js": "c6f7345ad81aa57b3d00118a36846e3a6af469780a120d421558bf38fed2949d",
   "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
@@ -25,9 +25,9 @@
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
-  ".claude/skills/goggles/run.mjs": "4471711149d2c8da64e3634b3374b967b4df30478e7cc5def642fac07cee82c5",
-  ".claude/skills/goggles/change-coin.py": "52f8af26f82b866d4a9a1e2a11acae6922c17e433e1b98e2e02da5228f1f2471",
-  "src/tools/goggles-bash-hook.js": "dfd50daa534e78c8527bcc5b6af1d32cfd14972488b5147b4873f4dc1cabe133"
+  ".claude/skills/goggles/run.mjs": "afca685698bf039e9858823f928c07d2ecf4bd4a1f62374764657c1c22960764",
+  ".claude/skills/goggles/change-coin.py": "479eb572d334c2b967db3de6147fc32e7cc7683de4b7fd503dae8fc3a7d72648",
+  "src/tools/goggles-bash-hook.js": "81c2408dd415876e25231ccc4ab103ad95556d32d39e135bf24754e600848165"
  },
  "history": [
   {
@@ -179,6 +179,71 @@
    "reason": "width gate: the L1 boundary is drawn by the form; the shape reading is recorded on every hit (--shape, shapeAt) and never decides — measured 5/9 on labelled holdouts; the decoder-layer allowlist was inert and is gone; trap 52 recorded",
    "changed": [
     "scripts/width-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T19:58:55.163Z",
+   "from": "6901b55e8293755fdf08232184aafb91c92f10f321e7d37e15516808a086b528",
+   "to": "1cd3ba2b7adcdddd9e3bb644692352ba834dcc5df9dc7469e05cdc1fa6903b92",
+   "reason": "Owner-approved covenant-gated denial logging for PR #355 review repair",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T23:09:25.638Z",
+   "from": "1cd3ba2b7adcdddd9e3bb644692352ba834dcc5df9dc7469e05cdc1fa6903b92",
+   "to": "01979b082cbd6c8e25d69b10d08483c66b3e57226a9fbb1684ffb1bde4f55c3d",
+   "reason": "Owner-approved atomic declarations, shell-free Git inspection, and isolated-test annotations for PR #355 gate repair",
+   "changed": [
+    "scripts/atomic-drift-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T23:19:49.477Z",
+   "from": "01979b082cbd6c8e25d69b10d08483c66b3e57226a9fbb1684ffb1bde4f55c3d",
+   "to": "a4231bc820e584cdecba084d39a6623f3461f5b520d9c479142a15553b61ab51",
+   "reason": "Owner-approved shell-free atomic census and covenant-gated test fixtures for PR #355 gate repair",
+   "changed": [
+    "scripts/atomic-drift-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:12:54.201Z",
+   "from": "a4231bc820e584cdecba084d39a6623f3461f5b520d9c479142a15553b61ab51",
+   "to": "9e0ba43634ef7b329b5a5e8c562327597a59e47c8ea920671b197d9c48ad1b77",
+   "reason": "witness-mode coin (a coin never teaches the library, 2026-09-16 ruling): change-coin.py mints and verifies with --witness; run.mjs and the bash hook carried the wall sync of the same round. Relocked by the covenant-holder's session after the ruling.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs",
+    ".claude/skills/goggles/change-coin.py",
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:29:02.452Z",
+   "from": "9e0ba43634ef7b329b5a5e8c562327597a59e47c8ea920671b197d9c48ad1b77",
+   "to": "d19d995621ee077da07944cd25e9377263fc29ad79e1a6cb65b4f3437218275b",
+   "reason": "silent-catch naming inside the wall: the bash hook's three bare swallows now record through quiet() (stdin, parse, fault-write); control flow and fail-closed behavior unchanged. Same round as the witness-mode relock.",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:34:31.964Z",
+   "from": "d19d995621ee077da07944cd25e9377263fc29ad79e1a6cb65b4f3437218275b",
+   "to": "d01eef7fcb49dceb67072b3583bc15b6b65fea53b2b3bc440221b4a207686482",
+   "reason": "the gates ride every mint: run.mjs prints the ratchet battery's verdict (every red gate + the DEBT line) after each coin — the operator's standing ask that traps, gates and contracts load automatically on use. Report, never a block.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:35:50.551Z",
+   "from": "d01eef7fcb49dceb67072b3583bc15b6b65fea53b2b3bc440221b4a207686482",
+   "to": "4b05f5cc7d0f6874215e2c50cd8955ae99080c2ff3200c34ff23792ccd5f5b02",
+   "reason": "the gates-on-mint wiring reads the battery's verdict off the nonzero exit too (an open gate exits the battery nonzero; the first cut dropped that output). Same ask, same round.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
    ]
   }
  ]

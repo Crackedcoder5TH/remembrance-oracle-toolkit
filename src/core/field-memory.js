@@ -582,17 +582,27 @@ function _restoreFromLedgerFile(lp) {
     if (!lp || !fs.existsSync(lp)) return null;
     const chain = JSON.parse(fs.readFileSync(lp, 'utf8'));
     if (!Array.isArray(chain)) return null;
-    for (let i = chain.length - 1; i >= 0; i--) {
-      const e = chain[i] && chain[i].data && chain[i].data.metadata && chain[i].data.metadata._entropy;
-      const state = _coerceFieldState(e);
-      if (state) return state;
+    // Blocks since 2026-09-15 witness the snapshot the field memory's way
+    // (REMEMBRANCE-BLOCKCHAIN/src/void-fold.js): a reference plus what
+    // changed when the shape was already held, the exact state through the
+    // compressor when it was new; earlier blocks carry it raw. The chain's
+    // own reader rebuilds the latest state.
+    try {
+      const vf = require(path.join(path.dirname(_committedBlockchainData('ledger.json')), '..', 'src', 'void-fold'));
+      return _coerceFieldState(vf.latestFieldStateOf(chain));
+    } catch (e) {
+      quiet('core:field-memory:void-fold', e);
+      for (let i = chain.length - 1; i >= 0; i--) {
+        const state = _coerceFieldState(chain[i] && chain[i].data && chain[i].data.metadata && chain[i].data.metadata._entropy);
+        if (state) return state;
+      }
+      return null;
     }
-    return null;
   } catch (_) {
     return null;
   }
 }
-_restoreFromLedgerFile.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_restoreFromLedgerFile.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 9, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Restore from the blockchain ledger — checking BOTH the live working
@@ -604,12 +614,25 @@ _restoreFromLedgerFile.atomicProperties = { charge: 0, valence: 0, mass: "medium
  */
 function _restoreFromLedger() {
   const local = _restoreFromLedgerFile(_ledgerPath());
-  const committed = _restoreFromLedgerFile(_committedLedgerPath());
+  // The committed chain is walked only when the seed beside it is older
+  // than it. The seed IS the chain's latest witnessed field, written by
+  // the same checkpoint that appends the block (field-checkpoint.js), and
+  // it answers in 3 ms; the chain answers the same question in 3,035 ms
+  // (109,600,719 chars read and parsed — measured 2026-09-15) and every
+  // process that opens the field paid it: each goggle reading, each wall
+  // hook on each shell command, each post-edit hook.
+  let committed = null;
+  try {
+    const lp = _committedLedgerPath(), sp = _seedPath();
+    const walk = !fs.existsSync(sp) || !fs.existsSync(lp)
+      || fs.statSync(lp).mtimeMs > fs.statSync(sp).mtimeMs;
+    committed = walk ? _restoreFromLedgerFile(lp) : null;
+  } catch (_) { committed = _restoreFromLedgerFile(_committedLedgerPath()); }
   if (!local) return committed;
   if (!committed) return local;
   return (committed.updateCount > local.updateCount) ? committed : local;
 }
-_restoreFromLedger.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_restoreFromLedger.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Restore from the committed bootstrap snapshot — the field histogram

@@ -79,6 +79,27 @@ import subprocess
 import sys
 
 LEDGER = 'coins.ledger.json'
+# THE COIN READS THE WHOLE CHANGE (the operator's ruling, 2026-09-14): the
+# instrument ingests information no matter the source or type and saves it
+# as a pattern — so the learned ledger and the basis index are NOT cut out
+# of the patch. For a few hours that day they were (MEMORY_RULE), to stop a
+# loop: a mint's reading ingested the ledger's own number text as void
+# shapes (13,388 rows, 31 MB), the next mint's patch carried that text,
+# void again. The cure was never the exclusion; it was reading a data
+# container's DATA rather than its ASCII: read-signal now recognises a
+# JSON/JSONL file or a record-adding patch as a file, reads its bytes with
+# ingestion off, and runs every series it holds through the instrument —
+# where a waveform the library already holds reads as known.
+MEMORY_FILES = ('learned_patterns.jsonl', 'basis_index.jsonl')
+MEMORY_RULE = [LEDGER, *MEMORY_FILES]       # the rule of 2026-09-14 — the coins that carry it verify under it
+EXCLUDES = [LEDGER]                         # the rule: only the coin ledger is not a change
+LEGACY_EXCLUDES = [LEDGER]                  # the rule every coin before 2026-09-14 was minted under
+# A coin records the rule it was minted under (change.excludes) and verifies
+# under it: changing the rule must never refuse a commit that held.
+
+
+def _pathspec(excludes: list[str] | None) -> list[str]:
+    return [f':(exclude){e}' for e in (EXCLUDES if excludes is None else excludes)]
 TRAILER = 'Remembrance-Coin'
 COIN_V = 'change-coin/v1'
 EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -116,10 +137,12 @@ def rev_tree(repo: str, rev: str) -> str | None:
     return r.stdout.strip() or None if r.returncode == 0 else None
 
 
-def patch_between(repo: str, base_tree: str, tree: str) -> bytes:
-    """The change as bytes — git's own rendering of the two trees, ledger excluded."""
+def patch_between(repo: str, base_tree: str, tree: str, excludes: list[str] | None = None) -> bytes:
+    """The change as bytes — git's own rendering of the two trees, the coin
+    ledger and the instrument's memory files excluded (or the coin's own
+    `excludes` when verifying one)."""
     return git(repo, *GIT_CFG, 'diff-tree', *DIFF_FLAGS, base_tree, tree,
-               '--', '.', f':(exclude){LEDGER}', binary=True)
+               '--', '.', *_pathspec(excludes), binary=True)
 
 
 def ledger_at(repo: str, rev: str | None):
@@ -265,15 +288,31 @@ def verify_coin(coin: dict, patch: bytes, key: bytes | None, deep: bool) -> list
     return f
 
 
-def read_through_instrument(void: str, patch: bytes, scratch_dir: str) -> dict:
+def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: str | None = None) -> dict:
     """THE reading path: the bytes go to scripts/read-signal.py (→ /compress_signal
-    → void_compressor_v5.compress) and come back sealed, with the commitment."""
+    → void_compressor_v5.compress) and come back sealed, with the commitment.
+    The search is the resonance: every chunk's coherency against every
+    pattern the library holds. `--witness`: a coin NEVER teaches the library
+    (the operator's ruling, 2026-09-16 — the pattern library exists
+    separately from the coins and is derived from data, not from the ledger
+    of changes; before this, six rotation coins ingested 6,300 chain-JSON
+    chunks and every later reading paid a full library product per
+    remembered fit to prove it against them). `basis`: read against a
+    RECORDED basis (the coin's basis_id) — the unfold path, frozen."""
     os.makedirs(scratch_dir, exist_ok=True)
     patch_file = os.path.join(scratch_dir, 'bytes.patch')
     with open(patch_file, 'wb') as f:
         f.write(patch)
-    proc = subprocess.run([sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json'],
-                          cwd=void, capture_output=True, text=True, timeout=900)
+    args = [sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json', '--witness']
+    if basis:
+        args += ['--basis', basis]
+    # The instrument's time is proportional to the input (read-signal's own
+    # rule: one second per 4k points, and a container patch is then read
+    # series by series). A fixed 900 s here killed the reading of a 47 MB
+    # ledger patch at 15 minutes (2026-09-14) while the service went on
+    # computing a request nobody would receive. Floor 900, then the size.
+    proc = subprocess.run(args, cwd=void, capture_output=True, text=True,
+                          timeout=max(900.0, len(patch) * 64 / 4000.0 * 2))
     if proc.returncode != 0:
         raise RuntimeError('the instrument refused or is down — no reading:\n' + (proc.stdout + proc.stderr).strip()
                            + '\n  goggles --do service status   ·   goggles --do service start --wait')
@@ -286,6 +325,16 @@ def read_through_instrument(void: str, patch: bytes, scratch_dir: str) -> dict:
     return reading
 
 
+def _data_summary(data: dict | None) -> dict | None:
+    """A container's data reading as the coin keeps it: the container type,
+    how many series, the totals (counts, never a mean) and the basis the
+    data left in force."""
+    if not data:
+        return None
+    return {'container': data.get('container'), 'series_n': len(data.get('series') or []),
+            'totals': data.get('totals'), 'basis_after': data.get('basis_after')}
+
+
 def unfold(coin: dict, patch: bytes) -> dict:
     """Unfold a coin WHEN IT IS NEEDED: the bytes go back through the instrument,
     the regenerated shape must hash to the coin's shape_sha256 (the compressor is
@@ -295,10 +344,16 @@ def unfold(coin: dict, patch: bytes) -> dict:
     cm = (coin.get('reading') or {}).get('commitment') or {}
     shape = cm.get('shape')
     if shape is None:
-        fresh = read_through_instrument(void, patch, os.path.join(void, '.remembrance', 'change-coin-unfold'))
+        # against the coin's own basis when it names one (coins minted before
+        # 2026-09-12 carry none and unfold against the basis in force)
+        rd = coin.get('reading') or {}
+        fresh = read_through_instrument(void, patch, os.path.join(void, '.remembrance', 'change-coin-unfold'),
+                                        basis=cm.get('basis_id') or rd.get('basis_id'))
         fcm = fresh['commitment']
         if fcm.get('shape_sha256') != cm.get('shape_sha256'):
-            return {'error': f"regenerated shape {str(fcm.get('shape_sha256'))[:12]}… ≠ coin's shape_sha256 {str(cm.get('shape_sha256'))[:12]}… — the substrate reads these bytes differently now"}
+            return {'error': f"regenerated shape {str(fcm.get('shape_sha256'))[:12]}… ≠ coin's shape_sha256 {str(cm.get('shape_sha256'))[:12]}… — "
+                             + ('the substrate reads these bytes differently now' if not cm.get('basis_id')
+                                else f"read against the coin's basis {cm.get('basis_id')} and still different")}
         shape = fcm.get('shape')
         cm = dict(cm, shape=shape)
     sys.path.insert(0, os.path.join(void, 'scripts'))
@@ -345,17 +400,27 @@ def verify_commit(repo: str, commit: str, key: bytes | None, deep: bool):
         # own path; the merge itself is held to the ledger law above.
         return 'ok', f'merge of {len(parents)} coined lines — ledger intact ({len(here)} coins)'
     base = rev_tree(repo, parents[0]) if parents else EMPTY_TREE
-    patch = patch_between(repo, base, rev_tree(repo, commit))
-    if not patch:
-        return 'ok', 'no byte change outside the ledger — no coin needed'
     msg = git(repo, 'log', '-1', '--format=%B', commit)
     cid = trailer_of(msg)
+    coin = next((c for c in here if c.get('coin_id') == cid), None) if cid else None
+    # the patch under the rule the coin was minted under (a coin minted
+    # before the memory files were excluded says so by carrying no rule)
+    excludes = (coin.get('change') or {}).get('excludes', LEGACY_EXCLUDES) if coin else None
+    patch = patch_between(repo, base, rev_tree(repo, commit), excludes)
+    if not patch:
+        return 'ok', 'no byte change outside the ledger — no coin needed'
     if not cid:
         return 'REFUSED', f'{commit[:10]} carries NO {TRAILER} trailer — a change without a coin. Mint one: goggles --do mint'
-    coin = next((c for c in here if c.get('coin_id') == cid), None)
     if coin is None:
         return 'REFUSED', f'{commit[:10]} names coin {cid[:12]}… but the ledger at that commit has no such coin'
     fails = verify_coin(coin, patch, key, deep)
+    if fails and 'excludes' not in (coin.get('change') or {}):
+        # a coin that records no rule was minted under one of the two: the
+        # one coin cut under the memory-file rule before coins recorded it
+        # (Void 94d81aeebd, 2026-09-14) verifies under that rule
+        alt = patch_between(repo, base, rev_tree(repo, commit), MEMORY_RULE)
+        if alt and not verify_coin(coin, alt, key, deep):
+            patch, fails = alt, []
     if fails:
         return 'REFUSED', f'{commit[:10]} coin {cid[:12]}…:\n      ' + '\n      '.join(fails)
     mode = 'crypto' if key is not None else 'seam'
@@ -387,6 +452,14 @@ def verify_staged(repo: str, amend: bool, key: bytes | None, deep: bool):
             return 'REFUSED', None, 'the staged coin ledger EDITS history — append-only'
     diff_sha = sha256(patch)
     coin = next((c for c in ledger if (c.get('change') or {}).get('diff_sha256') == diff_sha), None)
+    if coin is None:
+        # a coin minted under the earlier rule over this same index
+        legacy = patch_between(repo, base, tree, LEGACY_EXCLUDES)
+        lsha = sha256(legacy)
+        coin = next((c for c in ledger if (c.get('change') or {}).get('diff_sha256') == lsha
+                     and 'excludes' not in (c.get('change') or {})), None)
+        if coin is not None:
+            patch = legacy
     if coin is None:
         return 'REFUSED', None, (f'no coin over THIS change (patch {diff_sha[:12]}…, {len(patch)} bytes). The index changed '
                                  f'after the last mint, or nothing was minted. Mint: goggles --do mint')
@@ -422,7 +495,7 @@ def mint(repo: str, amend: bool) -> int:
         return 2
     diff_sha = sha256(patch)
     files = [ln.split('\t', 1)[1] for ln in git(repo, 'diff-tree', '-r', '--name-status', '--no-renames', base, tree,
-                                                 '--', '.', f':(exclude){LEDGER}').splitlines() if '\t' in ln]
+                                                 '--', '.', *_pathspec(None)).splitlines() if '\t' in ln]
     ledger_path = os.path.join(repo, LEDGER)
     doc = {'_README': LEDGER_README, 'coins': []}
     if os.path.isfile(ledger_path):
@@ -456,9 +529,39 @@ def mint(repo: str, amend: bool) -> int:
         'minted_at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
         'minted_by': 'goggles --do mint',
         'change': {'repo': os.path.basename(os.path.abspath(repo)), 'base_tree': base,
-                   'files': files, 'diff_bytes': len(patch), 'diff_sha256': diff_sha},
+                   'files': files, 'diff_bytes': len(patch), 'diff_sha256': diff_sha,
+                   # the rule this patch was cut under; a verifier cuts it the same way
+                   'excludes': list(EXCLUDES)},
+        # library_size pins the blend basis the reading was taken against: the
+        # basis grows from what the instrument consumes (scripts/build_signal_basis.py),
+        # and a coin unfolded against a different basis reads the same bytes
+        # differently — the pin says which basis to unfold with.
+        # memory / elapsed_s: the void term of the reading (chunk fits the
+        # substrate had no memory of) and what it cost. The operator's rule:
+        # the cost of a coin falls and bottoms out as the substrate remembers;
+        # a coin that takes long with a small void term is paying for
+        # structure already held — the tell. Recorded, never hashed.
+        # basis_id: THE BASIS THE COIN WAS READ ON. The substrate learns at
+        # serve (2026-09-12), so the basis in force moves; the coin names its
+        # basis and unfolds against it (read-signal --basis), never against
+        # whatever the substrate holds later.
+        # memory.void_chunks / ingested (2026-09-14): the chunks of this change
+        # the library had no memory of, ingested into it during the reading —
+        # the coin's void term in the design's own terms (STEP2 §5).
+        # read_as / ingest / data (2026-09-14): what the instrument took the
+        # patch for. A patch adding data records is a container: its bytes
+        # are the reading (ingest false — the library never learns the ASCII
+        # of a ledger) and the series it holds were read one by one; `data`
+        # keeps the container type, the totals and the basis the data left
+        # in force — never the per-series list (a 13k-row ledger patch is
+        # 13k readings; a verifier re-reads them at the coin's basis).
         'reading': {**{k: reading.get(k) for k in ('coherency', 'ratio', 'method', 'strategy', 'lossless',
-                                                    'via', 'mint', 'void_seal')}, 'commitment': commitment},
+                                                    'via', 'mint', 'void_seal', 'library_size',
+                                                    'memory', 'elapsed_s', 'basis_id', 'learned_n',
+                                                    'learned_this_reading', 'basis_after',
+                                                    'read_as', 'ingest')},
+                    'data': _data_summary(reading.get('data')),
+                    'commitment': commitment},
     }
     fails = verify_coin(coin, patch, seal_key(), deep=False)
     if fails:
@@ -472,6 +575,21 @@ def mint(repo: str, amend: bool) -> int:
     git(repo, 'add', LEDGER)
     print(f"reading: coherency {reading['coherency']:.4f} via void:compress_signal · seal mint {reading['mint']} · "
           f"strategy {reading.get('strategy')} · lossless {reading.get('lossless')} · shape {str(cm.get('shape_sha256'))[:12]}…")
+    dt = coin['reading'].get('data')
+    if dt:
+        t = dt.get('totals') or {}
+        print(f"data:    a {dt.get('container')} container — {dt.get('series_n')} series the patch adds, run into the "
+              f"instrument: {t.get('known')} known · {t.get('void_chunks')} void chunks, {t.get('ingested')} ingested · "
+              f"{t.get('elapsed_s')}s · basis after {dt.get('basis_after')}")
+    mem = reading.get('memory') or {}
+    if mem:
+        print(f"cost:    {reading.get('elapsed_s')}s in the compressor · {mem.get('fits')} fits, "
+              f"{mem.get('served')} served from memory, {mem.get('computed')} computed — the void term of this coin")
+        if 'void_chunks' in mem:
+            print(f"void:    {mem.get('void_chunks')} chunks the library had no memory of, {mem.get('ingested')} ingested · "
+                  f"{mem.get('served_single')} explained outright by a held pattern · {mem.get('searched')} searched · "
+                  f"basis {reading.get('basis_id')}"
+                  + (f" → {reading.get('basis_after')}" if reading.get('basis_after') != reading.get('basis_id') else ''))
     print(f"MINTED coin {coin['coin_id'][:12]}… → {LEDGER} (staged; {len(doc['coins'])} coins)")
     save_on_chain(coin)
     print('Commit now — the commit-msg hook writes the trailer, or add it yourself:')
@@ -515,18 +633,19 @@ def unfold_cmd(repo: str, args: list[str]) -> int:
             print('✗ ' + detail)
             return 1
         base = rev_tree(repo, 'HEAD') or EMPTY_TREE
-        patch = patch_between(repo, base, git(repo, 'write-tree').strip())
         coin = next(c for c in ledger_at(repo, '') if c.get('coin_id') == cid)
+        patch = patch_between(repo, base, git(repo, 'write-tree').strip(), coin['change'].get('excludes', LEGACY_EXCLUDES))
         label = 'index'
     else:
         rev = next((a for a in args if not a.startswith('-')), 'HEAD')
         commit = git(repo, 'rev-parse', '--verify', rev).strip()
         parents = git(repo, 'rev-list', '--parents', '-n', '1', commit).split()[1:]
         base = rev_tree(repo, parents[0]) if parents else EMPTY_TREE
-        patch = patch_between(repo, base, rev_tree(repo, commit))
         cid = trailer_of(git(repo, 'log', '-1', '--format=%B', commit))
         here = ledger_at(repo, commit) or []
         coin = next((c for c in here if c.get('coin_id') == cid), None) if cid else None
+        patch = patch_between(repo, base, rev_tree(repo, commit),
+                              (coin.get('change') or {}).get('excludes', LEGACY_EXCLUDES) if coin else None)
         if coin is None:
             print(f'✗ {commit[:10]} carries no coin to unfold')
             return 1

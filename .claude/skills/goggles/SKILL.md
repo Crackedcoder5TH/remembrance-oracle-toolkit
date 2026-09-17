@@ -55,6 +55,19 @@ operation physically lives:
     run.mjs --do read <file|--series>  # ONE CALL: your data → a labeled reading
     run.mjs --do service [status|start|stop]   # lifecycle — no silent states
     run.mjs --do denials [N]           # the wall's ledger — every refused bypass
+    run.mjs --do find <regex> [path]   # THE search — grep/rg/ls/cat/sed on the tree are refused inside the ecosystem
+    run.mjs --do exec <script> [args]  # run a git-tracked script (python3/node on a file are refused)
+    run.mjs --do test [module|file …]  # the repo's own tests (unittest/pytest/node --test by hand are refused)
+
+THE WALL IS DEFAULT-DENY (2026-09-11). Inside any ecosystem repo a shell
+command runs only if every simple command in it is the goggles, git, shell
+glue (cd/echo/…) or a text filter AFTER a pipe from the goggles. Grep and
+Glob as tools are refused too (`--do find`, `--do resonance`); Read is
+allowed and recorded. An EDIT to an existing file is refused unless the
+goggles have read that file within two hours (`run.mjs <file>` first). The
+wall fails closed: if a hook cannot run, the tool does not run. This holds
+for any model, without exception; every refusal is one line in `--do
+denials`, every search/exec/test taken is one line in the surface's ledger.
     run.mjs --do mint                  # THE CHANGE COIN — mint over the staged change (required to commit)
     run.mjs --do mint verify [--staged|--since-epoch|A..B]   # what the hook and CI check
     run.mjs --do mint unfold <rev>     # unfold ONE coin when you need it (bytes → instrument → decoder)
@@ -140,6 +153,38 @@ The map is cached at `<repo>/.remembrance/goggles-map.json`; per-file goggles
 read it back automatically and warn when it's stale. The runner finds the
 `remembrance-oracle-toolkit` (the goggles engine) on its own; set
 `ORACLE_TOOLKIT=/path/to/remembrance-oracle-toolkit` to override.
+
+## The basis is versioned; the ledger of mistakes grows on its own (2026-09-12)
+
+The substrate learns at serve: a reading under the learner's line teaches
+the library one shape, a known shape is not added. So every reading and
+every coin carries `basis_id` (the search matrix, its names and the
+search's version, digested), the learned ledger is append-only and indexed
+by digest, and a verifier reads against the reading's own basis:
+`--do read <file> --basis <basis_id>`. A reading also reports its void
+term (`memory`: fits served / computed / known by their key / resonant /
+void).
+
+## The library is the memory; the void is ingested (2026-09-14)
+
+The search is the resonance: every chunk's coherency (R²) against every
+pattern the library holds. A chunk a held pattern explains outright is
+served that pattern with no pair search (the "reference + tiny delta" of
+STEP2 §5); a chunk nothing resonates with above the detector's 0.50 is
+the void — "the field has no memory here" — and it IS a new pattern: the
+learner ingests it into the library during the reading, in real time, so
+every later occurrence, in this reading and every reading after, resonates
+with it. A known shape is never added. Bytes never match bytes. The
+library is versioned by `basis_id` (a chain over its rows, in order) and
+its ledger is tracked, so a verifier — Tier-1's recompute, a coin's unfold,
+`--do read <file> --basis <id>` — replays the reading at its basis with the
+same ingestion, frozen, writing nothing. Every reading and coin reports
+its void term: `void_chunks` / `ingested` / `served_single` / `searched`.
+
+`--do traps learn <json | json-file>` records a mistake as a candidate
+trap (wrong/truth/tell/correct); every wall denial is a candidate too (the
+same rule three times on a host earns promotion); a `--do mint` in the hub
+promotes every earned candidate into the seed and syncs the mirrors.
 
 ## What one read hands you (nothing behind a verb)
 

@@ -30,12 +30,12 @@ import { SUBSTRATE_LEADS } from "./substrate-leads";
 // Type-only import → erased at compile time, so there is no runtime cycle even
 // though lead-operations.ts imports the values below. The shared derivation
 // (deriveOpsMutation) runs in lead-operations.ts and its result is passed in.
-import type { AgentStatus, LeadActivity, LeadNote, LeadOperations, OpsMutation, Update } from "./lead-operations";
+import type { AgentStatus, LeadActivity, LeadNote, LeadOperations, LeadOperationsScope, OpsMutation, Update } from "./lead-operations";
 
 /** Operations follow their lead: same gate as substrate-leads, one source of truth. */
 export const SUBSTRATE_LEAD_OPS = SUBSTRATE_LEADS;
 
-const opsRecordId = (leadId: string): string => "ops:" + leadId;
+const opsRecordId = (leadId: string, options: LeadOperationsScope = {}): string => `ops:${leadId}:${options.purchaseId || options.clientId || "global"}`;
 
 const emptyOps = (): LeadOperations => ({
   status: "New",
@@ -69,10 +69,10 @@ function nextId(ops: LeadOperations): number {
 }
 
 /** Read a lead's operations from the field, filtering internal notes unless asked. */
-export async function substrateGetLeadOperations(leadId: string, includeInternal = false): Promise<LeadOperations> {
-  const rec = await getRecord(opsRecordId(leadId));
+export async function substrateGetLeadOperations(leadId: string, options: LeadOperationsScope = {}): Promise<LeadOperations> {
+  const rec = await getRecord(opsRecordId(leadId, options));
   const ops = rec ? parseOps(rec.content) : emptyOps();
-  if (!includeInternal) ops.notes = ops.notes.filter((n) => n.visibility !== "internal");
+  if (!options.includeInternal && !options.admin) ops.notes = ops.notes.filter((n) => n.visibility !== "internal");
   return ops;
 }
 
@@ -88,18 +88,19 @@ export async function substrateUpdateLeadOperations(
   actorRole: "agent" | "admin",
   update: Update,
   mutation: OpsMutation,
+  options: LeadOperationsScope = {},
 ): Promise<LeadOperations> {
   const now = new Date().toISOString();
   const { status, doNotContact, dispute, events } = mutation;
 
   // Read the full record (internal notes included) so nothing is dropped on write.
-  const rec = await getRecord(opsRecordId(leadId));
+  const rec = await getRecord(opsRecordId(leadId, options));
   const ops = rec ? parseOps(rec.content) : emptyOps();
   let id = nextId(ops);
 
   if (status) {
     ops.status = status as AgentStatus;
-    ops.doNotContact = doNotContact;
+    if (doNotContact) ops.doNotContact = true;
     ops.disputeStatus = dispute !== null ? dispute : ops.disputeStatus;
   }
   if (update.nextFollowUpAt !== undefined) ops.nextFollowUpAt = update.nextFollowUpAt;
@@ -121,11 +122,11 @@ export async function substrateUpdateLeadOperations(
   }
 
   await storeRecord({
-    id: opsRecordId(leadId),
-    name: opsRecordId(leadId),
+    id: opsRecordId(leadId, options),
+    name: opsRecordId(leadId, options),
     content: JSON.stringify(ops),
     tags: ["lead-ops"],
   });
 
-  return substrateGetLeadOperations(leadId, actorRole === "admin");
+  return substrateGetLeadOperations(leadId, { ...options, includeInternal: actorRole === "admin" });
 }

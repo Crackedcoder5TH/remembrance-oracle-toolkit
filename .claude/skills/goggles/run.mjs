@@ -16,8 +16,10 @@
 //   run.mjs --diff            goggle everything changed vs HEAD in this repo
 
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
 
 function findToolkit() {
   const candidates = [
@@ -53,6 +55,15 @@ if (argv[0] === '--do') {
   const run = (cmd, cmdArgs, cwd) => {
     try { execFileSync(cmd, cmdArgs, { cwd, stdio: 'inherit' }); return 0; }
     catch (e) { return e.status || 1; }
+  };
+  // THE SURFACE'S OWN LEDGER: one JSON line per search / exec / test taken
+  // through the goggles (the denial log holds the refused ones). Best-effort.
+  const _ledger = (file, record) => {
+    try {
+      const dir = join(toolkit, '.remembrance');
+      mkdirSync(dir, { recursive: true });
+      appendFileSync(join(dir, file), JSON.stringify({ ts: new Date().toISOString(), cwd: process.cwd(), ...record }) + '\n');
+    } catch (_) { /* the ledger never blocks the verb */ }
   };
   const VERBS = {
     // witness files into the substrate (sanitized at the doorway)
@@ -159,7 +170,50 @@ if (argv[0] === '--do') {
     //   goggles --do mint verify [--staged | --since-epoch | A..B | <rev>] [--deep]
     //   goggles --do mint install-hooks         the commit-msg hook, this repo
     //   goggles --do mint anchor [--status]     witness every repo's coin ledger on the chain
-    mint: () => run('python3', [join(toolkit, '.claude/skills/goggles/change-coin.py'), ...(rest.length ? rest : ['mint']), '--repo', process.cwd()], toolkit),
+    mint: () => {
+      const code = run('python3', [join(toolkit, '.claude/skills/goggles/change-coin.py'), ...(rest.length ? rest : ['mint']), '--repo', process.cwd()], toolkit);
+      // THE TRAP LEDGER GROWS ON ITS OWN (the operator's rule, 2026-09-12): a
+      // mint in the hub promotes every candidate trap that has earned it —
+      // the wall's repeated denials, the instrument's tells, an agent's own
+      // account (--do traps learn) — into the seed and syncs the mirrors, so
+      // a round that minted a coin also grew the ledger. Best-effort.
+      if (code === 0 && (!rest.length || rest[0] === 'mint') && resolve(process.cwd()) === resolve(toolkit)) {
+        try {
+          const tl = _require(join(toolkit, 'src/tools/trap-learner.js'));
+          const staged = tl.stageEarned();
+          if (staged.earned) {
+            run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), '--promote'], toolkit);
+            run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), '--sync'], toolkit);
+          }
+          tl.unstage();
+        } catch (e) { console.error('[traps] learner unavailable: ' + (e && e.message)); }
+      }
+      // THE GATES RIDE EVERY MINT (the operator's standing ask, wired
+      // 2026-09-17: "they should all be automatically loaded on use").
+      // A mint is the moment a round becomes history, so the ratchet
+      // battery's verdict — every gate, the contracts row included —
+      // prints with every coin. Report, never a block here: the commit
+      // hook and the runner enforce the coin; a red gate inherited from
+      // an earlier round must not deadlock the round that fixes it. What
+      // it removes is the silence — a gate can no longer go unlooked-at
+      // for a whole round, because the round's own mint says it out loud.
+      if (code === 0 && (!rest.length || rest[0] === 'mint')) {
+        // an open gate exits the battery nonzero, which execFileSync raises —
+        // the verdict still arrives on the thrown error's stdout; read it there
+        let g = '';
+        try {
+          g = execFileSync('node', [join(toolkit, '.claude/skills/goggles/run.mjs'), '--do', 'ratchets'],
+            { cwd: toolkit, encoding: 'utf8', timeout: 10 * 60 * 1000 });
+        } catch (e) { g = String((e && e.stdout) || ''); }
+        const lines = String(g || '').split('\n').filter((l) => l.trim());
+        const debt = lines.find((l) => l.includes('DEBT:'));
+        for (const l of lines.filter((l) => l.includes('✗'))) console.error('[gates] ' + l.trim());
+        console.error('[gates] ' + (debt ? debt.trim()
+          : (lines.some((l) => l.includes('✓')) ? 'every gate holds'
+            : 'battery did not answer — run: goggles --do ratchets')));
+      }
+      return code;
+    },
     // THE ONE RESONANCE SPACE — fit (or refresh) the per-layer whitening
     // reference every decoder cosine is taken in, on the canonical substrate.
     // Reads fit it on first use themselves; this is the explicit door.
@@ -174,6 +228,60 @@ if (argv[0] === '--do') {
       'F=' + JSON.stringify(join(HOME, 'remembrance-oracle-toolkit', '.remembrance', 'goggles-denials.jsonl')) +
       '; if [ -f "$F" ]; then echo "denials logged: $(wc -l < "$F")"; tail -' + (parseInt(rest[0], 10) || 40) + ' "$F"; ' +
       'else echo "no denials logged yet — the wall has not been hit on this host"; fi']),
+    // THE SEARCH VERB. Inside the ecosystem the wall refuses grep/rg/find/ls/
+    // cat/sed on the tree (2026-09-11: default-deny); this is the one door
+    // for a search, and every search is one JSON line in the ledger, so the
+    // count of hand searches is itself a reading (--do denials shows the
+    // refused ones; this shows the taken ones). Prefer --do resonance when
+    // the question is "what does this resemble".
+    //   goggles --do find <regex> [path] [rg flags…]
+    find: () => {
+      if (!rest[0]) { console.error('usage: --do find <regex> [path] [rg flags…]'); return 2; }
+      _ledger('goggles-finds.jsonl', { regex: rest[0], path: rest[1] || process.cwd() });
+      const pat = rest[0]; const p = rest[1] && !rest[1].startsWith('-') ? rest[1] : process.cwd();
+      const flags = rest.slice(rest[1] && !rest[1].startsWith('-') ? 2 : 1);
+      return run('rg', ['-n', '--no-heading', '--glob', '!node_modules', '--glob', '!*.min.js', ...flags, '-e', pat, p], process.cwd());
+    },
+    // THE EXEC VERB. Running a script by hand (python3 x.py / node x.js) is
+    // refused inside the ecosystem; a COMMITTED script runs through here, and
+    // the run is one JSON line in the ledger. Scratch files are refused:
+    // committed scripts are the record, scratch scripts are the leak (trap 29).
+    //   goggles --do exec <script> [args…]
+    exec: () => {
+      const script = rest[0];
+      if (!script) { console.error('usage: --do exec <git-tracked script> [args…]'); return 2; }
+      const abs = resolve(process.cwd(), script);
+      let tracked = false;
+      try { execFileSync('git', ['ls-files', '--error-unmatch', abs], { cwd: dirname(abs), stdio: 'ignore' }); tracked = true; } catch (_) { tracked = false; }
+      if (!tracked) {
+        console.error('GOGGLES — exec refused: ' + script + ' is not tracked by git. Commit the script (it is the record), or use --do call for a capability.');
+        return 2;
+      }
+      _ledger('goggles-exec.jsonl', { script: abs, args: rest.slice(1) });
+      const interp = /\.(mjs|cjs|js)$/.test(abs) ? 'node' : 'python3';
+      return run(interp, [abs, ...rest.slice(1)], process.cwd());
+    },
+    // THE TEST VERB. unittest/pytest/node --test by hand are refused inside
+    // the ecosystem; the repo's own tests run through here and are recorded.
+    // Python repos (Void): unittest over tests/ or the modules given; JS
+    // repos: node --test over tests/ or the files given.
+    //   goggles --do test [module|file …]
+    test: () => {
+      const here = process.cwd();
+      _ledger('goggles-tests.jsonl', { cwd: here, args: rest });
+      if (existsSync(join(here, 'tests')) && !existsSync(join(here, 'package.json'))) {
+        return run('python3', ['-m', 'unittest', ...(rest.length ? rest : ['discover', '-s', 'tests', '-t', '.']), '-v'], here);
+      }
+      if (rest.length) return run('node', ['--test', ...rest], here);
+      // the repo's own script when it has one (the hub's sets ENTROPY_PATH
+      // and the glob; `node --test tests/` took the directory for a module
+      // on this Node and found nothing — 2026-09-14)
+      try {
+        const pkg = JSON.parse(readFileSync(join(here, 'package.json'), 'utf8'));
+        if (pkg.scripts && pkg.scripts.test) return run('npm', ['test', '--silent'], here);
+      } catch (_) { /* no script: default discovery below */ }
+      return run('node', ['--test'], here);
+    },
     // COLLAPSE THE SCATTERED SUBSTRATE FILES INTO ONE STORE. Moves data,
     // measures nothing: no reading is recomputed and no time dimension added.
     //   goggles --do merge [--apply]
@@ -247,9 +355,38 @@ if (argv[0] === '--do') {
     // the tracked seed; `sync` writes the byte-identical mirror into every repo;
     // `floor` raises the count floor; `anchor` witnesses the seed on the chain.
     //   goggles --do traps [promote | sync | floor | anchor | status]
+    //   goggles --do traps learn <json | json-file>   record a mistake as a candidate
+    //          trap (wrong/truth/tell/correct[/match/severity]); an agent's own
+    //          account counts in full and is promoted by the next hub mint
     traps: () => {
       const sub = rest[0] || 'status';
       if (sub === 'anchor') return run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/scripts/anchor-traps.js'), ...rest.slice(1)], join(HOME, 'REMEMBRANCE-BLOCKCHAIN'));
+      if (sub === 'learn') {
+        if (!rest[1]) { console.error('usage: --do traps learn <json | json-file>'); return 2; }
+        _ledger('goggles-traps-learned.jsonl', { arg: rest[1].slice(0, 200) });
+        return run('node', [join(toolkit, 'src/tools/trap-learner.js'), rest[1]], toolkit);
+      }
+      // retract UNWITNESSED seed entries by `wrong` prefix (never below the
+      // floor, never past the chain anchor) — the way back when a promote
+      // took in what it should not have
+      if (sub === 'retract') {
+        if (!rest[1]) { console.error('usage: --do traps retract <wrong-prefix>'); return 2; }
+        const tl = _require(join(toolkit, 'src/tools/trap-learner.js'));
+        const r = tl.retract(rest[1]);
+        console.log(`[traps] retracted ${r.dropped} unwitnessed seed entr${r.dropped === 1 ? 'y' : 'ies'} (${r.kept} kept, ${r.witnessed} witnessed on the chain), ${r.localDropped} local candidate(s) dropped — sync the mirrors: --do traps sync`);
+        return 0;
+      }
+      // promote is EARNED-ONLY: a candidate enters the seed with count ≥ 3
+      // (an agent's own account counts in full; a wall denial counts one)
+      if (sub === 'promote') {
+        const tl = _require(join(toolkit, 'src/tools/trap-learner.js'));
+        const staged = tl.stageEarned();
+        let code = 0;
+        try { code = run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), '--promote', ...rest.slice(1)], toolkit); }
+        finally { tl.unstage(); }
+        if (staged.pending) console.log(`[traps] ${staged.pending} candidate(s) not yet earned (count < ${tl.REPEAT_TO_TRAP}) stay local`);
+        return code;
+      }
       const flag = { promote: '--promote', sync: '--sync', floor: '--save-baseline', status: '--json' }[sub];
       if (!flag) { console.error('goggles --do traps [promote | sync | floor | anchor | status]'); return 1; }
       return run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), flag, ...rest.slice(1)], toolkit);

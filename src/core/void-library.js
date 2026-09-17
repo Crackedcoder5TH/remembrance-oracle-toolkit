@@ -251,13 +251,20 @@ class VoidLibrary {
       if (store.error) {
         this._store = { rows: 0, error: store.error };
       } else {
-        const { rows, width, data, stems } = store;
+        const { rows, width, data, white, stems } = store;
+        // the raw rows (what drift readings compare, whitened by the decoder
+        // stack at the moment of comparison) and the same rows in the
+        // resonance space, whitened ONCE at export — the search engine is
+        // built from the latter and never whitens a stored row again
+        const whiteNames = new Array(rows);
         for (let i = 0; i < rows; i++) {
           const row = data.subarray(i * width, (i + 1) * width);
           const name = `store/${stems[i] || 'unknown'}#${i}`;
           composed.set(name, row);
+          whiteNames[i] = name;
         }
-        this._store = { rows, width, sha: store.sha };
+        this._store = { rows, width, sha: store.sha, key: store.key };
+        this._white = white ? { names: whiteNames, data: white, width } : null;
       }
       this._fractals = composed; // the loaded marker holds the ONE map
       this._composed = composed;
@@ -284,8 +291,23 @@ class VoidLibrary {
     this._ensureLoaded();
     if (!this._composed || this._composed.size === 0) return null;
     const fi = new FractalIndex();
+    // WHITENED ONCE (the operator, 2026-09-15): the store rows enter the
+    // engine in the resonance space they were exported in — whitened at the
+    // store boundary by store-export.js, never again here. Only what is not
+    // in the store yet — the witnessed index entries — is whitened as it
+    // enters the index. Before this, every process whitened all 48,233 rows
+    // to build the engine: 5.8 s of a 6.7 s goggle reading.
     const items = [];
-    for (const [name, vec] of this._composed) items.push({ id: name, vec });
+    const inStore = new Set(this._white ? this._white.names : []);
+    for (const [name, vec] of this._composed) {
+      if (!inStore.has(name)) items.push({ id: name, vec });
+    }
+    if (this._white) {
+      const { names, data, width } = this._white;
+      for (let i = 0; i < names.length; i++) {
+        items.push({ id: names[i], vec: data.subarray(i * width, (i + 1) * width), whitened: true });
+      }
+    }
     fi.rebuild(items);
     this._fractalIndex = fi;
     return fi;

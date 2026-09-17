@@ -413,8 +413,7 @@ class PostgresAdapter implements DbAdapter {
       if (leadIds.length === 0) return Ok([]);
       await this.initialize();
       const pool = await this.getPool();
-      const placeholders = leadIds.map((_, i) => `$${i + 1}`).join(",");
-      const result = await pool.query(`SELECT * FROM leads WHERE lead_id IN (${placeholders})`, leadIds);
+      const result = await pool.query("SELECT * FROM leads WHERE lead_id = ANY($1::text[])", [leadIds]);
       return Ok(result.rows.map(rowToLead));
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Query failed");
@@ -941,8 +940,7 @@ class SqliteAdapter implements DbAdapter {
       if (leadIds.length === 0) return Ok([]);
       const db = this.getDb();
       await this.initialize();
-      const placeholders = leadIds.map(() => "?").join(",");
-      const rows = db.prepare(`SELECT * FROM leads WHERE lead_id IN (${placeholders})`).all(...leadIds) as Record<string, unknown>[];
+      const rows = db.prepare("SELECT * FROM leads WHERE lead_id IN (SELECT value FROM json_each(?))").all(JSON.stringify(leadIds)) as Record<string, unknown>[];
       return Ok(rows.map(rowToLead));
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Query failed");

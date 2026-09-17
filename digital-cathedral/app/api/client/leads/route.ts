@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 
       // If purchased, show full info; otherwise gate it
       if (purchased) {
-        const operations = await getLeadOperationsSummary(lead.leadId);
+        const operations = await getLeadOperationsSummary(lead.leadId, { clientId: auth.clientId });
         return {
           leadId: lead.leadId,
           firstName: lead.firstName,

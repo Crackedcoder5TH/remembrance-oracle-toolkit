@@ -4238,6 +4238,87 @@
      "shape_sha256": "611073b1728a3fa57392a6a3e937e9b88178caf9eba2c0276d6e8f5b52397b60"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "6204ff96e5927b0b3e9ed74c4911f4bdc586e4fe0cc4d9c8accd9cd3d1290db7",
+   "minted_at": "2026-09-17T08:31:40+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "73af5f3d05dfa7f8aff4fb35beeec588ed7d4dc1",
+    "files": [
+     ".console-baseline.json",
+     "scripts/trap-learner-cli.js",
+     "seeds/gates.lock.json",
+     "src/core/field-memory.js",
+     "src/core/living-remembrance.js",
+     "src/core/store-export.js",
+     "src/core/store-path.js",
+     "src/core/whitening-reference.js",
+     "src/tools/goggles-bash-hook.js",
+     "src/tools/goggles-search-hook.js",
+     "src/tools/trap-learner.js",
+     "tests/field-entropy-damping.test.js"
+    ],
+    "diff_bytes": 28633,
+    "diff_sha256": "e226242bed646d43741e4d24c22193b89cd04f72a3fc1da1e66e59b9426c7f94",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.16230450205577307,
+    "ratio": 3.048333865644629,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "a9049cbabd89606b",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "e892b5746faa4aad035efb544cdcf7a6b6ef93c4e511aefb69c3f15faf1be1ca",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-17T08:31:40",
+     "coin": null,
+     "sig": "a9049cbabd89606b916aa88b6eab4f90a3865e8289cb27010dfd35f29534495a"
+    },
+    "library_size": 31681,
+    "memory": {
+     "fits": 605,
+     "served": 121,
+     "computed": 484,
+     "served_ancestor": 0,
+     "chunkings": 6,
+     "chunkings_served": 3,
+     "entries": 3115194,
+     "void_chunks": 60,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 61,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 2.448,
+    "basis_id": "1e565fb111da02ad",
+    "learned_n": 31609,
+    "learned_this_reading": 0,
+    "basis_after": "1e565fb111da02ad",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "1e565fb111da02ad",
+     "method": "v4_chunked",
+     "original_size": 28633,
+     "compressed_size": 9393,
+     "coherency": 0.16230450205577307,
+     "data_sha256": "0d0d049ab37ebaaba99c2891315897d1dccbef80ee9a86249210dd405a09ce8c",
+     "compressed_sha256": "d845c02f52adbf02fec11baf748172358e3324da45da12abe4e6383832e2c04f",
+     "shape_sha256": "dd7f1256cb7f97c62d3dc6527f24652820784f0cb7db10b4d5af1ebd2ca0f68a"
+    }
+   }
   }
  ]
 }

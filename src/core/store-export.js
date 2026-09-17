@@ -26,10 +26,7 @@ const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { createGate, requireGate } = require('./covenant-fractal');
 
-const HUB = path.resolve(__dirname, '..', '..');
-const HOME = process.env.ECOSYSTEM_HOME || path.resolve(HUB, '..');
-const VOID = process.env.VOID_ROOT || path.join(HOME, 'Void-Data-Compressor');
-const STORE = path.join(VOID, 'data', 'pattern_store.npz');
+const { HUB, VOID, STORE } = require('./store-path');   // the one leaf naming the store
 const SCRATCH = path.join(HUB, '.remembrance', 'store-export');
 
 // The one write — the export stamp — goes through the covenant gate.
@@ -56,7 +53,7 @@ function _referenceKey() {
     return c && typeof c.key === 'string' ? c.key : 'raw';
   } catch (_) { return 'raw'; }
 }
-_referenceKey.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_referenceKey.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function exportStore() {
   fs.mkdirSync(SCRATCH, { recursive: true });
@@ -91,7 +88,7 @@ function exportStore() {
   _writeStamp(_sealedGate(), stamp, key + '\n');
   return { npy, white, stems, sha, key, cached: false };
 }
-exportStore.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+exportStore.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0.67, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Read a little-endian float32 or float64 .npy (C order) into { rows, width, data }. */
 function readNpyF32(file) {

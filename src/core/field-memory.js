@@ -602,7 +602,7 @@ function _restoreFromLedgerFile(lp) {
     return null;
   }
 }
-_restoreFromLedgerFile.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_restoreFromLedgerFile.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 9, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Restore from the blockchain ledger — checking BOTH the live working
@@ -632,7 +632,7 @@ function _restoreFromLedger() {
   if (!committed) return local;
   return (committed.updateCount > local.updateCount) ? committed : local;
 }
-_restoreFromLedger.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_restoreFromLedger.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Restore from the committed bootstrap snapshot — the field histogram

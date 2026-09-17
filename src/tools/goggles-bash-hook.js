@@ -68,14 +68,14 @@ process.on('uncaughtException', (e) => {
       hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny',
         permissionDecisionReason: 'GOGGLES — WALL FAULT refused (fail closed)\n  ' + String(e && e.message || e) },
     }));
-  } catch (_) { /* nothing left to do */ }
+  } catch (e2) { quiet('tools:goggles-bash-hook:fault-write', e2); /* nothing left to do */ }
   process.exit(0);
 });
 
 let raw = '';
-try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { raw = ''; }
+try { raw = fs.readFileSync(0, 'utf8'); } catch (e) { quiet('tools:goggles-bash-hook:stdin', e); raw = ''; }
 let input = null;
-if (raw.trim()) { try { input = JSON.parse(raw); } catch (_) { input = null; } }
+if (raw.trim()) { try { input = JSON.parse(raw); } catch (e) { quiet('tools:goggles-bash-hook:parse', e); input = null; } }
 if (!input || typeof input !== 'object') {
   out('deny', 'GOGGLES — WALL FAULT refused (fail closed)\n  the hook received no parseable tool input; nothing runs on a blind wall.');
 }

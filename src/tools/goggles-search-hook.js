@@ -20,6 +20,7 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
+const { quiet } = require('../core/quiet');
 
 function out(decision, reason) {
   process.stdout.write(JSON.stringify({
@@ -33,9 +34,9 @@ process.on('uncaughtException', (e) => {
 });
 
 let raw = '';
-try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { raw = ''; }
+try { raw = fs.readFileSync(0, 'utf8'); } catch (e) { quiet('tools:goggles-search-hook:stdin', e); raw = ''; }
 let input = null;
-if (raw.trim()) { try { input = JSON.parse(raw); } catch (_) { input = null; } }
+if (raw.trim()) { try { input = JSON.parse(raw); } catch (e) { quiet('tools:goggles-search-hook:parse', e); input = null; } }
 if (!input || typeof input !== 'object') out('deny', 'GOGGLES — WALL FAULT refused (fail closed)\n  no parseable tool input.');
 
 const tool = String(input.tool_name || '');
@@ -45,7 +46,7 @@ let roots = [];
 try {
   roots = fs.readdirSync(ECO).map((d) => path.join(ECO, d)).filter((d) =>
     fs.existsSync(path.join(d, 'coins.ledger.json')) || fs.existsSync(path.join(d, '.claude', 'skills', 'goggles', 'run.mjs')));
-} catch (_) { roots = []; }
+} catch (e) { quiet('tools:goggles-search-hook:roots', e); roots = []; }
 const within = (p) => !!p && roots.some((r) => p === r || String(p).startsWith(r + path.sep));
 const cwd = String(input.cwd || process.env.PWD || process.cwd() || '');
 const target = ti.path || ti.file_path || '';
@@ -70,7 +71,7 @@ if (tool === 'Read') {
       fs.mkdirSync(dir, { recursive: true });
       fs.appendFileSync(path.join(dir, 'goggles-reads.jsonl'),
         JSON.stringify({ ts: new Date().toISOString(), file: path.resolve(cwd || '.', String(target)), cwd }) + '\n');
-    } catch (_) { /* the ledger never blocks a read */ }
+    } catch (e) { quiet('tools:goggles-search-hook:read-ledger', e); /* the ledger never blocks a read */ }
   }
   process.exit(0);
 }

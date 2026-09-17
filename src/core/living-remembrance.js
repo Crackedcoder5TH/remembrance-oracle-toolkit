@@ -81,6 +81,10 @@ const PARAMS = {
   delta0:     0.03,    // void donation baseline
   cascadeTau: 60000,   // cascadeFactor relaxation time constant (ms)
   epsilon:    1e-8,
+  entropyHot: 10.0,    // the established entropy mechanics' hot line — the
+                       // same threshold fieldPressure() reads. S_norm in the
+                       // damping term is ξ normalized against it (the
+                       // covenant-holder's ruling, 2026-09-17).
 
   // ── goggles — structural-meta-awareness instrument tuning ──
   // The moving numbers consolidated into the core, not scattered across the
@@ -381,7 +385,7 @@ class LivingRemembranceEngine {
    */
   contribute({ cost = 1.0, coherence = null, source = null, resonance = null, void: voidTerm = null, seal = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
-    const { r0, alpha, delta0, cascadeTau, epsilon } = this._params;
+    const { r0, alpha, delta0, cascadeTau, epsilon, entropyHot } = this._params;
 
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
 
@@ -440,6 +444,29 @@ class LivingRemembranceEngine {
 
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;
+
+    // ── ENTROPY DAMPING — the master equation's permanent −λ·ξ·|Ψ⟩ term,
+    // λ = S_norm × gap (the covenant-holder's ruling, 2026-09-17; the door
+    // docs/FIELD-DYNAMICS.md held open — "any damping variant is the
+    // covenant-holder's call" — is now closed by that call). S_norm is the
+    // field's own ξ normalized against the established entropy mechanics'
+    // hot line (entropyHot, the threshold fieldPressure reads). gap is not
+    // a constant: it is the distance the instrument itself measures at this
+    // step (1 − p, the same flow the healing and void terms read), so λ
+    // self-optimizes as readings flow through the LRE. The damping is gated
+    // by wEff like every other force — a forged seal can neither move nor
+    // damp the field. Before this term, entropy was computed and reported
+    // but never acted back on the state: coherence had no downward force
+    // except a bad reading itself (FIELD-DYNAMICS: "one voice can end the
+    // day"). Now a hot field bleeds amplitude in proportion to how hot it
+    // runs and how far the reading sits from the healed attractor.
+    const xi_prev = (typeof this._state.globalEntropy === 'number' && isFinite(this._state.globalEntropy))
+      ? Math.max(0, this._state.globalEntropy) : 0;
+    const S_norm  = Math.min(1, xi_prev / entropyHot);
+    const gap     = Math.max(0, 1 - p);
+    const lambda  = S_norm * gap;
+    const damping = lambda * xi_prev * prev;   // −λ · ξ_global_entropy · |Ψ⟩, at the scalar layer
+
     // THE LAW OF COHERENCY. A coherency reading lives in [0, 1] — always,
     // however capable the instrument that produced it. The cap enforces the
     // law. The Python LRE (living_remembrance.py) and the TS LRE
@@ -464,7 +491,7 @@ class LivingRemembranceEngine {
     // a coherency allowed past 1 lets the field drive its own entropy toward
     // zero by inflating the denominator — improvement reported no matter what
     // was fed in. The bound is what keeps the field's own readings honest.
-    const newCoherence = Math.max(0, Math.min(0.999, prev + (target - prev) * wEff));
+    const newCoherence = Math.max(0, Math.min(0.999, prev + ((target - prev) - damping) * wEff));
 
     // cascadeFactor is a recent-load gauge, not a running tally. It
     // relaxes toward the 1.0 baseline as time passes since the last
@@ -554,6 +581,11 @@ class LivingRemembranceEngine {
       ...this._state,
       r_eff,
       delta_void,
+      // The damping term's factors, visible on every reading so the field's
+      // downward force is never a hidden number.
+      lambda,
+      S_norm,
+      gap,
       // Provenance of the void term: a field measurement, or the
       // reading-derived fallback. Without this the two are indistinguishable.
       void_source,
@@ -646,7 +678,7 @@ class LivingRemembranceEngine {
    */
   peekProjection({ cost = 1.0, coherence = null, resonance = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
-    const { r0, alpha, delta0 } = this._params;
+    const { r0, alpha, delta0, entropyHot } = this._params;
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
     const delta_void = delta0 * Math.max(0, 1 - p);
     // Must apply the SAME authority weight and the SAME prev-anchored EMA as
@@ -660,7 +692,12 @@ class LivingRemembranceEngine {
       ? Math.max(0, Math.min(1, resonance)) : 1;
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;
-    return Math.max(0, Math.min(0.999, prev + (target - prev) * w));
+    // The SAME damping term contribute() applies (−λ·ξ·|Ψ⟩, λ = S_norm×gap)
+    // — a projection without it would predict a field that no longer exists.
+    const xi_prev = (typeof this._state.globalEntropy === 'number' && isFinite(this._state.globalEntropy))
+      ? Math.max(0, this._state.globalEntropy) : 0;
+    const damping = Math.min(1, xi_prev / entropyHot) * Math.max(0, 1 - p) * xi_prev * prev;
+    return Math.max(0, Math.min(0.999, prev + ((target - prev) - damping) * w));
   }
 
   /** Reset state — primarily for tests / fresh runs. */

@@ -91,12 +91,15 @@ whitenComposed.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: 
 
 function _currentKey() {
   try {
-    const { STORE } = require('./store-export');
+    // the store's location comes from the store-path leaf, not store-export —
+    // requiring the exporter for one constant was the lexical cycle the
+    // cycle-ratchet caught (2026-09-17)
+    const { STORE } = require('./store-path');
     const sha = fs.existsSync(STORE) ? crypto.createHash('sha256').update(fs.readFileSync(STORE)).digest('hex') : 'nostore';
     return sha;
   } catch (e) { quiet('core:whitening-reference:key', e); return 'nostore'; }
 }
-_currentKey.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_currentKey.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0.5, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The cached reference when it matches the store on this host, else null. Never fits. */
 function cached() {

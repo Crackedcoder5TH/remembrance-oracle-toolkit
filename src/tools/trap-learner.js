@@ -31,6 +31,7 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
+const { quiet } = require('../core/quiet');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const LOCAL = path.join(ROOT, '.remembrance', 'traps.json');
@@ -38,7 +39,7 @@ const DENIALS = path.join(ROOT, '.remembrance', 'goggles-denials.jsonl');
 const REPEAT_TO_TRAP = 3;          // the same wall rule hit this often on a host is a pattern
 
 function readLocal() {
-  try { return JSON.parse(fs.readFileSync(LOCAL, 'utf8')); } catch (_) { return { traps: [] }; }
+  try { return JSON.parse(fs.readFileSync(LOCAL, 'utf8')); } catch (e) { quiet('tools:trap-learner:read-local', e); return { traps: [] }; }
 }
 
 function writeLocal(doc) {
@@ -143,7 +144,7 @@ function retract(prefix) {
   const anchor = ratchet.chainAnchor();
   const witnessed = anchor ? anchor.count : 0;
   let floor = 0;
-  try { floor = JSON.parse(fs.readFileSync(path.join(ROOT, '.traps-baseline.json'), 'utf8')).count || 0; } catch (_) { /* no floor */ }
+  try { floor = JSON.parse(fs.readFileSync(path.join(ROOT, '.traps-baseline.json'), 'utf8')).count || 0; } catch (e) { quiet('tools:trap-learner:floor', e); /* no floor */ }
   const keep = [];
   const dropped = [];
   traps.forEach((t, i) => {
@@ -165,13 +166,8 @@ retract.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd",
 module.exports = { learn, learnDenial, earned, stageEarned, unstage, retract, readLocal, LOCAL, DENIALS, REPEAT_TO_TRAP };
 
 if (require.main === module) {
-  // node src/tools/trap-learner.js <json-file | json>   — record a candidate
-  const arg = process.argv[2];
-  if (!arg) { console.error('usage: trap-learner.js <json-file | json>'); process.exit(2); }
-  let traps;
-  try { traps = JSON.parse(fs.existsSync(arg) ? fs.readFileSync(arg, 'utf8') : arg); } catch (e) { console.error('not JSON: ' + e.message); process.exit(2); }
-  for (const trap of (Array.isArray(traps) ? traps : [traps])) {
-    const r = learn(trap, REPEAT_TO_TRAP, 'agent');
-    console.log(`[trap-learner] recorded "${r.key.slice(0, 80)}…" (count ${r.count}) → ${LOCAL}`);
-  }
+  // node src/tools/trap-learner.js <json-file | json>   — record a candidate.
+  // The print job lives in scripts/ where print is the job (console-ratchet);
+  // this module stays a pure library.
+  process.exitCode = require('../../scripts/trap-learner-cli').main(process.argv.slice(2));
 }

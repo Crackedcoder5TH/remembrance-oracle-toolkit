@@ -258,7 +258,10 @@ if (argv[0] === '--do') {
         return 2;
       }
       _ledger('goggles-exec.jsonl', { script: abs, args: rest.slice(1) });
-      const interp = /\.(mjs|cjs|js)$/.test(abs) ? 'node' : 'python3';
+      // interpreter by extension — .sh runs under sh (ecosystem-boot.sh was
+      // handed to python3 and died on line one, 2026-09-17); everything
+      // else keeps the js/python split
+      const interp = /\.(mjs|cjs|js)$/.test(abs) ? 'node' : (/\.sh$/.test(abs) ? 'sh' : 'python3');
       return run(interp, [abs, ...rest.slice(1)], process.cwd());
     },
     // THE TEST VERB. unittest/pytest/node --test by hand are refused inside

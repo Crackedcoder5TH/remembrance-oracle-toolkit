@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-17T08:29:02.452Z",
- "digest": "d19d995621ee077da07944cd25e9377263fc29ad79e1a6cb65b4f3437218275b",
+ "lockedAt": "2026-09-17T08:35:50.551Z",
+ "digest": "4b05f5cc7d0f6874215e2c50cd8955ae99080c2ff3200c34ff23792ccd5f5b02",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -25,7 +25,7 @@
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
-  ".claude/skills/goggles/run.mjs": "fc34db13f56d397d14631d1ef17897b078a82fdea408fb2ef21cf2c8f2c7a416",
+  ".claude/skills/goggles/run.mjs": "afca685698bf039e9858823f928c07d2ecf4bd4a1f62374764657c1c22960764",
   ".claude/skills/goggles/change-coin.py": "479eb572d334c2b967db3de6147fc32e7cc7683de4b7fd503dae8fc3a7d72648",
   "src/tools/goggles-bash-hook.js": "81c2408dd415876e25231ccc4ab103ad95556d32d39e135bf24754e600848165"
  },
@@ -226,6 +226,24 @@
    "reason": "silent-catch naming inside the wall: the bash hook's three bare swallows now record through quiet() (stdin, parse, fault-write); control flow and fail-closed behavior unchanged. Same round as the witness-mode relock.",
    "changed": [
     "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:34:31.964Z",
+   "from": "d19d995621ee077da07944cd25e9377263fc29ad79e1a6cb65b4f3437218275b",
+   "to": "d01eef7fcb49dceb67072b3583bc15b6b65fea53b2b3bc440221b4a207686482",
+   "reason": "the gates ride every mint: run.mjs prints the ratchet battery's verdict (every red gate + the DEBT line) after each coin — the operator's standing ask that traps, gates and contracts load automatically on use. Report, never a block.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:35:50.551Z",
+   "from": "d01eef7fcb49dceb67072b3583bc15b6b65fea53b2b3bc440221b4a207686482",
+   "to": "4b05f5cc7d0f6874215e2c50cd8955ae99080c2ff3200c34ff23792ccd5f5b02",
+   "reason": "the gates-on-mint wiring reads the battery's verdict off the nonzero exit too (an open gate exits the battery nonzero; the first cut dropped that output). Same ask, same round.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
    ]
   }
  ]

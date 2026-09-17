@@ -188,6 +188,30 @@ if (argv[0] === '--do') {
           tl.unstage();
         } catch (e) { console.error('[traps] learner unavailable: ' + (e && e.message)); }
       }
+      // THE GATES RIDE EVERY MINT (the operator's standing ask, wired
+      // 2026-09-17: "they should all be automatically loaded on use").
+      // A mint is the moment a round becomes history, so the ratchet
+      // battery's verdict — every gate, the contracts row included —
+      // prints with every coin. Report, never a block here: the commit
+      // hook and the runner enforce the coin; a red gate inherited from
+      // an earlier round must not deadlock the round that fixes it. What
+      // it removes is the silence — a gate can no longer go unlooked-at
+      // for a whole round, because the round's own mint says it out loud.
+      if (code === 0 && (!rest.length || rest[0] === 'mint')) {
+        // an open gate exits the battery nonzero, which execFileSync raises —
+        // the verdict still arrives on the thrown error's stdout; read it there
+        let g = '';
+        try {
+          g = execFileSync('node', [join(toolkit, '.claude/skills/goggles/run.mjs'), '--do', 'ratchets'],
+            { cwd: toolkit, encoding: 'utf8', timeout: 10 * 60 * 1000 });
+        } catch (e) { g = String((e && e.stdout) || ''); }
+        const lines = String(g || '').split('\n').filter((l) => l.trim());
+        const debt = lines.find((l) => l.includes('DEBT:'));
+        for (const l of lines.filter((l) => l.includes('✗'))) console.error('[gates] ' + l.trim());
+        console.error('[gates] ' + (debt ? debt.trim()
+          : (lines.some((l) => l.includes('✓')) ? 'every gate holds'
+            : 'battery did not answer — run: goggles --do ratchets')));
+      }
       return code;
     },
     // THE ONE RESONANCE SPACE — fit (or refresh) the per-layer whitening

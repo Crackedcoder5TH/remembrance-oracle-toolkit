@@ -16,7 +16,8 @@
 //   run.mjs --diff            goggle everything changed vs HEAD in this repo
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, appendFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';
 const _require = createRequire(import.meta.url);
@@ -198,14 +199,44 @@ if (argv[0] === '--do') {
       // it removes is the silence — a gate can no longer go unlooked-at
       // for a whole round, because the round's own mint says it out loud.
       if (code === 0 && (!rest.length || rest[0] === 'mint')) {
-        // an open gate exits the battery nonzero, which execFileSync raises —
-        // the verdict still arrives on the thrown error's stdout; read it there
-        let g = '';
-        try {
-          g = execFileSync('node', [join(toolkit, '.claude/skills/goggles/run.mjs'), '--do', 'ratchets'],
-            { cwd: toolkit, encoding: 'utf8', timeout: 10 * 60 * 1000 });
-        } catch (e) { g = String((e && e.stdout) || ''); }
-        const lines = String(g || '').split('\n').filter((l) => l.trim());
+        // THE VERDICT IS A READING, REMEMBERED (the plateau ruling,
+        // 2026-09-17: never recalculate what is already calculated). The
+        // gates read the hub and Void trees; a mint that did not move those
+        // trees cannot move the verdict. First cut re-RAN the whole battery
+        // on every mint — minutes per coin, eight times per sync round, the
+        // exact recalculation the ruling forbids. The verdict is now keyed
+        // on (hub HEAD + hub working tree, Void HEAD + Void working tree);
+        // a matching key prints the remembered verdict with its age, a
+        // moved tree re-runs the battery and re-remembers.
+        const _tree = (repo) => {
+          try {
+            const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
+            const dirty = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' });
+            return head + ':' + createHash('sha256').update(dirty).digest('hex').slice(0, 12);
+          } catch (_) { return 'unknown'; }
+        };
+        const key = _tree(toolkit) + '|' + _tree(join(HOME, 'Void-Data-Compressor'));
+        const cachePath = join(toolkit, '.remembrance', 'ratchets-verdict.json');
+        let cached = null;
+        try { cached = JSON.parse(readFileSync(cachePath, 'utf8')); } catch (_) { cached = null; }
+        let lines;
+        if (cached && cached.key === key && Array.isArray(cached.lines)) {
+          lines = cached.lines;
+          console.error('[gates] remembered verdict (trees unchanged since ' + cached.at + ')');
+        } else {
+          // an open gate exits the battery nonzero, which execFileSync
+          // raises — the verdict still arrives on the thrown error's stdout
+          let g = '';
+          try {
+            g = execFileSync('node', [join(toolkit, '.claude/skills/goggles/run.mjs'), '--do', 'ratchets'],
+              { cwd: toolkit, encoding: 'utf8', timeout: 10 * 60 * 1000 });
+          } catch (e) { g = String((e && e.stdout) || ''); }
+          lines = String(g || '').split('\n').filter((l) => l.trim());
+          try {
+            mkdirSync(join(toolkit, '.remembrance'), { recursive: true });
+            writeFileSync(cachePath, JSON.stringify({ key, at: new Date().toISOString(), lines: lines.filter((l) => l.includes('✗') || l.includes('DEBT:') || l.includes('✓')) }));
+          } catch (_) { /* the verdict still prints; only the memory failed */ }
+        }
         const debt = lines.find((l) => l.includes('DEBT:'));
         for (const l of lines.filter((l) => l.includes('✗'))) console.error('[gates] ' + l.trim());
         console.error('[gates] ' + (debt ? debt.trim()

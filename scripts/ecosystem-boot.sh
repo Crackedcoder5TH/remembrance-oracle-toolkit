@@ -42,6 +42,13 @@ if [ "${SKIP_CLONE:-0}" != "1" ]; then
       git -C "$dest" pull --ff-only || echo "[boot] $repo: pull failed, running on the clone as-is"
       continue
     fi
+    # baked without .git (Docker COPY of the build context strips or omits
+    # it): the repo is already here — cloning INTO a non-empty dir would
+    # fail the whole boot for a repo we already have
+    if [ -d "$dest" ] && [ -n "$(ls -A "$dest" 2>/dev/null)" ]; then
+      echo "[boot] $repo: present without .git (baked) — using as-is"
+      continue
+    fi
     if [ -n "${GITHUB_TOKEN:-}" ]; then
       url="https://x-access-token:${GITHUB_TOKEN}@github.com/$OWNER/$repo.git"
     else

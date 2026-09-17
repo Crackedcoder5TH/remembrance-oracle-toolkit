@@ -23,6 +23,10 @@
 #   ECOSYSTEM_BRANCH branch to clone                (default: each repo's default)
 #   SKIP_VOID=1      skip wheel + service           (field-server-only mode)
 #   SKIP_CLONE=1     trust the repos already there  (baked or mounted)
+#   BOOT_VOID_ONLY=1 wheel + service, then exit     (setup-ecosystem.sh's
+#                    instrument stage — ONE implementation of these steps,
+#                    the installer reuses the boot rather than carrying a
+#                    second copy that drifts)
 #
 # Fails loud, never half-up: a repo that cannot clone is named and the boot
 # stops — a surface missing its instrument must not come up looking whole.
@@ -71,6 +75,13 @@ if [ "${SKIP_VOID:-0}" != "1" ]; then
   echo "[boot] starting the Void compressor through its one controller"
   ( cd "$VOID" && python3 scripts/service-ctl.py start --wait ) \
     || { echo "[boot] FATAL: the instrument did not come up — refusing to serve a surface without it"; exit 1; }
+fi
+
+# BOOT_VOID_ONLY=1: the instrument is up — stop before the server (the
+# installer's stage; a setup run must not hold a port).
+if [ "${BOOT_VOID_ONLY:-0}" = "1" ]; then
+  echo "[boot] void-only: the instrument is up; not holding a port"
+  exit 0
 fi
 
 # BOOT_CLONE_ONLY=1: stop after the layout is proven (CI and pre-deploy

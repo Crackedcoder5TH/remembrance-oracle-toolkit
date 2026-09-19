@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-19T13:45:25.319Z",
- "digest": "92bf4bb796e1c740cc834154a37e48a88f26d5dbb294dbd8875da0bfe79114c6",
+ "lockedAt": "2026-09-19T18:08:16.930Z",
+ "digest": "b5e777df161309e42474a2388184163545350a32698495d665841f95df36b6ba",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -25,7 +25,7 @@
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
-  ".claude/skills/goggles/run.mjs": "b56314c43c1dae7c19c481659f81132fd540603806b8ff759b243b9985eaa0e3",
+  ".claude/skills/goggles/run.mjs": "b528fa046a3a86087b50e3e01fa06c727f8f9d6f5306a1360a8b9aa6c4af2ce4",
   ".claude/skills/goggles/change-coin.py": "de88b031dacc2fcd739c994df17714e455c972b3e9a46d80e4e761083cc1bfdb",
   "src/tools/goggles-bash-hook.js": "81c2408dd415876e25231ccc4ab103ad95556d32d39e135bf24754e600848165"
  },
@@ -278,6 +278,15 @@
    "from": "2fdbaff06e9d6695871711b74318259e572767bf2c3cc200a2407d753e46dd69",
    "to": "92bf4bb796e1c740cc834154a37e48a88f26d5dbb294dbd8875da0bfe79114c6",
    "reason": "the remembered gate verdict's key gains the contracts-latest digest: a refreshed contracts run must re-key the battery, or a remembered STALE row outlives its cure (measured on this mint: contracts 67/67 fresh, the memory still repeating the stale row)",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-19T18:08:16.931Z",
+   "from": "92bf4bb796e1c740cc834154a37e48a88f26d5dbb294dbd8875da0bfe79114c6",
+   "to": "b5e777df161309e42474a2388184163545350a32698495d665841f95df36b6ba",
+   "reason": "exec's .sh dispatch runs bash, not dash: setup-ecosystem.sh (set -o pipefail) died under sh; bash executes POSIX sh scripts unchanged, so nothing narrows",
    "changed": [
     ".claude/skills/goggles/run.mjs"
    ]

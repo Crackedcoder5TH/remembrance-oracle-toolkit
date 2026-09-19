@@ -303,7 +303,9 @@ if (argv[0] === '--do') {
       // interpreter by extension — .sh runs under sh (ecosystem-boot.sh was
       // handed to python3 and died on line one, 2026-09-17); everything
       // else keeps the js/python split
-      const interp = /\.(mjs|cjs|js)$/.test(abs) ? 'node' : (/\.sh$/.test(abs) ? 'sh' : 'python3');
+      // bash, not sh: tracked scripts use bash-isms (setup-ecosystem.sh's
+      // `set -o pipefail` died under dash, 2026-09-19); bash runs POSIX sh too
+      const interp = /\.(mjs|cjs|js)$/.test(abs) ? 'node' : (/\.sh$/.test(abs) ? 'bash' : 'python3');
       return run(interp, [abs, ...rest.slice(1)], process.cwd());
     },
     // THE TEST VERB. unittest/pytest/node --test by hand are refused inside

@@ -44,10 +44,26 @@ all repos cloned at boot. To finish on the Railway dashboard:
 1. Set `SUBSTRATE_LEADS=1` and `SUBSTRATE_MESSAGES=1`. New leads,
    messages and outcomes then flow to the substrate through the bridge
    with zero code change.
-2. Migrate existing rows once: read every lead/message row out of the
-   current pg/sqlite store and replay each through the bridge's
-   `storeRecord` (`lead:<id>` / message records, same facet tags the
-   live path writes). Append-only, idempotent by id — safe to rerun.
+2. Migrate existing rows once: `digital-cathedral/scripts/`
+   `migrate-to-substrate.mjs` (BUILT + PIPE-PROVEN 2026-09-19). It reads
+   the source the way `database.ts` resolves it (pg via `DATABASE_URL`,
+   else sqlite; `--source-json` for air-gapped replays), mirrors the live
+   write path's shapes verbatim (`lead:<id>` records + facet tags;
+   message records `name=tag`, `content=subject\nbody`, `meta.message`),
+   speaks the bridge's own MCP wire, and BYTE-COMPARES every record read
+   back. Idempotent by stable id — rerunnable. Measured on the live
+   field server via `--test-fixture`: 3/3 leads and 2/2 messages stored
+   and read back identical, 0 mismatches, all 5 fixture records deleted
+   after (store verified back to 0/0). For the production run,
+   `--export <p>` writes exactly what moved so the instrument takes a
+   sealed reading of it (`goggles --do read <p>`), and every record is
+   coherence-scored by the field as it enters.
+   Runbook, on the deployment host:
+   `node scripts/migrate-to-substrate.mjs --dry-run` (counts) →
+   `node scripts/migrate-to-substrate.mjs --export leads-moved.json` →
+   `goggles --do read leads-moved.json` (the sealed reading) →
+   `node scripts/migrate-to-substrate.mjs --verify-only` (re-audit any
+   time; exits nonzero on any divergence).
 3. Leave the SQL store mounted read-only for one release as the
    comparison shadow; `database.ts` already knows how to serve from
    either side.

@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-17T23:09:29.375Z",
- "digest": "633fe311619aaa31e01c41dbce66c96745ecaddb3b45903bbb39cf55a03dc310",
+ "lockedAt": "2026-09-19T10:10:50.498Z",
+ "digest": "2fdbaff06e9d6695871711b74318259e572767bf2c3cc200a2407d753e46dd69",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -26,7 +26,7 @@
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
   ".claude/skills/goggles/run.mjs": "9aebb74225e9e263f98de0c96115f44db1d25b14a6ef7e93ca7d73ed2534dd8c",
-  ".claude/skills/goggles/change-coin.py": "479eb572d334c2b967db3de6147fc32e7cc7683de4b7fd503dae8fc3a7d72648",
+  ".claude/skills/goggles/change-coin.py": "de88b031dacc2fcd739c994df17714e455c972b3e9a46d80e4e761083cc1bfdb",
   "src/tools/goggles-bash-hook.js": "81c2408dd415876e25231ccc4ab103ad95556d32d39e135bf24754e600848165"
  },
  "history": [
@@ -262,6 +262,15 @@
    "reason": "the plateau applied to the gates themselves: the mint-time battery verdict is a remembered reading keyed on the hub+Void tree state, re-run only when a tree moved — the first cut re-ran the full battery on every mint, minutes per coin, the recalculation the ruling forbids. Also the boot skips a baked repo without .git instead of failing the clone into it.",
    "changed": [
     ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-19T10:10:50.498Z",
+   "from": "633fe311619aaa31e01c41dbce66c96745ecaddb3b45903bbb39cf55a03dc310",
+   "to": "2fdbaff06e9d6695871711b74318259e572767bf2c3cc200a2407d753e46dd69",
+   "reason": "the coin rule's birthday becomes explicit: since_epoch honors a tracked .coin-epoch marker (first token = the last pre-epoch commit), so moving the epoch is a committed, witnessed act instead of a history rewrite. Void's marker sits at merge 96a22a87, covering the trailerless a814cd0db3 and the three foreign-key seals its side branch carried. The operator's ruling, 2026-09-19.",
+   "changed": [
+    ".claude/skills/goggles/change-coin.py"
    ]
   }
  ]

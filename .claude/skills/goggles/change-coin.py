@@ -754,7 +754,24 @@ def verify_many(repo: str, revs: list[str], key: bytes | None, deep: bool) -> in
 
 
 def since_epoch(repo: str, cap: int = 2000) -> list[str]:
-    revs = git(repo, 'rev-list', '--topo-order', '-n', str(cap), 'HEAD').split()
+    """Commits the coin rule covers. The rule's BIRTHDAY is explicit when the
+    repo carries `.coin-epoch` (tracked): the first token is a commit sha, and
+    that commit with all its ancestors is pre-epoch — the rule's promise
+    starts after it. Moving the birthday is a visible, committed act (the
+    operator's ruling, 2026-09-19, for commits minted before enforcement or
+    on keys no living host holds), never a history rewrite. Without the
+    marker, the epoch stays implicit: every commit that carries the ledger."""
+    stop = []
+    ep = os.path.join(repo, '.coin-epoch')
+    if os.path.isfile(ep):
+        try:
+            with open(ep) as f:
+                tok = f.read().split()
+            if tok and re.fullmatch(r'[0-9a-f]{7,40}', tok[0]):
+                stop = [f'^{tok[0]}']
+        except OSError:
+            pass
+    revs = git(repo, 'rev-list', '--topo-order', '-n', str(cap), 'HEAD', *stop).split()
     out = []
     for c in revs:
         if subprocess.run(['git', '-C', repo, 'cat-file', '-e', f'{c}:{LEDGER}'], capture_output=True).returncode == 0:

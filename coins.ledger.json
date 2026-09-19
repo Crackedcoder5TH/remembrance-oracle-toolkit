@@ -4749,6 +4749,225 @@
      "shape_sha256": "54bf384aac67aec440b6c9b908615f179d067af498ef36c39cba8b8ae0a75945"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "18ffe1abccae0dc5d6edfa7a701fc49c87b6592e19090e595b5bc9ba82bf1df3",
+   "minted_at": "2026-09-19T13:41:11+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "093e0a526834bf05cf92e76586caeb2293eeb0e9",
+    "files": [
+     "docs/valor-legacies-integration.md",
+     "seeds/traps.seed.json",
+     "src/tools/goggles.js"
+    ],
+    "diff_bytes": 10556,
+    "diff_sha256": "ebcca4374ed311b60a5d7b27265d50b132ce082b8b81f9c81825ed7f19016a59",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.14897762189121513,
+    "ratio": 2.2637786832511257,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "2c58598e79fb4541",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "2a4475e1c2ff2776ad69fca724eef44e9520411455decf1b1ffcf8faf7bacf47",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-19T13:41:11",
+     "coin": null,
+     "sig": "2c58598e79fb454102fee8b2469daf0e6c565e566c90d0c53b25937bfbc2015f"
+    },
+    "library_size": 28421,
+    "memory": {
+     "fits": 230,
+     "served": 45,
+     "computed": 185,
+     "served_ancestor": 0,
+     "chunkings": 6,
+     "chunkings_served": 3,
+     "entries": 3532181,
+     "void_chunks": 23,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 23,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 0.469,
+    "basis_id": "e004c73284ef6bf9",
+    "learned_n": 28349,
+    "learned_this_reading": 0,
+    "basis_after": "e004c73284ef6bf9",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "e004c73284ef6bf9",
+     "method": "v4_chunked",
+     "original_size": 10556,
+     "compressed_size": 4663,
+     "coherency": 0.14897762189121513,
+     "data_sha256": "c0b2eb19837802dc5094de2f301a7c7e7309899a3f2449c797f0c6a3f8b26fb3",
+     "compressed_sha256": "339b63e251c76e1c70f736429e297952df0d9f7417b9ca575163a32d3639c5a4",
+     "shape_sha256": "e7dbfc021f71ba120837eb8003ca1f9c2cb8e517971cf43d8d26e246a879e40a"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "1c1aa72c3c5ffa963c2d6728c8d059b58557a0f74564ffe8fb6b6f41dbf252e6",
+   "minted_at": "2026-09-19T13:45:08+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "093e0a526834bf05cf92e76586caeb2293eeb0e9",
+    "files": [
+     ".claude/skills/goggles/run.mjs",
+     "docs/valor-legacies-integration.md",
+     "seeds/traps.seed.json",
+     "src/tools/goggles.js"
+    ],
+    "diff_bytes": 12053,
+    "diff_sha256": "2865d289f6e537469a90721a183491a76e1af58e6e6cfe6362088044f7a34960",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.1530329923987194,
+    "ratio": 2.306794258373206,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "3ae99b398cfec46d",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "a1d87d391d729e71d5971c2aa63dc098c78cee6b9ddb4b1a968a218aeea762a8",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-19T13:45:08",
+     "coin": null,
+     "sig": "3ae99b398cfec46dd1dbcbd3255eeac2bd7e089795aaf9b6dd19c70b5744d1d6"
+    },
+    "library_size": 28520,
+    "memory": {
+     "fits": 259,
+     "served": 51,
+     "computed": 208,
+     "served_ancestor": 0,
+     "chunkings": 6,
+     "chunkings_served": 3,
+     "entries": 3533161,
+     "void_chunks": 26,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 26,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 0.52,
+    "basis_id": "ba8bf4a54ce96dc7",
+    "learned_n": 28448,
+    "learned_this_reading": 0,
+    "basis_after": "ba8bf4a54ce96dc7",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "ba8bf4a54ce96dc7",
+     "method": "v4_chunked",
+     "original_size": 12053,
+     "compressed_size": 5225,
+     "coherency": 0.1530329923987194,
+     "data_sha256": "e820d1c88bde8362241e2c5d501d81c7876ea7dc931a875130c5457eb515f35f",
+     "compressed_sha256": "8598510878d9f68071836dd27ba31c3f675e6098d230bf9e7535b9589f379ad3",
+     "shape_sha256": "4f4f898bea4010a81bcb8bc7a0a5e38e0b5d15660b1a1e5e889452505c7fb70e"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "58b6a4deb09426355ce8b5556ff08ff9273f86e0d1319417d08a9f0ff9f66615",
+   "minted_at": "2026-09-19T13:45:36+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "093e0a526834bf05cf92e76586caeb2293eeb0e9",
+    "files": [
+     ".claude/skills/goggles/run.mjs",
+     "docs/valor-legacies-integration.md",
+     "seeds/gates.lock.json",
+     "seeds/traps.seed.json",
+     "src/tools/goggles.js"
+    ],
+    "diff_bytes": 14546,
+    "diff_sha256": "d5ef651c9143a9af5fdcac46d68faf01ca4bb0e417fbb490a9fd026ddb12b350",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.15426927080067446,
+    "ratio": 2.2993993044577934,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "6b4407af69ef0d35",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "ae9656cbb4902724d1bd83b68ca56467c18bb2aab02605fb52a3a966d29f071f",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-19T13:45:36",
+     "coin": null,
+     "sig": "6b4407af69ef0d355adf4aeddb9ef77518b5ac22b0d16de277db36724eb6708e"
+    },
+    "library_size": 28520,
+    "memory": {
+     "fits": 315,
+     "served": 172,
+     "computed": 143,
+     "served_ancestor": 0,
+     "chunkings": 6,
+     "chunkings_served": 3,
+     "entries": 3533307,
+     "void_chunks": 19,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 19,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 0.443,
+    "basis_id": "ba8bf4a54ce96dc7",
+    "learned_n": 28448,
+    "learned_this_reading": 0,
+    "basis_after": "ba8bf4a54ce96dc7",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "ba8bf4a54ce96dc7",
+     "method": "v4_chunked",
+     "original_size": 14546,
+     "compressed_size": 6326,
+     "coherency": 0.15426927080067446,
+     "data_sha256": "d001395862399588eb2402211f2994d486e508decbe45b14714a796f6e4eb462",
+     "compressed_sha256": "66be4e4ea711c8dc4518ba537909bd469650836bcc2f7c476bb751adab73e401",
+     "shape_sha256": "c548b5f63485f9194838c81de4707ae1fec4b569ea0dd88b7b0038d7183d6bee"
+    }
+   }
   }
  ]
 }

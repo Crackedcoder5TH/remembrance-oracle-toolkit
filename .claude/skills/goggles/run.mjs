@@ -215,7 +215,18 @@ if (argv[0] === '--do') {
             return head + ':' + createHash('sha256').update(dirty).digest('hex').slice(0, 12);
           } catch (_) { return 'unknown'; }
         };
-        const key = _tree(toolkit) + '|' + _tree(join(HOME, 'Void-Data-Compressor'));
+        // The contracts verdict lives untracked in Void/.remembrance, so the
+        // trees alone cannot see it refresh — a re-run of --do contracts must
+        // re-key the battery or a remembered STALE row outlives its cure
+        // (measured 2026-09-19: contracts 67/67 fresh, mint still repeating
+        // the stale row from memory).
+        const _contracts = () => {
+          try {
+            return createHash('sha256').update(readFileSync(
+              join(HOME, 'Void-Data-Compressor', '.remembrance', 'contracts-latest.json'))).digest('hex').slice(0, 12);
+          } catch (_) { return 'none'; }
+        };
+        const key = _tree(toolkit) + '|' + _tree(join(HOME, 'Void-Data-Compressor')) + '|' + _contracts();
         const cachePath = join(toolkit, '.remembrance', 'ratchets-verdict.json');
         let cached = null;
         try { cached = JSON.parse(readFileSync(cachePath, 'utf8')); } catch (_) { cached = null; }

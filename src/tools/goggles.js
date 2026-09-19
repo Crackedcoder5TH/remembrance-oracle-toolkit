@@ -763,11 +763,18 @@ function consonanceVerdict(meanTopK, best) {
 consonanceVerdict.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
- * Is auto-ingest on for this read? Default ON — looking witnesses.
+ * Is auto-ingest on for this read? Default OFF — the no-auto-teaching
+ * ruling (the operator's, 2026-09-19, superseding 2026-09-12's "looking
+ * witnesses"): the library grows by a deliberate act, not as a side effect
+ * of every look, until the instrument holds far more patterns. Measured
+ * before the flip: one editing session's goggle views and edit-hook
+ * readings taught 279 rows nobody asked for (library 27,902 → 28,181).
+ * Every reading still runs through the compressor and still enters the
+ * field — measure everything, learn on command.
  *
- * Resolution order is most-specific-wins so the toggle exists at every level
- * someone would reasonably want it: a single command, a shell or hook, or a
- * whole repo. Returns a boolean; never throws.
+ * Resolution order is most-specific-wins so the door back in exists at
+ * every level: a single command, a shell or hook, or a whole repo.
+ * Returns a boolean; never throws.
  */
 function resolveAutoIngest(absFile) {
   const argv = process.argv.slice(2);
@@ -795,7 +802,7 @@ function resolveAutoIngest(absFile) {
     }
   } catch (_) { quiet('tools:goggles:String', _); /* unreadable config must not disable witnessing */ }
 
-  return true;   // default ON
+  return false;   // default OFF (no auto teaching, 2026-09-19)
 }
 resolveAutoIngest.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
@@ -826,20 +833,19 @@ function main() {
   }
 
   const language = LANG_BY_EXT[path.extname(abs)] || 'text';
-  // AUTO-INGEST — on by default. Looking at a file WITNESSES it.
+  // AUTO-INGEST — off by default (the no-auto-teaching ruling, 2026-09-19).
   //
-  // This was hardcoded `growSubstrate: false`, so reading never grew the
-  // substrate: goggling a file moved updateCount by exactly 0 and every file
-  // read "drifted from substrate memory — re-harvest to re-witness". The
-  // substrate only learned when explicitly harvested, which meant the act of
-  // looking and the act of remembering were separate chores.
-  //
-  // Now the read ingests unless told otherwise. Precedence, most specific
-  // first, so a turn-off is always available at the level you need it:
-  //   --no-ingest / --ingest      per invocation
-  //   GOGGLES_AUTO_INGEST=0/1     per shell or per hook
-  //   .remembrance/goggles.json   { "autoIngest": false }  per repo
-  //   default                     ON
+  // History: this was hardcoded `growSubstrate: false` (looking never
+  // taught), then defaulted ON 2026-09-12 ("looking witnesses"), and is now
+  // OFF again by the operator's ruling: the library grows by a deliberate
+  // act until the instrument holds far more patterns. The reading itself is
+  // unchanged — it runs through the compressor and enters the field.
+  // Precedence, most specific first, so the door back in is always
+  // available at the level you need it:
+  //   --ingest / --no-ingest      per invocation
+  //   GOGGLES_AUTO_INGEST=1/0     per shell or per hook
+  //   .remembrance/goggles.json   { "autoIngest": true }  per repo
+  //   default                     OFF
   const autoIngest = resolveAutoIngest(abs);
   const r = ft.read({ content, name: file, language },
     { source: 'goggles', growSubstrate: autoIngest, topK: top });

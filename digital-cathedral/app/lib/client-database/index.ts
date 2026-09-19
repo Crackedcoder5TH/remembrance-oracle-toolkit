@@ -67,16 +67,31 @@ function getClientAdapter(): ClientDbAdapter {
 export async function createClient(client: ClientRecord) { return getClientAdapter().insertClient(client); }
 export async function getClientById(clientId: string) { return getClientAdapter().getClientById(clientId); }
 export async function getClientByEmail(email: string) { return getClientAdapter().getClientByEmail(email); }
-export async function updateClient(clientId: string, updates: Partial<ClientRecord>) { return getClientAdapter().updateClient(clientId, updates); }
+export async function updateClient(clientId: string, updates: Partial<ClientRecord>) {
+  if (!clientId.trim() || !updates || typeof updates !== "object") throw new TypeError("Client id and updates are required");
+  return getClientAdapter().updateClient(clientId, updates);
+}
 export async function getFilteredClients(filters: ClientListFilters) { return getClientAdapter().getFilteredClients(filters); }
 export async function getClientFilters(clientId: string) { return getClientAdapter().getClientFilters(clientId); }
 export async function upsertClientFilters(filters: ClientFilters) { return getClientAdapter().upsertClientFilters(filters); }
 export async function createPurchase(purchase: LeadPurchase) { return getClientAdapter().insertPurchase(purchase); }
-export async function createPurchaseGuarded(purchase: LeadPurchase, maxBuyers: number) { return getClientAdapter().insertPurchaseGuarded(purchase, maxBuyers); }
-export async function getPurchasesByClient(clientId: string, limit?: number, offset?: number) { return getClientAdapter().getPurchasesByClient(clientId, limit, offset); }
+export async function createPurchaseGuarded(purchase: LeadPurchase, maxBuyers: number) {
+  if (!purchase?.purchaseId || !Number.isInteger(maxBuyers) || maxBuyers < 1) throw new TypeError("Purchase and a positive buyer limit are required");
+  return getClientAdapter().insertPurchaseGuarded(purchase, maxBuyers);
+}
+export async function getPurchasesByClient(clientId: string, limit?: number, offset?: number) {
+  if (!clientId.trim() || (limit !== undefined && limit < 0) || (offset !== undefined && offset < 0)) throw new TypeError("Valid client id and pagination are required");
+  return getClientAdapter().getPurchasesByClient(clientId, limit, offset);
+}
 export async function getPurchasesByLead(leadId: string) { return getClientAdapter().getPurchasesByLead(leadId); }
-export async function updatePurchaseStatus(purchaseId: string, status: LeadPurchase["status"], returnReason?: string) { return getClientAdapter().updatePurchaseStatus(purchaseId, status, returnReason); }
-export async function getAllPurchases(limit?: number, offset?: number, status?: string) { return getClientAdapter().getAllPurchases(limit, offset, status); }
+export async function updatePurchaseStatus(purchaseId: string, status: LeadPurchase["status"], returnReason?: string) {
+  if (!purchaseId.trim() || !status) throw new TypeError("Purchase id and status are required");
+  return getClientAdapter().updatePurchaseStatus(purchaseId, status, returnReason);
+}
+export async function getAllPurchases(limit?: number, offset?: number, status?: string) {
+  if ((limit !== undefined && limit < 0) || (offset !== undefined && offset < 0) || (status !== undefined && !status.trim())) throw new TypeError("Valid pagination and status are required");
+  return getClientAdapter().getAllPurchases(limit, offset, status);
+}
 export async function getClientDailyPurchaseCount(clientId: string) { return getClientAdapter().getClientDailyPurchaseCount(clientId); }
 export async function getClientMonthlyPurchaseCount(clientId: string) { return getClientAdapter().getClientMonthlyPurchaseCount(clientId); }
 export async function getClientStats() { return getClientAdapter().getClientStats(); }

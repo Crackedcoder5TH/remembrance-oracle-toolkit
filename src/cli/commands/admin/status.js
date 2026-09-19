@@ -254,11 +254,6 @@ ${c.bold('Environment:')}
     outErr(c.boldRed('Error:') + ` Unknown ecosystem subcommand: ${sub}`);
   };
 }
-registerStatusCommands.atomicProperties = {
-  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.5, group: 14, period: 4,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'orchestration',
-};
+registerStatusCommands.atomicProperties = { charge: 0, valence: 8, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { registerStatusCommands };

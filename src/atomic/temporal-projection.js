@@ -92,6 +92,7 @@ function _autocorrPeak(w) {
   // list treated any numeric-looking return field as a coherence signal.
   return __retVal;
 }
+_autocorrPeak.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _trendStrength(w) {
   const n = w.length;
@@ -116,6 +117,7 @@ function _trendStrength(w) {
   const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
   return { slope, intercept, r2 };
 }
+_trendStrength.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Internal: single-pass classification returning both the bucket and a
@@ -144,6 +146,7 @@ function _classifyWithStrength(w) {
   }
   return { label: 'unknown', strength: 0 };
 }
+_classifyWithStrength.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function classifyWaveform(w) {
   return _classifyWithStrength(w).label;
@@ -301,24 +304,9 @@ module.exports = {
   computeRetrocausalAlignment,
 };
 
-computeRetrocausalAlignment.atomicProperties = {
-  charge: 1, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'oracle',
-};
-projectForward.atomicProperties = {
-  charge: 1, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
-  domain: 'oracle',
-};
-classifyWaveform.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+computeRetrocausalAlignment.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+projectForward.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+classifyWaveform.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's

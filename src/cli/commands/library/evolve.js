@@ -236,6 +236,7 @@ function registerEvolveCommands(handlers, deps) {
     out(`\nLibrary: ${c.bold(String(pStats.totalPatterns))} proven + ${c.bold(String(cStats.totalCandidates))} candidates`);
   };
 }
+registerEvolveCommands.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 
 module.exports = { registerEvolveCommands };

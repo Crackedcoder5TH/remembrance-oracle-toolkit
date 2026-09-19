@@ -15,6 +15,7 @@ const { WEIGHTS } = require('../unified/coherency');
 function _markerRe() {
   return new RegExp('\\b(' + ['TO' + 'DO', 'FIX' + 'ME', 'HA' + 'CK', 'X' + 'XX', 'ST' + 'UB'].join('|') + ')\\b');
 }
+_markerRe.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const COHERENCY_ADVICE = {
   syntaxValid: {
@@ -241,5 +242,6 @@ function coherencyFeedback(code, coherencyScore, threshold = 0.6) {
 
   return feedback;
 }
+coherencyFeedback.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { COHERENCY_ADVICE, REFLECTION_ADVICE, coherencyFeedback };

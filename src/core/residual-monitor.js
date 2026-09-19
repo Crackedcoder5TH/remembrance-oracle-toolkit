@@ -39,6 +39,7 @@ function _namespaceOf(name) {
   const slash = name.indexOf('/');
   return slash < 0 ? name : name.slice(0, slash);
 }
+_namespaceOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _topLevelDomain(name) {
   // Two-level prefix for finer distinct-domain check:
@@ -48,6 +49,7 @@ function _topLevelDomain(name) {
   const parts = String(name || '').split('/');
   return parts.slice(0, Math.min(2, parts.length)).join('/');
 }
+_topLevelDomain.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _sampleIndices(n, k) {
   // Deterministic-spread sample so two runs over the same substrate
@@ -60,6 +62,7 @@ function _sampleIndices(n, k) {
   for (let i = 0; i < k; i++) out.push(Math.floor(i * step));
   return out;
 }
+_sampleIndices.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Core: residual measurement ──────────────────────────────────
 
@@ -75,10 +78,10 @@ function _sampleIndices(n, k) {
  *   - if cosine ≥ 0.99 AND the cousin is in a different top-level
  *     domain, count as a false-equivalence
  *
- * NOTE: this implementation operates on L1-only substrate data
- * (the format pattern_index_fractal.json stores). For depth > 1,
- * it composes from source text where available; when not, falls
- * back to L1 cosine alone.
+ * ONE WIDTH, ONE SPACE (2026-09-07): the substrate holds every entry's
+ * canonical 232-D decoder vector (`composed`); the residual is measured
+ * over that vector carried into the whitened reference. It used to read
+ * the 29-D L1 alone, in the raw cone.
  *
  * @param {object} opts
  *   substratePath: path to pattern_index_fractal.json
@@ -100,9 +103,14 @@ function measureResidual(opts = {}) {
   const trigger = opts.residualTrigger || DEFAULT_RESIDUAL_TRIGGER;
 
   const idx = JSON.parse(fs.readFileSync(path, 'utf8'));
+  // ONE WIDTH, ONE SPACE. The residual is measured over the canonical 232-D
+  // vector carried into the whitened reference — this used to read the 29-D
+  // L1 alone, so "false equivalence at depth" was judged on the shallowest
+  // layer only, in the raw cone (trap 49).
+  const { toSpace } = require('./resonance-space');
   const entries = Object.entries(idx.index)
-    .map(([name, entry]) => ({ name, fractal: entry.fractal }))
-    .filter(e => Array.isArray(e.fractal) && e.fractal.length === 29);
+    .filter(([, entry]) => Array.isArray(entry.composed) && entry.composed.length % 29 === 0 && entry.composed.length >= 4 * 29)
+    .map(([name, entry]) => ({ name, vec: (toSpace(entry.composed) || { vec: entry.composed }).vec }));
 
   const depth = currentDepth();
   const probes = _sampleIndices(entries.length, probeCount).map(i => entries[i]);
@@ -113,7 +121,7 @@ function measureResidual(opts = {}) {
     let bestIdx = -1, bestCos = -1;
     for (let j = 0; j < entries.length; j++) {
       if (entries[j].name === probe.name) continue;
-      const c = _cosineL1(probe.fractal, entries[j].fractal);
+      const c = _cosineL1(probe.vec, entries[j].vec);
       if (c > bestCos) { bestCos = c; bestIdx = j; }
     }
     if (bestIdx < 0) continue;
@@ -162,6 +170,7 @@ function _cosineL1(a, b) {
   if (na < 1e-12 || nb < 1e-12) return 0;
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
+_cosineL1.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Entanglement with compression ────────────────────────────────
 
@@ -215,5 +224,5 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-measureResidual.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-checkAndSpawn.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+measureResidual.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 13, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+checkAndSpawn.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -9,7 +9,7 @@ const {
   classifyAlignment,
   inspectAlignmentMarkers,
 } = require('../src/core/abundance-classifier');
-const { composedAtDepth } = require('../src/core/decoder-stack');
+const { composedAtDepth, currentDepth } = require('../src/core/decoder-stack');
 
 // ── Synthetic series with known geometry ─────────────────────────
 
@@ -33,15 +33,19 @@ const abundantSeries = () => {
 };
 
 describe('classifySignature', () => {
-  it('rejects vectors that are not depth-4 composed', () => {
+  it('rejects anything but the canonical 232-D decoder vector (a checkpoint alone, the retired 256, nothing)', () => {
     assert.throws(() => classifySignature(new Float64Array(29)));
     assert.throws(() => classifySignature(null));
     assert.throws(() => classifySignature(new Float64Array(58)));
+    assert.throws(() => classifySignature(composedAtDepth('const x = 1;', 4)), 'the 116-D depth-4 checkpoint alone is not the vector');
+    assert.throws(() => classifySignature(new Float64Array(256)), 'the retired width is refused');
   });
 
-  it('accepts a 116-D vector and returns the full shape', () => {
-    const v = composedAtDepth('const x = 1;', 4);
-    assert.equal(v.length, COMPOSED_DIM);
+  it('accepts the canonical 232-D vector, reads its L1–L4 blocks, and returns the full shape', () => {
+    const { currentDepth } = require('../src/core/decoder-stack');
+    const v = composedAtDepth('const x = 1;', currentDepth());
+    assert.equal(v.length, 232);
+    assert.equal(COMPOSED_DIM, 116, 'the markers live in the first four layers of the one vector');
     const r = classifySignature(v);
     assert.ok(r.extraction >= 0 && r.extraction <= 1);
     assert.ok(r.abundance >= 0 && r.abundance <= 1);
@@ -51,7 +55,7 @@ describe('classifySignature', () => {
   });
 
   it('is deterministic for the same input', () => {
-    const v = composedAtDepth(extractiveSeries(), 4);
+    const v = composedAtDepth(extractiveSeries(), currentDepth());
     const a = classifySignature(v);
     const b = classifySignature(v);
     assert.deepEqual(a, b);
@@ -105,7 +109,7 @@ describe('classifyAlignment — lexicon tilt', () => {
     // geometry, classifyAlignment adds the lexicon. Their difference
     // is exactly the lexicon contribution, bounded by LEXICON_WEIGHT.
     const text = 'share gift regenerate commons ' + extractiveSeries();
-    const geometryOnly = classifySignature(composedAtDepth(text, 4));
+    const geometryOnly = classifySignature(composedAtDepth(text, currentDepth()));
     const withLexicon = classifyAlignment(text);
     assert.ok(Math.abs(withLexicon.alignment - geometryOnly.alignment) <= 0.151);
     assert.ok(withLexicon.lexiconTilt > 0);

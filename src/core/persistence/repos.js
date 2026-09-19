@@ -190,29 +190,9 @@ function crossRepoSearch(description, options = {}) {
 }
 
 
-discoverRepoStores.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-registerRepo.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'odd', phase: 'gas',
-  reactivity: 'high', electronegativity: 0, group: 6, period: 3,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-listRepos.atomicProperties = {
-  charge: 0, valence: 0, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'medium', electronegativity: 0, group: 6, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-crossRepoSearch.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+discoverRepoStores.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+registerRepo.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+listRepos.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+crossRepoSearch.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 10, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { REPOS_CONFIG_PATH, crossRepoSearch, discoverRepoStores, listRepos, registerRepo };

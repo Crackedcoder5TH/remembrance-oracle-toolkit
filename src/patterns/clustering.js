@@ -36,6 +36,7 @@ function codeSimilarity(a, b) {
   const union = new Set([...bigramsA, ...bigramsB]).size;
   return union > 0 ? intersection / union : 0;
 }
+codeSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function toBigrams(text) {
   const normalized = text.replace(/\s+/g, ' ').toLowerCase();
@@ -45,6 +46,7 @@ function toBigrams(text) {
   }
   return bigrams;
 }
+toBigrams.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Compute combined similarity between two patterns.
@@ -65,6 +67,7 @@ function patternSimilarity(a, b) {
 
   return { total, structural, code };
 }
+patternSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Cluster patterns by similarity using single-linkage agglomerative clustering.
@@ -155,6 +158,7 @@ function clusterPatterns(patterns, options = {}) {
 
   return clusters;
 }
+clusterPatterns.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Find cross-domain isomorphisms — patterns that are structurally similar
@@ -199,6 +203,7 @@ function findIsomorphisms(patterns, options = {}) {
 
   return results.sort((a, b) => b.similarity.structural - a.similarity.structural);
 }
+findIsomorphisms.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 function inferDomainFromTags(tags) {
   const tagStr = tags.join(' ').toLowerCase();
@@ -211,6 +216,7 @@ function inferDomainFromTags(tags) {
   if (/\b(validate|check|schema)\b/.test(tagStr)) return 'validation';
   return 'general';
 }
+inferDomainFromTags.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   clusterPatterns,

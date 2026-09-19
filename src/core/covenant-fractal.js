@@ -66,12 +66,7 @@ function scanForUngatedMutations(code) {
   }
   return findings;
 }
-scanForUngatedMutations.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 12, period: 3,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+scanForUngatedMutations.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function requireGate(fn) {
   const gated = function (...args) {
@@ -88,12 +83,7 @@ function requireGate(fn) {
   gated.__originalFn = fn;
   return gated;
 }
-requireGate.atomicProperties = {
-  charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.6, group: 18, period: 4,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+requireGate.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function createGate() {
   return {
@@ -108,6 +98,7 @@ function createGate() {
     },
   };
 }
+createGate.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function stableStringify(obj) {
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
@@ -115,18 +106,14 @@ function stableStringify(obj) {
   const keys = Object.keys(obj).sort();
   return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
 }
+stableStringify.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function signSubstrate(data) {
   const content = stableStringify(data);
   const hash = createHash('sha256').update(content).digest('hex');
   return { hash, signedAt: new Date().toISOString(), algorithm: 'sha256' };
 }
-signSubstrate.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.4, group: 16, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'security',
-};
+signSubstrate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function verifySubstrate(data, signature) {
   if (!signature || !signature.hash) return { valid: false, reason: 'no signature' };
@@ -134,6 +121,7 @@ function verifySubstrate(data, signature) {
   if (expected.hash !== signature.hash) return { valid: false, reason: 'hash mismatch', expected: expected.hash, actual: signature.hash };
   return { valid: true };
 }
+verifySubstrate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function computeFileCovenantSignature(fileContent, filePath = '') {
   const contentHash = createHash('sha256').update(fileContent).digest('hex');
@@ -152,12 +140,7 @@ function computeFileCovenantSignature(fileContent, filePath = '') {
     combined: createHash('sha256').update(contentHash + ':' + covenantHash).digest('hex'),
   };
 }
-computeFileCovenantSignature.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.4, group: 16, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'security',
-};
+computeFileCovenantSignature.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "low", electronegativity: 0, group: 16, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * covenantGroupCoherence — primary self-measurement at fractal scale 7.
@@ -212,12 +195,7 @@ function covenantGroupCoherence(periodicTable, options) {
   } catch (_) { quiet('core:covenant-fractal:__recordCost', _); /* best-effort */ }
   return __retVal;
 }
-covenantGroupCoherence.atomicProperties = {
-  charge: 0, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.8, group: 18, period: 6,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+covenantGroupCoherence.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 13, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 const HARM_ORDER = { none: 0, minimal: 1, moderate: 2, dangerous: 3 };
 
@@ -252,12 +230,7 @@ function checkMonotonicEvolution(proposed, existingRegistry) {
     monotonic: violations.length === 0,
   };
 }
-checkMonotonicEvolution.atomicProperties = {
-  charge: 1, valence: 2, mass: 'medium', spin: 'odd', phase: 'solid',
-  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 6,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+checkMonotonicEvolution.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 function verifyCrossScaleAlignment(scaleReports) {
   const { byteHarm, elementHarm, compositionHarm } = scaleReports || {};
@@ -278,12 +251,7 @@ function verifyCrossScaleAlignment(scaleReports) {
     reason: aligned ? 'scales agree within one level' : 'harm-definition gap between scales',
   };
 }
-verifyCrossScaleAlignment.atomicProperties = {
-  charge: 0, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+verifyCrossScaleAlignment.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // scanForMissingAtomicProperties — every top-level function in the
 // codebase must declare its atomicProperties { charge, valence, mass,
@@ -345,12 +313,7 @@ function scanForMissingAtomicProperties(code) {
   }
   return findings;
 }
-scanForMissingAtomicProperties.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.55, group: 12, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+scanForMissingAtomicProperties.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "low", electronegativity: 0, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function fractalAudit(ctx) {
   const report = {};
@@ -374,12 +337,7 @@ function fractalAudit(ctx) {
   report.ranAt = new Date().toISOString();
   return report;
 }
-fractalAudit.atomicProperties = {
-  charge: 1, valence: 4, mass: 'heavy', spin: 'odd', phase: 'plasma',
-  reactivity: 'reactive', electronegativity: 0.95, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+fractalAudit.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   scanForUngatedMutations,

@@ -17,25 +17,368 @@
  * Fails open on any internal error.
  */
 const fs = require('node:fs');
+const { quiet } = require('../core/quiet');
+const { createGate, requireGate } = require('../core/covenant-fractal');
+const _appendDenial = requireGate((gate, file, line) => fs.appendFileSync(file, line));
+const _denialGate = () => createGate().seal({ charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid', reactivity: 'inert', electronegativity: 0.2, group: 12, period: 2, harmPotential: 'none', alignment: 'neutral', intention: 'benevolent', domain: 'audit' });
 
 function out(decision, reason) {
+  // THE DENIAL LOG (leak map: "the measurement that makes this durable").
+  // Every deny is appended as one JSON line — timestamp, the rule's first
+  // line, the command (truncated). The stream IS the ongoing leak map: a
+  // recurring denial is a Class-A weld working; a novel one is the next
+  // verb to build. When it goes quiet across fresh sessions, the surface
+  // is closed. Read it: goggles --do denials. Best-effort, never blocks.
+  if (decision === 'deny') {
+    try {
+      const path = require('node:path');
+      const dir = path.join(__dirname, '..', '..', '.remembrance');
+      fs.mkdirSync(dir, { recursive: true });
+      _appendDenial(_denialGate(), path.join(dir, 'goggles-denials.jsonl'), JSON.stringify({
+        ts: new Date().toISOString(),
+        rule: String(reason).split('\n')[0].trim(),
+        cmd: String(cmd).slice(0, 300),
+      }) + '\n');
+      // THE LEDGER LEARNS FROM THE WALL (2026-09-12): every denial is a
+      // candidate trap in the local learned store; the same rule hit three
+      // times on a host earns promotion at the next hub mint (trap-learner.js).
+      // (the wall's own tests exercise denials on purpose: GOGGLES_NO_TRAP_LEARN=1
+      // keeps a test run from teaching the ledger — found 2026-09-12 when
+      // thirteen test denials were promoted into the seed)
+      if (!process.env.GOGGLES_NO_TRAP_LEARN) {
+        try { require('./trap-learner').learnDenial(reason, cmd); } catch (e) { quiet('tools:goggles-bash-hook:trap-learn', e); }
+      }
+    } catch (e) { quiet('tools:goggles-bash-hook:denial-log', e); }
+  }
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: decision, permissionDecisionReason: reason },
   }));
   process.exit(0);
 }
-out.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+out.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "degrading", intention: "neutral", domain: "utility" };
+// FAIL CLOSED. This wall used to fail open on any internal error ("never
+// blocks"), and settings.json wraps it in `|| true` — so a crash, a parse
+// error or an unreadable stdin let the command through in silence. A wall
+// that opens when it breaks is a wall with a door in it (2026-09-11: three
+// denials in a round of hundreds of off-surface commands). Any internal
+// error is now a denial that names itself.
+process.on('uncaughtException', (e) => {
+  try {
+    process.stdout.write(JSON.stringify({
+      hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny',
+        permissionDecisionReason: 'GOGGLES — WALL FAULT refused (fail closed)\n  ' + String(e && e.message || e) },
+    }));
+  } catch (e2) { quiet('tools:goggles-bash-hook:fault-write', e2); /* nothing left to do */ }
+  process.exit(0);
+});
+
 let raw = '';
-try { raw = fs.readFileSync(0, 'utf8'); } catch (_) { process.exit(0); }
-let input; try { input = JSON.parse(raw || '{}'); } catch (_) { process.exit(0); }
+try { raw = fs.readFileSync(0, 'utf8'); } catch (e) { quiet('tools:goggles-bash-hook:stdin', e); raw = ''; }
+let input = null;
+if (raw.trim()) { try { input = JSON.parse(raw); } catch (e) { quiet('tools:goggles-bash-hook:parse', e); input = null; } }
+if (!input || typeof input !== 'object') {
+  out('deny', 'GOGGLES — WALL FAULT refused (fail closed)\n  the hook received no parseable tool input; nothing runs on a blind wall.');
+}
 const cmd = (input.tool_input || {}).command || '';
-if (!cmd || cmd.length < 40) process.exit(0);
+if (!cmd) process.exit(0);
+
+// ── 0. THE WALL IS DEFAULT-DENY INSIDE THE ECOSYSTEM ────────────────────────
+//
+// Until 2026-09-11 this hook was a list of known bypasses; everything else
+// ran. Measured over one round: 3 denials against hundreds of grep / sed /
+// git-log / hand-run-script commands, and two wrong turns that came straight
+// from searching by hand instead of asking the instrument. The operator's
+// rule: the goggles are the ONLY surface for anything done in the codebase,
+// for any model, without exception. So inside an ecosystem repo (the shell's
+// cwd, or any command that names a repo path) a command runs only if every
+// simple command in it is one of:
+//   · the goggles themselves          node …/.claude/skills/goggles/run.mjs …
+//   · git                             the coin hook already gates commit
+//   · shell glue                      cd pwd echo printf true false exit sleep test [ : export
+//   · a pure text filter AFTER A PIPE grep head tail cut sort uniq wc tr awk sed jq tee cat python3
+//     (filtering what the goggles printed is not a search of the codebase;
+//      the inline checks below still run on that python3)
+// Everything else — grep/rg/find/ls/cat/sed on the tree, python3 or node on
+// a file, npm, pytest, curl, rm, cp, mv — is refused with the verb to use.
+// Outside the ecosystem (the scratchpad) the shell is yours, and the
+// bypass-specific checks below still apply everywhere.
+(function defaultDeny() {
+  const path = require('node:path');
+  const ECO = path.resolve(__dirname, '..', '..', '..');
+  let roots = [];
+  try {
+    roots = fs.readdirSync(ECO).map((d) => path.join(ECO, d)).filter((d) => {
+      try { return fs.existsSync(path.join(d, 'coins.ledger.json')) || fs.existsSync(path.join(d, '.claude', 'skills', 'goggles', 'run.mjs')); }
+      catch (_) { return false; }
+    });
+  } catch (_) { roots = []; }
+  if (!roots.length) return;
+  const cwd = String(input.cwd || process.env.PWD || process.cwd() || '');
+  const within = (p) => roots.some((r) => p === r || p.startsWith(r + path.sep));
+  const inside = within(cwd) || roots.some((r) => cmd.includes(r));
+  if (!inside) return;
+
+  // Shape the text: heredoc bodies and quoted strings are data, not commands;
+  // $(…) and `…` hold commands, so they open a new segment.
+  let text = cmd.replace(/<<-?\s*['"]?(\w+)['"]?[^\n]*\n[\s\S]*?\n\1[ \t]*(?=\n|$)/g, ' ')
+    .replace(/'[^']*'/g, ' Q ').replace(/"(?:[^"\\]|\\.)*"/g, ' Q ')
+    .replace(/\$\(/g, ' ; ').replace(/`/g, ' ; ').replace(/[()]/g, ' ');
+  const parts = text.split(/(\|\||&&|;|\n|\|)/);
+  const GLUE = new Set(['cd', 'pwd', 'echo', 'printf', 'true', 'false', 'exit', 'return', 'sleep', 'test', '[', '[[', ':', 'export', 'break', 'continue', 'wait']);
+  const FILTER = new Set(['grep', 'egrep', 'fgrep', 'head', 'tail', 'cut', 'sort', 'uniq', 'wc', 'tr', 'awk', 'sed', 'jq', 'tee', 'cat', 'python3', 'python', 'xargs', 'column', 'nl', 'tac', 'rev']);
+  const KEYWORDS = new Set(['do', 'done', 'then', 'else', 'elif', 'fi', 'if', 'while', 'until', 'esac', '{', '}', '!', 'in']);
+  const GOGGLES = /\.claude\/skills\/goggles\/run\.mjs\b/;
+  let afterPipe = false;
+  for (const part of parts) {
+    if (part === '|') { afterPipe = true; continue; }
+    if (part === '||' || part === '&&' || part === ';' || part === '\n') { afterPipe = false; continue; }
+    let seg = part.trim();
+    if (!seg) continue;
+    let words = seg.split(/\s+/);
+    // strip keywords, env assignments and wrappers to reach the command word
+    for (;;) {
+      const w = words[0];
+      if (w === undefined) break;
+      if (KEYWORDS.has(w)) { words.shift(); continue; }
+      if (w === 'for' || w === 'case' || w === 'select') { words = []; break; }   // no command in the head
+      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(w)) { words.shift(); continue; }
+      if (w === 'timeout') { words.shift(); while (words.length && /^-/.test(words[0])) words.shift(); words.shift(); continue; }
+      if (w === 'env' || w === 'exec' || w === 'nice' || w === 'command' || w === 'builtin') { words.shift(); continue; }
+      break;
+    }
+    const word = words[0];
+    if (!word) continue;
+    const base = path.basename(word);
+    if (GLUE.has(base)) continue;
+    if (base === 'git') continue;
+    if (base === 'node' || base === 'nodejs') {
+      if (GOGGLES.test(seg)) continue;
+      out('deny',
+        'GOGGLES — OFF-SURFACE COMMAND refused (node on a file)\n' +
+        '  Inside the ecosystem, node runs only the goggles. To run a committed script or a capability:\n' +
+        '        node .claude/skills/goggles/run.mjs --do exec <script> [args]     (git-tracked scripts only)\n' +
+        '        node .claude/skills/goggles/run.mjs --do call <path>#<fn> \'<json>\'\n' +
+        '        node .claude/skills/goggles/run.mjs --do test [args]\n' +
+        '  segment: ' + seg.slice(0, 120));
+    }
+    if (afterPipe && FILTER.has(base)) continue;
+    out('deny',
+      'GOGGLES — OFF-SURFACE COMMAND refused (' + base + ')\n' +
+      '  Inside the ecosystem the goggles are the only surface, for any model, without exception.\n' +
+      '  The shell is allowed only for git, glue (cd/echo/…) and text filters AFTER a pipe from the goggles.\n' +
+      '  Use the verb for what you meant:\n' +
+      '        --do find <regex> [path]        search the tree (recorded)   — instead of grep/rg/find/ls/cat/sed\n' +
+      '        --do resonance | --do cluster    what a pattern resembles     — instead of searching by hand\n' +
+      '        --do read <file>                 a reading of data\n' +
+      '        --do state | --do contracts | --do gate <name> | --do ratchets | --do traps status\n' +
+      '        --do exec <script> [args]        run a git-tracked script (recorded) — instead of python3/node on a file\n' +
+      '        --do test [args]                 the repo\'s own tests           — instead of unittest/pytest/node --test\n' +
+      '        --do call <path>#<fn> \'<json>\'   run a capability\n' +
+      '        --do service status|start|stop   the instrument\'s lifecycle\n' +
+      '  Outside the ecosystem (the scratchpad) the shell is yours.\n' +
+      '  segment: ' + seg.slice(0, 120));
+  }
+})();
+// NOTE: the old `cmd.length < 40` early-exit lived HERE — which let every
+// short command skip every check, including RAW_GOGGLES (`node
+// src/tools/goggles.js x.js` is ~30 chars). The length gate now sits just
+// before the inline-analysis section, which is the only part it was ever
+// meant to cheapen. Full-command welds below run on every command.
+
+// ── CHECKS THAT APPLY TO EVERY COMMAND ──────────────────────────────────────
+//
+// These run BEFORE the inline gate below, because the inline gate is exactly
+// how this hook was walked around for a whole working session (2026-08-12).
+// It refused `node -e "require('./src/core/void-service')…"` correctly — so
+// the bypass simply moved: write the same logic to a file in a scratch dir,
+// then run the file. Not inline, so the hook exited at the gate and never
+// looked. A gate that watches one doorway is a gate with a wall next to it.
+
+// 1. THE RAW TOOL PATH. The goggles are ONE surface: `run.mjs`. Invoking the
+//    underlying script directly gets a plausible-looking read with none of the
+//    routed verbs (--do ratchets / call / field / drift …) — the reader then
+//    believes they used the instrument. Measured: an entire session of
+//    `node src/tools/goggles.js <file>` while `--do` was never available on
+//    that path at all.
+const RAW_GOGGLES = /\bnode\s+\S*src\/(?:tools\/goggles(?:-fp)?|cli)\.js\b/;
+if (RAW_GOGGLES.test(cmd)) {
+  out('deny',
+    'GOGGLES — RAW TOOL PATH refused\n' +
+    '  src/tools/goggles.js is the implementation, not the surface. It has no --do verbs,\n' +
+    '  so a read taken this way silently misses everything the goggles can actually drive.\n' +
+    '  Use:  node .claude/skills/goggles/run.mjs <file>        (focused read)\n' +
+    '        node .claude/skills/goggles/run.mjs --map          (macro map)\n' +
+    '        node .claude/skills/goggles/run.mjs --diff         (changed vs HEAD)\n' +
+    '        node .claude/skills/goggles/run.mjs --do <verb>    (drive the substrate)');
+}
+
+// 2. THE SCRATCH SCRIPT. A measurement written to a temp file and executed is
+//    the same bypass as an inline one, minus the enforcement — and it is the
+//    shape an assistant reaches for most naturally, because writing code is
+//    cheaper than finding the verb that already does it. Only DENY when the
+//    script actually reaches into the ecosystem: a pure codemod over fs/path
+//    is honest work and stays allowed.
+const SCRATCH_RUN = /\b(?:node|python3?)\s+((?:\/tmp\/|\/var\/tmp\/)\S+\.(?:js|mjs|cjs|py))/;
+const scratch = cmd.match(SCRATCH_RUN);
+if (scratch) {
+  let body = '';
+  try { body = fs.readFileSync(scratch[1], 'utf8'); } catch (_) { body = ''; }
+  // Match the ECOSYSTEM PATH anywhere in the body, not only inside a require().
+  // Found by immediately violating this rule while writing it: a scratch script
+  // that shells out — execSync('node src/tools/…') — names the module as a
+  // STRING, so a require-only check reads it as an honest codemod and lets it
+  // through. Shelling out is the same bypass wearing a different quote.
+  const REACHES_ECOSYSTEM =
+    /['"`][^'"`]*(?:src\/(?:core|tools|audit|atomic|compression|patterns)\/|scripts\/[a-z-]*ratchet)[^'"`]*['"`]/.test(body)
+    || /\b(?:import|from)\s+(?:fractal_decoder|void_compressor(?:_v\d)?|coherency_v\d|living_remembrance|resonance_detector|compressor_service)\b/.test(body);
+  if (REACHES_ECOSYSTEM) {
+    out('deny',
+      'GOGGLES — SCRATCH-SCRIPT BYPASS refused\n' +
+      '  ' + scratch[1] + ' reaches into ecosystem modules and is being run outside the goggles.\n' +
+      '  Writing the measurement is not cheaper than finding it: the substrate already owns\n' +
+      '  these readings, and one taken this way is invisible to everything that tracks them.\n' +
+      '  Use:  node .claude/skills/goggles/run.mjs --do <verb>\n' +
+      '        node .claude/skills/goggles/run.mjs --do call <repo>/<path>#<fn> [jsonArg …]\n' +
+      '  If no verb or export reaches what you need, that is a MISSING VERB to report — not a bypass.\n' +
+      '  (A scratch script that only uses fs/path — a codemod, a fixture — is fine and not denied.)');
+  }
+}
+
+// ── CLASS-A WELDS (from docs/GOGGLES-LEAK-MAP.md) ───────────────────────────
+// Each of these is a door an agent walked through in a measured session while
+// the verb already existed (or exists now). Every deny names the verb — a
+// wall without a signpost just breeds the next workaround.
+
+// 3. THE CONTRACTS by hand. `python3 verify_capabilities.py` invoked directly
+//    is the truth-spine read outside the surface (>=6 times in one session).
+//    The goggles' own `--do contracts` runs the same script as a child of
+//    run.mjs, which never passes through this hook — so the verb is unaffected.
+const RAW_CONTRACTS = /\bpython3?\s+\S*verify_capabilities\.py\b/;
+if (RAW_CONTRACTS.test(cmd)) {
+  out('deny',
+    'GOGGLES — CONTRACTS BY HAND refused\n' +
+    '  verify_capabilities.py is the truth-spine; read it through the surface so the\n' +
+    '  reading is the one everything else tracks.\n' +
+    '  Use:  node .claude/skills/goggles/run.mjs --do contracts [--strict] [--id C-NN]');
+}
+
+// 4. SERVICE LIFECYCLE by hand. Zombie processes, duplicate starts and silent
+//    3-minute loads cost one measured session 30+ minutes — all from managing
+//    compressor_service with pkill/nohup/python3 directly. `--do service` is
+//    idempotent and reports HEALTHY/LOADING/DOWN/ZOMBIE with evidence.
+//    (pgrep/ps stay open: read-only diagnosis is not a mutation.)
+const RAW_SERVICE = /\b(?:python3?\s+\S*compressor_service\.py\b|(?:pkill|killall)\s+(?:-\S+\s+)*['"]?[^'"|;]*compressor_service)/;
+if (RAW_SERVICE.test(cmd)) {
+  out('deny',
+    'GOGGLES — SERVICE LIFECYCLE BY HAND refused\n' +
+    '  Hand-managed starts/kills are how zombies and duplicate services happen.\n' +
+    '  Use:  node .claude/skills/goggles/run.mjs --do service status\n' +
+    '        node .claude/skills/goggles/run.mjs --do service start [--wait]\n' +
+    '        node .claude/skills/goggles/run.mjs --do service stop | restart');
+}
+
+// 5. THE INSTRUMENT'S PORT by hand. curl to the compressor endpoints is a
+//    reading nothing else can see (and /compress on text is trap #1's classic
+//    mistake). `--do read` labels the reading via:'void:compress_signal';
+//    `--do service status` owns /health.
+const RAW_PORT = /\bcurl\b[^|;&]*\b(?:127\.0\.0\.1|localhost):8765(\/[a-z_]*)?/;
+const m = cmd.match(RAW_PORT);
+if (m) {
+  const route = m[1] || '';
+  if (route === '/health' || route === '' || route === '/') {
+    out('deny',
+      'GOGGLES — SERVICE HEALTH BY HAND refused\n' +
+      '  Use:  node .claude/skills/goggles/run.mjs --do service status\n' +
+      '  (HEALTHY / LOADING / DOWN / ZOMBIE, with evidence — not a silent empty curl.)');
+  }
+  out('deny',
+    'GOGGLES — INSTRUMENT PORT BY HAND refused (' + route + ')\n' +
+    '  A reading taken by raw curl is invisible to everything that tracks readings,\n' +
+    '  and /compress on text is the classic trap-#1 misread.\n' +
+    '  Use:  node .claude/skills/goggles/run.mjs --do read <file> [--json]\n' +
+    '        node .claude/skills/goggles/run.mjs --do read --series \'[1,2,...]\'\n' +
+    '  Other endpoints route through --do call / --do resonance / --do state.');
+}
+
+// 7. THE COMMIT WITHOUT A COIN. A change is accepted only when it carries the
+//    coin the pipeline minted over its exact staged bytes (goggles --do mint;
+//    .claude/skills/goggles/change-coin.py). The commit-msg hook and GitHub's
+//    runner refuse it anyway — this rule refuses it one step earlier, with the
+//    verb, so the agent does not learn the wall from a red check. `--no-verify`
+//    skips the hook that writes the trailer, so it is refused outright; `-a`
+//    stages at commit time, after any mint, so the coin could never cover it.
+//    Fails open when the repo cannot be located or the verifier errors (exit 2);
+//    denies only on a definite REFUSED (exit 1).
+const GIT_COMMIT = /\bgit\b((?:\s+(?:-C\s+\S+|-c\s+\S+|--git-dir=\S+|--work-tree=\S+|--no-pager))*)\s+commit\b([^|;&]*)/;
+const gc = cmd.match(GIT_COMMIT);
+if (gc) {
+  const opts = gc[2] || '';
+  const HINT = '\n  the one door: git add <files> → node .claude/skills/goggles/run.mjs --do mint → git commit\n' +
+    '  (the commit-msg hook writes the Remembrance-Coin trailer; CI refuses any commit without it)';
+  // ONE STEP PER COMMAND (2026-09-11). This gate verifies the coin against
+  // the index AS IT IS WHEN THE COMMAND STARTS. A command that stages or
+  // mints and then commits in the same breath (`git add -A && --do mint &&
+  // git commit`) is judged on an index the mint has not yet touched — so it
+  // either passes on an empty index (the mint and the commit both happen
+  // unseen) or is refused for the wrong reason. Stage, mint and commit are
+  // therefore three commands: the gate sees the true index every time, and
+  // a coin can never be minted and spent inside one unverified line.
+  const INDEX_CHANGER = /\bgit\b(?:\s+(?:-C\s+\S+|-c\s+\S+))*\s+(?:add|rm|mv|reset|restore\s+--staged|stash|checkout|switch|merge|rebase|cherry-pick|revert|apply)\b|\.claude\/skills\/goggles\/run\.mjs\s+--do\s+mint\b(?!\s+(?:verify|anchor|unfold|install-hooks))/;
+  if (INDEX_CHANGER.test(cmd)) {
+    out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused (commit shares a command with a stage or a mint)\n' +
+      '  The coin gate reads the index as it is when the command starts; a stage or a mint in the same\n' +
+      '  command changes it after the check. One step per command: stage · then mint · then commit.' + HINT);
+  }
+  if (/(^|\s)(--no-verify|-[a-zA-Z]*n[a-zA-Z]*)(\s|$)/.test(opts)) {
+    out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused (--no-verify)\n' +
+      '  --no-verify skips the commit-msg hook that binds the coin to the commit. The runner still refuses it.' + HINT);
+  }
+  if (/(^|\s)(--all|-[a-zA-Z]*a[a-zA-Z]*)(\s|$)/.test(opts)) {
+    out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused (-a stages at commit time)\n' +
+      '  the coin covers the STAGED bytes at mint time; -a/--all changes the index after the mint.' + HINT);
+  }
+  try {
+    const path = require('node:path');
+    const { spawnSync } = require('node:child_process');
+    let repo = input.cwd || process.cwd();
+    const dashC = /\s-C\s+(\S+)/.exec(gc[1] || '');
+    const cdPrefix = /^\s*cd\s+(\S+)\s*(?:&&|;)/.exec(cmd);
+    if (dashC) repo = path.resolve(repo, dashC[1].replace(/^['"]|['"]$/g, ''));
+    else if (cdPrefix) repo = path.resolve(repo, cdPrefix[1].replace(/^['"]|['"]$/g, ''));
+    const cc = path.join(__dirname, '..', '..', '.claude', 'skills', 'goggles', 'change-coin.py');
+    const args = [cc, 'verify', '--staged', '--repo', repo];
+    if (/(^|\s)--amend(\s|$)/.test(opts)) args.push('--amend');
+    const r = spawnSync('python3', args, { encoding: 'utf8', timeout: 20000 });
+    if (r.status === 1) {
+      out('deny', 'GOGGLES — COMMIT WITHOUT THE COIN refused\n  ' + String(r.stdout || r.stderr || '').trim().split('\n').join('\n  ') + HINT);
+    }
+  } catch (e) { quiet('tools:goggles-bash-hook:change-coin', e); }
+}
 
 // only look at commands that actually run inline code (a bare heredoc into
 // cat/tee is document-writing, not execution — the literal word 'heredoc'
-// in the first cut matched prose and denied documentation commands)
+// in the first cut matched prose and denied documentation commands).
+// Short commands stop HERE (not at the top — full-command welds above must
+// see every command; this gate only cheapens the inline analysis below).
+if (cmd.length < 40) process.exit(0);
 const INLINE = /(python3?\s+(-c|-\s*<<|<<)|node\s+(-e|--eval|-\s*<<|<<))/i;
 if (!INLINE.test(cmd)) process.exit(0);
+
+// 6. STORE PEEKS inline. Loading the substrate's stores in a -c/heredoc to
+//    count/inspect them is a substrate-state reading taken beside the surface
+//    (>=4 times in one session while `--do state` existed). Script files that
+//    legitimately build/consume the stores are unaffected — this fires only
+//    on INLINE code.
+const STORE_PEEK = /pattern_store(?:\.legacy256)?\.npz|pattern_index_fractal\.json|pattern_uri_index\.json/;
+if (STORE_PEEK.test(cmd)) {
+  out('deny',
+    'GOGGLES — INLINE STORE PEEK refused\n' +
+    '  Substrate state read by ad-hoc inline code is invisible to everything that\n' +
+    '  tracks readings, and one-off counts drift from the canonical ones.\n' +
+    '  Use:  node .claude/skills/goggles/run.mjs --do state\n' +
+    '        node .claude/skills/goggles/run.mjs --do contracts --id C-01\n' +
+    '  (Committed scripts that build or consume the stores are not affected.)');
+}
 
 // bypasses of the substrate's OWN similarity/coherence — not general numpy use
 const BYPASS = [

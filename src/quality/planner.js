@@ -245,21 +245,6 @@ module.exports = {
 };
 
 // ── Atomic self-description (batch-generated) ────────────────────
-planFromIntent.atomicProperties = {
-  charge: 1, valence: 1, mass: 'medium', spin: 'odd', phase: 'gas',
-  reactivity: 'inert', electronegativity: 1, group: 13, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
-verifySymbol.atomicProperties = {
-  charge: 0, valence: 0, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'low', electronegativity: 0, group: 2, period: 4,
-  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
-  domain: 'quality',
-};
-scanForDefinition.atomicProperties = {
-  charge: 1, valence: 0, mass: 'heavy', spin: 'odd', phase: 'liquid',
-  reactivity: 'medium', electronegativity: 0, group: 2, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
+planFromIntent.atomicProperties = { charge: 1, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+verifySymbol.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+scanForDefinition.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

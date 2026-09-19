@@ -38,12 +38,7 @@ function memoizeOne(fn) {
     return result;
   };
 }
-memoizeOne.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.15, group: 10, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+memoizeOne.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 2: Light-weight transforming MATH function
@@ -56,12 +51,7 @@ function clamp(value, min, max) {
   if (typeof value !== 'number') return min;
   return Math.max(min, Math.min(max, value));
 }
-clamp.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 1, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+clamp.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 3: Light-weight transforming STRING function
@@ -75,12 +65,7 @@ function truncate(str, maxLength, suffix = '...') {
   if (str.length <= maxLength) return str;
   return str.slice(0, maxLength - suffix.length) + suffix;
 }
-truncate.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 3, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+truncate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 4: Heavy-weight transforming META function (side-effecting)
@@ -123,12 +108,7 @@ function analyzeModuleCoverage(filePath) {
     uncovered: functions.filter(f => !f.hasAtomicProperties).map(f => f.name),
   };
 }
-analyzeModuleCoverage.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'quality',
-};
+analyzeModuleCoverage.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 12, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 5: Heavy-weight transforming META function (pure)
@@ -190,12 +170,7 @@ function atomicDistance(propsA, propsB) {
 
   return dimensions > 0 ? Math.round((matches / dimensions) * 1000) / 1000 : 0;
 }
-atomicDistance.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 6,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'core',
-};
+atomicDistance.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 6: Light-weight transforming SORT function (cached)
@@ -214,12 +189,7 @@ function sortByKey(arr, keyFn) {
     return 0;
   });
 }
-sortByKey.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.45, group: 14, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+sortByKey.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 7: Light-weight transforming SORT function (mutable)
@@ -232,12 +202,7 @@ function sortInPlace(arr, compareFn) {
   if (!Array.isArray(arr)) return [];
   return arr.sort(compareFn || ((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
 }
-sortInPlace.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'liquid',
-  reactivity: 'inert', electronegativity: 0.55, group: 14, period: 4,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+sortInPlace.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 8: Light-weight transforming ERROR sentinel (cached)
@@ -256,12 +221,7 @@ function errorSentinel(code, message) {
     isSentinel() { return true; },
   });
 }
-errorSentinel.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.05, group: 9, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+errorSentinel.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 9: Light-weight transforming ARRAY function
@@ -274,12 +234,7 @@ function unique(arr) {
   if (!Array.isArray(arr)) return [];
   return [...new Set(arr)];
 }
-unique.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 4, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+unique.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 10: Light-weight transforming OBJECT function
@@ -296,12 +251,7 @@ function pick(obj, keys) {
   }
   return result;
 }
-pick.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 5, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+pick.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 11: Light-weight transforming IO function
@@ -320,12 +270,7 @@ function formatBytes(bytes, decimals = 2) {
   const val = abs / Math.pow(k, i);
   return `${sign}${val.toFixed(decimals)} ${units[i]}`;
 }
-formatBytes.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 6, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+formatBytes.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 12: Light-weight transforming NETWORK function
@@ -351,12 +296,7 @@ function parseQueryString(qs) {
   }
   return result;
 }
-parseQueryString.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 7, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+parseQueryString.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 13: Heavy-weight transforming META function (pure, minimal harm)
@@ -393,12 +333,7 @@ function measureComplexity(code) {
     rating: complexity <= 5 ? 'simple' : complexity <= 10 ? 'moderate' : complexity <= 20 ? 'complex' : 'very-complex',
   };
 }
-measureComplexity.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'quality',
-};
+measureComplexity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "low", electronegativity: 0, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 14: Medium-weight transforming COMPARISON function
@@ -434,12 +369,8 @@ function _deepEq(a, b, depth, maxDepth) {
   }
   return true;
 }
-deepEqual.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+_deepEq.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+deepEqual.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 15: Light-weight transforming TRANSFORM function (mutable)
@@ -457,12 +388,7 @@ function mutAssign(target, ...sources) {
   }
   return target;
 }
-mutAssign.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'liquid',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+mutAssign.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 16: Light-weight transforming TRANSFORM function (reactive stream)
@@ -483,12 +409,7 @@ function reactiveMap(emitter, event, fn) {
   mapped._event = event;
   return mapped;
 }
-reactiveMap.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'plasma',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+reactiveMap.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 17: Light-weight transforming FILTER function
@@ -501,12 +422,7 @@ function compact(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.filter(Boolean);
 }
-compact.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 12, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+compact.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 18: Light-weight transforming TRANSFORM function (minimal harm)
@@ -521,12 +437,7 @@ function safeTransform(value, fn, fallback) {
   try { return fn(value); }
   catch { return fallback; }
 }
-safeTransform.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+safeTransform.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 19: Light-weight contracting COMPARISON function (cached)
@@ -542,12 +453,7 @@ function isSubsetOf(subset, superset) {
   const superSet = new Set(superset);
   return subset.every(item => superSet.has(item));
 }
-isSubsetOf.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.2, group: 2, period: 2,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+isSubsetOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP 20: Light-weight expanding AGGREGATE function (cached)
@@ -586,12 +492,7 @@ function coherencyAccumulator(options = {}) {
     reset() { weightedSum = 0; weightTotal = 0; count = 0; peak = 0; },
   };
 }
-coherencyAccumulator.atomicProperties = {
-  charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.6, group: 13, period: 3,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'core',
-};
+coherencyAccumulator.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   memoizeOne,

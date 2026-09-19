@@ -297,11 +297,6 @@ function mapFromSubstrate(projectPath, opts = {}) {
     contributionsCount,
   };
 }
-mapFromSubstrate.atomicProperties = {
-  charge: 1, valence: 4, mass: 'heavy', spin: 'even', phase: 'liquid',
-  reactivity: 'stable', electronegativity: 0.85, group: 14, period: 6,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'analysis',
-};
+mapFromSubstrate.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 1, group: 13, period: 5, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { mapFromSubstrate };

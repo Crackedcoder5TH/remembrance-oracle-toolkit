@@ -46,6 +46,7 @@ function _parseResponse(data) {
     return { error: 'Unexpected response format', raw: String(data).slice(0, 500) };
   }
 }
+_parseResponse.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function githubRequest(path, options = {}) {
   return new Promise((resolve, reject) => {
@@ -94,6 +95,7 @@ function _saveToDb(store, identity, now) {
     );
   } catch (e) { /* ignore duplicate */ if (process.env.ORACLE_DEBUG) console.warn('identity save failed (duplicate):', e.message); }
 }
+_saveToDb.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _recordContributionDb(store, voterId) {
   try {
@@ -102,6 +104,7 @@ function _recordContributionDb(store, voterId) {
     ).run(new Date().toISOString(), voterId);
   } catch (e) { /* ignore */ if (process.env.ORACLE_DEBUG) console.warn('contribution recording failed:', e.message); }
 }
+_recordContributionDb.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── GitHub Identity Verifier ───
 
@@ -367,4 +370,4 @@ module.exports = { GitHubIdentity, githubRequest };
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-githubRequest.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+githubRequest.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };

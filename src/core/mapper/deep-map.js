@@ -332,11 +332,6 @@ function mapProjectCoherency(projectPath, opts = {}) {
     contributionsCount,
   };
 }
-mapProjectCoherency.atomicProperties = {
-  charge: 1, valence: 4, mass: 'heavy', spin: 'odd', phase: 'plasma',
-  reactivity: 'reactive', electronegativity: 0.9, group: 14, period: 6,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'analysis',
-};
+mapProjectCoherency.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 13, period: 5, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { mapProjectCoherency };

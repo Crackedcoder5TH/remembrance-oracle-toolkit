@@ -745,6 +745,7 @@ function _getEmergentCoherency() {
     return getEmergentCoherency();
   } catch { return null; }
 }
+_getEmergentCoherency.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   CoherencyDirector,

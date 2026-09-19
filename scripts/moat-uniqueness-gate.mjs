@@ -16,17 +16,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { toFractalWaveform } = require('../src/core/fractal-waveform');
+const { codeToWaveform } = require('../src/core/code-to-waveform'); // ONE representation: the 232-D decoder at its active depth
 const UG = require('/home/user/REMEMBRANCE-BLOCKCHAIN/src/uniqueness-gate');
 
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
 const idx = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8')).index;
 const substrate = [];
-for (const [name, e] of Object.entries(idx)) { if (Array.isArray(e.fractal) && e.fractal.length) substrate.push({ name, fractal: e.fractal }); if (substrate.length >= 15000) break; }
+for (const [name, e] of Object.entries(idx)) { if (Array.isArray(e.composed) && e.composed.length === 232) substrate.push({ name, vec: e.composed }); /* the ONE width (field kept by name) */ if (substrate.length >= 15000) break; }
 console.log('MOAT — NATIVE UNIQUENESS GATE (resonance dedup) · substrate ' + substrate.length + ' fractals\n');
 
 const gate = (fractal) => { const sig = UG.uniquenessSignature(fractal, substrate); const r = UG.passesUniquenessGate(sig); return { pass: r.pass, reason: r.reason, mean: sig.mean, peak: sig.peakSpread, near: sig.top?.[0]?.score ?? 0 }; };
-const fracOf = (text) => Array.from(toFractalWaveform(text));
+const fracOf = (text) => Array.from(codeToWaveform(text)); // the canonical vector — the same width the substrate rows carry
 
 // HONEST held-out: real, usable session-new scripts (not in the substrate)
 const heldOut = ['scripts/market-crawl.mjs', 'scripts/incompressible-residual-benchmark.mjs', 'scripts/mp-structural-run.mjs', 'scripts/epc-phonon-run.mjs', 'scripts/sc-tests-full.mjs', 'scripts/retrieval-scaling-bench.mjs', 'scripts/lre-attractor-sim2.mjs', 'scripts/market-resonance-report.mjs']
@@ -34,16 +34,16 @@ const heldOut = ['scripts/market-crawl.mjs', 'scripts/incompressible-residual-be
 
 // ATTACK 1 — centroid mimic: mean of a domain's substrate fractals
 function mean29(vs) { const D = vs[0].length; const o = new Array(D).fill(0); const n = vs.length || 1; for (const v of vs) for (let i = 0; i < D; i++) o[i] += v[i] / n; return o; }
-const byDom = {}; for (const s of substrate) { const d = s.name.split(/[\/_]/)[0]; (byDom[d] = byDom[d] || []).push(s.fractal); }
+const byDom = {}; for (const s of substrate) { const d = s.name.split(/[\/_]/)[0]; (byDom[d] = byDom[d] || []).push(s.vec); }
 const centroids = Object.values(byDom).filter((g) => g.length >= 20).slice(0, 30).map(mean29);
 
 // ATTACK 2 — recycle: resubmit existing substrate patterns verbatim
-const recycled = substrate.filter((_, i) => i % 500 === 0).slice(0, 30).map((s) => s.fractal);
+const recycled = substrate.filter((_, i) => i % 500 === 0).slice(0, 30).map((s) => s.vec);
 
 // ATTACK 3 — random junk fractal
 function mul(a){let s=a>>>0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const rnd = mul(11);
-const junk = Array.from({ length: 30 }, () => Array.from({ length: substrate[0].fractal.length }, () => rnd()));
+const junk = Array.from({ length: 30 }, () => Array.from({ length: substrate[0].vec.length }, () => rnd()));
 
 function report(label, fracs, expect) {
   const rs = fracs.map(gate); const pass = rs.filter((r) => r.pass).length;

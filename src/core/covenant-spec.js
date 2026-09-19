@@ -35,6 +35,7 @@ function _resolvePath() {
   }
   return null;
 }
+_resolvePath.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function load() {
   if (_cache) return _cache;

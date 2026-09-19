@@ -144,6 +144,7 @@ function buildRememberedSystemPrompt(oracle, task, options = {}) {
     topPattern: searchResults[0]?.name || null,
   };
 }
+buildRememberedSystemPrompt.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "dangerous", alignment: "healing", intention: "malevolent", domain: "utility" };
 
 // ─── Agent Wrapper ───────────────────────────────────────────────
 
@@ -307,6 +308,7 @@ function wrapAgent(oracle, options = {}) {
     enable() { workflow.enable(); },
   };
 }
+wrapAgent.atomicProperties = { charge: 0, valence: 3, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 9, period: 5, harmPotential: "minimal", alignment: "healing", intention: "benevolent", domain: "utility" };
 
 // ─── MCP Integration ─────────────────────────────────────────────
 
@@ -356,6 +358,7 @@ function getWorkflowMcpTools() {
     },
   ];
 }
+getWorkflowMcpTools.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   wrapAgent,

@@ -58,13 +58,16 @@ function debugOracle() {
   } catch (_) { _debug = null; }
   return _debug;
 }
+debugOracle.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function loadState() {
   try { return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')); } catch (_) { return {}; }
 }
+loadState.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function saveState(s) {
   try { fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true }); fs.writeFileSync(STATE_PATH, JSON.stringify(s)); } catch (_) { quiet('debug:goggles-learning:saveState', _); /* best-effort */ }
 }
+saveState.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // A finding's identity across edits: bug class + rule + a whitespace-normalised
 // signature of the offending construct, so the same defect at a shifted line
@@ -73,9 +76,11 @@ function fingerprint(f) {
   const sig = String(f.code || f.reality || '').replace(/\s+/g, ' ').trim().slice(0, 80);
   return `${f.bugClass}/${f.ruleId || 'rule'}:${sig}`;
 }
+fingerprint.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function errorMessageFor(f) {
   return `${f.bugClass}/${f.ruleId || 'rule'}: ${f.reality || f.assumption || ''}`.slice(0, 220);
 }
+errorMessageFor.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Read a pattern's learned amplitude WITHOUT observing it (search() would boost
 // it). Falls back to confidence, then to the fresh default.
@@ -87,6 +92,7 @@ function amplitudeById(debug, id) {
     return Number.isFinite(a) ? a : null;
   } catch (_) { return null; }
 }
+amplitudeById.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Run one turn of the learning loop for a single edited file.
@@ -214,6 +220,7 @@ function processFindings({ filePath, findings, language, content }) {
   saveState(state);
   return { surface, suppressed, resolved };
 }
+processFindings.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // Promote high-amplitude, proven debug fixes into the shared void pattern
 // library (the same `patterns` table the substrate is grown from), via the
@@ -231,6 +238,7 @@ function promoteToLibrary(debug) {
   // default 0.75, which is tuned for runtime debug fixes.
   return promoteDebugToPatterns(shim, { promoteAmplitude: GOG.promoteAmplitude, promoteMinApplied: 3 });
 }
+promoteToLibrary.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function registerPattern(store, { name, code, language, description, tags }) {
   const id = crypto.createHash('sha256').update(String(code || name || '')).digest('hex').slice(0, 16);
@@ -246,6 +254,7 @@ function registerPattern(store, { name, code, language, description, tags }) {
     description || '', JSON.stringify(tags || []), 0, '{}', '[]', 0, 0, '[]', 1, now, now,
   );
 }
+registerPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── False-positive memory ──────────────────────────────────────────────────
 // A recognised mistake is remembered HARD: recorded in the learning ledger (so
@@ -270,6 +279,7 @@ function _recordFalsePositive(state, fp, finding, opts = {}) {
     }
   } catch (_) { quiet('debug:goggles-learning:require', _); /* histogram contribution optional */ }
 }
+_recordFalsePositive.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Flag a finding (or its fingerprint string) as a false positive — explicitly,
@@ -290,6 +300,7 @@ function flagFalsePositive(findingOrFp, opts = {}) {
   saveState(state);
   return { fp, flagged: true };
 }
+flagFalsePositive.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Flag every learned finding whose fingerprint contains `substr` as a false
  *  positive — usable when you remember the gist of the noise, not the exact fp. */
@@ -306,5 +317,6 @@ function flagFalsePositivesMatching(substr, opts = {}) {
   saveState(state);
   return n;
 }
+flagFalsePositivesMatching.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { processFindings, fingerprint, flagFalsePositive, flagFalsePositivesMatching };

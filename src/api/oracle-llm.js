@@ -13,6 +13,7 @@ function _findPattern(oracle, patternId) {
   if (!pattern) return { found: false, error: `Pattern ${patternId} not found` };
   return { found: true, pattern };
 }
+_findPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _tryPromoteOrStore(oracle, candidate, parentId, method, report, autoPromote) {
   if (autoPromote && candidate.testCode) {
@@ -52,6 +53,7 @@ function _tryPromoteOrStore(oracle, candidate, parentId, method, report, autoPro
   }
   return false;
 }
+_tryPromoteOrStore.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── reflect() helpers ───
 
@@ -81,6 +83,7 @@ function _collectPatternStats(oracle) {
     return { error: 'unavailable' };
   }
 }
+_collectPatternStats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function _collectHealingStatus(oracle) {
   try {
@@ -99,6 +102,7 @@ function _collectHealingStatus(oracle) {
     return { error: 'unavailable' };
   }
 }
+_collectHealingStatus.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _identifyWeaknesses(oracle, report) {
   const weaknesses = [];
@@ -140,6 +144,7 @@ function _identifyWeaknesses(oracle, report) {
 
   return { weaknesses, recommendations };
 }
+_identifyWeaknesses.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── llmGenerate() helper ───
 
@@ -152,6 +157,7 @@ function _generateVariant(oracle, claude, pattern, lang, report, autoPromote) {
 
   _tryPromoteOrStore(oracle, { ...candidate, language: lang }, pattern.id, 'claude-variant', report, autoPromote);
 }
+_generateVariant.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── generateContext() format helpers ───
 
@@ -162,6 +168,7 @@ function _formatContextJson(stats, topPatterns, instructions) {
     stats,
   };
 }
+_formatContextJson.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _formatContextText(patterns, byLanguage, byType, topPatterns, instructions) {
   const lines = [
@@ -183,6 +190,7 @@ function _formatContextText(patterns, byLanguage, byType, topPatterns, instructi
   };
   return { prompt: lines.join('\n'), format: 'text', stats };
 }
+_formatContextText.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _formatContextMarkdown(patterns, byLanguage, byType, topPatterns, instructions) {
   const md = [
@@ -214,6 +222,7 @@ function _formatContextMarkdown(patterns, byLanguage, byType, topPatterns, instr
   };
   return { prompt: md.join('\n'), format: 'markdown', stats };
 }
+_formatContextMarkdown.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Evolution delegation factory (eliminates 8× trivial wrappers) ───
 
@@ -223,6 +232,7 @@ function _delegateEvolution(modulePath, fnName) {
     return mod[fnName](this._getEvolutionContext(), options);
   };
 }
+_delegateEvolution.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   _getClaude() {

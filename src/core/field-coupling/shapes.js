@@ -57,6 +57,7 @@ function _loadLearnedShapes() {
     }
   } catch (_) { quiet('core:field-coupling:shapes:require', _); /* best-effort */ }
 }
+_loadLearnedShapes.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _persistLearnedShape(sig) {
   if (!_LEARNED_PERSIST_PATH) return false;
@@ -69,6 +70,7 @@ function _persistLearnedShape(sig) {
     return true;
   } catch (_) { return false; }
 }
+_persistLearnedShape.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // A candidate matches a learned signature when its (mean, variance, n)
 // are within tolerance of an entry's. Tolerances:
@@ -100,6 +102,7 @@ function _matchesLearnedShape(input) {
   }
   return null;
 }
+_matchesLearnedShape.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Record a shape signature as recognised-natural. Called by the
@@ -162,6 +165,7 @@ function learnedShapesByDomain() {
   }
   return out;
 }
+_resetLearnedShapes.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 learnedShapesByDomain.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 

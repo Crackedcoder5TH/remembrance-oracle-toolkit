@@ -138,8 +138,8 @@ const idx = new FractalIndex();
 const sigs = [];
 for (const id of Object.keys(voidRaw.index)) {
   const e = voidRaw.index[id];
-  const vec = Array.isArray(e.composed_v2) ? e.composed_v2 : e.composed_v1;
-  if (Array.isArray(vec) && vec.length >= 116) sigs.push({ id, vec });
+  const vec = e.composed;   // the ONE width
+  if (Array.isArray(vec) && vec.length === 232) sigs.push({ id, vec });
 }
 idx.loadSignatures(sigs);
 for (const t of trads) {

@@ -4,7 +4,7 @@
 
 /**
  * stress-test-fractal-search.js — head-to-head benchmark of the
- * new FractalIndex (in-memory 116-D cosine, field-tool encoder)
+ * new FractalIndex (in-memory 232-D cosine, field-tool encoder)
  * against oracle's existing description+tag query() path.
  *
  * Builds a synthetic substrate of N patterns across five domains,
@@ -134,7 +134,7 @@ async function run() {
   console.log(`    ${COUNT} ingested in ${fmt(ingestSec, 1)}s  (${fmt(COUNT / ingestSec, 1)}/sec)`);
 
   // ── Phase 2: build FractalIndex via bulk rebuild ──────────────
-  console.log(`\n  ▸ Phase 2: building FractalIndex (field-tool encoder, 116-D)...`);
+  console.log(`\n  ▸ Phase 2: building FractalIndex (field-tool encoder, 232-D)...`);
   const idx = new FractalIndex();
   const buildStart = process.hrtime.bigint();
   idx.rebuild(submitted.map(s => ({ id: s.id, text: s.text })));
@@ -167,7 +167,7 @@ async function run() {
     void queryText; // not used by the old path
   }
 
-  console.log(`\n  ▸ Phase 4: ${QUERIES} queries via FractalIndex.search() (116-D cosine)...`);
+  console.log(`\n  ▸ Phase 4: ${QUERIES} queries via FractalIndex.search() (232-D cosine)...`);
   const newLatencies = [];
   let newDomainHits = 0;
   for (let q = 0; q < QUERIES; q++) {

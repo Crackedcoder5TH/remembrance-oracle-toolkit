@@ -28,6 +28,7 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 const DIAG_DIR = path.join(REPO_ROOT, '.remembrance', 'diagnostics');
 const LATEST = path.join(DIAG_DIR, 'cathedral-latest.json');
 const BASELINE = path.join(DIAG_DIR, 'cathedral-baseline.json');
@@ -133,6 +134,21 @@ function main() {
   }
 
   if (save) {
+    // THE LAW: the local floor may not loosen either. The tracked seed already
+    // only tightened (tightenSeed); the local copy used to take whatever the
+    // current run said. Any metric above the effective floor is DEBT.
+    {
+      const eff = effectiveBaseline();
+      const floor = eff && eff.bs;
+      const cur = summarize(latest);
+      if (floor) {
+        const debt = [];
+        if (cur.high > floor.high) debt.push(`high severity: ${floor.high} -> ${cur.high} (+${cur.high - floor.high})`);
+        if (cur.ast > floor.ast) debt.push(`AST findings: ${floor.ast} -> ${cur.ast} (+${cur.ast - floor.ast})`);
+        if (cur.total > floor.total + tolerance) debt.push(`total findings: ${floor.total} -> ${cur.total} (+${cur.total - floor.total}, tolerance=${tolerance})`);
+        if (refuseIfLoosening('ratchet', debt, args)) process.exit(1);
+      }
+    }
     fs.mkdirSync(DIAG_DIR, { recursive: true });
     fs.writeFileSync(BASELINE, fs.readFileSync(LATEST));
     console.log(`[ratchet] baseline saved from current: ${path.relative(REPO_ROOT, BASELINE)}`);

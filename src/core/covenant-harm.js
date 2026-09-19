@@ -14,16 +14,19 @@ function buildMalwareKeywordPattern() {
   ];
   return new RegExp('\\b(' + terms.join('|') + ')\\b', 'i');
 }
+buildMalwareKeywordPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildRemoteExecPattern() {
   const cp = 'child' + '_process';
   return new RegExp(cp + '.*exec.*\\b(wget|curl)\\b.*\\|\\s*(bash|sh)\\b', 'i');
 }
+buildRemoteExecPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildCmdInjectionPattern() {
   const cp = 'child' + '_process';
   return new RegExp(cp + '.*exec\\s*\\(.*\\$\\{', 'is');
 }
+buildCmdInjectionPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildCmdConcatPattern() {
   const cp = 'child' + '_process';
@@ -34,11 +37,13 @@ function buildCmdConcatPattern() {
   // rate low (the per-call coherency scanner catches the cross-line forms).
   return new RegExp(cp + '.*exec\\w*\\s*\\(\\s*(?:[\'"`][^\'"`]*[\'"`]\\s*\\+\\s*\\w|\\w+\\s*\\+)', 'i');
 }
+buildCmdConcatPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildEvalChildProcessPattern() {
   const cp = 'child' + '_process';
   return new RegExp(_k('\\bev', 'al\\s*\\(\\s*require\\s*\\(\\s*[\'"]') + cp + '[\'"]\\s*\\)', 'i');
 }
+buildEvalChildProcessPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Dynamic code execution — P11, code injection ────────────────────────
 //
@@ -59,16 +64,19 @@ function buildDynamicEvalPattern() {
   // eval( <identifier or call> — anything not opening with a quote
   return new RegExp('(?<![.\\w])' + _k('ev', 'al') + '\\s*\\(\\s*[A-Za-z_$]', 'i');
 }
+buildDynamicEvalPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 18, period: 1, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildDynamicEvalTemplatePattern() {
   // eval( `... ${x} ...` ) — an interpolated template is untrusted data
   return new RegExp('(?<![.\\w])' + _k('ev', 'al') + '\\s*\\(\\s*[`\'"][^`\'"]*\\$\\{', 'i');
 }
+buildDynamicEvalTemplatePattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildFunctionConstructorPattern() {
   // new Function(<identifier>) — the constructor IS an evaluator
   return new RegExp('\\bnew\\s+' + _k('Func', 'tion') + '\\s*\\(\\s*[A-Za-z_$]');
 }
+buildFunctionConstructorPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 18, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildStringTimerPattern() {
   // setTimeout('code…') / setInterval('code…') — the string form is eval.
@@ -82,6 +90,7 @@ function buildStringTimerPattern() {
   // blocked ordinary code.
   return new RegExp('\\b(?:' + _k('set', 'Timeout|set', 'Interval') + ')\\s*\\(\\s*[\'"`]');
 }
+buildStringTimerPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 // Statements only count when handed to an executor — see buildUnscopedDeletePattern.
 const EXEC_CALL = '\\.(?:run|exec|execute|query|prepare|all|get)';
@@ -111,6 +120,7 @@ function buildEscapedIdentifierPattern() {
   //   does not read as a hidden identifier.
   return /(?:\\x[2-7][0-9a-f]){4,}/i;
 }
+buildEscapedIdentifierPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildPackerPreamblePattern() {
   // The classic packer signature: function(p,a,c,k,e,d) / (p,a,c,k,e,r).
@@ -118,6 +128,7 @@ function buildPackerPreamblePattern() {
   // unpackers, never hand-written logic.
   return new RegExp(_k('func', 'tion') + '\\s*\\(\\s*p\\s*,\\s*a\\s*,\\s*c\\s*,\\s*k\\s*,\\s*e\\s*,\\s*[dr]\\s*\\)');
 }
+buildPackerPreamblePattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── P4: Memory of the Deep — "Stored data must remain whole." ───────────
 //
@@ -147,16 +158,19 @@ function buildUnscopedDeletePattern() {
   // correct code is not.
   return new RegExp(EXEC_CALL + '\\s*\\(\\s*[\'"`]\\s*' + del + '\\s+FROM\\s+[\\w."`\\[\\]]+\\s*(?![^;]{0,400}\\bWHERE\\b)', 'i');
 }
+buildUnscopedDeletePattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildUnscopedUpdatePattern() {
   const upd = 'UPD' + 'ATE';
   return new RegExp(EXEC_CALL + '\\s*\\(\\s*[\'"`]\\s*' + upd + '\\s+[\\w."`\\[\\]]+\\s+SET\\b(?![^;]{0,400}\\bWHERE\\b)', 'i');
 }
+buildUnscopedUpdatePattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildStoreDestructionPattern() {
   const terms = ['TRUN' + 'CATE\\s+TABLE', 'DR' + 'OP\\s+DATABASE', 'DR' + 'OP\\s+SCHEMA'];
   return new RegExp(EXEC_CALL + '\\s*\\(\\s*[\'"`]\\s*(?:' + terms.join('|') + ')\\b', 'i');
 }
+buildStoreDestructionPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── P5: The Loom — "Concurrency must strengthen, not exploit." ──────────
 //
@@ -174,6 +188,7 @@ function buildUnboundedSpawnPattern() {
   // for/while header, then a spawner within the same statement window
   return new RegExp('\\b(?:for|while)\\s*\\([^)]*\\)\\s*\\{[^}]{0,200}?\\b(?:' + spawners.join('|') + ')\\s*[(.]', 'is');
 }
+buildUnboundedSpawnPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function buildStarvingTimerPattern() {
   // setInterval(fn, 0) or setInterval(fn) — a repeating timer with no delay.
@@ -190,42 +205,51 @@ function buildStarvingTimerPattern() {
   return new RegExp('(?:' + si + '[\\s\\S]{0,300}?,\\s*0+\\s*\\)'
                   + '|' + si + '\\s*[A-Za-z_$][\\w$]*\\s*\\))');
 }
+buildStarvingTimerPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildSqlConcatPattern() {
   const ops = ['SEL' + 'ECT', 'INS' + 'ERT', 'UPD' + 'ATE', 'DEL' + 'ETE', 'DR' + 'OP', 'AL' + 'TER'];
   const sqlKw = '(?:' + ops.join('|') + ')\\b';
   return { sqlKw };
 }
+_buildSqlConcatPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildForkBombPattern() {
   return /:\s*\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/;
 }
+_buildForkBombPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildInnerHtmlPattern() {
   const iH = _k('inner', 'HTML');
   return new RegExp(iH + '\\s*=\\s*(?![\'"`]<)(?:\\w+|\\$\\{)', 'i');
 }
+_buildInnerHtmlPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildOuterHtmlPattern() {
   const oH = _k('outer', 'HTML');
   return new RegExp(oH + '\\s*=', 'i');
 }
+_buildOuterHtmlPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildEvalObfuscatedPattern() {
   return new RegExp(_k('\\bev', 'al\\s*\\(\\s*(atob|Buffer\\.from)\\s*\\('), 'i');
 }
+_buildEvalObfuscatedPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildEvalBase64Pattern() {
   return new RegExp(_k('\\bev', 'al\\s*\\(\\s*Buffer\\.from\\s*\\(\\s*[\'"][A-Za-z0-9+/=]+[\'"]'), 'i');
 }
+_buildEvalBase64Pattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildGlobalEscapePattern() {
   return new RegExp(_k('\\bFun', 'ction\\s*\\(\\s*[\'"]return\\s+this[\'"]\\s*\\)\\s*\\(\\)'), 'i');
 }
+_buildGlobalEscapePattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildNetBackdoorPattern() {
   return new RegExp(_k('net\\.createServer.*\\bex', 'ec\\b'), 'is');
 }
+_buildNetBackdoorPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const { sqlKw } = _buildSqlConcatPattern();
 

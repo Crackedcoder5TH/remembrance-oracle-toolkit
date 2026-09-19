@@ -211,7 +211,7 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-promoteFromSubstrate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+promoteFromSubstrate.atomicProperties = { charge: 1, valence: 2, mass: "heavy", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 1, group: 13, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 readDebugPatterns.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 safeFingerprint.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 hashString.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

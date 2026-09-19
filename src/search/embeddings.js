@@ -360,6 +360,7 @@ function _fastSimilarity(queryData, docFeatures, idf) {
   const similarity = conceptScore * 0.4 + keywordScore * 0.3 + ngramScore * 0.2 + vectorScore * 0.1;
   return { similarity: Math.min(1, similarity), matchedConcepts };
 }
+_fastSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _fastNameSimilarity(queryData, docFeatures) {
   if (!docFeatures.nameText) return 0;
@@ -372,6 +373,7 @@ function _fastNameSimilarity(queryData, docFeatures) {
   const ngramScore = cosineSim(queryData.ngrams, docFeatures.nameNgrams);
   return conceptScore * 0.6 + ngramScore * 0.4;
 }
+_fastNameSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Per-query cache: avoid recomputing query concepts/ngrams for every document
 let _lastQueryKey = null;
@@ -662,8 +664,8 @@ charNgrams.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "eve
 cosineSim.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 expandQuery.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 identifyConcepts.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-semanticSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-semanticSearch.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+semanticSimilarity.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+semanticSearch.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 1, group: 4, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 tokenize.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 buildIDF.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 tokenNgramScore.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

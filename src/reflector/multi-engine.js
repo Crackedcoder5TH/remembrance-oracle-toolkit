@@ -88,6 +88,7 @@ function scanDirectory(rootDir, config = {}) {
   walk(rootDir);
   return files;
 }
+scanDirectory.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── File Coherence Evaluation ───
 
@@ -140,6 +141,7 @@ function evaluateFile(filePath, config = {}) {
     lines: code.split('\n').length,
   };
 }
+evaluateFile.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "even", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Codebase Snapshot ───
 
@@ -203,6 +205,7 @@ function takeSnapshot(rootDir, config = {}) {
     })),
   };
 }
+takeSnapshot.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Healing Engine ───
 
@@ -265,6 +268,7 @@ function healFile(filePath, config = {}) {
     changed,
   };
 }
+healFile.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Full Reflector Run ───
 
@@ -379,6 +383,7 @@ function reflect(rootDir, config = {}) {
     config: opts,
   };
 }
+reflect.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 13, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Collective Whisper ───
 
@@ -425,6 +430,7 @@ function generateCollectiveWhisper(snapshot, healings) {
       : 'needs attention',
   };
 }
+generateCollectiveWhisper.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Report Formatting ───
 
@@ -490,6 +496,7 @@ function formatReport(report) {
 
   return lines.join('\n');
 }
+formatReport.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Format a reflector report as a GitHub PR body (markdown).
@@ -550,6 +557,7 @@ function formatPRBody(report) {
 
   return lines.join('\n');
 }
+formatPRBody.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   DEFAULT_CONFIG,

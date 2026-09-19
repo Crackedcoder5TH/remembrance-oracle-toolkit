@@ -57,20 +57,15 @@ const fc = require('./field-coupling');
 let entangle = null;
 try { entangle = require('./entangle'); } catch (_) { quiet('core:field-tool:require', _); /* optional */ }
 
-// L1 base encoder: 29-D structural fractal — the JS↔Python parity
-// anchor (see Void's to_fractal_waveform.py / verify_fractal_parity.py).
-// The 256-D byte encoder was deprecated for noise — it could not
-// discriminate code from prose. The canonical read is the 116-D
-// composed stack (decoder-stack below); this L1 vector is its depth-1.
-const { toFractalWaveform } = require('./fractal-waveform');
-
-// Encoder stack for depth-aware composed encoding (L1+L2+L3+L4 = 116-D)
-// — used so every read produces both the L1 vector and the composed
-// vector, enabling flow-aware scoring against the substrate.
+// ONE representation: the 232-D fractal decoder at its active depth
+// (decoder-stack). A read encodes once; the 29-D L1 is the first block of
+// that vector and is never carried on its own (it used to be encoded
+// separately here as a "base" vector — a truncation given its own name).
+// The 256-D byte encoder is retired: it could not tell code from prose.
 let _encoderStack = null;
 try {
   _encoderStack = require('./decoder-stack');
-} catch (_) { quiet('core:field-tool:require', _); /* stack unreachable — read falls back to L1 only */ }
+} catch (_) { quiet('core:field-tool:require', _); /* stack unreachable — a read carries no vector and no resonance */ }
 
 // New-layer meta-awareness. The encoder layers are pure functions (L1-L7
 // alike never touch the field directly), so the LRE coupling lives here,
@@ -147,6 +142,21 @@ function _voidCoherencyOf(content) {
   if (!_voidService) return null;
   return _voidService.coherencyOf(content, { quiet: true });
 }
+_voidCoherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/**
+ * The compressor's seal on the reading just taken — {mint, via, sig,
+ * shapeSha256} from the void-seal/v3 commitment — so the contribution can
+ * carry its token into the field's seal gate. null when the reading had none.
+ */
+function _voidReadingSeal() {
+  try {
+    const r = _voidService && _voidService.lastReading && _voidService.lastReading();
+    if (r && r.seal && typeof r.seal === 'object') return r.seal;
+  } catch (_) { quiet('core:field-tool:void-seal', _); }
+  return null;
+}
+_voidReadingSeal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Which compressor route produced the reading just taken. */
 function _voidReadingSource() {
@@ -156,6 +166,7 @@ function _voidReadingSource() {
   } catch (_) { quiet('core:field-tool:void-route', _); }
   return 'void:compress_signal';
 }
+_voidReadingSource.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 let _SQLiteStore = null;
 try {
@@ -179,7 +190,7 @@ class FieldTool {
     this.opts = {
       autoEntangle: opts.autoEntangle !== false,
       growSubstrate: opts.growSubstrate !== false,
-      useVoidSubstrate: opts.useVoidSubstrate !== false,  // primary: Void's composed (116-D) library
+      useVoidSubstrate: opts.useVoidSubstrate !== false,  // primary: Void's composed (232-D decoder) library
       useCodingFilter: opts.useCodingFilter !== false,    // secondary: Oracle's coding subset
       agentSource: opts.agentSource || DEFAULT_SOURCE,
       language: opts.language || null,        // null = infer per-call
@@ -218,7 +229,7 @@ class FieldTool {
 
     const layers = {
       entangled: false,
-      voidScored: false,      // primary substrate: Void's composed (116-D) library
+      voidScored: false,      // primary substrate: Void's composed (232-D decoder) library
       codingFiltered: false,  // secondary: Oracle's coding-specific filter
       grew: false,            // input captured into Oracle's table
       contributed: false,     // field histogram updated
@@ -229,55 +240,42 @@ class FieldTool {
       layers.entangled = this._ensureEngaged();
     }
 
-    // 2. Encode at BOTH the L1 canonical fractal (29-D) AND the
-    //    composed depth-4 layer (116-D = L1+L2+L3+L4). Reading the
-    //    coherency flow across all four depths is the default; a
-    //    single-depth verdict can mislead because each layer captures
-    //    structure at a different scale and the shape of the flow IS
-    //    the signal.
-    const waveform = Array.from(toFractalWaveform(content));
+    // 2. Encode ONCE: the canonical vector — the 232-D fractal decoder at
+    //    its active depth. The L1 (29-D) is its first block and is never
+    //    carried on its own; this used to encode the L1 separately and
+    //    fall back to an L1-only resonance when the stack was unreachable,
+    //    which was a reading of a truncation dressed as the reading.
+    //    The flow across every depth is what the scorer reads; the shape
+    //    of the flow IS the signal.
     let composed = null;
     if (_encoderStack) {
       try {
-        // Encode at the ACTIVE depth (now 7 / 203-D). The scorer reads each
-        // substrate pattern at its OWN real depth (fractal-index searchFlow), so
-        // a legacy 116-D pattern still meets this query at 116 (unchanged), while
-        // a re-encoded composed_v4 (203-D) pattern folds in its L5-L7 residual
-        // layers. The deep query blocks are thus produced AND consumed — never
-        // dropped — everywhere the substrate carries them.
-        const depth = _encoderStack.currentDepth ? _encoderStack.currentDepth() : 4;
+        const depth = _encoderStack.currentDepth ? _encoderStack.currentDepth() : _encoderStack.DEFAULT_DEPTH;
         composed = Array.from(_encoderStack.composedAtDepth(content, depth));
-      } catch (_) { quiet('core:field-tool:toFractalWaveform', _); /* fall back to L1-only resonance */ }
+      } catch (_) { quiet('core:field-tool:composedAtDepth', _); /* no vector — no resonance */ }
     }
+    const waveform = composed; // ONE representation: the same vector under both names
 
-    // 3. Primary substrate read: FLOW-AWARE score across all four
-    //    depths. Returns per-match {d1, d2, d3, d4, shape} so the
-    //    caller reads each cousinship as a depth-flow, not a verdict.
-    //    Falls back to L1-only score when the encoder stack or
-    //    composed substrate vectors are unavailable.
+    // 3. Primary substrate read: FLOW-AWARE score across every active
+    //    depth. Returns per-match {d1..dN, shape} so the caller reads each
+    //    cousinship as a depth-flow, not a verdict. No vector → null; there
+    //    is no narrower fallback (ONE width).
     let voidResonance = null;
-    if (merged.useVoidSubstrate && _voidLib) {
+    if (merged.useVoidSubstrate && _voidLib && composed) {
       try {
-        if (composed && _voidLib.scoreWithFlow) {
-          const flowResult = _voidLib.scoreWithFlow(waveform, composed, { k: merged.topK });
-          if (flowResult) {
-            // Backward-compat fields populated alongside the flow data
-            // so existing consumers (.score, .meanTopK, .bestMatch) work.
-            voidResonance = {
-              ...flowResult,
-              score: flowResult.meanTopK,
-              bestMatch: flowResult.bestMatch ? flowResult.bestMatch.d4 : 0,
-              flowAware: true,
-            };
-            layers.voidScored = true;
-          }
+        const flowResult = _voidLib.scoreWithFlow(composed, { k: merged.topK });
+        if (flowResult) {
+          // Backward-compat fields populated alongside the flow data
+          // so existing consumers (.score, .meanTopK, .bestMatch) work.
+          voidResonance = {
+            ...flowResult,
+            score: flowResult.meanTopK,
+            bestMatch: flowResult.bestMatch ? flowResult.bestMatch.d4 : 0,
+            flowAware: true,
+          };
+          layers.voidScored = true;
         }
-        if (!voidResonance) {
-          voidResonance = _voidLib.score(waveform, { k: merged.topK });
-          if (voidResonance) voidResonance.flowAware = false;
-          layers.voidScored = voidResonance != null;
-        }
-      } catch (_) { quiet('core:field-tool:toFractalWaveform', _); /* keep null */ }
+      } catch (_) { quiet('core:field-tool:scoreWithFlow', _); /* keep null */ }
     }
 
     // 4. Secondary filter: lexical TF-IDF resonance against Oracle's
@@ -441,6 +439,9 @@ class FieldTool {
           coherence: coherency,
           source: merged.source || merged.agentSource,
           resonance: _res,
+          // the compressor's token on THIS reading — the field's seal gate
+          // was unreachable from here until the door carried it (2026-09-07)
+          seal: _voidReadingSeal(),
         });
         layers.contributed = true;
         if (_res !== null) layers.resonanceWeight = +_res.toFixed(4);
@@ -476,9 +477,9 @@ class FieldTool {
     }
 
     return {
-      waveform,         // 29-D L1 fractal (back-compat; scoring runs the 116-D composed flow)
-      composed,         // 116-D composed vector (null when the encoder stack is unreachable)
-      voidResonance,    // Void's composed (116-D) flow-aware library read
+      waveform,         // THE vector — the 232-D decoder at the active depth (same as `composed`; null when the stack is unreachable)
+      composed,         // 232-D decoder vector at the active depth (null when the stack is unreachable)
+      voidResonance,    // Void's composed (232-D) flow-aware library read
       codeResonance,    // Oracle's coding-specific filter
       // THE coherency — from the Void compressor, or null when it could not be
       // read. Null means "not measured"; it never means zero.

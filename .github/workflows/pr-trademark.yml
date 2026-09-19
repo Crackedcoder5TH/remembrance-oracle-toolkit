@@ -43,7 +43,11 @@ jobs:
           if not isinstance(seal, dict) or "sig" not in seal:
               print("::error title=No VOID-SEAL::PR has no trademark. Add a .void-seal.json (minted by substrate_seal.py from a real substrate read) or paste the seal block in the PR body.")
               sys.exit(1)
-          payload = f"{seal.get('data_sha256')}|{seal.get('state_id')}|{seal.get('via')}|{seal.get('at')}"
+          # the SAME payload substrate_seal.mint signs — five fields, coin_id last
+          # (None when no layer-2 coin). Before this the runner rebuilt four fields
+          # and could never have passed a genuine seal.
+          coin_id = (seal.get('coin') or {}).get('coin_id') if isinstance(seal.get('coin'), dict) else None
+          payload = f"{seal.get('data_sha256')}|{seal.get('state_id')}|{seal.get('via')}|{seal.get('at')}|{coin_id}"
           expect = hmac.new(key, payload.encode(), hashlib.sha256).hexdigest()
           if not hmac.compare_digest(expect, str(seal.get("sig",""))):
               print("::error title=Invalid VOID-SEAL::Trademark forged or minted with a different key. PR blocked.")

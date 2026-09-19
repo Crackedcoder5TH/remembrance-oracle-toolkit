@@ -26,10 +26,11 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { codeToWaveform: canonicalVector, waveformCosine, TARGET_LEN: CANONICAL_LEN } = require('../src/core/code-to-waveform');
 
 const SUBSTRATE_DIR = '/home/user/Void-Data-Compressor';
 const SUBSTRATE_GLOB = /^code_.*_substrate\.json$/;
-const TARGET_LEN = 128;
+const TARGET_LEN = CANONICAL_LEN; // the canonical width — substrate rows at any other width are not readings
 
 function loadAllPatterns() {
   const files = fs.readdirSync(SUBSTRATE_DIR).filter(f => SUBSTRATE_GLOB.test(f));
@@ -49,46 +50,17 @@ function loadAllPatterns() {
 }
 
 function codeToWaveform(code) {
-  const bytes = Buffer.from(code, 'utf-8');
-  if (bytes.length < 8) return null;
-  const wave = new Float64Array(TARGET_LEN);
-  if (bytes.length >= TARGET_LEN) {
-    for (let k = 0; k < TARGET_LEN; k++) {
-      const idx = Math.floor((k / (TARGET_LEN - 1)) * (bytes.length - 1));
-      wave[k] = bytes[idx];
-    }
-  } else {
-    for (let k = 0; k < TARGET_LEN; k++) {
-      const t = (k / (TARGET_LEN - 1)) * (bytes.length - 1);
-      const lo = Math.floor(t);
-      const hi = Math.ceil(t);
-      wave[k] = bytes[lo] * (1 - (t - lo)) + bytes[hi] * (t - lo);
-    }
-  }
-  let min = Infinity, max = -Infinity;
-  for (const v of wave) { if (v < min) min = v; if (v > max) max = v; }
-  if (max - min < 1e-9) return null;
-  const out = new Float64Array(TARGET_LEN);
-  for (let k = 0; k < TARGET_LEN; k++) out[k] = (wave[k] - min) / (max - min);
-  return out;
+  // ONE representation: the canonical 232-D decoder vector (the 128-point
+  // byte resample this used to build is retired).
+  if (!code || code.length < 8) return null;
+  return canonicalVector(code);
 }
 
 function pearson(a, b) {
-  if (!a || a.length === 0) return 0;
-  const n = a.length || 1;
-  let sa = 0, sb = 0;
-  for (let i = 0; i < n; i++) { sa += a[i]; sb += b[i]; }
-  const ma = n > 0 ? sa / n : 0;
-  const mb = n > 0 ? sb / n : 0;
-  let num = 0, va = 0, vb = 0;
-  for (let i = 0; i < n; i++) {
-    const da = a[i] - ma, db = b[i] - mb;
-    num += da * db;
-    va += da * da;
-    vb += db * db;
-  }
-  const den = Math.sqrt(va * vb);
-  return den > 0 ? num / den : 0;
+  // ONE cosine: the canonical resonance in the one space (name kept for the
+  // report's callers; the reading is waveformCosine, not a local Pearson).
+  const c = waveformCosine(a, b);
+  return Number.isFinite(c) ? c : 0;
 }
 
 function nearestNeighborScore(code, patterns) {

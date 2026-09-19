@@ -83,7 +83,7 @@ if (flags.has('harvest')) {
       const key = `market/${e.source}/${e.symbol}/${flow}`;
       if (idx[key]) continue;
       const raw = series[flow] || [];
-      const entry = { composed_v2: vec, waveform: raw, source: 'market-crawl', symbol: e.symbol, flow, bars: e.bars, interval: opts.interval };
+      const entry = { composed: vec, waveform: raw, source: 'market-crawl', symbol: e.symbol, flow, bars: e.bars, interval: opts.interval };
       SL.stamp(entry, { sequence: seq++, now, series: raw, observedStart: led && led.observed_start, observedEnd: led && led.observed_end, cadence: led && led.cadence });
       idx[key] = entry;
       added++;

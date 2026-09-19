@@ -89,6 +89,7 @@ function scoreSimplicity(code) {
 
   return Math.max(SIMPLICITY_CONFIG.FLOOR, Math.min(1, score));
 }
+scoreSimplicity.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── R: Readability & Maintainability ───
 // Formula: R = (naming_score * 0.5 + structure_score * 0.3 + doc_coverage * 0.2)
@@ -113,6 +114,7 @@ function scoreReadability(code) {
 
   return Math.max(0, Math.min(1, score));
 }
+scoreReadability.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _scoreNaming(code) {
   let score = 1.0;
@@ -139,6 +141,7 @@ function _scoreNaming(code) {
 
   return Math.max(0, Math.min(1, score));
 }
+_scoreNaming.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _scoreStructure(code, lines) {
   let score = 1.0;
@@ -171,6 +174,7 @@ function _scoreStructure(code, lines) {
 
   return Math.max(0, Math.min(1, score));
 }
+_scoreStructure.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 12, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _scoreDocCoverage(code) {
   // Find exported functions
@@ -204,6 +208,7 @@ function _scoreDocCoverage(code) {
     ? Math.min(1, documented / exportedFunctions.length)
     : 0.8;
 }
+_scoreDocCoverage.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 12, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── N: No-Harm Integrity ───
 // Severity tiers: critical = instant 0, medium = -0.3/issue, low = -0.1/issue
@@ -263,6 +268,7 @@ function scoreSecurity(code, metadata) {
 
   return Math.max(0, Math.min(1, score));
 }
+scoreSecurity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── U: Unity / Abundance Alignment ───
 // Concrete checks: no global state, no magic numbers, modular, handles variable inputs
@@ -333,6 +339,7 @@ function scoreUnity(code) {
   const score = (scalabilityScore + abundanceScore) / 2;
   return Math.max(0, Math.min(1, score));
 }
+scoreUnity.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── I: Intuitive Correctness ───
 // Dual approach: AST structural similarity + token semantic similarity
@@ -354,6 +361,7 @@ function scoreCorrectness(code, lang, provenPatterns) {
 
   return Math.max(0, Math.min(1, score));
 }
+scoreCorrectness.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Fallback correctness scoring when no library patterns are available */
 function _scoreStructuralCorrectness(code, lang) {
@@ -384,6 +392,7 @@ function _scoreStructuralCorrectness(code, lang) {
 
   return Math.max(0, Math.min(1, score));
 }
+_scoreStructuralCorrectness.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** AST structural similarity — compare code structure (nesting, control flow) against proven patterns */
 function _astSimilarity(code, provenPatterns) {
@@ -399,6 +408,7 @@ function _astSimilarity(code, provenPatterns) {
 
   return bestSimilarity;
 }
+_astSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Token semantic similarity — compare tokenized code against proven patterns */
 function _tokenSimilarity(code, provenPatterns) {
@@ -414,6 +424,7 @@ function _tokenSimilarity(code, provenPatterns) {
 
   return bestSimilarity;
 }
+_tokenSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Extract structural fingerprint: control flow, nesting patterns, function shapes */
 function _extractStructure(code) {
@@ -463,6 +474,7 @@ function _extractStructure(code) {
 
   return features;
 }
+_extractStructure.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Tokenize code into normalized word frequency map */
 function _tokenize(code) {
@@ -484,6 +496,7 @@ function _tokenize(code) {
 
   return tokens;
 }
+_tokenize.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Cosine similarity between two feature/token frequency maps */
 function _cosineSimilarity(a, b) {
@@ -501,6 +514,7 @@ function _cosineSimilarity(a, b) {
   if (normA === 0 || normB === 0) return 0;
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
+_cosineSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Strip comments, strings, template literals, and regex via char-by-char scanning. */
 function _stripNonCode(code) {
@@ -563,6 +577,7 @@ function _stripNonCode(code) {
   }
   return out;
 }
+_stripNonCode.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 function scoreFractalAlignment(code, metadata = {}) {
   if (!_computeFractalAlignment) return 0.5;
@@ -574,6 +589,7 @@ function scoreFractalAlignment(code, metadata = {}) {
     return 0.5;
   }
 }
+scoreFractalAlignment.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Dimension Weights (6-dim with fractalAlignment; sums to 1.0) ───
 // Note: REFLECTION_WEIGHTS in constants/thresholds.js is the alternate 5-dim
@@ -662,6 +678,7 @@ function observeCoherence(code, metadata = {}) {
     zone,
   };
 }
+observeCoherence.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   scoreSimplicity,

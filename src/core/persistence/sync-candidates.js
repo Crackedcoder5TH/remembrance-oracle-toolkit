@@ -76,6 +76,7 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
 
   return report;
 }
+_syncCandidatesToPersonal.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 9, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Sync candidates from personal to local store (pull direction).
@@ -148,6 +149,7 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
 
   return report;
 }
+_syncCandidatesFromPersonal.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 9, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _ensureCandidatesSchema(store) {
   try {
@@ -177,6 +179,7 @@ function _ensureCandidatesSchema(store) {
     if (process.env.ORACLE_DEBUG) console.warn('[persistence:_ensureCandidatesSchema] table already exists:', e?.message || e);
   }
 }
+_ensureCandidatesSchema.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function _transferCandidate(candidate, targetStore) {
   // Sanitize description to strip file paths that could leak local directory structure
@@ -199,6 +202,7 @@ function _transferCandidate(candidate, targetStore) {
     candidate.promoted_at || null, candidate.created_at, candidate.updated_at
   );
 }
+_transferCandidate.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Inline debug sync for syncToGlobal (avoids calling the heavier syncDebugToPersonal).

@@ -12,22 +12,25 @@ const { quiet } = require('./quiet');
  * the entire ecosystem, not just the events that fired since it woke.
  *
  * After an ingest pass:
- *   - every pattern in the library carries a 256-D waveform (backfilled
- *     onto coherency_json.waveform if it didn't have one), so it lives
- *     in the same substrate as field events and is queryable by cosine;
+ *   - every pattern in the library carries the canonical vector — the
+ *     232-D fractal decoder at its active depth (backfilled onto
+ *     coherency_json.waveform when absent OR stored at any other width),
+ *     so it lives in the same substrate as field events and is queryable
+ *     by the one cosine;
  *   - every pattern has contributed to the field histogram under a
  *     `library:<lang>:<name>` source;
  *   - every named numeric constant has contributed under a
  *     `constant:<name>` source.
  *
- * Idempotent: re-running skips patterns that already have a waveform
- * and the field's similarity gate collapses repeat contributions.
+ * Idempotent: re-running skips patterns that already carry a canonical-
+ * width waveform, and the field's similarity gate collapses repeat
+ * contributions.
  * Best-effort throughout — a failure on one pattern never aborts the
  * pass.
  */
 
 const path = require('path');
-const { codeToWaveform, digestWaveform } = require('./code-to-waveform');
+const { codeToWaveform, digestWaveform, TARGET_LEN } = require('./code-to-waveform');
 
 /** Lazily resolve the field-coupling contribute() — best-effort. */
 function _contribute() {
@@ -37,6 +40,7 @@ function _contribute() {
     return null;
   }
 }
+_contribute.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Ingest the entire pattern library into the field.
@@ -67,8 +71,9 @@ function ingestPatterns(store, opts = {}) {
         let cj;
         try { cj = JSON.parse(p.coherency_json || '{}'); } catch (_) { cj = {}; }
 
-        // Backfill the waveform if this pattern has never been encoded.
-        if (!Array.isArray(cj.waveform)) {
+        // Backfill the waveform if this pattern has never been encoded, or
+        // was encoded at a retired width (29-D L1, 256-D byte) — ONE width.
+        if (!Array.isArray(cj.waveform) || cj.waveform.length !== TARGET_LEN) {
           const wf = Array.from(codeToWaveform(p.code || p.name || ''));
           cj.waveform = wf;
           cj.digest = digestWaveform(wf);
@@ -164,6 +169,6 @@ module.exports = { ingest, ingestPatterns, ingestConstants };
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-ingestPatterns.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-ingestConstants.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
-ingest.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+ingestPatterns.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+ingestConstants.atomicProperties = { charge: 0, valence: 3, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+ingest.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

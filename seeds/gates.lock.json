@@ -1,0 +1,286 @@
+{
+ "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
+ "lockedAt": "2026-09-19T13:45:25.319Z",
+ "digest": "92bf4bb796e1c740cc834154a37e48a88f26d5dbb294dbd8875da0bfe79114c6",
+ "gates": {
+  "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
+  "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
+  "scripts/ratchet-battery.js": "db62de937d49fe4a582f4afe46e712a4c99e0a23b8be3a684a5d46fbc861c60a",
+  "scripts/covenant-ratchet.js": "2b429a6adae93dd4b8025be69e663e0eddf48d29fec2e9d0fe20f2597d4da7a9",
+  "scripts/exemption-ratchet.js": "678cb750310e2aa3428e6cd78c56e157b464d82b9ae5de209a65e0000ca4cf91",
+  "scripts/size-ratchet.js": "f9fc77be34d0259f2fe21d34bd8b8494894a4bc698ce4e4a50cc2ec4e0d33f88",
+  "scripts/cycle-ratchet.js": "3421ad1685862dc161b0b40d81500d33972ba08273ee907c8ed70ad6fbacd238",
+  "scripts/suite-reachability-ratchet.js": "35577247f83ee79b759e890569fda5edb800b7392db1d6fd90a8b6d1f2466c8f",
+  "scripts/field-source-ratchet.js": "86e5007fb1496216dd9971fc582757b3efa78e67c3b5400bcd1d74f5604b0784",
+  "scripts/ledger-append-ratchet.js": "f93408da591c2697959133136e7b1bd0288098f2164b75a1be35a5912e15c9de",
+  "scripts/orphan-ratchet.js": "2cc9e9055f1d073fa89e5323a6ba1c09c7b12e09b2ddad58dde44b9426bfeb67",
+  "scripts/silent-catch-ratchet.js": "fbe0191becb8e53ef490c398183ac03af8f97ae6eec34e688d6ff68ee1475ffc",
+  "scripts/console-ratchet.js": "4c4ba3d6742a0910713d413f52e4870b94bba634e0a8ecd594318ccc8f6d13a4",
+  "scripts/atomic-drift-ratchet.js": "2b759df51c995ea8dd39dfba6833c2d9e1024ec15c9cfc0562f028b1409b1092",
+  "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
+  "scripts/contracts-ratchet.js": "c6f7345ad81aa57b3d00118a36846e3a6af469780a120d421558bf38fed2949d",
+  "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
+  "scripts/traps-ledger-ratchet.js": "c24031a305d918d65d2b4fa5fc3d3c79d96d306c0b33a6991282c664a4de8f02",
+  "scripts/width-ratchet.js": "64d363123fa3c6723ce006527333bc610cba167621232d7b476e65f37645b963",
+  "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
+  "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
+  "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
+  ".claude/skills/goggles/run.mjs": "b56314c43c1dae7c19c481659f81132fd540603806b8ff759b243b9985eaa0e3",
+  ".claude/skills/goggles/change-coin.py": "de88b031dacc2fcd739c994df17714e455c972b3e9a46d80e4e761083cc1bfdb",
+  "src/tools/goggles-bash-hook.js": "81c2408dd415876e25231ccc4ab103ad95556d32d39e135bf24754e600848165"
+ },
+ "history": [
+  {
+   "at": "2026-09-05T19:21:51.883Z",
+   "from": null,
+   "to": "29898152ddfba703e523c92a7aa5d115c85e4625eab3121e2daa715b0a230bc4",
+   "reason": "gate law installed: every ratchet's --save-baseline refuses to loosen (scripts/lib/ratchet-law.js), gate-lock added as gate zero, atomic-drift added to the pre-commit hook, console-ratchet gained the unparseable guard",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/lib/ratchet-law.js",
+    "scripts/ratchet-battery.js",
+    "scripts/covenant-ratchet.js",
+    "scripts/exemption-ratchet.js",
+    "scripts/size-ratchet.js",
+    "scripts/cycle-ratchet.js",
+    "scripts/suite-reachability-ratchet.js",
+    "scripts/field-source-ratchet.js",
+    "scripts/ledger-append-ratchet.js",
+    "scripts/orphan-ratchet.js",
+    "scripts/silent-catch-ratchet.js",
+    "scripts/console-ratchet.js",
+    "scripts/atomic-drift-ratchet.js",
+    "scripts/ecosystem-ratchet.js",
+    "scripts/cathedral-diagnostic.js",
+    "scripts/audit-field-contributions.js",
+    "src/core/covenant-fractal.js"
+   ]
+  },
+  {
+   "at": "2026-09-05T19:22:34.335Z",
+   "from": "29898152ddfba703e523c92a7aa5d115c85e4625eab3121e2daa715b0a230bc4",
+   "to": "08427de8a2b96836eb4178154ecd4ef4c6c168bdd563f0c7f534fc635d0a126d",
+   "reason": "covenant-ratchet save path: compare against effectiveBaseline().bs (the floor object), so a run above the floor is refused as DEBT",
+   "changed": [
+    "scripts/covenant-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-05T19:45:34.437Z",
+   "from": "08427de8a2b96836eb4178154ecd4ef4c6c168bdd563f0c7f534fc635d0a126d",
+   "to": "f430390790234f625005942a291fafe3474d9d3e4eb453f32f2dff5232f3214a",
+   "reason": "gate law + lock files gate their own writes through requireGate/createGate instead of an @oracle-infrastructure exemption (exemption surface held at 257); atomic identities set to the extractor's measurement",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/lib/ratchet-law.js"
+   ]
+  },
+  {
+   "at": "2026-09-05T20:39:07.872Z",
+   "from": "f430390790234f625005942a291fafe3474d9d3e4eb453f32f2dff5232f3214a",
+   "to": "e03664f1ecc691e282ebf53d7b29c669d20bc288734d1f16e67c8ad11d06e1c4",
+   "reason": "the change coin: lock the one door (goggles run.mjs, change-coin.py minter/verifier, goggles-bash-hook) and govern coins.ledger.json as append-only; gate-lock.js and ledger-append-ratchet.js list them",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/ledger-append-ratchet.js",
+    ".claude/skills/goggles/run.mjs",
+    ".claude/skills/goggles/change-coin.py",
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-09-06T00:12:10.020Z",
+   "from": "e03664f1ecc691e282ebf53d7b29c669d20bc288734d1f16e67c8ad11d06e1c4",
+   "to": "5d8e7200f5a0448545d37f22d108c92ad0c95b5d400aa561235de56984d7f809",
+   "reason": "change-coin: the coin is saved onto the chain at mint and unfolded only when needed (--do mint unfold / verify --deep); no fractal token on mint; coin_id binds diff | seal | shape_sha256; CHANGE_COIN_NO_CHAIN for test coins",
+   "changed": [
+    ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-09-06T14:24:44.034Z",
+   "from": "5d8e7200f5a0448545d37f22d108c92ad0c95b5d400aa561235de56984d7f809",
+   "to": "8079329f673a050a784bf34a7b8ba8e4c82a496c16843e68aa8e15a39d239a5a",
+   "reason": "goggles: --do gate <name> — one gate in full through the surface (the battery prints one line per gate; the items behind a ✗ were only reachable by running the ratchet by hand)",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T10:17:33.082Z",
+   "from": "8079329f673a050a784bf34a7b8ba8e4c82a496c16843e68aa8e15a39d239a5a",
+   "to": "0df5f705ade9a6544ca10269d495fe1042d74c1b516d56dc9a4aac9f7369355c",
+   "reason": "goggles: --do token — layer two through the surface (the coherency token for a pattern: components, gates, chain)",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T10:27:43.345Z",
+   "from": "0df5f705ade9a6544ca10269d495fe1042d74c1b516d56dc9a4aac9f7369355c",
+   "to": "cd388bb410091224ccbedaaf9060c61309cdd038438150848ecd6fd4d485946c",
+   "reason": "goggles: --do whiten — the one resonance space fitted through the surface; the fit decomposed out of the core module",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T17:18:39.374Z",
+   "from": "cd388bb410091224ccbedaaf9060c61309cdd038438150848ecd6fd4d485946c",
+   "to": "e1aef9f4ae77aab6d9c9b017b55876a4b5c2cbab5beb5f3eb18ef54fa04b570e",
+   "reason": "contracts gate: every falsifiable contract a ratchet (scripts/contracts-ratchet.js, --do gate contracts); the goggles surface names it",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/ratchet-battery.js",
+    "scripts/contracts-ratchet.js",
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T19:03:54.571Z",
+   "from": "e1aef9f4ae77aab6d9c9b017b55876a4b5c2cbab5beb5f3eb18ef54fa04b570e",
+   "to": "e4e8caa21a0227f951b3dd899d228805cca11cbb036a2d0553d451f29fabcc3e",
+   "reason": "engine-entanglement and traps-ledger gates join the family; --do traps and --do field checkpoint verbs; every src declaration synced to its computed identity (automatic atomic growth)",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/ratchet-battery.js",
+    "scripts/atomic-drift-ratchet.js",
+    "scripts/engine-entanglement-ratchet.js",
+    "scripts/traps-ledger-ratchet.js",
+    "src/core/covenant-fractal.js",
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T20:32:31.724Z",
+   "from": "e4e8caa21a0227f951b3dd899d228805cca11cbb036a2d0553d451f29fabcc3e",
+   "to": "8cf0acefc94601e7e5ed1503369bd0296215986a71dc1deb01faf24dae5fea32",
+   "reason": "width gate: ONE representation — no consumer reads anything but the 232-D fractal decoder (census 0, shrink-only); 41 sites swept across hub, Void and Interface",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/ratchet-battery.js",
+    "scripts/width-ratchet.js",
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-07T22:44:39.886Z",
+   "from": "8cf0acefc94601e7e5ed1503369bd0296215986a71dc1deb01faf24dae5fea32",
+   "to": "7ecaa57021d9145cc680242b786cb12b6bfc1536c6d5f8ce8a88cceead8fc378",
+   "reason": "width gate widened: the 29-D L1 carried alone, the 128-point byte resample and a ==256 guard are consumers; ONE representation across field-memory, field-tool, void-library, the bug corpus and the resonance detector",
+   "changed": [
+    "scripts/width-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T00:55:03.642Z",
+   "from": "7ecaa57021d9145cc680242b786cb12b6bfc1536c6d5f8ce8a88cceead8fc378",
+   "to": "6901b55e8293755fdf08232184aafb91c92f10f321e7d37e15516808a086b528",
+   "reason": "width gate: the L1 boundary is drawn by the form; the shape reading is recorded on every hit (--shape, shapeAt) and never decides — measured 5/9 on labelled holdouts; the decoder-layer allowlist was inert and is gone; trap 52 recorded",
+   "changed": [
+    "scripts/width-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T19:58:55.163Z",
+   "from": "6901b55e8293755fdf08232184aafb91c92f10f321e7d37e15516808a086b528",
+   "to": "1cd3ba2b7adcdddd9e3bb644692352ba834dcc5df9dc7469e05cdc1fa6903b92",
+   "reason": "Owner-approved covenant-gated denial logging for PR #355 review repair",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T23:09:25.638Z",
+   "from": "1cd3ba2b7adcdddd9e3bb644692352ba834dcc5df9dc7469e05cdc1fa6903b92",
+   "to": "01979b082cbd6c8e25d69b10d08483c66b3e57226a9fbb1684ffb1bde4f55c3d",
+   "reason": "Owner-approved atomic declarations, shell-free Git inspection, and isolated-test annotations for PR #355 gate repair",
+   "changed": [
+    "scripts/atomic-drift-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-08T23:19:49.477Z",
+   "from": "01979b082cbd6c8e25d69b10d08483c66b3e57226a9fbb1684ffb1bde4f55c3d",
+   "to": "a4231bc820e584cdecba084d39a6623f3461f5b520d9c479142a15553b61ab51",
+   "reason": "Owner-approved shell-free atomic census and covenant-gated test fixtures for PR #355 gate repair",
+   "changed": [
+    "scripts/atomic-drift-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:12:54.201Z",
+   "from": "a4231bc820e584cdecba084d39a6623f3461f5b520d9c479142a15553b61ab51",
+   "to": "9e0ba43634ef7b329b5a5e8c562327597a59e47c8ea920671b197d9c48ad1b77",
+   "reason": "witness-mode coin (a coin never teaches the library, 2026-09-16 ruling): change-coin.py mints and verifies with --witness; run.mjs and the bash hook carried the wall sync of the same round. Relocked by the covenant-holder's session after the ruling.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs",
+    ".claude/skills/goggles/change-coin.py",
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:29:02.452Z",
+   "from": "9e0ba43634ef7b329b5a5e8c562327597a59e47c8ea920671b197d9c48ad1b77",
+   "to": "d19d995621ee077da07944cd25e9377263fc29ad79e1a6cb65b4f3437218275b",
+   "reason": "silent-catch naming inside the wall: the bash hook's three bare swallows now record through quiet() (stdin, parse, fault-write); control flow and fail-closed behavior unchanged. Same round as the witness-mode relock.",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:34:31.964Z",
+   "from": "d19d995621ee077da07944cd25e9377263fc29ad79e1a6cb65b4f3437218275b",
+   "to": "d01eef7fcb49dceb67072b3583bc15b6b65fea53b2b3bc440221b4a207686482",
+   "reason": "the gates ride every mint: run.mjs prints the ratchet battery's verdict (every red gate + the DEBT line) after each coin — the operator's standing ask that traps, gates and contracts load automatically on use. Report, never a block.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-17T08:35:50.551Z",
+   "from": "d01eef7fcb49dceb67072b3583bc15b6b65fea53b2b3bc440221b4a207686482",
+   "to": "4b05f5cc7d0f6874215e2c50cd8955ae99080c2ff3200c34ff23792ccd5f5b02",
+   "reason": "the gates-on-mint wiring reads the battery's verdict off the nonzero exit too (an open gate exits the battery nonzero; the first cut dropped that output). Same ask, same round.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-17T21:51:48.792Z",
+   "from": "4b05f5cc7d0f6874215e2c50cd8955ae99080c2ff3200c34ff23792ccd5f5b02",
+   "to": "55ecf54b3c9445017f42729868a121350ebef85998f5a1a660575d691369fbc3",
+   "reason": "exec verb learns sh: a git-tracked .sh runs under sh instead of being handed to python3 (ecosystem-boot.sh, the one-surface deploy boot, died on line one without this). Same round as the railway one-surface build.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-17T23:09:29.375Z",
+   "from": "55ecf54b3c9445017f42729868a121350ebef85998f5a1a660575d691369fbc3",
+   "to": "633fe311619aaa31e01c41dbce66c96745ecaddb3b45903bbb39cf55a03dc310",
+   "reason": "the plateau applied to the gates themselves: the mint-time battery verdict is a remembered reading keyed on the hub+Void tree state, re-run only when a tree moved — the first cut re-ran the full battery on every mint, minutes per coin, the recalculation the ruling forbids. Also the boot skips a baked repo without .git instead of failing the clone into it.",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-19T10:10:50.498Z",
+   "from": "633fe311619aaa31e01c41dbce66c96745ecaddb3b45903bbb39cf55a03dc310",
+   "to": "2fdbaff06e9d6695871711b74318259e572767bf2c3cc200a2407d753e46dd69",
+   "reason": "the coin rule's birthday becomes explicit: since_epoch honors a tracked .coin-epoch marker (first token = the last pre-epoch commit), so moving the epoch is a committed, witnessed act instead of a history rewrite. Void's marker sits at merge 96a22a87, covering the trailerless a814cd0db3 and the three foreign-key seals its side branch carried. The operator's ruling, 2026-09-19.",
+   "changed": [
+    ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-09-19T13:45:25.319Z",
+   "from": "2fdbaff06e9d6695871711b74318259e572767bf2c3cc200a2407d753e46dd69",
+   "to": "92bf4bb796e1c740cc834154a37e48a88f26d5dbb294dbd8875da0bfe79114c6",
+   "reason": "the remembered gate verdict's key gains the contracts-latest digest: a refreshed contracts run must re-key the battery, or a remembered STALE row outlives its cure (measured on this mint: contracts 67/67 fresh, the memory still repeating the stale row)",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  }
+ ]
+}

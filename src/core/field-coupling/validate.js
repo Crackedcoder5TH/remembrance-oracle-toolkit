@@ -28,6 +28,7 @@ function _pushRecent(c) {
   _recentCoherences.push(c);
   if (_recentCoherences.length > _RECENT_MAX) _recentCoherences.shift();
 }
+_pushRecent.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function _stats(xs) {
   if (!xs || xs.length === 0) return { mean: 0.95, variance: 0.05, n: 0 };
@@ -35,6 +36,7 @@ function _stats(xs) {
   const v = xs.reduce((s, x) => s + (x - m) ** 2, 0) / xs.length;
   return { mean: m, variance: v, n: xs.length };
 }
+_stats.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Classify the shape of a candidate contribution (or batch of them)
@@ -107,6 +109,7 @@ function _classifyShape(input, baseline) {
   if (mean <= 0.15) return 'natural-low';
   return 'natural-mid';
 }
+_classifyShape.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Variance-gate mode (set by the reflex engine when under pressure) ────
 // The displacement threshold defaults to 0.15 (the H3-derived natural
@@ -252,7 +255,7 @@ function validateContribution(obs, opts = {}) {
   return result;
 }
 
-validateContribution.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+validateContribution.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ── Cognition trajectory (read goggles state programmatically) ───────────
 //
@@ -298,6 +301,6 @@ function cognitionTrajectory(opts = {}) {
   }
 }
 
-cognitionTrajectory.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+cognitionTrajectory.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 4, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { _pushRecent, _stats, _classifyShape, setVarianceGateMode, getVarianceGateMode, validateContribution, cognitionTrajectory, _recentCoherences };

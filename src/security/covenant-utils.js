@@ -6,12 +6,7 @@ function hashString(input, algo = 'sha256') {
   if (typeof input !== 'string') input = String(input || '');
   return createHash(algo).update(input).digest('hex');
 }
-hashString.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.4, group: 16, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+hashString.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function redactSecrets(text) {
   if (typeof text !== 'string') return '';
@@ -19,12 +14,7 @@ function redactSecrets(text) {
     .replace(/([a-zA-Z0-9_-]*(?:token|key|secret|password|pwd|auth|bearer)[a-zA-Z0-9_-]*\s*[:=]\s*)['"`]?([^\s'"`,;]+)['"`]?/gi, '$1[REDACTED]')
     .replace(/(sk-[a-zA-Z0-9_-]{20,}|ghp_[a-zA-Z0-9]{36,}|gh[a-z]_[a-zA-Z0-9]{20,}|xox[baprs]-[a-zA-Z0-9-]+|AIza[a-zA-Z0-9_-]{35}|AKIA[A-Z0-9]{16})/g, '[REDACTED]');
 }
-redactSecrets.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 12, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+redactSecrets.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function auditLog(event, context = {}) {
   const safe = {};
@@ -39,12 +29,7 @@ function auditLog(event, context = {}) {
     fingerprint: hashString(JSON.stringify({ event, keys: Object.keys(safe).sort() })).slice(0, 12),
   };
 }
-auditLog.atomicProperties = {
-  charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.5, group: 11, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+auditLog.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 function verifySignature(payload, signature, secret, algo = 'sha256') {
   if (typeof payload !== 'string' || typeof signature !== 'string' || typeof secret !== 'string') return false;
@@ -54,12 +39,7 @@ function verifySignature(payload, signature, secret, algo = 'sha256') {
     return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'));
   } catch { return false; }
 }
-verifySignature.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.5, group: 16, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+verifySignature.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 function sanitizeInput(input, opts = {}) {
   if (typeof input !== 'string') input = String(input || '');
@@ -70,23 +50,13 @@ function sanitizeInput(input, opts = {}) {
   if (opts.alphanumOnly) out = out.replace(/[^a-zA-Z0-9\s._-]/g, '');
   return out.trim();
 }
-sanitizeInput.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.3, group: 12, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+sanitizeInput.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function rateLimitKey(identifier, window = 60000) {
   const bucket = Math.floor(Date.now() / window);
   return `rl:${hashString(String(identifier || 'anon'))}:${bucket}`;
 }
-rateLimitKey.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.4, group: 10, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+rateLimitKey.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function timeConstantCompare(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
@@ -95,12 +65,7 @@ function timeConstantCompare(a, b) {
     return timingSafeEqual(Buffer.from(a), Buffer.from(b));
   } catch { return false; }
 }
-timeConstantCompare.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.4, group: 2, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+timeConstantCompare.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function maskEmail(email) {
   if (typeof email !== 'string') return '';
@@ -111,23 +76,13 @@ function maskEmail(email) {
   const maskedUser = user.length <= 2 ? '*'.repeat(user.length) : user[0] + '*'.repeat(Math.max(1, user.length - 2)) + user[user.length - 1];
   return maskedUser + domain;
 }
-maskEmail.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.3, group: 12, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+maskEmail.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function checksumBuffer(buffer) {
   if (!buffer) return '';
   return createHash('sha256').update(buffer).digest('hex');
 }
-checksumBuffer.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.4, group: 16, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+checksumBuffer.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function tokenBucketCheck(state, capacity, refillRatePerSec) {
   const now = Date.now();
@@ -141,34 +96,19 @@ function tokenBucketCheck(state, capacity, refillRatePerSec) {
   }
   return { allowed: false, state: { tokens, lastRefill: now }, retryAfter: refillRatePerSec > 0 ? Math.ceil((1 - tokens) / refillRatePerSec) : Infinity };
 }
-tokenBucketCheck.atomicProperties = {
-  charge: -1, valence: 2, mass: 'light', spin: 'even', phase: 'liquid',
-  reactivity: 'stable', electronegativity: 0.5, group: 10, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+tokenBucketCheck.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function secureRandom(byteLength = 32) {
   return randomBytes(byteLength).toString('hex');
 }
-secureRandom.atomicProperties = {
-  charge: 1, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 16, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+secureRandom.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function validateOrigin(origin, allowlist) {
   if (typeof origin !== 'string' || !Array.isArray(allowlist)) return false;
   const normalized = origin.replace(/\/$/, '').toLowerCase();
   return allowlist.some(entry => typeof entry === 'string' && entry.replace(/\/$/, '').toLowerCase() === normalized);
 }
-validateOrigin.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.4, group: 2, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+validateOrigin.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   hashString, redactSecrets, auditLog, verifySignature, sanitizeInput,

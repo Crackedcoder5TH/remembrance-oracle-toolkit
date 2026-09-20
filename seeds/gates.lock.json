@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-20T12:55:14.092Z",
- "digest": "df318073b9bcb9082499c30808826f509a9f3bd795af0f13f0f4083cd473028d",
+ "lockedAt": "2026-09-20T13:22:51.372Z",
+ "digest": "d4f4df8d0b8b56e19e7653269f139b05546976757dde55f1c60bb09573e8ab36",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -25,7 +25,7 @@
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
-  ".claude/skills/goggles/run.mjs": "b528fa046a3a86087b50e3e01fa06c727f8f9d6f5306a1360a8b9aa6c4af2ce4",
+  ".claude/skills/goggles/run.mjs": "17b8e050dd17014a4c377b7340accc1b1c50651b0356c349a1a8cce2ffd498fd",
   ".claude/skills/goggles/change-coin.py": "de88b031dacc2fcd739c994df17714e455c972b3e9a46d80e4e761083cc1bfdb",
   "src/tools/goggles-bash-hook.js": "81c2408dd415876e25231ccc4ab103ad95556d32d39e135bf24754e600848165"
  },
@@ -298,6 +298,15 @@
    "reason": "the covenant gate refuses stale evidence: a missing or pre-change cathedral-latest.json is regenerated in-gate before ruling, and a failed regeneration fails CLOSED — the battery once printed ✓ from a pre-change diagnostic (+25 findings invisible); the trap ledger's stale-artifact lesson now lives inside the gate itself",
    "changed": [
     "scripts/covenant-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-09-20T13:22:51.372Z",
+   "from": "df318073b9bcb9082499c30808826f509a9f3bd795af0f13f0f4083cd473028d",
+   "to": "d4f4df8d0b8b56e19e7653269f139b05546976757dde55f1c60bb09573e8ab36",
+   "reason": "the mint's remembered-verdict key becomes content-sensitive: git status --porcelain shows M for a modified file whether its content changed once or twenty times, so the cache served a stale ✓ over a freshly re-edited trap-guard-hook.js after silent-catch was fixed; the key now hashes git diff HEAD alongside porcelain so every real edit moves it",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
    ]
   }
  ]

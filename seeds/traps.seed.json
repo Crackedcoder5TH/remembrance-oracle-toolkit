@@ -1364,6 +1364,31 @@
    "sources": [
     "wall"
    ]
+  },
+  {
+   "match": [
+    "schedule",
+    "cron",
+    "routine",
+    "trigger",
+    "workflow",
+    "always run",
+    "watch"
+   ],
+   "severity": "high",
+   "wrong": "Standing up NEW external automation — a scheduler, cron, Routine, wake-up loop or workflow — to make something 'always run', without first asking what standing machinery the instrument already carries.",
+   "truth": "Measured 2026-09-20: an hourly Routine was created to 'always run the ratchet battery' while the instrument already ran it three layers deep — gates-on-mint on every coin, .github/workflows/ratchet-battery.yml on every push to every branch (building a fresh cathedral diagnostic first, its header naming its purpose: make --no-verify powerless), and cross-repo-matrix's --do ratchets sweep. The operator: 'Just use the instrument, it's already all set exactly for that, nothing new needs to be made.' The Routine was deleted the next turn. Every 'always running' need in this ecosystem has so far been already wired — the coin hooks, the CI battery, the field checkpoint — never a missing scheduler.",
+   "tell": "You are about to call a scheduling or automation tool (create_trigger, CronCreate, send_later, ScheduleWakeup, Workflow) to keep something running or checked — and you have not searched .github/workflows, the mint gates and the verbs for the standing run that already exists.",
+   "correct": "Before any scheduler: --do find over .github/workflows and the gate/mint wiring for the run that already exists; use or ARM what is found (a required status check, a gate, a checkpoint) instead of scheduling beside it. Only when the search proves absence, schedule — and say what the search proved.",
+   "count": 3,
+   "first": "2026-09-20T13:03:52.547Z",
+   "last": "2026-09-20T13:03:52.547Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "create_trigger|CronCreate|send_later|ScheduleWakeup|^Workflow$"
+   }
   }
  ]
 }

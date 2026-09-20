@@ -77,12 +77,22 @@ function learn(trap, weight = REPEAT_TO_TRAP, source = 'agent') {
       last: new Date().toISOString(),
       sources: [source],
     };
+    // TEETH (the operator's ruling, 2026-09-20: the trap ledger has the same
+    // teeth as the goggles). A trap may carry a `guard`: { tools: <regex over
+    // tool names>, input?: <regex over the stringified tool input> }. The
+    // trap-guard hook denies the FIRST matching tool call of a session with
+    // the trap's own text — the brief gate's deny-once shape, applied to any
+    // tool — so the correction arrives before the act, and the retry passes.
+    if (trap.guard && typeof trap.guard === 'object' && typeof trap.guard.tools === 'string' && trap.guard.tools) {
+      entry.guard = { tools: String(trap.guard.tools) };
+      if (typeof trap.guard.input === 'string' && trap.guard.input) entry.guard.input = String(trap.guard.input);
+    }
     doc.traps.push(entry);
   }
   writeLocal(doc);
   return { added: !doc.traps.includes(entry) ? false : true, count: entry.count, key };
 }
-learn.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+learn.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 /** The wall's denial as a candidate: called by the bash hook on every deny. */
 function learnDenial(rule, cmd) {

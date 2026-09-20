@@ -37,6 +37,11 @@ const DENY = (what) => ` || echo '{"hookSpecificOutput":{"hookEventName":"PreToo
 const hook = (file) => `node ${path.join(HUB, 'src', 'tools', file)}`;
 
 const PRE = [
+  // The trap ledger's teeth over EVERY tool (2026-09-20): a trap carrying a
+  // `guard` denies its first matching tool call of the session with its own
+  // text — the brief gate's deny-once shape, applied to schedulers, MCP
+  // calls, anything. Fail closed at this level per the wall ruling.
+  { matcher: '.*', hooks: [{ type: 'command', command: hook('trap-guard-hook.js') + DENY('trap-guard-hook'), statusMessage: 'goggles: the trap ledger listens on every tool' }] },
   { matcher: 'Edit|Write|MultiEdit|NotebookEdit', hooks: [{ type: 'command', command: hook('goggles-pre-hook.js') + DENY('goggles-pre-hook'), statusMessage: 'goggles: the reading before the write (goggled-first)' }] },
   { matcher: 'Bash', hooks: [{ type: 'command', command: hook('goggles-bash-hook.js') + DENY('goggles-bash-hook'), statusMessage: 'goggles: the wall — only the goggles run inside the ecosystem' }] },
   { matcher: 'Grep|Glob|Read', hooks: [{ type: 'command', command: hook('goggles-search-hook.js') + DENY('goggles-search-hook'), statusMessage: 'goggles: searches go through --do find; reads are recorded' }] },

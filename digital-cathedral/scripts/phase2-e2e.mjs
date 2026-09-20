@@ -30,7 +30,11 @@ const FIELD = (() => {
   return raw.endsWith("/mcp") ? raw : raw.replace(/\/$/, "") + "/mcp";
 })();
 
+/** JSON that may not be JSON never throws — a bad payload fails a CHECK, not the run. */
+const parseJson = (text) => { try { return JSON.parse(text); } catch { return null; } };
+
 async function mcp(name, args) {
+  if (typeof name !== "string" || !name || typeof args !== "object" || args === null) return null;
   const headers = { "Content-Type": "application/json" };
   const token = (process.env.REMEMBRANCE_FIELD_TOKEN || "").trim();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -40,7 +44,7 @@ async function mcp(name, args) {
   });
   const json = await res.json();
   const text = json?.result?.content?.[0]?.text;
-  return text ? JSON.parse(text) : null;
+  return text ? parseJson(text) : null;
 }
 const store = (rec) => mcp("legacy", { action: "store", ...rec });
 const get = async (id) => { const r = await mcp("legacy", { action: "get", id }); return r && r.ok ? r.legacy : null; };
@@ -48,7 +52,11 @@ const del = (id) => mcp("legacy", { action: "delete", id });
 const list = (tags, limit = 100) => mcp("legacy", { action: "list", tags, limit, offset: 0 });
 
 const failures = [];
-const check = (name, ok, detail) => { if (!ok) failures.push({ name, detail }); return ok; };
+function check(name, ok, detail) {
+  if (typeof name !== "string" || !name) throw new TypeError("check requires a name");
+  if (!ok) failures.push({ name, detail });
+  return Boolean(ok);
+}
 const cleanupIds = [];
 async function put(rec) { cleanupIds.push(rec.id); const r = await store(rec); return r && r.ok; }
 
@@ -73,10 +81,10 @@ async function main() {
   const first = { id: T, kind: "phone", valueMasked: "•••0001", valueHash: hash, reason: "first reason", source: "fixture", active: true, createdBy: "admin-one", createdAt: new Date(T).toISOString() };
   await put({ id: sId, name: sId, content: JSON.stringify(first), tags: [tag("suppression"), "kind:phone", "active"] });
   // second write mirrors substrateAddSuppression's read-modify-write: reason/source refresh, first writer kept
-  const existing = JSON.parse((await get(sId)).content);
+  const existing = parseJson((await get(sId))?.content) || {};
   const second = { ...existing, reason: "second reason", source: "fixture-2", active: true };
   await put({ id: sId, name: sId, content: JSON.stringify(second), tags: [tag("suppression"), "kind:phone", "active"] });
-  const after = JSON.parse((await get(sId)).content);
+  const after = parseJson((await get(sId))?.content) || {};
   check("suppression: reason/source refreshed", after.reason === "second reason" && after.source === "fixture-2");
   check("suppression: first-writer createdBy/createdAt kept", after.createdBy === "admin-one" && after.createdAt === first.createdAt);
   check("suppression: isSuppressed resolves via getRecord", after.active === true);
@@ -85,18 +93,18 @@ async function main() {
   const ackId = "p2fix:ack:agent-9";
   await put({ id: ackId, name: ackId, content: JSON.stringify({ agentId: "agent-9", version: "v1", acknowledgedAt: new Date(T).toISOString(), active: true }), tags: [tag("ack"), "active"] });
   await put({ id: ackId, name: ackId, content: JSON.stringify({ agentId: "agent-9", version: "v2", acknowledgedAt: new Date(T + 5).toISOString(), active: true }), tags: [tag("ack"), "active"] });
-  const ack = JSON.parse((await get(ackId)).content);
+  const ack = parseJson((await get(ackId))?.content) || {};
   check("acknowledgement: whole-row upsert (v2 wins)", ack.version === "v2");
 
   // ── 4. privacy create + read-modify-write update ──
   const pId = `p2fix:privacy:${T}`;
   const created = { id: T, leadId: "FIXTURE-L1", requester: "fixture", requestType: "deletion", status: "new", targetDate: null, assignedAdmin: null, notes: "", completedAt: null, createdAt: new Date(T).toISOString(), updatedAt: new Date(T).toISOString() };
   await put({ id: pId, name: pId, content: JSON.stringify(created), tags: [tag("privacy"), "lead:FIXTURE-L1", "status:new"] });
-  const row = JSON.parse((await get(pId)).content);
+  const row = parseJson((await get(pId))?.content) || {};
   row.status = "completed"; row.notes = "done"; row.assignedAdmin = "admin-one";
   row.completedAt = new Date(T + 9).toISOString(); row.updatedAt = row.completedAt;
   await put({ id: pId, name: pId, content: JSON.stringify(row), tags: [tag("privacy"), "lead:FIXTURE-L1", "status:completed"] });
-  const updated = JSON.parse((await get(pId)).content);
+  const updated = parseJson((await get(pId))?.content) || {};
   check("privacy: status/notes/completedAt moved", updated.status === "completed" && updated.notes === "done" && updated.completedAt !== null);
   check("privacy: createdAt held through update", updated.createdAt === created.createdAt);
   const byLead = await list([tag("privacy"), "lead:FIXTURE-L1"]);
@@ -125,7 +133,8 @@ async function main() {
     const leadId = rec.id.slice(4, cut);
     const scope = rec.id.slice(cut + 1);
     const recClient = scope === "global" ? "" : scope;
-    const o = JSON.parse(rec.content);
+    const o = parseJson(rec.content);
+    if (!o) continue;
     ops.push({ leadId, clientId: recClient, status: o.status, doNotContact: o.doNotContact });
     for (const a of o.activity) {
       activityCounts[a.eventType] = (activityCounts[a.eventType] || 0) + 1;

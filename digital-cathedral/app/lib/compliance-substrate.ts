@@ -63,7 +63,10 @@ export async function substrateRecordAudit(input: Omit<AuditEvent, "id" | "creat
 }
 
 // ── suppressions ─────────────────────────────────────────────────────
-const suppressionId = (kind: string, hash: string) => `suppression:${kind}:${hash}`;
+const suppressionId = (kind: string, hash: string): string => {
+  if (!kind || !hash) throw new TypeError("suppressionId requires kind and hash");
+  return `suppression:${kind}:${hash}`;
+};
 
 export async function substrateAddSuppression(
   kind: "phone" | "email", hash: string, masked: string, reason: string, source: string, actorId: string,
@@ -86,6 +89,7 @@ export async function substrateAddSuppression(
 }
 
 export async function substrateIsSuppressed(phoneHash: string, emailHash: string): Promise<boolean> {
+  if (typeof phoneHash !== "string" || typeof emailHash !== "string") throw new TypeError("Contact hashes must be strings");
   const [p, e] = await Promise.all([
     getRecord(suppressionId("phone", phoneHash)),
     getRecord(suppressionId("email", emailHash)),
@@ -96,6 +100,7 @@ export async function substrateIsSuppressed(phoneHash: string, emailHash: string
 
 // ── acknowledgements ─────────────────────────────────────────────────
 export async function substrateAcknowledgeAgent(agentId: string, version: string, ip: string | null, userAgent: string | null): Promise<void> {
+  if (!agentId?.trim() || !version?.trim()) throw new TypeError("Agent id and version are required");
   const row = { agentId, version, acknowledgedAt: new Date().toISOString(), ip, userAgent, active: true };
   await storeRecord({ id: `ack:${agentId}`, name: `ack:${agentId}`, content: JSON.stringify(row), tags: [ACK_TAG, "active"] });
 }
@@ -140,12 +145,14 @@ export async function substrateUpdatePrivacyRequest(id: number, status: string, 
 
 // ── reviews ──────────────────────────────────────────────────────────
 export async function substrateMarkComplianceReviewed(leadId: string, actorId: string): Promise<void> {
+  if (!leadId?.trim() || !actorId?.trim()) throw new TypeError("Lead id and actor id are required");
   const row = { leadId, reviewedAt: new Date().toISOString(), reviewedBy: actorId };
   await storeRecord({ id: `review:${leadId}`, name: `review:${leadId}`, content: JSON.stringify(row), tags: [REVIEW_TAG] });
 }
 
 // ── the read views ───────────────────────────────────────────────────
 export async function substrateGetLeadComplianceView(leadId: string, phoneHash: string, emailHash: string) {
+  if (!leadId?.trim() || typeof phoneHash !== "string" || typeof emailHash !== "string") throw new TypeError("Lead id and contact hashes are required");
   const [suppressed, reviewRec, privacy] = await Promise.all([
     substrateIsSuppressed(phoneHash, emailHash),
     getRecord(`review:${leadId}`),

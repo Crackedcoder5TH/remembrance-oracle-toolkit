@@ -141,6 +141,8 @@ export async function substrateUpdateLeadOperations(
  * performance-analytics reads either store without knowing which.
  */
 export async function substrateGetOperationsDataset(leadIds?: string[], clientId?: string): Promise<OperationsDataset> {
+  if (leadIds !== undefined && !Array.isArray(leadIds)) throw new TypeError("leadIds must be an array when given");
+  if (clientId !== undefined && typeof clientId !== "string") throw new TypeError("clientId must be a string when given");
   const scoped = Array.isArray(leadIds);
   const wanted = scoped ? new Set(leadIds) : null;
   const ops: OperationsRow[] = [];

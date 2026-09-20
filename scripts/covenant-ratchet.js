@@ -125,7 +125,40 @@ function main() {
   const tolIdx = args.indexOf('--tolerance');
   const tolerance = tolIdx >= 0 ? Number.parseInt(args[tolIdx + 1], 10) || 5 : 5;
 
-  const latest = readJson(LATEST);
+  let latest = readJson(LATEST);
+  // A STALE VERDICT IS NOT A VERDICT (2026-09-20): the battery once read a
+  // pre-change cathedral-latest.json and printed ✓ over a tree the diagnostic
+  // had never scanned — +25 findings invisible to the gate. The trap ledger
+  // already knew ("a derived artifact is evidence of a past run, never of the
+  // present state"); now the gate itself does: when the diagnostic is missing
+  // or older than the cathedral's last change (last commit touching it, or any
+  // uncommitted change under it), the diagnostic is REGENERATED here, and if
+  // regeneration fails the gate fails CLOSED — never a pass on stale evidence.
+  const staleReason = (() => {
+    if (!latest) return 'no cathedral-latest.json';
+    const at = Date.parse(latest.generatedAt || 0) || 0;
+    try {
+      const { execFileSync } = require('child_process');
+      const dirty = execFileSync('git', ['status', '--porcelain', '--', 'digital-cathedral'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
+      if (dirty) return 'uncommitted cathedral changes newer than the diagnostic';
+      const lastCommit = execFileSync('git', ['log', '-1', '--format=%cI', '--', 'digital-cathedral'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
+      if (lastCommit && Date.parse(lastCommit) > at) return `diagnostic (${latest.generatedAt}) predates the last cathedral commit (${lastCommit})`;
+    } catch (_) { return latest ? null : 'no cathedral-latest.json'; /* no git → only absence is provably stale */ }
+    return null;
+  })();
+  if (staleReason) {
+    console.error(`[ratchet] diagnostic stale — ${staleReason}; regenerating (a stale verdict is not a verdict)`);
+    try {
+      const { execFileSync } = require('child_process');
+      execFileSync(process.execPath, [path.join(REPO_ROOT, 'scripts', 'cathedral-diagnostic.js')], { cwd: REPO_ROOT, stdio: ['ignore', 'ignore', 'inherit'], timeout: 10 * 60 * 1000 });
+    } catch (e) {
+      const msg = `diagnostic regeneration failed (${e && e.message ? e.message.split('\n')[0] : e}) — refusing to gate on stale evidence`;
+      if (asJson) { console.log(JSON.stringify({ ok: false, reason: msg })); process.exit(2); }
+      console.error(`[ratchet] ✗ ${msg}`);
+      process.exit(2);
+    }
+    latest = readJson(LATEST);
+  }
   if (!latest) {
     const msg = 'no cathedral-latest.json — run `node scripts/cathedral-diagnostic.js` first';
     if (asJson) { console.log(JSON.stringify({ ok: false, reason: msg })); process.exit(2); }

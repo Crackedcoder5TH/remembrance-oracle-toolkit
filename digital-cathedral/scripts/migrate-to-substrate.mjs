@@ -87,9 +87,12 @@ async function mcpTool(toolName, args = {}) {
     const json = await res.json();
     if (json.error) return null;
     const content = json.result?.content?.[0]?.text;
-    return content ? JSON.parse(content) : null;
+    return content ? parseJson(content) : null;
   } catch { return null; } finally { clearTimeout(timer); }
 }
+
+/** JSON that may not be JSON never throws — a bad payload reads as absent. */
+function parseJson(text) { try { return JSON.parse(text); } catch { return null; } }
 const storeRecord = (rec) => mcpTool("legacy", { action: "store", ...rec });
 const getRecord = async (id) => {
   const r = await mcpTool("legacy", { action: "get", id });
@@ -152,7 +155,8 @@ const messageRecord = (m) => ({
 // ── the source store, resolved as database.ts resolves it ────────────
 async function openSource(jsonPath) {
   if (jsonPath) {
-    const doc = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+    const doc = parseJson(fs.readFileSync(jsonPath, "utf8"));
+    if (!doc) throw new Error(`--source-json ${jsonPath} is not valid JSON`);
     const tables = { leads: doc.leadRows || [], client_messages: doc.msgRows || [] };
     return {
       kind: "json:" + path.basename(jsonPath),
@@ -177,6 +181,9 @@ async function openSource(jsonPath) {
 }
 
 async function replayTable({ label, rows, toRecord, compare }) {
+  if (!label || !Array.isArray(rows) || typeof toRecord !== "function" || typeof compare !== "function") {
+    throw new TypeError("replayTable requires label, rows[], toRecord(), compare()");
+  }
   let stored = 0, identical = 0;
   const mismatches = [];
   for (const row of rows) {
@@ -216,9 +223,15 @@ async function main() {
     return 0;
   }
 
-  const compareLead = (rec, back) => back.content === rec.content;
-  const compareMsg = (rec, back) => back.content === rec.content
-    && JSON.stringify(back.meta && back.meta.message) === JSON.stringify(rec.meta.message);
+  function compareLead(rec, back) {
+    if (!rec || !back) return false;
+    return back.content === rec.content;
+  }
+  function compareMsg(rec, back) {
+    if (!rec || !back || !rec.meta) return false;
+    return back.content === rec.content
+      && JSON.stringify(back.meta && back.meta.message) === JSON.stringify(rec.meta.message);
+  }
 
   const results = [];
   if (verifyOnly) {

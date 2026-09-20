@@ -5117,6 +5117,81 @@
      "shape_sha256": "49b87f48d9eeb7295ec1857dca1d52ecd0abdd9bc00f0a19d3cfbae4a39bfcb4"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "dff28258b34f3594e28858e4a6b47ec05c904c0f208ad294175e2ece50e43148",
+   "minted_at": "2026-09-20T02:12:38+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "5911cf9e436c6e9d03b4d6641cbc4b42a35ffe65",
+    "files": [
+     "digital-cathedral/app/lib/compliance-substrate.ts",
+     "digital-cathedral/app/lib/compliance.ts",
+     "digital-cathedral/app/lib/lead-operations-substrate.ts",
+     "digital-cathedral/app/lib/lead-operations.ts",
+     "digital-cathedral/scripts/phase2-e2e.mjs",
+     "docs/valor-legacies-integration.md"
+    ],
+    "diff_bytes": 41898,
+    "diff_sha256": "803ab7f06cb032ecb215cc6a43f92ed3d0be1e132235c7432d798b4ce89929ac",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.16673745239987822,
+    "ratio": 3.6895033462486793,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "f39287451c647aed",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "a9e76544bf00bdf6b563ab9b203cdd0f3e454b2aefc318ba34666cdbf364c886",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-20T02:12:38",
+     "coin": null,
+     "sig": "f39287451c647aedb042f198db620c40d514cd02ac8cfe3b1d1684ced392e709"
+    },
+    "library_size": 28669,
+    "memory": {
+     "fits": 857,
+     "served": 179,
+     "computed": 678,
+     "served_ancestor": 0,
+     "chunkings": 6,
+     "chunkings_served": 3,
+     "entries": 730159,
+     "void_chunks": 88,
+     "ingested": 0,
+     "served_single": 1,
+     "searched": 89,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 3.282,
+    "basis_id": "34c0e162cdb5a4e5",
+    "learned_n": 28597,
+    "learned_this_reading": 0,
+    "basis_after": "34c0e162cdb5a4e5",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "34c0e162cdb5a4e5",
+     "method": "v4_chunked",
+     "original_size": 41898,
+     "compressed_size": 11356,
+     "coherency": 0.16673745239987822,
+     "data_sha256": "186f4455c254cd2ebdb18177be092198c3a104f093dd35032ce353c42bb6aff6",
+     "compressed_sha256": "eafb98b75d0ff7e31995e1542c63fa511a846c1783ef0aea5d8706cfa66aaa24",
+     "shape_sha256": "02a77ca0cc68fd341787e955c80f3502577dc4b455c31573e0d58f1b5c92c0c7"
+    }
+   }
   }
  ]
 }

@@ -25,12 +25,12 @@
  * high-contention exact analytics the relational adapter remains the right tool.
  */
 
-import { getRecord, storeRecord } from "./valor/remembrance-bridge";
+import { getRecord, storeRecord, listRecords } from "./valor/remembrance-bridge";
 import { SUBSTRATE_LEADS } from "./substrate-leads";
 // Type-only import → erased at compile time, so there is no runtime cycle even
 // though lead-operations.ts imports the values below. The shared derivation
 // (deriveOpsMutation) runs in lead-operations.ts and its result is passed in.
-import type { AgentStatus, LeadActivity, LeadNote, LeadOperations, LeadOperationsScope, OpsMutation, Update } from "./lead-operations";
+import type { AgentStatus, LeadActivity, LeadNote, LeadOperations, LeadOperationsScope, OperationsDataset, OperationsRow, OpsMutation, Update } from "./lead-operations";
 
 /** Operations follow their lead: same gate as substrate-leads, one source of truth. */
 export const SUBSTRATE_LEAD_OPS = SUBSTRATE_LEADS;
@@ -129,4 +129,52 @@ export async function substrateUpdateLeadOperations(
   });
 
   return substrateGetLeadOperations(leadId, { ...options, includeInternal: actorRole === "admin" });
+}
+
+/**
+ * Bulk operations snapshot from the substrate — the analytics fan-in
+ * (Phase 2's last lead-ops gap). Each `lead-ops` record holds one lead's
+ * whole operational state, so the SQL path's three set-based queries
+ * become one paginated list + an in-memory fold with the SAME outputs:
+ * ops rows, activity counts by event type, and the first agent action
+ * per `${clientId}:${leadId}` — key shape identical to the SQL fold, so
+ * performance-analytics reads either store without knowing which.
+ */
+export async function substrateGetOperationsDataset(leadIds?: string[], clientId?: string): Promise<OperationsDataset> {
+  const scoped = Array.isArray(leadIds);
+  const wanted = scoped ? new Set(leadIds) : null;
+  const ops: OperationsRow[] = [];
+  const activityCounts: Record<string, number> = {};
+  const firstAgentActionByLead: Record<string, string> = {};
+  const PAGE = 200;
+  for (let offset = 0; ; offset += PAGE) {
+    const { records, total } = await listRecords({ tags: ["lead-ops"], limit: PAGE, offset });
+    for (const rec of records) {
+      // id `ops:<leadId>:<scope>` — scope is the segment after the LAST colon
+      if (!rec.id?.startsWith("ops:")) continue;
+      const cut = rec.id.lastIndexOf(":");
+      const leadId = rec.id.slice(4, cut);
+      const scope = rec.id.slice(cut + 1);
+      const recClient = scope === "global" ? "" : scope;
+      if (wanted && !wanted.has(leadId)) continue;
+      if (clientId !== undefined && clientId !== null && clientId !== "" && recClient !== clientId) continue;
+      const o = parseOps(rec.content);
+      ops.push({
+        leadId, clientId: recClient, status: o.status as AgentStatus,
+        lastContactedAt: o.lastContactedAt, nextFollowUpAt: o.nextFollowUpAt,
+        appointmentAt: o.appointmentAt, doNotContact: o.doNotContact,
+      });
+      for (const a of o.activity) {
+        activityCounts[a.eventType] = (activityCounts[a.eventType] || 0) + 1;
+        if (a.actorRole === "agent") {
+          const key = `${recClient}:${leadId}`;
+          if (!firstAgentActionByLead[key] || a.createdAt < firstAgentActionByLead[key]) {
+            firstAgentActionByLead[key] = a.createdAt;
+          }
+        }
+      }
+    }
+    if (records.length < PAGE || offset + PAGE >= total) break;
+  }
+  return { ops, activityCounts, firstAgentActionByLead };
 }

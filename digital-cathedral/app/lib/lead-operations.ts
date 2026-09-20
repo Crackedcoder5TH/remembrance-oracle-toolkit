@@ -1,5 +1,5 @@
 import path from "path";
-import { SUBSTRATE_LEAD_OPS, substrateGetLeadOperations, substrateUpdateLeadOperations } from "./lead-operations-substrate";
+import { SUBSTRATE_LEAD_OPS, substrateGetLeadOperations, substrateGetOperationsDataset, substrateUpdateLeadOperations } from "./lead-operations-substrate";
 
 export const AGENT_STATUSES = ["New", "Contacted", "Follow-Up", "Appointment Set", "Application Started", "Submitted", "Won", "Lost", "Bad Lead / Dispute Requested", "Do Not Contact"] as const;
 export type AgentStatus = typeof AGENT_STATUSES[number];
@@ -228,6 +228,8 @@ const mapOpsRow = (r: Record<string, unknown>): OperationsRow => ({
 export async function getOperationsDataset(leadIds?: string[], clientId?: string): Promise<OperationsDataset> {
   const scoped = Array.isArray(leadIds);
   if (scoped && leadIds!.length === 0) return emptyDataset();
+  // Field-attached mode: fold the dataset from the field's lead-ops records.
+  if (SUBSTRATE_LEAD_OPS) return substrateGetOperationsDataset(leadIds, clientId);
 
   if (process.env.DATABASE_URL) {
     const db = await pg();

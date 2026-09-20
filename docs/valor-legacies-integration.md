@@ -68,16 +68,33 @@ all repos cloned at boot. To finish on the Railway dashboard:
    comparison shadow; `database.ts` already knows how to serve from
    either side.
 
-## Phase 2 — retire the SQL residue
+## Phase 2 — retire the SQL residue (BUILT + PROVEN 2026-09-20)
 
-- `lead-operations.ts`: port its pg `Pool` queries onto the record store
-  (get by id, list by facet, update = append-new-version). This is the
-  one file with real query logic to translate.
-- `compliance.ts`: the audit log becomes chain REGISTER blocks / witnessed
-  records — an audit that is append-only and sealed is strictly stronger
-  than a sqlite table. Reads replay the ledger.
-- When both are ported, `DATABASE_URL`/sqlite disappear from the app's
-  env entirely. The system is the database.
+- `lead-operations.ts`: the substrate port already existed
+  (`lead-operations-substrate.ts` — get/update/summary delegate under
+  `SUBSTRATE_LEAD_OPS`, which IS the `SUBSTRATE_LEADS` gate). The one
+  missing path was the analytics fan-in: `substrateGetOperationsDataset`
+  now folds the paginated `lead-ops` records into the same OperationsRow
+  list, activity counts and `${clientId}:${leadId}`-keyed first agent
+  actions the SQL queries produced, and `getOperationsDataset` delegates.
+- `compliance.ts`: all five stores gained substrate twins
+  (`compliance-substrate.ts`) behind `SUBSTRATE_COMPLIANCE` (same gate):
+  the AUDIT is append-only records `audit:<millis>:<n>` — never
+  overwritten, coherence-scored on entry, strictly stronger than the
+  mutable SQL table; suppressions/acks/reviews are keyed upserts with the
+  SQL conflict semantics preserved; privacy requests are time-ordered
+  ids with read-modify-write updates. Every export in compliance.ts
+  delegates; all derivation (hashing, masking, validation, audit
+  meaning) stays in compliance.ts so the stores can never disagree.
+- MEASURED (scripts/phase2-e2e.mjs against the live field server):
+  13/13 checks — audit append-only + byte-identical read-back,
+  suppression first-writer-kept conflict semantics, ack upsert, privacy
+  create/update with createdAt held, review, and the dataset fold with
+  exact counts — then all 8 fixture records deleted and verified gone.
+- With `SUBSTRATE_LEADS=1` and the field URL set, nothing in the app
+  writes SQL any more; `DATABASE_URL`/sqlite remain only as the
+  flag-off default until the shadow release retires them. The system
+  is the database.
 
 ## Phase 3 — memory (the idle valor/ lib goes live)
 

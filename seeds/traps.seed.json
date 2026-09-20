@@ -1389,6 +1389,30 @@
    "guard": {
     "tools": "create_trigger|CronCreate|send_later|ScheduleWakeup|^Workflow$"
    }
+  },
+  {
+   "match": [
+    "push",
+    "branch protection",
+    "PR",
+    "world markets",
+    "quality control"
+   ],
+   "severity": "high",
+   "wrong": "Pushing to a protected branch after a local commit, or attempting to route around branch protection (force, force-with-lease, alternate branch, ask the operator to lift protection).",
+   "truth": "The operator's ruling, 2026-09-20 (approaching world markets): the workflow is LOCAL WORK → local mint → local commit → GREEN, then the OPERATOR opens the pull request themselves. Branch protection is not a bug to route around — it is the last layer of redundant quality control before world markets and it MUST stay green. A rejected push is the protection doing its job; the correct action is to STOP pushing, report the state honestly, and wait. The stop hook may keep complaining about unpushed commits — that is now the intended steady state until the operator PRs.",
+   "tell": "You are about to call `git push` on this session's working branch after a local commit, or you are considering --force / --force-with-lease / a rename / a workaround because a normal push was rejected.",
+   "correct": "Commit and mint locally, verify every gate green, sweep across all touched repos, then STOP. Report the branch, the commit sha, the coin id, and the state to the operator. Do not push. Do not open a PR yourself unless explicitly asked. The operator PRs everything themselves; this is the workflow from now on.",
+   "count": 3,
+   "first": "2026-09-20T13:30:32.830Z",
+   "last": "2026-09-20T13:30:32.830Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^Bash$",
+    "input": "git\\s+push\\b"
+   }
   }
  ]
 }

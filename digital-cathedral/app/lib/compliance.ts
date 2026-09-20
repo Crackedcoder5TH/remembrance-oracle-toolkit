@@ -1,4 +1,18 @@
 import path from "path";
+// Phase 2 (the field wiring): every store below has a substrate twin in
+// compliance-substrate.ts; each export delegates when SUBSTRATE_COMPLIANCE
+// is on (the SUBSTRATE_LEADS gate — compliance follows its leads). The
+// relational adapter stays the default and is untouched otherwise. All
+// derivation (hashing, masking, validation, audit meaning) stays HERE, so
+// the two stores can never disagree on what happened — the substrate
+// module only decides how to persist it.
+import {
+  SUBSTRATE_COMPLIANCE,
+  substrateAcknowledgeAgent, substrateAddSuppression, substrateCreatePrivacyRequest,
+  substrateGetAcknowledgement, substrateGetComplianceData, substrateGetLeadComplianceView,
+  substrateIsSuppressed, substrateMarkComplianceReviewed, substrateRecordAudit,
+  substrateUpdatePrivacyRequest,
+} from "./compliance-substrate";
 
 export const ACKNOWLEDGEMENT_VERSION = "responsible-lead-handling-v1";
 export const PRIVACY_REQUEST_TYPES = ["access", "deletion", "correction", "opt-out", "data-sharing-inquiry", "other"] as const;
@@ -68,6 +82,7 @@ const bool = (value: unknown) => value === true || value === 1;
 // successful operations PATCH return an error after it had already committed).
 export async function recordAudit(input: Omit<AuditEvent, "id" | "createdAt">) {
   if (!input || !input.actorId || !input.eventType || !input.targetId) return;
+  if (SUBSTRATE_COMPLIANCE) return substrateRecordAudit(input);
   try {
     const now = new Date().toISOString();
     const values = [now, input.actorId, input.actorRole, input.eventType, input.targetType, input.targetId, input.summary, input.ip, input.userAgent];
@@ -79,7 +94,8 @@ export async function recordAudit(input: Omit<AuditEvent, "id" | "createdAt">) {
 export async function addSuppression(kind: "phone" | "email", value: string, reason: string, source: string, actorId: string) {
   if (!value.trim() || !reason.trim() || !source.trim() || !actorId.trim()) throw new TypeError("Suppression fields are required");
   const hash = hashValue(kind, value), masked = maskContact(value), now = new Date().toISOString();
-  if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO compliance_suppressions (kind,value_hash,value_masked,reason,source,active,created_by,created_at) VALUES ($1,$2,$3,$4,$5,TRUE,$6,$7) ON CONFLICT(kind,value_hash) DO UPDATE SET active=TRUE,reason=$4,source=$5", [kind,hash,masked,reason,source,actorId,now]);
+  if (SUBSTRATE_COMPLIANCE) await substrateAddSuppression(kind, hash, masked, reason, source, actorId);
+  else if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO compliance_suppressions (kind,value_hash,value_masked,reason,source,active,created_by,created_at) VALUES ($1,$2,$3,$4,$5,TRUE,$6,$7) ON CONFLICT(kind,value_hash) DO UPDATE SET active=TRUE,reason=$4,source=$5", [kind,hash,masked,reason,source,actorId,now]);
   else sqlite().prepare("INSERT INTO compliance_suppressions (kind,value_hash,value_masked,reason,source,active,created_by,created_at) VALUES (?,?,?,?,?,1,?,?) ON CONFLICT(kind,value_hash) DO UPDATE SET active=1,reason=excluded.reason,source=excluded.source").run(kind,hash,masked,reason,source,actorId,now);
   await recordAudit({ actorId, actorRole: actorId === "admin" ? "admin" : "agent", eventType: "suppression_added", targetType: kind, targetId: hash.slice(0, 12), summary: `${kind} suppression added`, ip: null, userAgent: null });
 }
@@ -87,6 +103,7 @@ export async function addSuppression(kind: "phone" | "email", value: string, rea
 export async function isSuppressed(phone: string, email: string) {
   if (typeof phone !== "string" || typeof email !== "string") throw new TypeError("Contact values must be strings");
   const hashes = [hashValue("phone", phone), hashValue("email", email)];
+  if (SUBSTRATE_COMPLIANCE) return substrateIsSuppressed(hashes[0], hashes[1]);
   if (process.env.DATABASE_URL) return Number((await (await pg()).query("SELECT COUNT(*) n FROM compliance_suppressions WHERE active=TRUE AND value_hash=ANY($1)", [hashes])).rows[0].n) > 0;
   return (sqlite().prepare("SELECT COUNT(*) n FROM compliance_suppressions WHERE active=1 AND value_hash IN (?,?)").get(...hashes) as {n:number}).n > 0;
 }
@@ -94,12 +111,14 @@ export async function isSuppressed(phone: string, email: string) {
 export async function acknowledgeAgent(agentId: string, ip: string | null, userAgent: string | null) {
   if (!agentId.trim()) throw new TypeError("Agent id is required");
   const now = new Date().toISOString();
-  if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO agent_acknowledgements (agent_id,version,acknowledged_at,ip,user_agent,active) VALUES ($1,$2,$3,$4,$5,TRUE) ON CONFLICT(agent_id) DO UPDATE SET version=$2,acknowledged_at=$3,ip=$4,user_agent=$5,active=TRUE", [agentId,ACKNOWLEDGEMENT_VERSION,now,ip,userAgent]);
+  if (SUBSTRATE_COMPLIANCE) await substrateAcknowledgeAgent(agentId, ACKNOWLEDGEMENT_VERSION, ip, userAgent);
+  else if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO agent_acknowledgements (agent_id,version,acknowledged_at,ip,user_agent,active) VALUES ($1,$2,$3,$4,$5,TRUE) ON CONFLICT(agent_id) DO UPDATE SET version=$2,acknowledged_at=$3,ip=$4,user_agent=$5,active=TRUE", [agentId,ACKNOWLEDGEMENT_VERSION,now,ip,userAgent]);
   else sqlite().prepare("INSERT INTO agent_acknowledgements (agent_id,version,acknowledged_at,ip,user_agent,active) VALUES (?,?,?,?,?,1) ON CONFLICT(agent_id) DO UPDATE SET version=excluded.version,acknowledged_at=excluded.acknowledged_at,ip=excluded.ip,user_agent=excluded.user_agent,active=1").run(agentId,ACKNOWLEDGEMENT_VERSION,now,ip,userAgent);
   await recordAudit({ actorId: agentId, actorRole: "agent", eventType: "agent_acknowledgement_completed", targetType: "agent", targetId: agentId, summary: `Compliance acknowledgement ${ACKNOWLEDGEMENT_VERSION} completed`, ip, userAgent });
 }
 
 export async function getAcknowledgement(agentId: string): Promise<Acknowledgement | null> {
+  if (SUBSTRATE_COMPLIANCE) return substrateGetAcknowledgement(agentId);
   const row = process.env.DATABASE_URL ? (await (await pg()).query("SELECT * FROM agent_acknowledgements WHERE agent_id=$1", [agentId])).rows[0] : sqlite().prepare("SELECT * FROM agent_acknowledgements WHERE agent_id=?").get(agentId) as Record<string,unknown> | undefined;
   return row ? { agentId: row.agent_id, version: row.version, acknowledgedAt: row.acknowledged_at, active: bool(row.active) } : null;
 }
@@ -107,7 +126,8 @@ export async function getAcknowledgement(agentId: string): Promise<Acknowledgeme
 export async function createPrivacyRequest(input: { leadId?: string; requester: string; requestType: string; targetDate?: string; notes?: string }, actorId: string) {
   if (!input?.requester?.trim() || !PRIVACY_REQUEST_TYPES.includes(input.requestType as typeof PRIVACY_REQUEST_TYPES[number]) || !actorId.trim()) throw new TypeError("Valid requester, request type, and actor are required");
   const now = new Date().toISOString(), values = [input.leadId || null,input.requester,input.requestType,"new",input.targetDate || null,input.notes || "",now,now];
-  if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO privacy_requests (lead_id,requester,request_type,status,target_date,notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", values);
+  if (SUBSTRATE_COMPLIANCE) await substrateCreatePrivacyRequest(input);
+  else if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO privacy_requests (lead_id,requester,request_type,status,target_date,notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", values);
   else sqlite().prepare("INSERT INTO privacy_requests (lead_id,requester,request_type,status,target_date,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)").run(...values);
   await recordAudit({ actorId, actorRole:"admin", eventType:"privacy_request_created", targetType:"lead", targetId:input.leadId || "unlinked", summary:`${input.requestType} privacy request created`, ip:null, userAgent:null });
 }
@@ -115,7 +135,8 @@ export async function createPrivacyRequest(input: { leadId?: string; requester: 
 export async function updatePrivacyRequest(id: number, status: string, notes: string, assignedAdmin: string | null, actorId: string) {
   if (!Number.isInteger(id) || id < 1 || !PRIVACY_REQUEST_STATUSES.includes(status as typeof PRIVACY_REQUEST_STATUSES[number]) || !actorId.trim()) throw new TypeError("Valid request id, status, and actor are required");
   const now = new Date().toISOString(), completed = status === "completed" ? now : null;
-  if (process.env.DATABASE_URL) await (await pg()).query("UPDATE privacy_requests SET status=$1,notes=$2,assigned_admin=$3,completed_at=$4,updated_at=$5 WHERE id=$6", [status,notes,assignedAdmin,completed,now,id]);
+  if (SUBSTRATE_COMPLIANCE) await substrateUpdatePrivacyRequest(id, status, notes, assignedAdmin);
+  else if (process.env.DATABASE_URL) await (await pg()).query("UPDATE privacy_requests SET status=$1,notes=$2,assigned_admin=$3,completed_at=$4,updated_at=$5 WHERE id=$6", [status,notes,assignedAdmin,completed,now,id]);
   else sqlite().prepare("UPDATE privacy_requests SET status=?,notes=?,assigned_admin=?,completed_at=?,updated_at=? WHERE id=?").run(status,notes,assignedAdmin,completed,now,id);
   await recordAudit({ actorId, actorRole:"admin", eventType:"privacy_request_updated", targetType:"privacy_request", targetId:String(id), summary:`Privacy request moved to ${status}`, ip:null, userAgent:null });
 }
@@ -123,7 +144,8 @@ export async function updatePrivacyRequest(id: number, status: string, notes: st
 export async function markComplianceReviewed(leadId: string, actorId: string) {
   if (!leadId.trim() || !actorId.trim()) throw new TypeError("Lead id and actor id are required");
   const now = new Date().toISOString();
-  if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO compliance_reviews (lead_id,reviewed_at,reviewed_by) VALUES ($1,$2,$3) ON CONFLICT(lead_id) DO UPDATE SET reviewed_at=$2,reviewed_by=$3", [leadId,now,actorId]);
+  if (SUBSTRATE_COMPLIANCE) await substrateMarkComplianceReviewed(leadId, actorId);
+  else if (process.env.DATABASE_URL) await (await pg()).query("INSERT INTO compliance_reviews (lead_id,reviewed_at,reviewed_by) VALUES ($1,$2,$3) ON CONFLICT(lead_id) DO UPDATE SET reviewed_at=$2,reviewed_by=$3", [leadId,now,actorId]);
   else sqlite().prepare("INSERT INTO compliance_reviews (lead_id,reviewed_at,reviewed_by) VALUES (?,?,?) ON CONFLICT(lead_id) DO UPDATE SET reviewed_at=excluded.reviewed_at,reviewed_by=excluded.reviewed_by").run(leadId,now,actorId);
   await recordAudit({ actorId,actorRole:"admin",eventType:"compliance_reviewed",targetType:"lead",targetId:leadId,summary:"Lead compliance record reviewed",ip:null,userAgent:null });
 }
@@ -133,6 +155,7 @@ export async function markComplianceReviewed(leadId: string, actorId: string) {
 // derive three facts about ONE lead. These are three indexed lookups instead.
 export async function getLeadComplianceView(leadId: string, phone: string, email: string) {
   if (!leadId.trim() || typeof phone !== "string" || typeof email !== "string") throw new TypeError("Lead id and contact values are required");
+  if (SUBSTRATE_COMPLIANCE) return substrateGetLeadComplianceView(leadId, hashValue("phone", phone), hashValue("email", email));
   const [suppressed, reviewedRow, privacyRows] = await Promise.all([
     isSuppressed(phone, email),
     process.env.DATABASE_URL
@@ -150,6 +173,7 @@ export async function getLeadComplianceView(leadId: string, phone: string, email
 }
 
 export async function getComplianceData() {
+  if (SUBSTRATE_COMPLIANCE) return substrateGetComplianceData();
   const query = async (sql:string) => process.env.DATABASE_URL ? (await (await pg()).query(sql)).rows : sqlite().prepare(sql.replaceAll("TRUE","1").replaceAll("FALSE","0")).all() as Record<string,unknown>[];
   const [suppressions,privacy,audit,acks,reviews] = await Promise.all([query("SELECT * FROM compliance_suppressions ORDER BY created_at DESC LIMIT 100"),query("SELECT * FROM privacy_requests ORDER BY created_at DESC LIMIT 100"),query("SELECT * FROM compliance_audit ORDER BY created_at DESC LIMIT 100"),query("SELECT * FROM agent_acknowledgements WHERE active=TRUE"),query("SELECT * FROM compliance_reviews")]);
   return {

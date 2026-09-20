@@ -1,12 +1,12 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-19T18:08:16.930Z",
- "digest": "b5e777df161309e42474a2388184163545350a32698495d665841f95df36b6ba",
+ "lockedAt": "2026-09-20T12:55:14.092Z",
+ "digest": "df318073b9bcb9082499c30808826f509a9f3bd795af0f13f0f4083cd473028d",
  "gates": {
   "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
   "scripts/ratchet-battery.js": "db62de937d49fe4a582f4afe46e712a4c99e0a23b8be3a684a5d46fbc861c60a",
-  "scripts/covenant-ratchet.js": "2b429a6adae93dd4b8025be69e663e0eddf48d29fec2e9d0fe20f2597d4da7a9",
+  "scripts/covenant-ratchet.js": "bc92e5647202fd996c1a444e4489d9a10fdb8cd1081f5fb8587a22da412beada",
   "scripts/exemption-ratchet.js": "678cb750310e2aa3428e6cd78c56e157b464d82b9ae5de209a65e0000ca4cf91",
   "scripts/size-ratchet.js": "f9fc77be34d0259f2fe21d34bd8b8494894a4bc698ce4e4a50cc2ec4e0d33f88",
   "scripts/cycle-ratchet.js": "3421ad1685862dc161b0b40d81500d33972ba08273ee907c8ed70ad6fbacd238",
@@ -289,6 +289,15 @@
    "reason": "exec's .sh dispatch runs bash, not dash: setup-ecosystem.sh (set -o pipefail) died under sh; bash executes POSIX sh scripts unchanged, so nothing narrows",
    "changed": [
     ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-20T12:55:14.092Z",
+   "from": "b5e777df161309e42474a2388184163545350a32698495d665841f95df36b6ba",
+   "to": "df318073b9bcb9082499c30808826f509a9f3bd795af0f13f0f4083cd473028d",
+   "reason": "the covenant gate refuses stale evidence: a missing or pre-change cathedral-latest.json is regenerated in-gate before ruling, and a failed regeneration fails CLOSED — the battery once printed ✓ from a pre-change diagnostic (+25 findings invisible); the trap ledger's stale-artifact lesson now lives inside the gate itself",
+   "changed": [
+    "scripts/covenant-ratchet.js"
    ]
   }
  ]

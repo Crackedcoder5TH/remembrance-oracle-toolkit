@@ -1413,6 +1413,25 @@
     "tools": "^Bash$",
     "input": "git\\s+push\\b"
    }
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "until"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `until` inside the ecosystem — OFF-SURFACE COMMAND refused (grep)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (grep)\"; the command began with `until`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-15T00:21:37.685Z",
+   "last": "2026-09-20T14:36:20.426Z",
+   "sources": [
+    "wall"
+   ]
   }
  ]
 }

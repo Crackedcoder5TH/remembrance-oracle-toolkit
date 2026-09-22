@@ -211,8 +211,16 @@ if (argv[0] === '--do') {
         const _tree = (repo) => {
           try {
             const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
+            // CONTENT-SENSITIVE, not just filename-sensitive (2026-09-20):
+            // `git status --porcelain` shows `M src/tools/foo.js` before AND after
+            // a re-edit of an already-staged file — the M flag doesn't change on
+            // content change — so the cache served a stale ✓ over freshly edited
+            // trap-guard-hook.js after silent-catch was fixed. `git diff HEAD`
+            // shows the ACTUAL bytes changed since HEAD (staged + unstaged);
+            // hashing it beside porcelain makes the key move on every real edit.
             const dirty = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' });
-            return head + ':' + createHash('sha256').update(dirty).digest('hex').slice(0, 12);
+            const diff = execFileSync('git', ['diff', 'HEAD'], { cwd: repo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+            return head + ':' + createHash('sha256').update(dirty + '\0' + diff).digest('hex').slice(0, 12);
           } catch (_) { return 'unknown'; }
         };
         // The contracts verdict lives untracked in Void/.remembrance, so the

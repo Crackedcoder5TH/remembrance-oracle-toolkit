@@ -1364,6 +1364,74 @@
    "sources": [
     "wall"
    ]
+  },
+  {
+   "match": [
+    "schedule",
+    "cron",
+    "routine",
+    "trigger",
+    "workflow",
+    "always run",
+    "watch"
+   ],
+   "severity": "high",
+   "wrong": "Standing up NEW external automation — a scheduler, cron, Routine, wake-up loop or workflow — to make something 'always run', without first asking what standing machinery the instrument already carries.",
+   "truth": "Measured 2026-09-20: an hourly Routine was created to 'always run the ratchet battery' while the instrument already ran it three layers deep — gates-on-mint on every coin, .github/workflows/ratchet-battery.yml on every push to every branch (building a fresh cathedral diagnostic first, its header naming its purpose: make --no-verify powerless), and cross-repo-matrix's --do ratchets sweep. The operator: 'Just use the instrument, it's already all set exactly for that, nothing new needs to be made.' The Routine was deleted the next turn. Every 'always running' need in this ecosystem has so far been already wired — the coin hooks, the CI battery, the field checkpoint — never a missing scheduler.",
+   "tell": "You are about to call a scheduling or automation tool (create_trigger, CronCreate, send_later, ScheduleWakeup, Workflow) to keep something running or checked — and you have not searched .github/workflows, the mint gates and the verbs for the standing run that already exists.",
+   "correct": "Before any scheduler: --do find over .github/workflows and the gate/mint wiring for the run that already exists; use or ARM what is found (a required status check, a gate, a checkpoint) instead of scheduling beside it. Only when the search proves absence, schedule — and say what the search proved.",
+   "count": 3,
+   "first": "2026-09-20T13:03:52.547Z",
+   "last": "2026-09-20T13:03:52.547Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "create_trigger|CronCreate|send_later|ScheduleWakeup|^Workflow$"
+   }
+  },
+  {
+   "match": [
+    "push",
+    "branch protection",
+    "PR",
+    "world markets",
+    "quality control"
+   ],
+   "severity": "high",
+   "wrong": "Pushing to a protected branch after a local commit, or attempting to route around branch protection (force, force-with-lease, alternate branch, ask the operator to lift protection).",
+   "truth": "The operator's ruling, 2026-09-20 (approaching world markets): the workflow is LOCAL WORK → local mint → local commit → GREEN, then the OPERATOR opens the pull request themselves. Branch protection is not a bug to route around — it is the last layer of redundant quality control before world markets and it MUST stay green. A rejected push is the protection doing its job; the correct action is to STOP pushing, report the state honestly, and wait. The stop hook may keep complaining about unpushed commits — that is now the intended steady state until the operator PRs.",
+   "tell": "You are about to call `git push` on this session's working branch after a local commit, or you are considering --force / --force-with-lease / a rename / a workaround because a normal push was rejected.",
+   "correct": "Commit and mint locally, verify every gate green, sweep across all touched repos, then STOP. Report the branch, the commit sha, the coin id, and the state to the operator. Do not push. Do not open a PR yourself unless explicitly asked. The operator PRs everything themselves; this is the workflow from now on.",
+   "count": 3,
+   "first": "2026-09-20T13:30:32.830Z",
+   "last": "2026-09-20T13:30:32.830Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^Bash$",
+    "input": "git\\s+push\\b"
+   }
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "until"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `until` inside the ecosystem — OFF-SURFACE COMMAND refused (grep)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (grep)\"; the command began with `until`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-15T00:21:37.685Z",
+   "last": "2026-09-20T14:36:20.426Z",
+   "sources": [
+    "wall"
+   ]
   }
  ]
 }

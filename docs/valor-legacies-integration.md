@@ -91,19 +91,76 @@ all repos cloned at boot. To finish on the Railway dashboard:
   suppression first-writer-kept conflict semantics, ack upsert, privacy
   create/update with createdAt held, review, and the dataset fold with
   exact counts — then all 8 fixture records deleted and verified gone.
+- CORRECTION (measured 2026-09-23): the line that stood here — "nothing
+  in the app writes SQL any more" — was false. `app/lib/client-database/`
+  (buyer accounts, their delivery filters, and `lead_purchases`, the
+  money) had no substrate path and wrote pg/sqlite whatever the flag.
+- CLOSED 2026-09-23 — the buyer store:
+  - `client-database/substrate-adapter.ts` implements all 16 methods of
+    `ClientDbAdapter` on the legacy store; `index.ts` selects it under
+    the same gate (`SUBSTRATE_CLIENTS = SUBSTRATE_LEADS`). UNIQUE(email)
+    and the purchase cap (exclusive / maxBuyers / exclusive-blocks-shared)
+    run through the field server's new `store_guarded` action: check and
+    insert inside one `BEGIN IMMEDIATE`, with tags re-checked exactly in
+    JS (ids carry `_`, a LIKE wildcard). Calls go through the bridge's new
+    `legacyStrict`, so "field unreachable" is an error, never an empty
+    list — a money store must not read an outage as "unsold".
+  - `migrate-to-substrate.mjs` now replays `clients`, `client_filters`
+    and `lead_purchases` too (verbatim shapes, byte-compared; purchases as
+    plain upserts — history is never refused by the guard).
+  - SECURITY, found on the way: the field server gated only `legacy
+    store`. `get`/`list`/`resonant`/`update`/`delete` and `recall` were
+    open — every lead's name, email, phone and DOB readable and deletable
+    by anyone who could reach the URL. Every legacy action and recall now
+    require the bearer (MCP and REST); all known consumers (the bridge,
+    the GEV proxy, both scripts) already send it.
+  - MEASURED (`scripts/phase2-clients-e2e.mjs`, live field server with
+    the token enforced): 29/29 — 10 auth refusals/grants, email
+    uniqueness across case, hashed-email lookup, shared cap, exclusivity
+    both ways, a return freeing a seat, 12 simultaneous checkouts against
+    max 3 → exactly 3 inserted / 9 sold_out, and the `_`-wildcard twin
+    not counted. `migrate-to-substrate.mjs --test-fixture`: 5 tables,
+    8/8 records byte-identical. All fixture records deleted; every tag
+    verified back to 0.
 - With `SUBSTRATE_LEADS=1` and the field URL set, nothing in the app
-  writes SQL any more; `DATABASE_URL`/sqlite remain only as the
-  flag-off default until the shadow release retires them. The system
-  is the database.
+  writes SQL any more — now true: the five SQL touchpoints
+  (`database.ts`, `lead-operations.ts`, `compliance.ts`, and the two
+  client adapters) all sit behind the gate. `DATABASE_URL`/sqlite remain
+  only as the flag-off default until the shadow release retires them.
+  The system is the database.
 
 ## Phase 3 — memory (the idle valor/ lib goes live)
 
+MEASURED 2026-09-23 before starting: the lib is not idle — three of the
+four items have callers — but item 1, the core, is not done.
+
 - On lead ingest: `lead-coherency` scores through the field (a coherency
   originates from the Void compressor — never computed app-side).
+  TODAY every ingest path (`api/leads`, `api/agent/leads`, the purchase
+  routes) computes the score in the app (`scoreLeadByCoherency`: Pearson
+  cascade vs the 16-D archetypes). The field already scores every stored
+  lead through Void (`legacy store` → `field-tool.read`,
+  `coherenceSource: void:compress_signal`) and returns it; the bridge's
+  `storeRecord` type drops it. RULED (operator, 2026-09-23): option (a) —
+  the Void reading becomes THE lead coherency; the archetype cascade
+  stays as the bot/fraud gate under a name that no longer says
+  "coherency". Also on this path: `_legacyEncode` stores `coherence || 0`,
+  so an unreachable compressor records "no reading" as a reading of 0 —
+  it must store null.
 - Marketplace + portal search: `resonance-search` instead of SQL LIKE.
+  TODAY the marketplace already ranks by lexical resonance live in the
+  browser. The remaining LIKE sites are exact lookups (email dedup, admin
+  name/email search, client search) where LIKE is the right operation;
+  the field's waveform resonance is a kin/duplicate detector, not a way
+  to find one person.
 - Routing: `agent-routing` histograms decide which agent sees which lead.
+  TODAY auto-distribution is off by default (self-serve marketplace);
+  the agent API routes through host validation + tier visibility. Unused:
+  `getAgentHistogram` / `evaluateAgentTrust`.
 - Admin: recall over the record store (the field's recall verb) replaces
-  ad-hoc report queries.
+  ad-hoc report queries. TODAY not wired; admin reports are aggregations
+  (revenue, stats) that recall cannot replace — recall fits "similar
+  leads" views.
 
 ## Phase 4 — witness
 

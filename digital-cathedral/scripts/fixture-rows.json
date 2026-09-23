@@ -8,5 +8,14 @@
  "msgRows": [
   {"id": 900001, "client_id": 101, "direction": "inbound", "subject": "FIXTURE subject one", "body": "FIXTURE body — migration pipe test message", "read": 0, "created_at": "2026-09-19 00:00:03"},
   {"id": 900002, "client_id": 101, "direction": "outbound", "subject": "FIXTURE subject two", "body": "FIXTURE reply — migration pipe test message", "read": 1, "created_at": "2026-09-19 00:00:04"}
+ ],
+ "clientRows": [
+  {"id": 1, "client_id": "client_fixture_0001", "company_name": "FIXTURE Buyer One", "contact_name": "Fixture Contact", "email": "Fixture.Buyer@test.invalid", "phone": "+10000000011", "password_hash": "fixturesalt:fixturehash", "status": "active", "pricing_tier": "standard", "price_per_lead": 2500, "exclusive_price": 5000, "state_licenses": "[\"TX\",\"GA\"]", "coverage_types": "[\"term-life\"]", "daily_cap": 50, "monthly_cap": 1000, "min_score": 0, "balance": 0, "created_at": "2026-09-19 00:00:05", "updated_at": "2026-09-19 00:00:05"}
+ ],
+ "filterRows": [
+  {"id": 1, "client_id": "client_fixture_0001", "states": "[\"TX\"]", "coverage_types": "[\"term-life\"]", "veteran_only": 1, "min_score": 10, "max_lead_age": 72, "distribution_mode": "shared"}
+ ],
+ "purchaseRows": [
+  {"id": 1, "purchase_id": "purchase_fixture_0001", "lead_id": "FIXTURE-0001", "client_id": "client_fixture_0001", "price_paid": 2500, "purchased_at": "2026-09-19T00:00:06.000Z", "status": "delivered", "exclusive": 0, "return_reason": "", "return_deadline": "2026-09-22T00:00:06.000Z"}
  ]
 }

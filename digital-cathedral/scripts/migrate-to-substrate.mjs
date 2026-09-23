@@ -3,8 +3,9 @@
  * PHASE 1 — the one-time replay of the SQL store into the substrate
  * (docs/valor-legacies-integration.md). After this, with SUBSTRATE_LEADS=1
  * and SUBSTRATE_MESSAGES=1, the system is the database of record for
- * leads and messages; the SQL store stays mounted read-only for one
- * release as the comparison shadow.
+ * leads, messages, buyer accounts, their delivery filters and lead
+ * purchases; the SQL store stays mounted read-only for one release as the
+ * comparison shadow.
  *
  * SOURCE — resolved exactly as app/lib/database.ts resolves it:
  *   DATABASE_URL set → PostgreSQL via `pg`; otherwise SQLite via
@@ -20,9 +21,17 @@
  *   lead record + leadFacetTags     ← app/lib/substrate-leads.ts
  *   message record (name=tag, content=subject\nbody, meta.message)
  *                                   ← app/lib/substrate-messages.ts
+ *   rowToClient / rowToFilters / rowToPurchase
+ *                                   ← app/lib/client-database/helpers.ts
+ *   client / client-filters / purchase records + tags
+ *                                   ← app/lib/client-database/substrate-adapter.ts
  *
- * IDEMPOTENT: stable ids (lead:<leadId>, msg:<id>) make every store an
- * upsert — the replay can run any number of times.
+ * IDEMPOTENT: stable ids (lead:<leadId>, msg:<id>, client:<clientId>,
+ * client-filters:<clientId>, purchase:<purchaseId>) make every store an
+ * upsert — the replay can run any number of times. Purchases replay as
+ * plain upserts, never through the capacity guard: history is a fact, not
+ * a checkout to refuse. A client table absent from the source (a store
+ * that never initialized the buyer tables) reports source_rows 0.
  *
  * VERIFIED, not assumed: every stored record is read back through the
  * same wire and byte-compared (lead content JSON; message content +
@@ -40,7 +49,8 @@
  *                   records — the store is left clean; fixture data never
  *                   remains (and is never presented as a measurement).
  *   --source-json <p>  read raw rows from a JSON file
- *                   ({ leadRows: [...], msgRows: [...] }, snake_case as
+ *                   ({ leadRows, msgRows, clientRows, filterRows,
+ *                   purchaseRows }, snake_case as
  *                   SELECT * returns them) instead of pg/sqlite — for
  *                   air-gapped replays and the fixture proof; needs no
  *                   database driver at all.
@@ -50,6 +60,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -152,12 +163,65 @@ const messageRecord = (m) => ({
   meta: { message: m },
 });
 
+// ── buyer tables, mirrored from client-database/helpers.ts ───────────
+function rowToClient(row) {
+  return {
+    clientId: row.client_id, companyName: row.company_name, contactName: row.contact_name,
+    email: row.email, phone: row.phone, passwordHash: row.password_hash, status: row.status,
+    pricingTier: row.pricing_tier, pricePerLead: Number(row.price_per_lead),
+    exclusivePrice: Number(row.exclusive_price), stateLicenses: row.state_licenses,
+    coverageTypes: row.coverage_types, dailyCap: Number(row.daily_cap),
+    monthlyCap: Number(row.monthly_cap), minScore: Number(row.min_score),
+    balance: Number(row.balance), createdAt: row.created_at, updatedAt: row.updated_at,
+  };
+}
+function rowToFilters(row) {
+  return {
+    clientId: row.client_id, states: row.states, coverageTypes: row.coverage_types,
+    veteranOnly: row.veteran_only === 1 || row.veteran_only === true,
+    minScore: Number(row.min_score), maxLeadAge: Number(row.max_lead_age),
+    distributionMode: row.distribution_mode,
+  };
+}
+function rowToPurchase(row) {
+  return {
+    purchaseId: row.purchase_id, leadId: row.lead_id, clientId: row.client_id,
+    pricePaid: Number(row.price_paid), purchasedAt: row.purchased_at, status: row.status,
+    exclusive: row.exclusive === 1 || row.exclusive === true,
+    returnReason: row.return_reason || "", returnDeadline: row.return_deadline || "",
+  };
+}
+
+// ── buyer record shapes, mirrored from client-database/substrate-adapter.ts ──
+const CLIENT_TAG = "valor-client";
+const FILTERS_TAG = "valor-client-filters";
+const PURCHASE_TAG = "valor-purchase";
+const emailKey = (email) =>
+  "client-email:" + createHash("sha256").update(String(email).trim().toLowerCase()).digest("hex");
+const clientRecord = (c) => ({
+  id: "client:" + c.clientId, name: "client:" + c.clientId, content: JSON.stringify(c),
+  tags: [CLIENT_TAG, "client-status:" + c.status, emailKey(c.email)],
+});
+const filtersRecord = (f) => ({
+  id: "client-filters:" + f.clientId, name: "client-filters:" + f.clientId, content: JSON.stringify(f),
+  tags: [FILTERS_TAG, "client:" + f.clientId],
+});
+const purchaseRecord = (p) => ({
+  id: "purchase:" + p.purchaseId, name: "purchase:" + p.purchaseId, content: JSON.stringify(p),
+  tags: ["purchase-lead:" + p.leadId, PURCHASE_TAG, "purchase-client:" + p.clientId,
+         "purchase-status:" + p.status, p.exclusive ? "purchase-exclusive" : "purchase-shared"],
+});
+
 // ── the source store, resolved as database.ts resolves it ────────────
 async function openSource(jsonPath) {
   if (jsonPath) {
     const doc = parseJson(fs.readFileSync(jsonPath, "utf8"));
     if (!doc) throw new Error(`--source-json ${jsonPath} is not valid JSON`);
-    const tables = { leads: doc.leadRows || [], client_messages: doc.msgRows || [] };
+    const tables = {
+      leads: doc.leadRows || [], client_messages: doc.msgRows || [],
+      clients: doc.clientRows || [], client_filters: doc.filterRows || [],
+      lead_purchases: doc.purchaseRows || [],
+    };
     return {
       kind: "json:" + path.basename(jsonPath),
       all: async (sql) => tables[/FROM\s+(\w+)/i.exec(sql)[1]] || [],
@@ -212,13 +276,27 @@ async function main() {
   const leads = leadRows.map(rowToLead);
   const messages = msgRows.map(rowToClientMessage);
 
+  // The buyer tables exist only where the client store was ever initialized;
+  // a missing table is reported, never read as an error in the lead replay.
+  const absentTables = [];
+  const buyerRows = async (table) => {
+    try { return await src.all(`SELECT * FROM ${table} ORDER BY id`); }
+    catch (e) { absentTables.push({ table, why: String((e && e.message) || e) }); return []; }
+  };
+  const clients = (await buyerRows("clients")).map(rowToClient);
+  const filters = (await buyerRows("client_filters")).map(rowToFilters);
+  const purchases = (await buyerRows("lead_purchases")).map(rowToPurchase);
+
   if (exportPath) {
-    fs.writeFileSync(exportPath, JSON.stringify({ leads, messages }, null, 1));
-    console.error(`exported ${leads.length} lead(s) + ${messages.length} message(s) → ${exportPath}`);
+    fs.writeFileSync(exportPath, JSON.stringify({ leads, messages, clients, filters, purchases }, null, 1));
+    console.error(`exported ${leads.length} lead(s), ${messages.length} message(s), ${clients.length} client(s), ${filters.length} filter set(s), ${purchases.length} purchase(s) → ${exportPath}`);
     console.error("  a sealed reading of exactly what moved: goggles --do read " + exportPath);
   }
   if (dryRun) {
-    console.log(JSON.stringify({ mode: "dry-run", source: src.kind, leads: leads.length, messages: messages.length }, null, 2));
+    console.log(JSON.stringify({
+      mode: "dry-run", source: src.kind, leads: leads.length, messages: messages.length,
+      clients: clients.length, clientFilters: filters.length, purchases: purchases.length, absentTables,
+    }, null, 2));
     await src.close();
     return 0;
   }
@@ -233,9 +311,22 @@ async function main() {
       && JSON.stringify(back.meta && back.meta.message) === JSON.stringify(rec.meta.message);
   }
 
+  // content is the whole typed record, so a byte-identical content is the row
+  function compareContent(rec, back) {
+    if (!rec || !back) return false;
+    return back.content === rec.content;
+  }
+  const tables = [
+    ["leads", leads, leadRecord, compareLead],
+    ["client_messages", messages, messageRecord, compareMsg],
+    ["clients", clients, clientRecord, compareContent],
+    ["client_filters", filters, filtersRecord, compareContent],
+    ["lead_purchases", purchases, purchaseRecord, compareContent],
+  ];
+
   const results = [];
   if (verifyOnly) {
-    for (const [label, list, toRecord, compare] of [["leads", leads, leadRecord, compareLead], ["client_messages", messages, messageRecord, compareMsg]]) {
+    for (const [label, list, toRecord, compare] of tables) {
       let identical = 0; const mismatches = [];
       for (const item of list) {
         const rec = toRecord(item);
@@ -246,21 +337,32 @@ async function main() {
       results.push({ table: label, source_rows: list.length, identical, mismatches });
     }
   } else {
-    results.push(await replayTable({ label: "leads", rows: leads, toRecord: leadRecord, compare: compareLead }));
-    results.push(await replayTable({ label: "client_messages", rows: messages, toRecord: messageRecord, compare: compareMsg }));
+    for (const [label, rows, toRecord, compare] of tables) {
+      results.push(await replayTable({ label, rows, toRecord, compare }));
+    }
   }
 
-  const totals = { leadTotalInStore: await countByTag(LEAD_TAG), messageTotalInStore: await countByTag(MESSAGE_TAG) };
+  const totals = {
+    leadTotalInStore: await countByTag(LEAD_TAG),
+    messageTotalInStore: await countByTag(MESSAGE_TAG),
+    clientTotalInStore: await countByTag(CLIENT_TAG),
+    clientFiltersTotalInStore: await countByTag(FILTERS_TAG),
+    purchaseTotalInStore: await countByTag(PURCHASE_TAG),
+  };
 
   if (fixture) {
     // the pipe is proven; the fixture records leave the store
     let deleted = 0;
-    for (const l of leads) { const r = await deleteRecord("lead:" + l.leadId); if (r && r.ok) deleted += r.deleted || 0; }
-    for (const m of messages) { const r = await deleteRecord("msg:" + m.id); if (r && r.ok) deleted += r.deleted || 0; }
+    for (const [, list, toRecord] of tables) {
+      for (const item of list) { const r = await deleteRecord(toRecord(item).id); if (r && r.ok) deleted += r.deleted || 0; }
+    }
     totals.fixtureRecordsDeleted = deleted;
   }
 
-  const summary = { mode: fixture ? "test-fixture" : (verifyOnly ? "verify-only" : "migrate"), source: src.kind, field: fieldUrl(), results, ...totals };
+  const summary = {
+    mode: fixture ? "test-fixture" : (verifyOnly ? "verify-only" : "migrate"),
+    source: src.kind, field: fieldUrl(), results, absentTables, ...totals,
+  };
   console.log(JSON.stringify(summary, null, 2));
   await src.close();
   const bad = results.some((t) => (t.mismatches || []).length > 0);

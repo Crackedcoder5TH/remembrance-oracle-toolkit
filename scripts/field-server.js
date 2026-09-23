@@ -110,7 +110,8 @@ Endpoints (once running):
   GET  /                    Health peek
   GET  /.well-known/mcp     MCP discovery manifest
 
-Auth: reads are open; writes require the bearer token when one is set.
+Auth: field reads are open; writes, the legacy record store and recall
+require the bearer token when one is set.
 CORS is enabled so browsers and web agents can call this directly.
 
 Examples:
@@ -258,11 +259,13 @@ const TOOLS = [
   },
   {
     name: 'legacy',
-    description: "Durable record store on the field's SQLite — the Valor Legacies database. action: store (write { name, content, tags?, author? }; bearer-gated, coherence-scored), get ({ id }), list ({ q?, limit?, offset? }). Reads open; store requires the bearer token.",
+    description: "Durable record store on the field's SQLite — the Valor Legacies database. action: store / update ({ id?, name, content, tags?, author?, meta? }; coherence-scored on entry), store_guarded ({ id, name, content, tags?, guard: { tags, max, blockTag? } } — atomic capacity-checked insert; outcome inserted | duplicate | sold_out), get ({ id }), list ({ q?, tags?, limit?, offset? }), resonant ({ q | id, k? }), delete ({ id }). Every action requires the bearer token when one is configured — these are private records.",
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', description: 'store | get | list (default list)' },
+        action: { type: 'string', description: 'store | update | store_guarded | get | list | resonant | delete (default list)' },
+        guard: { type: 'object', description: 'store_guarded only: { tags: string[] (tags[0] the selective key), max: integer >= 1, blockTag?: string }' },
+        meta: { type: 'object' },
         id: { type: 'string' },
         name: { type: 'string' },
         content: { type: 'string' },
@@ -276,7 +279,7 @@ const TOOLS = [
   },
   {
     name: 'recall',
-    description: "Retro-causal projection retrieval — the ecosystem's own RAG. Resonant retrieval over the field's substrate, re-ranked by the healed-anchor pull (future pulls present) — the same geometry as fractal_retro_search / temporal-projection. Returns the top-k decoded slices to inject as context. { query (or q/content), k? }. Open read — the chat and any agent use this identically.",
+    description: "Retro-causal projection retrieval — the ecosystem's own RAG. Resonant retrieval over the field's substrate, re-ranked by the healed-anchor pull (future pulls present) — the same geometry as fractal_retro_search / temporal-projection. Returns the top-k decoded slices to inject as context. { query (or q/content), k? }. Bearer-gated when a token is configured: the slices are the legacy store's private records.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -315,7 +318,10 @@ function isPrivilegedTool(name, action) {
   // execute:true, treat it as privileged.
   if (isContributeTool(name, action)) return true;
   if (name === 'exec_verify') return true;
-  if (name === 'legacy' && action === 'store') return true;
+  // The legacy store is the Valor Legacies database (leads, buyer accounts,
+  // purchases) — every action reads or mutates private records, and recall
+  // returns their decoded content. None of it is a public read.
+  if (name === 'legacy' || name === 'recall') return true;
   return false;
 }
 function isPrivilegedEvaluate(args) {
@@ -458,6 +464,61 @@ function legacyOp(args) {
     db.prepare('INSERT OR REPLACE INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
       .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, now);
     return { ok: true, id, name, coherence, createdAt: now };
+  }
+
+  // Capacity-guarded insert (the purchase cap). Counts the live records that
+  // carry EVERY tag in guard.tags — exact match, re-checked after the LIKE
+  // prefilter because '_' and '%' are LIKE wildcards inside ids — and refuses
+  // once that count reaches guard.max, or when any live record carries
+  // guard.blockTag. The check and the insert share one BEGIN IMMEDIATE, so two
+  // concurrent checkouts cannot both pass the cap. An id already stored comes
+  // back as a duplicate, untouched, so a retried fulfillment is idempotent.
+  if (action === 'store_guarded') {
+    const id = args.id ? String(args.id) : '';
+    const name = String(args.name || '').trim();
+    const content = String(args.content || '');
+    const guard = (args.guard && typeof args.guard === 'object') ? args.guard : {};
+    const guardTags = Array.isArray(guard.tags) ? guard.tags.map(String).filter(Boolean) : [];
+    const max = Number(guard.max);
+    if (!id || !name || !content) return { ok: false, error: 'id, name and content are required' };
+    if (guardTags.length === 0 || !Number.isInteger(max) || max < 1) {
+      return { ok: false, error: 'guard { tags: [..], max: positive integer } is required' };
+    }
+    const blockTag = guard.blockTag ? String(guard.blockTag) : null;
+    const tags = Array.isArray(args.tags) ? args.tags.map(String) : [];
+    const author = args.author ? String(args.author) : null;
+    const meta = (args.meta && typeof args.meta === 'object') ? args.meta : {};
+    // Scored before the lock: the compressor call must not hold the write lock.
+    const { coherence, waveform } = _legacyEncode(name, content);
+    const wf = waveform ? JSON.stringify(waveform) : null;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const dup = db.prepare('SELECT * FROM legacies WHERE id = ?').get(id);
+      if (dup) { db.exec('COMMIT'); return { ok: true, outcome: 'duplicate', legacy: _legacyRow(dup) }; }
+      // guard.tags[0] is the selective key (e.g. lead:<id>); the rest are
+      // verified exactly below.
+      const rows = db.prepare('SELECT tags FROM legacies WHERE tags LIKE ?')
+        .all('%' + JSON.stringify(guardTags[0]) + '%');
+      let live = 0;
+      let blocked = false;
+      for (const r of rows) {
+        let rowTags;
+        try { rowTags = JSON.parse(r.tags || '[]'); } catch (_) { continue; }
+        if (!Array.isArray(rowTags) || !guardTags.every((t) => rowTags.includes(t))) continue;
+        live += 1;
+        if (blockTag && rowTags.includes(blockTag)) blocked = true;
+      }
+      if (blocked || live >= max) { db.exec('COMMIT'); return { ok: true, outcome: 'sold_out', live }; }
+      const now = new Date().toISOString();
+      db.prepare('INSERT INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+        .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, now);
+      db.exec('COMMIT');
+      return { ok: true, outcome: 'inserted', id, name, coherence, createdAt: now };
+    } catch (e) {
+      let rolledBack = true;
+      try { db.exec('ROLLBACK'); } catch (_) { rolledBack = false; }
+      return { ok: false, error: String((e && e.message) || e), rolledBack };
+    }
   }
 
   if (action === 'delete') {
@@ -691,7 +752,8 @@ function send(res, code, obj) {
 const ok = (id, result) => ({ jsonrpc: '2.0', id, result });
 const err = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
-// Reads are open; writes require the bearer token when one is configured.
+// Field reads are open; writes and the private record store (legacy, recall)
+// require the bearer token when one is configured.
 function isAuthed(req) {
   if (!TOKEN) return true;
   return (req.headers['authorization'] || '') === 'Bearer ' + TOKEN;
@@ -728,7 +790,7 @@ function manifest() {
       'POST /contribute': '{ coherence, source, cost? } -> field state  (write — bearer token if configured)',
     },
     auth: TOKEN
-      ? 'public reads; writes (field_contribute / POST /contribute) require Authorization: Bearer <FIELD_TOKEN>'
+      ? 'field reads are public; writes (field_contribute / POST /contribute) and every legacy-store / recall call require Authorization: Bearer <FIELD_TOKEN>'
       : 'open (no FIELD_TOKEN set — anyone can read and write)',
     cors: 'enabled (*)',
   };
@@ -744,7 +806,7 @@ function health() {
 
   // 1) Write auth posture.
   add('Write token', !!TOKEN, TOKEN ? 'info' : 'warn',
-    TOKEN ? 'FIELD_TOKEN set — reads are open, writes require the bearer.' : 'No FIELD_TOKEN — writes are OPEN to anyone who can reach this URL.',
+    TOKEN ? 'FIELD_TOKEN set — field reads are open; writes, the legacy store and recall require the bearer.' : 'No FIELD_TOKEN — writes AND the legacy store (leads, buyer accounts, purchases) are OPEN to anyone who can reach this URL.',
     TOKEN ? undefined : 'Set the FIELD_TOKEN env var on the host (Railway → Variables) to require a bearer token for writes.');
 
   // 2) Durable persistence — is state on a mounted volume, and is it writable?
@@ -943,9 +1005,7 @@ const server = http.createServer((req, res) => {
   if (path === '/legacy' || path === '/legacies') {
     return readBody(req, (raw) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
-      if ((p.action || 'list') === 'store' && !authed) {
-        return send(res, 401, { error: 'unauthorized — bearer token required to store a legacy' });
-      }
+      if (!authed) return send(res, 401, { error: 'unauthorized — bearer token required for the legacy store' });
       try { return send(res, 200, callTool('legacy', p)); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
@@ -953,6 +1013,7 @@ const server = http.createServer((req, res) => {
   if (path === '/recall') {
     return readBody(req, (raw) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      if (!authed) return send(res, 401, { error: 'unauthorized — bearer token required for recall' });
       try { return send(res, 200, callTool('recall', p)); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
@@ -1013,7 +1074,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`[field-server] Remembrance Field on ${HOST}:${PORT}` +
-    (TOKEN ? ' (public read; bearer write)' : ' (open — set FIELD_TOKEN to gate writes)') +
+    (TOKEN ? ' (public field read; bearer write + records)' : ' (open — set FIELD_TOKEN to gate writes and records)') +
     ` | MCP: /mcp · REST: /coherency,/contribute,/field · manifest: /.well-known/mcp` +
     ` | rate: ${RATE_LIMIT_PER_MIN > 0 ? RATE_LIMIT_PER_MIN + '/min/ip' : 'off'}` +
     ` | persist: ${process.env.ENTROPY_PATH || '.remembrance/entropy.json (ephemeral without a volume)'}`);

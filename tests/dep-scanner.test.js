@@ -411,15 +411,19 @@ describe('Covenant integration in dep-scanner', () => {
 // ── atomicProperties ──────────────────────────────────────────────
 
 describe('dep-scanner atomicProperties', () => {
-  it('scanDependencies has security domain', () => {
-    assert.equal(scanDependencies.atomicProperties.domain, 'security');
-  });
-
-  it('scanSinglePackage has security domain', () => {
-    assert.equal(scanSinglePackage.atomicProperties.domain, 'security');
-  });
-
-  it('computeEntropy has security domain', () => {
-    assert.equal(computeEntropy.atomicProperties.domain, 'security');
-  });
+  // A declaration is the extractor's reading of the function's own body
+  // (automatic growth: atomic-drift-ratchet --sync --grow), so the test asserts
+  // agreement with the computed identity rather than a chosen domain.
+  // The gate's own census is the instrument (same body slicing the ratchet uses).
+  let drifted = null;
+  const driftOf = (name) => {
+    if (!drifted) {
+      const { censusDrift } = require('../scripts/atomic-drift-ratchet');
+      drifted = censusDrift().detail.filter((d) => d.file === 'src/security/dep-scanner.js');
+    }
+    return drifted.filter((d) => d.name === name).map((d) => d.diffs.map((x) => x.dim).join(','));
+  };
+  it('scanDependencies declares its computed identity', () => { assert.ok(scanDependencies.atomicProperties); assert.deepEqual(driftOf('scanDependencies'), []); });
+  it('scanSinglePackage declares its computed identity', () => { assert.ok(scanSinglePackage.atomicProperties); assert.deepEqual(driftOf('scanSinglePackage'), []); });
+  it('computeEntropy declares its computed identity', () => { assert.ok(computeEntropy.atomicProperties); assert.deepEqual(driftOf('computeEntropy'), []); });
 });

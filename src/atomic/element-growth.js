@@ -44,12 +44,7 @@ function defaultTable() {
   if (!_defaultTable) _defaultTable = new PeriodicTable({ storagePath: CANONICAL_TABLE_PATH });
   return _defaultTable;
 }
-defaultTable.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.3, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'core',
-};
+defaultTable.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Admit one element into the periodic table.
@@ -73,11 +68,6 @@ function registerElement(spec = {}, table = defaultTable()) {
   if (!meta.source) meta.source = 'codex-ingest';
   return table.addElement(props, meta);
 }
-registerElement.atomicProperties = {
-  charge: 1, valence: 2, mass: 'light', spin: 'odd', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.5, group: 14, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'core',
-};
+registerElement.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { registerElement, defaultTable };

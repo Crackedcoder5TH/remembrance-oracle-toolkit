@@ -69,11 +69,6 @@ function formatMap(m) {
   }
   return lines.join('\n');
 }
-formatMap.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.2, group: 13, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'presentation',
-};
+formatMap.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 4, harmPotential: "minimal", alignment: "healing", intention: "malevolent", domain: "utility" };
 
 module.exports = { formatMap };

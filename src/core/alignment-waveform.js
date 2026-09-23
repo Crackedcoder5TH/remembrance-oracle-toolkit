@@ -75,6 +75,7 @@ function _sequences(input) {
   }
   return seqs;
 }
+_sequences.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _rSquared(y, pred) {
   const n = y.length || 1;
@@ -84,12 +85,14 @@ function _rSquared(y, pred) {
   if (vt < EPS) return ve < EPS ? 1 : 0;
   return 1 - ve / (vt || 1);
 }
+_rSquared.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function _reduction(y, resid) {
   let om = 0; for (const v of y) om += v * v; om = Math.sqrt(om / (y.length || 1));
   let rm = 0; for (const v of resid) rm += v * v; rm = Math.sqrt(rm / (resid.length || 1));
   if (om < EPS) return 0;
   return 1 - rm / (om || 1);
 }
+_reduction.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 // coherence of a fit = clamp(r² × signal-reduction), only when r² clears the bar (else 0)
 function _coh(y, pred) {
   const r2 = _rSquared(y, pred);
@@ -99,6 +102,7 @@ function _coh(y, pred) {
   if (red <= 0.05) return 0;
   return Math.min(1, r2 * red);
 }
+_coh.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _powerCoh(y, exp) {
   if (y.length < MIN_LEN || y.some((v) => v <= 0)) return 0;
@@ -106,18 +110,21 @@ function _powerCoh(y, exp) {
   let s = 0; for (let i = 0; i < y.length; i++) s += y[i] / (tpl[i] || EPS); s /= (y.length || 1);
   return _coh(y, tpl.map((t) => s * t));
 }
+_powerCoh.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function _relPowerCoh(x, y, exp) {
   if (x.length !== y.length || x.length < MIN_LEN || x.some((v) => v <= 0) || y.some((v) => v <= 0)) return 0;
   const tpl = x.map((v) => Math.pow(v, exp));
   let s = 0; for (let i = 0; i < y.length; i++) s += y[i] / (tpl[i] || EPS); s /= (y.length || 1);
   return _coh(y, tpl.map((t) => s * t));
 }
+_relPowerCoh.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function _recursiveCoh(y, a, b) {
   if (y.length < 4) return 0;
   const pred = [y[0], y[1]];
   for (let i = 2; i < y.length; i++) pred.push(a * pred[i - 1] + b * pred[i - 2]);
   return _coh(y, pred);
 }
+_recursiveCoh.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 // harmonic: fixed period T=n/cycles; solve [sin,cos,1] by 3×3 normal equations
 function _harmonicCoh(y, cycles) {
   const n = y.length; if (n < 6) return 0;
@@ -138,6 +145,7 @@ function _harmonicCoh(y, cycles) {
   const pred = y.map((_, i) => cs * S[i] + cc * C[i] + co);
   return _coh(y, pred);
 }
+_harmonicCoh.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * L10 alignment/correspondence waveform → 29-D law-conformance fingerprint; a zero vector

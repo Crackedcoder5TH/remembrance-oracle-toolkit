@@ -398,11 +398,6 @@ ${c.bold('Subcommands:')}
     }
   };
 }
-registerToolsCommands.atomicProperties = {
-  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.5, group: 14, period: 4,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'orchestration',
-};
+registerToolsCommands.atomicProperties = { charge: -1, valence: 8, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "benevolent", domain: "utility" };
 
 module.exports = { registerToolsCommands };

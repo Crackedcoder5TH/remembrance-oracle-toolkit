@@ -52,6 +52,7 @@ function _loadHarmPatterns() {
   } catch (_e) { _harmPatterns = null; }
   return _harmPatterns;
 }
+_loadHarmPatterns.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Returns the matching harm reason if unsafe to run, '' if clear, or null
  * if the screen itself is unavailable (caller MUST fail-safe). */
@@ -67,6 +68,7 @@ function _harmScreen(code) {
   }
   return '';
 }
+_harmScreen.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _spawn(cmd, args, cwd, timeoutMs, env) {
   return new Promise((resolve) => {
@@ -84,6 +86,7 @@ function _spawn(cmd, args, cwd, timeoutMs, env) {
     });
   });
 }
+_spawn.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _sep(lang) { return lang === 'py' ? '\n\n' : '\n;\n'; }
 
@@ -141,6 +144,8 @@ async function _runBody(lang, body, hasTest, dir, timeoutMs) {
     ? { status: 'pass', signal: 1.0, detail: 'tests passed' }
     : { status: 'smoke-pass', signal: 0.75, detail: 'executed without error (no test)' };
 }
+_runBody.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 0, group: 6, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+_sep.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Verify code by running it. Best-effort: returns null when the language
@@ -209,6 +214,7 @@ function _contributeExec(result) {
     });
   } catch (_) { quiet('scoring:exec-verify:recordCost', _); /* best-effort */ }
 }
+_contributeExec.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 /**
  * Best-effort detection of the symbol a peer test would call: the primary
@@ -240,5 +246,5 @@ module.exports = { verifyExecution, detectPrimaryFn, _resetCache };
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-verifyExecution.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+verifyExecution.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 detectPrimaryFn.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

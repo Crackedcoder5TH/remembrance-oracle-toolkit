@@ -29,6 +29,7 @@ function _getStore(opts = {}) {
   _store = getVoidStore(opts);
   return _store;
 }
+_getStore.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function registerVoidStoreCommands(handlers, { oracle }) {
 
@@ -197,5 +198,6 @@ function registerVoidStoreCommands(handlers, { oracle }) {
   };
 
 }
+registerVoidStoreCommands.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { registerVoidStoreCommands };

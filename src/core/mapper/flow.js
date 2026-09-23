@@ -24,16 +24,6 @@ const {
   flowCosines: _flowCosines, deepestFlow: _deepestFlow, flowCheckpoints,
 } = require('../decoder-stack');
 
-function _cosineLen(a, b, len) {
-  let dot = 0, na = 0, nb = 0;
-  for (let i = 0; i < len; i++) {
-    const x = a[i] || 0, y = b[i] || 0;
-    dot += x * y; na += x * x; nb += y * y;
-  }
-  if (na < 1e-12 || nb < 1e-12) return 0;
-  return dot / (Math.sqrt(na) * Math.sqrt(nb));
-}
-
 /**
  * Read the coherency flow between two patterns across all depths.
  * Each pattern must carry both `l1` (29-D) and `composed` (29*k-D)
@@ -43,8 +33,10 @@ function _cosineLen(a, b, len) {
  */
 function coherencyFlow(a, b) {
   if (!a || !b) return null;
-  const composedA = a.composed || a.composed_v1;
-  const composedB = b.composed || b.composed_v1;
+  // ONE WIDTH: the canonical `composed` (232-D decoder) only — no fallback to
+  // the 116-D checkpoint; an entry without the one vector has no flow.
+  const composedA = a.composed;
+  const composedB = b.composed;
   // Route to the canonical sweep instead of re-deriving checkpoints here.
   // This body carried its own `CHECK`-equivalent — 29/58/87/Math.min(116, …)
   // — written when four layers existed, so it stayed at 116-D after
@@ -56,21 +48,17 @@ function coherencyFlow(a, b) {
     out.deepest = _deepestFlow(flow);
     return out;
   }
-  // No composed vectors — the L1 reading is all there is, repeated across
-  // the checkpoints so the shape is visible rather than silently short.
-  const d1 = _cosineLen(a.l1 || a.fractal, b.l1 || b.fractal, 29);
-  const flow = flowCheckpoints().map(() => d1);
-  const out = { flow, shape: classifyFlow(flow) };
+  // No canonical vector on one side — there is no flow to read. The old
+  // fallback repeated an L1-only cosine (a 29-D vector carried on its own)
+  // across every checkpoint; that was a reading of a truncation dressed as
+  // a flow. NaN throughout says "no vector", never a number.
+  const flow = flowCheckpoints().map(() => NaN);
+  const out = { flow, shape: 'no-vector' };
   flow.forEach((v, i) => { out['d' + (i + 1)] = v; });
-  out.deepest = d1;
+  out.deepest = NaN;
   return out;
 }
-coherencyFlow.atomicProperties = {
-  charge: -1, valence: 2, mass: 'light', spin: 'odd', phase: 'liquid',
-  reactivity: 'stable', electronegativity: 0.5, group: 15, period: 4,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'analysis',
-};
+coherencyFlow.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * In-repo pairwise depth-flow — the ONE sibling engine both map modes
@@ -122,6 +110,7 @@ function _pairwiseFlow(entries, opts = {}) {
   }
   return out;
 }
+_pairwiseFlow.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Pull the depth readings out of a flow, however it arrived.
@@ -145,6 +134,7 @@ function _flowValues(f) {
   }
   return out;
 }
+_flowValues.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function classifyFlow(f) {
   const values = _flowValues(f);
@@ -165,12 +155,7 @@ function classifyFlow(f) {
   if (inc >= 2 && dec <= 1) return 'ASCENDING';
   return 'OSCILLATING';
 }
-classifyFlow.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 15, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'analysis',
-};
+classifyFlow.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function formatFlow(f) {
   if (!f) return 'no-flow';
@@ -180,11 +165,6 @@ function formatFlow(f) {
   // waveform's flow now — L1 structural through L8 dynamical.
   return `${v.map((x) => x.toFixed(3)).join(' → ')}  [${f.shape}]`;
 }
-formatFlow.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.2, group: 13, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'presentation',
-};
+formatFlow.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-module.exports = { coherencyFlow, classifyFlow, formatFlow, _pairwiseFlow, _flowValues, _cosineLen };
+module.exports = { coherencyFlow, classifyFlow, formatFlow, _pairwiseFlow, _flowValues };

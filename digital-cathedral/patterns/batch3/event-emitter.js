@@ -15,10 +15,7 @@ function createEventEmitter() {
   function off(event, handler) {
     if (!listeners.has(event)) return;
     const handlers = listeners.get(event);
-    const index = handlers.indexOf(handler);
-    if (index !== -1) {
-      handlers.splice(index, 1);
-    }
+    listeners.set(event, handlers.filter((candidate) => candidate !== handler));
   }
 
   function emit(event, ...args) {

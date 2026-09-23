@@ -137,5 +137,6 @@ function registerReasoningCommands(handlers, { oracle }) {
   };
 
 }
+registerReasoningCommands.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 3, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { registerReasoningCommands };

@@ -393,23 +393,8 @@ module.exports = {
 // These declarations make the oracle atomically coded native —
 // its structure IS its atomic description.
 
-unifiedMeasurement.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'oracle',
-};
+unifiedMeasurement.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 9, period: 5, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ── Atomic self-description (batch-generated) ────────────────────
-unifiedFieldMeasurement.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-quickAmplitude.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+unifiedFieldMeasurement.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+quickAmplitude.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

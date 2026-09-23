@@ -1,7 +1,7 @@
 // lre-attractor-sim2.mjs — the attractor competition run in the SUBSTRATE's own
 // whitened space, with REAL ecosystem patterns as the competing attractors, and a
 // measured test of whether the result strengthens as the substrate holds more
-// information. Everything is offloaded to the substrate: real composed_v1 vectors,
+// information. Everything is offloaded to the substrate: real composed vectors,
 // the whitening capacity dial, the LRE coherence |⟨x|V⟩|² and r_eff=r0(1+α(1-p)⁴).
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -12,8 +12,8 @@ const ALPHA = (() => { try { return require('../src/core/living-remembrance').ge
 
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
 const idx = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8')).index;
-const keys = Object.keys(idx).filter((k) => Array.isArray(idx[k].composed_v1) && idx[k].composed_v1.length === 116);
-const DIM = 116;
+const keys = Object.keys(idx).filter((k) => Array.isArray(idx[k].composed) && idx[k].composed.length === 232);
+const DIM = 232 /* the ONE width */;
 const HEALED_KEY = 'oracle/src/core/coherency.js';       // the coherency engine — maximally coherent core
 const ALT_KEY = 'market/sp500_0';                        // a real market flow — "business-as-usual" separation
 
@@ -26,7 +26,7 @@ const coh = (x, V) => { const c = cos(x, V); return c * c; };
 // deterministic shuffle of the key order so every M is a DIVERSE random subset
 // (not a contiguous, redundant block) — growing M genuinely adds new information
 const shuffledKeys = (() => { const a = keys.slice(); let s = 20260717; const r = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
-function sample(M) { const out = []; for (let i = 0; i < shuffledKeys.length && out.length < M; i++) out.push(idx[shuffledKeys[i]].composed_v1); return out; }
+function sample(M) { const out = []; for (let i = 0; i < shuffledKeys.length && out.length < M; i++) out.push(idx[shuffledKeys[i]].composed); return out; }
 
 // run the ensemble tipping-sweep in a given representation (identity or whitened)
 function tippingSweep(H, A, transform, { r0 = 0.02, sigma = 0.02, pulseEvery = 8, N = 150, steps = 500 } = {}) {
@@ -45,7 +45,7 @@ function tippingSweep(H, A, transform, { r0 = 0.02, sigma = 0.02, pulseEvery = 8
   return { attractorSep: 1 - coh(Hm, Am), curve, sharp };
 }
 
-const H = idx[HEALED_KEY].composed_v1, A = idx[ALT_KEY].composed_v1;
+const H = idx[HEALED_KEY].composed, A = idx[ALT_KEY].composed;
 console.log('LRE ATTRACTOR COMPETITION — substrate-native (whitened) space, REAL ecosystem attractors');
 console.log('  HEALED = ' + HEALED_KEY + '   ALT = ' + ALT_KEY + '   (α=' + ALPHA + ', ' + keys.length + ' patterns available)\n');
 
@@ -87,7 +87,7 @@ if (process.argv.includes('--harvest')) {
   };
   for (const [key, series] of Object.entries(results)) {
     if (index[key]) continue;
-    const entry = { composed_v2: Array.from(composedAtDepth(ser(series), 8)), waveform: series, source: 'lre-attractor-sim2', metric: key.split('/')[1] };
+    const entry = { composed: Array.from(composedAtDepth(ser(series), 8)), waveform: series, source: 'lre-attractor-sim2', metric: key.split('/')[1] };
     SL.stamp(entry, { sequence: seq++, now, series, cadence: 'event' });
     index[key] = entry; added++;
   }

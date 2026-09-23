@@ -45,6 +45,7 @@ function cloneRepo(repoUrl, options = {}) {
     throw new Error(`Failed to clone ${repoUrl}: ${err.message}`);
   }
 }
+cloneRepo.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 9, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Walk a directory and extract standalone functions from source files.
@@ -95,6 +96,7 @@ function harvestFunctions(baseDir, options = {}) {
   });
   return results;
 }
+harvestFunctions.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Split a source file into individual function patterns.
@@ -155,6 +157,7 @@ function splitFunctions(code, language) {
 
   return patterns;
 }
+splitFunctions.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 2, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Extract a brace-delimited body starting from a position in code.
@@ -214,6 +217,7 @@ function extractBody(code, start) {
   }
   return null;
 }
+extractBody.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Extract a Python indented block starting from a def line.
@@ -237,6 +241,7 @@ function extractPythonBlock(code, start) {
   }
   return result.join('\n');
 }
+extractPythonBlock.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Harvest patterns from a Git repo URL or local directory.
@@ -405,6 +410,7 @@ function harvest(oracle, source, options = {}) {
     }
   }
 }
+harvest.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 9, period: 5, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   harvest,

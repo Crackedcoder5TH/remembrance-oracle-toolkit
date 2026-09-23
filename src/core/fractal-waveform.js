@@ -26,6 +26,7 @@ function _countAny(code, patterns) {
   for (const p of patterns) { const m = code.match(p); if (m) total += m.length; }
   return total;
 }
+_countAny.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 12, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _atomicProps(code) {
   const expansions = _countAny(code, [
@@ -106,6 +107,7 @@ function _atomicProps(code) {
   return { charge, valence, mass, spin, phase, reactivity, electronegativity,
            group, period, harmPotential, alignment, intention, taint };
 }
+_atomicProps.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "high", electronegativity: 0, group: 2, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const _MASS = { light: 0.25, medium: 0.5, heavy: 0.75 };
 const _SPIN = { even: 0, odd: 1 };
@@ -131,6 +133,7 @@ function _atomicDims(p) {
     _INTENT[p.intention] ?? 0.5,
   ];
 }
+_atomicDims.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _structuralDims(code) {
   if (!code) return new Array(16).fill(0);
@@ -193,6 +196,7 @@ function _structuralDims(code) {
     branches, loops, functions, returns, errs, commentFrac,
   ];
 }
+_structuralDims.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Density-based, with brace/semi tokens weighted heavily and keyword
 // loanwords weighted lightly. Technical prose CAN say "function" or "for"
@@ -209,6 +213,7 @@ function _structurality(code) {
   const windows = Math.max(1, code.length / 50);
   return Math.min(1, (braceCount / windows) + (kwCount / windows) * 0.25);
 }
+_structurality.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function toFractalWaveform(input, _opts = {}) {
   const out = new Float64Array(FRACTAL_DIM);
@@ -326,6 +331,7 @@ function _stringifyFractal(v) {
   }
   return parts.join('\n');
 }
+_stringifyFractal.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Encode `input` through `depth` recursive applications of
@@ -424,6 +430,7 @@ function _encodeAtScale(input, scale) {
   if (scale === 'sentences') return _meanAcross(input.split(/[.!?]\s+/).filter(s => s.trim().length > 0));
   return toFractalWaveform(input);
 }
+_encodeAtScale.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _chunks(input, n) {
   if (n <= 1) return [input];
@@ -436,6 +443,7 @@ function _chunks(input, n) {
   }
   return out;
 }
+_chunks.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _meanAcross(chunks) {
   if (!chunks.length) return new Float64Array(FRACTAL_DIM);
@@ -447,6 +455,7 @@ function _meanAcross(chunks) {
   for (let i = 0; i < FRACTAL_DIM; i++) out[i] /= vectors.length;
   return out;
 }
+_meanAcross.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Cosine between two patterns at the multi-scale fractal encoding.
@@ -535,14 +544,14 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-toFractalWaveform.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-inspectFractalWaveform.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+toFractalWaveform.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+inspectFractalWaveform.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 fractalCoherency.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 fractalCoherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 toFractalWaveformRecursive.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 fractalCoherencyOfRecursive.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 toFractalLadder.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-toFractalMultiScale.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+toFractalMultiScale.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 fractalCoherencyMultiScale.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 toComposedWaveform.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 composedCoherency.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

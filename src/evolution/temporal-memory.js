@@ -230,6 +230,7 @@ class TemporalMemory {
 function _detectEnvironment() {
   return `node/${process.version} ${process.platform}/${process.arch}`;
 }
+_detectEnvironment.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   TemporalMemory,

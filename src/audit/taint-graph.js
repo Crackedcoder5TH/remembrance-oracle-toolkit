@@ -143,6 +143,7 @@ function _findTaintPaths(taintMap, calls, defs) {
 
   return paths;
 }
+_findTaintPaths.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _extractFunctionBody(code, name) {
   const patterns = [
@@ -155,10 +156,12 @@ function _extractFunctionBody(code, name) {
   }
   return null;
 }
+_extractFunctionBody.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _taintPriority(t) {
   return { none: 0, propagator: 1, sink: 2, source: 3 }[t] || 0;
 }
+_taintPriority.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function printTaintGraph(result) {
   console.log('');
@@ -189,12 +192,7 @@ module.exports = {
   printTaintGraph,
 };
 
-buildTaintGraph.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security', taint: 'none',
-};
+buildTaintGraph.atomicProperties = { charge: 0, valence: 3, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 1, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's

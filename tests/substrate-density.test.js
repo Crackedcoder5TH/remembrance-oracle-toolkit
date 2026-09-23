@@ -20,7 +20,7 @@ test('refreshDensity fits from a substrate; factor = effDim / reference, starts 
   const mb = (s) => {let a=s>>>0;return()=>{a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};};
   const rnd = mb(2);
   const index = {};
-  for (let i = 0; i < 400; i++) { const v = []; for (let j = 0; j < 116; j++) v.push(rnd()); index['x/p' + i] = { composed_v1: v }; }
+  for (let i = 0; i < 400; i++) { const v = []; for (let j = 0; j < 232; j++) v.push(rnd()); index['x/p' + i] = { composed: v }; }   // the ONE width
   writeFixture(sub, JSON.stringify({ index }));
   const e = sd.refreshDensity({ substratePath: sub, sample: 400, cachePath: cache });
   assert.ok(e && e.effectiveDim > 0, 'refresh returned a valid entry');

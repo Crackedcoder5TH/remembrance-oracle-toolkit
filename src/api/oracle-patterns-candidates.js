@@ -19,6 +19,7 @@ function _findDuplicates(all) {
   }
   return toRemove;
 }
+_findDuplicates.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _findStubs(all, toRemove) {
   for (const p of all) {
@@ -36,6 +37,7 @@ function _findStubs(all, toRemove) {
     }
   }
 }
+_findStubs.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _evaluateCandidate(candidate, provenPatterns, options) {
   const { minCoherency = 0.9, minConfidence = 0.8, manualOverride = false, dryRun = false } = options;
@@ -93,6 +95,7 @@ function _evaluateCandidate(candidate, provenPatterns, options) {
 
   return { status: 'promote', coherency };
 }
+_evaluateCandidate.atomicProperties = { charge: 0, valence: 4, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 3, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   retag(id, options = {}) {

@@ -58,14 +58,19 @@ function isLoopbackOrHttps(url: string): boolean {
   }
 }
 
+export type FieldResult<T> = { ok: true; value: T } | { ok: false; error: string };
+
 /**
- * Low-level MCP call. Best-effort: returns the result body on success,
- * null on any failure (network, timeout, non-2xx, malformed JSON).
- * Never throws.
+ * One MCP round trip, reporting WHY it failed instead of collapsing every
+ * failure to null. Never throws.
  */
-async function mcpTool<T = unknown>(toolName: string, args: Record<string, unknown> = {}): Promise<T | null> {
+async function mcpRequest<T = unknown>(
+  toolName: string,
+  args: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<FieldResult<T>> {
   const url = fieldUrl();
-  if (!isLoopbackOrHttps(url) && !url.startsWith("http://")) return null;
+  if (!isLoopbackOrHttps(url) && !url.startsWith("http://")) return { ok: false, error: "field URL is not http(s)" };
   const body = {
     jsonrpc: "2.0",
     id: 1,
@@ -78,7 +83,7 @@ async function mcpTool<T = unknown>(toolName: string, args: Record<string, unkno
     headers.Authorization = `Bearer ${token}`;
   }
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -87,22 +92,50 @@ async function mcpTool<T = unknown>(toolName: string, args: Record<string, unkno
       signal: ctrl.signal,
       redirect: "manual",
     });
-    clearTimeout(timer);
-    if (!res.ok) return null;
+    if (!res.ok) return { ok: false, error: `field HTTP ${res.status}` };
     const json = (await res.json()) as { result?: { content?: Array<{ text?: string }> }; error?: unknown };
-    if (json.error) return null;
+    if (json.error) return { ok: false, error: "field RPC error" };
     const content = json.result?.content?.[0]?.text;
-    if (!content) return null;
+    if (!content) return { ok: false, error: "empty field response" };
     try {
-      return JSON.parse(content) as T;
+      return { ok: true, value: JSON.parse(content) as T };
     } catch {
-      return null;
+      return { ok: false, error: content.slice(0, 200) };
     }
-  } catch {
-    return null;
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "field unreachable" };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Low-level MCP call. Best-effort: returns the result body on success,
+ * null on any failure (network, timeout, non-2xx, malformed JSON).
+ * Never throws.
+ */
+async function mcpTool<T = unknown>(toolName: string, args: Record<string, unknown> = {}): Promise<T | null> {
+  const r = await mcpRequest<T>(toolName, args, TIMEOUT_MS);
+  return r.ok ? r.value : null;
+}
+
+// Every legacy write is scored by the Void compressor before it commits, so
+// a write can outlast the best-effort 1.5 s budget and still land.
+const STRICT_TIMEOUT_MS = 15_000;
+
+/**
+ * Strict legacy-store call for stores that must tell "the field is down"
+ * apart from "no such record" — buyer accounts and purchases. The field's
+ * own { ok:false, error } answer is returned as an error, never as data.
+ */
+export async function legacyStrict<T extends { ok?: boolean; error?: string }>(
+  args: Record<string, unknown>,
+  timeoutMs = STRICT_TIMEOUT_MS,
+): Promise<FieldResult<T>> {
+  const r = await mcpRequest<T>("legacy", args, timeoutMs);
+  if (!r.ok) return r;
+  if (!r.value || r.value.ok !== true) return { ok: false, error: r.value?.error || "legacy store refused" };
+  return r;
 }
 
 // Field-dynamics calls use the legacy "field" tool with an action argument.
@@ -197,6 +230,26 @@ export async function listRecords(
   return r && r.ok && Array.isArray(r.legacies)
     ? { records: r.legacies, total: typeof r.total === "number" ? r.total : r.legacies.length }
     : { records: [], total: 0 };
+}
+
+/**
+ * Resonant records — the field's OWN cosine over the stored waveforms, ranked
+ * high→low. This is the substrate's established kin/duplicate detector: the
+ * same waveform cosine the coherency mapper reads as a duplicate at 0.999
+ * (duplicateAt / selfMatchAt). Unlike `listRecords`, which text-matches, this
+ * asks the compressor which stored records share this content's SHAPE. Wraps
+ * the legacy store's `resonant` action ({ q, k } → { legacies:[…,resonance] }).
+ * Best-effort: [] when the field is unreachable.
+ */
+export async function resonantRecords(
+  content: string,
+  k = 5,
+): Promise<Array<SubstrateRecord & { resonance: number }>> {
+  const r = await mcpTool<{ ok: boolean; legacies: Array<SubstrateRecord & { resonance: number }> }>(
+    "legacy",
+    { action: "resonant", q: content, k },
+  );
+  return r && r.ok && Array.isArray(r.legacies) ? r.legacies : [];
 }
 
 /**

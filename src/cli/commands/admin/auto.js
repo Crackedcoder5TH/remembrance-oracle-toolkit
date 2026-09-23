@@ -310,11 +310,6 @@ function registerAutoCommands(handlers, { oracle, jsonOut }) {
     out(`${c.boldGreen('Tracking:')} ${c.cyan(record.id)} ${record.name ? c.bold(record.name) : ''}`);
   };
 }
-registerAutoCommands.atomicProperties = {
-  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.5, group: 14, period: 4,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'orchestration',
-};
+registerAutoCommands.atomicProperties = { charge: 1, valence: 7, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { registerAutoCommands };

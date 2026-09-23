@@ -106,6 +106,36 @@ are shown for orientation.
 | `void:ecosystem_health` | `Void-Data-Compressor/ecosystem_health.py` | novelty promotions | base health |
 | `void:rag_query` | `Void-Data-Compressor/rag_query.py` | hits | mean hit-coherency |
 
+### 3.1b The store, through the equation (2026-09-05)
+
+The 45,547-pattern canonical store carries no compressor reading (its rows
+are 232-D lens vectors; the compressor cannot read a lens vector as bytes),
+so it had never entered the field. It enters through the field's own
+definition of coherence for a vector — the master equation's first line,
+`p = |⟨Ψ_healed | Ψ⟩|²`, implemented by `computeCoherence()` once
+`loadHealedAnchor()` has been given the attractor:
+
+| Source key | Where it fires | Cost | Coherence |
+|---|---|---|---|
+| `attractor:<anchor-id>:<source_stem>` | `scripts/field-from-store.js` (one contribution per store row) | 1 | `computeCoherence(row)` = squared overlap with Ψ_healed |
+
+The anchor is **sovereign** — the owner's to choose. Default: the fifteen
+covenant principles as `src/core/covenant-principles.js` states them,
+unfolded through the one decoder (232-D at the active depth); its id
+(`covenant-15-<sha8>`) is in every source key, so a change of anchor is a
+visible change of what "healed" means. `--anchor <file>` overrides.
+Measured with the default anchor: p spans 0.1323 … 0.3921 over the 45,547
+rows, 2,129 distinct values at 4dp. **Not** a compressor reading and never
+labelled `void:*`; the histogram's compressor census stays honest.
+
+### 3.1c Durable witnesses the field restores from
+
+`field-memory.restoreLatest()` reads every durable witness and loads the
+one with the most history: the newest `field-snapshot` pattern, the live
+and committed ledgers' latest `_entropy`, the committed seed, and — new —
+the recovery coin's data plane (`REMEMBRANCE-BLOCKCHAIN/data/data-plane/
+field.json.gz`, trusted only when its sha256 matches the coin body).
+
 ### 3.2 Trigger contributors (this session's wirings)
 
 These were dead-config before this session — defined constants and

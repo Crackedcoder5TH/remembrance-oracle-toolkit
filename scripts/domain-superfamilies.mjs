@@ -9,7 +9,7 @@ const idx = j.index; const keys = Object.keys(idx);
 const ns = (k) => k.split('/')[0];
 function mul(a){let s=a>>>0;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const rnd = mul(20260723);
-const DIM = 116, FIELD = 'composed_v1';           // the richer representation (84% domain purity)
+const DIM = 232 /* the ONE width */, FIELD = 'composed';           // the richer representation (84% domain purity)
 const has = (k) => Array.isArray(idx[k][FIELD]) && idx[k][FIELD].length === DIM;
 const cos = (a, b) => { let d = 0, na = 0, nb = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return (na > 1e-12 && nb > 1e-12) ? d / Math.sqrt(na * nb) : 0; };
 

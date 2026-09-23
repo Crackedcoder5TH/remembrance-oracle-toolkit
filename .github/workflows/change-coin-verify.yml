@@ -1,0 +1,43 @@
+name: change-coin-verify
+
+# THE CHANGE COIN, verified on GitHub's own runner — the wall no agent's
+# session can edit around. Every commit since the coin epoch must carry
+# `Remembrance-Coin: <coin_id>` naming a coin in coins.ledger.json that was
+# minted by `goggles --do mint` over the commit's EXACT bytes: the runner
+# re-renders the patch between the parent's tree and the commit's tree, hashes
+# it, re-quantises it the way /compress_signal does and checks the compressor's
+# commitment hashed those bytes, rebuilds the void-seal/v3 canon and checks the
+# seal signs it, and recomputes the coin id. The ledger must be append-only
+# (a merge may not drop a coin; a commit may not remove the ledger).
+#
+# Without VOID_SEAL_KEY this is a structural seam: a coin cannot be assembled
+# without the compressor's seal fields and commitment over these bytes, but a
+# host that holds the substrate could mint one. WITH the key set as a repo
+# secret the seal's HMAC is verified and only the compressor holding that key
+# can mint. Make this check REQUIRED in branch protection to arm it.
+#
+# A change made beside the pipeline has no coin. It is refused here.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  change-coin-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify every commit since the coin epoch
+        env:
+          VOID_SEAL_KEY: ${{ secrets.VOID_SEAL_KEY }}
+        run: |
+          python3 .claude/skills/goggles/change-coin.py verify --since-epoch --repo "$PWD"

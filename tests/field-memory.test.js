@@ -20,8 +20,10 @@ describe('waveformCosine — canonical comparison primitive', () => {
   });
 
   it('returns 0 for empty input', () => {
-    assert.equal(waveformCosine([], [1, 2, 3]), 0);
-    assert.equal(waveformCosine(null, [1, 2, 3]), 0);
+    // ONE width: a vector that is not canonical is not a reading — NaN, never 0
+    // (0 would read as orthogonal, which is a reading).
+    assert.ok(Number.isNaN(waveformCosine([], [1, 2, 3])));
+    assert.ok(Number.isNaN(waveformCosine(null, [1, 2, 3])));
   });
 
   it('similar text yields higher cosine than dissimilar text', () => {

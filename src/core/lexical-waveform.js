@@ -56,6 +56,7 @@ function _identifiers(input) {
   while ((m = _ID_RE.exec(input)) !== null) out.push(m[0]);
   return out;
 }
+_identifiers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _shannon(counts, total) {
   if (total === 0) return 0;
@@ -67,6 +68,7 @@ function _shannon(counts, total) {
   }
   return h;
 }
+_shannon.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _clip(x) {
   if (!Number.isFinite(x)) return 0;
@@ -74,10 +76,12 @@ function _clip(x) {
   if (x > 1) return 1;
   return x;
 }
+_clip.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _ratio(num, denom) {
   return denom > 0 ? num / denom : 0;
 }
+_ratio.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Encoder ─────────────────────────────────────────────────────
 

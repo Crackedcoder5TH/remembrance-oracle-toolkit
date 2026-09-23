@@ -29,6 +29,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_PATH = path.join(ROOT, '.console-baseline.json');
@@ -73,14 +74,18 @@ function censusConsole() {
   const files = execSync('git ls-files src', { cwd: ROOT, encoding: 'utf8' })
     .split('\n').filter((f) => f.endsWith('.js'));
   const out = {};
+  const unparseable = [];
   let total = 0;
   for (const f of files) {
     let code;
     try { code = fs.readFileSync(path.join(ROOT, f), 'utf8'); } catch { continue; }
     const n = countConsoleCalls(code);
+    // A file the tokenizer cannot read is not a file with zero prints — it is
+    // a file the gate cannot see. Named, like silent-catch and atomic-drift do.
+    if (n === null) { unparseable.push(f); continue; }
     if (n) { out[f] = n; total += n; }
   }
-  return { byFile: out, total };
+  return { byFile: out, total, unparseable };
 }
 censusConsole.atomicProperties = {
   charge: 0, valence: 1, mass: 'medium', spin: 'even', phase: 'gas',
@@ -106,6 +111,17 @@ function main() {
 
   if (argv.includes('--save-baseline')) {
     const prev = loadBaseline();
+    // THE LAW: the print surface only shrinks. Growth and unreadable files are DEBT.
+    if (prev) {
+      const debt = [];
+      for (const [f, n] of Object.entries(current.byFile)) {
+        const base = prev.byFile[f];
+        if (base === undefined) debt.push(`NEW printing file: ${f} (${n})`);
+        else if (n > base) debt.push(`GREW: ${f} ${base} -> ${n}`);
+      }
+      for (const f of current.unparseable || []) debt.push(`UNPARSEABLE: ${f}`);
+      if (refuseIfLoosening('console-ratchet', debt, argv)) return 1;
+    }
     const data = JSON.stringify({
       note: 'console baseline — token-verified console.<method>( call sites in src/, per file. Shrink-only: migrate to a logger or remove; new print surface blocks.',
       savedAt: new Date().toISOString(),
@@ -128,9 +144,10 @@ function main() {
     if (base === undefined) fresh.push({ f, n });
     else if (n > base) grown.push({ f, n, base });
   }
-  const ok = !grown.length && !fresh.length;
+  const unparseable = current.unparseable || [];
+  const ok = !grown.length && !fresh.length && unparseable.length === 0;
   if (argv.includes('--json')) {
-    console.log(JSON.stringify({ ok, total: current.total, baseline: baseline.total, fresh, grown }, null, 1));
+    console.log(JSON.stringify({ ok, total: current.total, baseline: baseline.total, fresh, grown, unparseable }, null, 1));
     return ok ? 0 : 1;
   }
   if (ok) {
@@ -138,7 +155,11 @@ function main() {
     if (current.total < baseline.total) console.log('  the print surface shrank — run --save-baseline to ratchet down');
     return 0;
   }
-  console.error('[console-ratchet] ✗ BLOCKED — the print surface grew:');
+  if (unparseable.length) {
+    console.error('[console-ratchet] ✗ BLOCKED — files the tokenizer cannot read:');
+    for (const f of unparseable) console.error(`  UNPARSEABLE: ${f}`);
+  }
+  if (fresh.length || grown.length) console.error('[console-ratchet] ✗ BLOCKED — the print surface grew:');
   for (const g of fresh) console.error(`  NEW printing file: ${g.f} (${g.n})`);
   for (const g of grown) console.error(`  ${g.f}: ${g.base} -> ${g.n}`);
   console.error('  route it through a logger, or keep output in scripts/ and bin/ where print is the job.');

@@ -62,7 +62,7 @@ if (!process.argv.includes('--no-harvest')) {
   const index = store.index; let seq = SL.nextSequence(index); const now = new Date().toISOString(); let added = 0;
   const ser = (ys) => { const m = Math.max(...ys.map(Math.abs)) || 1; return ys.map((y) => (y / m).toFixed(5)).join(','); };
   for (let i = 0; i < D.length; i++) { const key = 'epc-phonon/' + (D[i].el0 || 'X') + '/' + i; if (index[key]) continue;
-    const entry = { composed_v2: Array.from(composedAtDepth(ser(D[i].a2f.map(clean)), 8)), waveform: D[i].a2f, tc: D[i].tc, lamb: D[i].lamb, wlog: D[i].wlog, source: 'jarvis-epc' };
+    const entry = { composed: Array.from(composedAtDepth(ser(D[i].a2f.map(clean)), 8)), waveform: D[i].a2f, tc: D[i].tc, lamb: D[i].lamb, wlog: D[i].wlog, source: 'jarvis-epc' };
     SL.stamp(entry, { sequence: seq++, now, series: D[i].a2f.map(clean), cadence: 'event' }); index[key] = entry; added++; }
   fs.writeFileSync(path.join(VOID, 'pattern_index_fractal.json'), JSON.stringify(store));
   console.log('\nFED INTO SUBSTRATE: compressed ' + added + ' phonon (α²F) patterns into Void (namespace epc-phonon/), time-stamped.');

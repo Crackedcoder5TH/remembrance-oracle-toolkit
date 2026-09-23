@@ -46,6 +46,7 @@ function _loadCompression() {
     }
   }
 }
+_loadCompression.atomicProperties = { charge: 0, valence: 3, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 class FractalStore {
   /**

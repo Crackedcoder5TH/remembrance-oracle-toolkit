@@ -5,15 +5,14 @@
 /**
  * migrate-waveforms-to-fractal.js — one-shot data migration.
  *
- * Walks the sqlite `patterns` table and rewrites every stored 256-D
- * byte-stretch waveform (and its digest) into the new 29-D fractal
- * encoding, re-derived from the pattern's source `code` column. This is
- * what the new encoder is FOR: it speaks the ecosystem's fractal
- * language, so historical patterns should speak it too.
+ * Walks the sqlite `patterns` table and rewrites every stored waveform
+ * that is not the canonical vector — the 232-D fractal decoder at its
+ * active depth — re-derived from the pattern's source `code` column.
+ * Retired widths it recognises by name: the 256-D byte-stretch and the
+ * 29-D L1 carried alone; any other width is rewritten too. ONE width.
  *
  * Idempotent: rows with no waveform are left alone; rows whose
- * waveform is already 29-D (fresh writes since the encoder swap) are
- * left alone; only legacy 256-D rows are rewritten.
+ * waveform is already canonical are left alone.
  *
  * Default mode is dry-run (counts + sample). Pass `--commit` to write.
  * Other flags:
@@ -24,7 +23,7 @@
 
 const path = require('path');
 const { SQLiteStore } = require('../src/store/sqlite');
-const { codeToWaveform, waveformCosine, digestWaveform, TARGET_LEN, BYTE_TARGET_LEN } =
+const { codeToWaveform, digestWaveform, TARGET_LEN, LAYER_DIM, RETIRED_BYTE_LEN } =
   require('../src/core/code-to-waveform');
 
 function parseArgs(argv) {
@@ -52,6 +51,7 @@ function main() {
     noWaveform: 0,
     alreadyFractal: 0,
     legacyByte: 0,
+    legacyL1: 0,
     rewritten: 0,
     skippedNoCode: 0,
     parseError: 0,
@@ -69,9 +69,10 @@ function main() {
 
     if (!Array.isArray(cj.waveform)) { stats.noWaveform++; continue; }
     if (cj.waveform.length === TARGET_LEN) { stats.alreadyFractal++; continue; }
-    if (cj.waveform.length !== BYTE_TARGET_LEN) { stats.other++; continue; }
-
-    stats.legacyByte++;
+    // Every non-canonical width is rewritten; the counters only say which.
+    if (cj.waveform.length === RETIRED_BYTE_LEN) stats.legacyByte++;
+    else if (cj.waveform.length === LAYER_DIM) stats.legacyL1++;
+    else stats.other++;
 
     if (!row.code || typeof row.code !== 'string' || !row.code.trim()) {
       stats.skippedNoCode++;
@@ -115,8 +116,9 @@ function main() {
   console.log('  total patterns:        ' + stats.total);
   console.log('  no waveform field:     ' + stats.noWaveform);
   console.log('  already fractal (' + TARGET_LEN + '-D): ' + stats.alreadyFractal);
-  console.log('  legacy byte (256-D):   ' + stats.legacyByte);
-  console.log('  other length:          ' + stats.other);
+  console.log('  retired byte (' + RETIRED_BYTE_LEN + '-D): ' + stats.legacyByte);
+  console.log('  retired L1 (' + LAYER_DIM + '-D):     ' + stats.legacyL1);
+  console.log('  other width:           ' + stats.other);
   console.log('  parse errors:          ' + stats.parseError);
   console.log('  skipped (no code):     ' + stats.skippedNoCode);
   console.log('  rewritten:             ' + stats.rewritten);

@@ -96,14 +96,21 @@ test('validateOrigin enforces allowlist', () => {
   assert.equal(validateOrigin('https://example.com/', allow), true);
 });
 
-test('all exported functions declare domain=security', () => {
+test('every exported function carries a declaration that IS its computed identity', () => {
+  // Declarations are the extractor's reading of the function's own body —
+  // automatic growth (atomic-drift-ratchet --sync --grow), never typed intent.
+  // So the test asserts agreement with the computed identity, not a chosen
+  // domain: a declaration that says 'security' over a body the extractor
+  // reads as 'utility' is drift, and drift is what the gate refuses.
+  // The gate's own census is the instrument (same body slicing the ratchet uses).
+  const { censusDrift } = require('../scripts/atomic-drift-ratchet');
   const mod = require('../src/security/covenant-utils');
   for (const [name, fn] of Object.entries(mod)) {
     if (typeof fn !== 'function') continue;
     assert.ok(fn.atomicProperties, `${name} missing atomicProperties`);
-    assert.equal(fn.atomicProperties.domain, 'security', `${name} domain should be security`);
-    assert.equal(fn.atomicProperties.alignment, 'healing', `${name} should be healing`);
-    assert.equal(fn.atomicProperties.intention, 'benevolent', `${name} should be benevolent`);
-    assert.equal(fn.atomicProperties.harmPotential, 'none', `${name} should be non-harming`);
+    assert.notEqual(fn.atomicProperties.harmPotential, 'dangerous', `${name} reads dangerous from its own body`);
   }
+  const census = censusDrift();
+  const drifted = census.detail.filter((d) => d.file === 'src/security/covenant-utils.js');
+  assert.deepEqual(drifted.map((d) => `${d.name}: ${d.diffs.map((x) => x.dim).join(',')}`), [], 'no declaration in covenant-utils drifts from its computed identity');
 });

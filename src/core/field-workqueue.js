@@ -9,7 +9,7 @@ const { quiet } = require('./quiet');
  * A node with heavy work posts a work item; any entangled node claims
  * it (claiming is entropy-gated, so a hot node idles); the node
  * computes and submits a result. Every result is run through the
- * compressor (codeToWaveform -> 256-D waveform) and scored for
+ * compressor (codeToWaveform -> canonical fractal vector) and scored for
  * coherency; collect() returns the highest-coherency result, because
  * coherency is the ecosystem's final tiebreaker.
  *
@@ -60,6 +60,7 @@ function _loadLocal() {
   } catch (_) { quiet('core:field-workqueue:_loadLocal', _); /* corrupt / unreadable — start fresh */ }
   return { items: [] };
 }
+_loadLocal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _writeLocal(store) {
   try {
@@ -70,12 +71,14 @@ function _writeLocal(store) {
     fs.renameSync(tmp, STORE_PATH);
   } catch (_) { quiet('core:field-workqueue:_writeLocal', _); /* best-effort */ }
 }
+_writeLocal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── shared store: the blockchain ledger, the same one the field uses ─
 function _ledgerPath() {
   return process.env.LEDGER_PATH
     || path.join(__dirname, '..', '..', '.remembrance', 'ledger.json');
 }
+_ledgerPath.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _blockchainLedger() {
   const candidates = [
@@ -87,6 +90,7 @@ function _blockchainLedger() {
   }
   return null;
 }
+_blockchainLedger.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Restore the latest queue snapshot witnessed in the shared ledger. */
 function _loadFromChain() {
@@ -111,6 +115,7 @@ function _loadFromChain() {
   _chainCache = { at: Date.now(), value: found };
   return found;
 }
+_loadFromChain.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Checkpoint the queue into the shared ledger. */
 function _flushToChain(store) {
@@ -125,6 +130,7 @@ function _flushToChain(store) {
     return true;
   } catch (_) { return false; }
 }
+_flushToChain.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── coherency-following merge ────────────────────────────────────────
 function _mergeResults(ra, rb) {
@@ -139,6 +145,7 @@ function _mergeResults(ra, rb) {
   }
   return out;
 }
+_mergeResults.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Merge two views of the queue — a union of items, and per item a union
@@ -163,6 +170,7 @@ function _merge(a, b) {
   }
   return { items: Array.from(byId.values()) };
 }
+_merge.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── the shared load / save the operations use ────────────────────────
 function _load() {
@@ -170,16 +178,19 @@ function _load() {
   const chain = _loadFromChain();
   return chain ? _merge(local, chain) : local;
 }
+_load.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _save(store) {
   _writeLocal(store);
   _saveCount += 1;
   if (_saveCount % FLUSH_EVERY === 0) _flushToChain(store);
 }
+_save.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _field() {
   try { return require('./field-coupling'); } catch (_) { return null; }
 }
+_field.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Post a unit of work to the queue.
@@ -246,7 +257,7 @@ function submitResult(id, nodeId, result) {
 
   const text = typeof result === 'string' ? result : JSON.stringify(result === undefined ? null : result);
 
-  // Everything goes to the compressor -> 256-D waveform -> coherency score.
+  // Everything goes to the canonical encoder -> 232-D decoder vector -> digest.
   let waveformDigest = null;
   try {
     const { codeToWaveform, digestWaveform } = require('./code-to-waveform');
@@ -359,12 +370,7 @@ function setNudge(fn) {
   _nudge = typeof fn === 'function' ? fn : null;
   return { nudge: !!_nudge };
 }
-setNudge.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'odd', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.2, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+setNudge.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { post, claim, submitResult, collect, offload, flush, stats, setNudge, STORE_PATH, _merge };
 
@@ -376,5 +382,5 @@ claim.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", p
 submitResult.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 collect.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 flush.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-offload.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
+offload.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 stats.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

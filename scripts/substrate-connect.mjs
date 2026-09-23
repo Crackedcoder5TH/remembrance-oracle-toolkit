@@ -15,9 +15,9 @@ const E = require('./src/core/decoder-stack');
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
 const idx = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8')).index;
 const names = Object.keys(idx);
-const DIM = 116;
+const DIM = 232 /* the ONE width */;
 const lib = [], libNames = [];
-for (const n of names) { const v = idx[n].composed_v1; if (Array.isArray(v) && v.length === DIM) { lib.push(v); libNames.push(n); } }
+for (const n of names) { const v = idx[n].composed; if (Array.isArray(v) && v.length === DIM) { lib.push(v); libNames.push(n); } }
 
 // fit + cache the whitening (the capacity dial: effDim ~6 → ~68, retrieval 62% → 87%)
 const CACHE = path.join('.remembrance', 'substrate-whitening.json');
@@ -32,7 +32,7 @@ const wlib = lib.map(v => W.applyWhitening(v, Wm));
 function cos(a, b) { let d = 0, na = 0, nb = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return (na > 1e-12 && nb > 1e-12) ? d / Math.sqrt(na * nb) : 0; }
 
 export function connect(queryText, k = 8) {
-  const qv = W.applyWhitening(Array.from(E.composedAtDepth(queryText, 4)), Wm);   // depth-4 = composed_v1 space
+  const qv = W.applyWhitening(Array.from(E.composedAtDepth(queryText, E.currentDepth())), Wm);   // the active depth (232-D), the ONE width
   const scored = wlib.map((v, i) => ({ name: libNames[i], score: cos(qv, v) }));
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, k);

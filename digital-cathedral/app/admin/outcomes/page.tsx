@@ -174,7 +174,7 @@ export default function OutcomesPage() {
           <div className="text-[var(--text-muted)] text-sm">Loading…</div>
         ) : !report || report.buckets.length === 0 ? (
           <div className="text-[var(--text-muted)] text-sm border border-teal-cathedral/10 rounded-lg p-4 bg-black/10">
-            No outcomes recorded yet. Mark a few leads won/lost above and the close-rate
+                No outcomes recorded yet. Mark a few leads won or lost above and the close-rate
             by coherency band will build here.
           </div>
         ) : (

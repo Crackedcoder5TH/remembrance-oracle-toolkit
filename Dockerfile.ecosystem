@@ -1,0 +1,54 @@
+# Dockerfile.ecosystem — the WHOLE instrument in one container.
+#
+# Dockerfile.field-server ships the hub alone: on the deploy the goggles
+# could not call the repos the instrument is made of — no Void compressor
+# (coherency fell to the corpus read), no chain, no mirrors. This image is
+# the one-surface deploy: node for the hub, python3+numpy for the Void
+# instrument, git to bring every sibling repo in at boot
+# (scripts/ecosystem-boot.sh), the same ECOSYSTEM_HOME layout every module
+# already resolves against. No code changes: void-service.js finds the
+# compressor at VOID_ROOT and the controller starts it, exactly as on any
+# other host.
+#
+# Build (context = the hub repo):
+#   docker build -t remembrance-ecosystem -f Dockerfile.ecosystem .
+#
+# Run:
+#   docker run -p 7787:7787 \
+#     -e GITHUB_TOKEN=...            # for private repos; omit if public \
+#     -e FIELD_TOKEN=secret \
+#     -v yourvolume:/data \
+#     remembrance-ecosystem
+#
+# Railway: railway.json points here; set GITHUB_TOKEN (and FIELD_TOKEN)
+# in the service variables; mount a volume at /data.
+
+FROM node:22-slim
+
+# python3 + numpy + pip: the Void instrument's runtime. git + curl +
+# ca-certificates: the boot clone and the service healthcheck.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      python3 python3-numpy python3-pip git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# The sibling layout every module resolves against (store-path.js,
+# void-service.js, the chain lookups). The hub bakes in from the build
+# context; the rest clone at boot so the image stays one-repo generic.
+ENV ECOSYSTEM_HOME=/eco
+WORKDIR /eco/remembrance-oracle-toolkit
+COPY . .
+RUN mkdir -p /data/.remembrance
+ENV REMEMBRANCE_STATE_DIR=/data
+ENV ENTROPY_PATH=/data/.remembrance/entropy.json
+ENV VOID_ROOT=/eco/Void-Data-Compressor
+
+ENV PORT=7787
+ENV HOST=0.0.0.0
+ENV NODE_ENV=production
+EXPOSE 7787
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||7787)+'/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
+# exec form so SIGTERM reaches the boot's exec'd node directly.
+ENTRYPOINT ["sh", "scripts/ecosystem-boot.sh"]

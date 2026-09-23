@@ -50,6 +50,14 @@ const { quiet } = require('./quiet');
  * `engine.contribute({ cost, coherence })` after their main work.
  * The current state is readable any time via `engine.getState()` and
  * is what the witness chain attaches to each block's metadata.
+ *
+ * ONE RESONANCE SPACE (2026-09-07). p(t) was an overlap of RAW composed
+ * vectors — the cone, where every row reads ≈0.9 against anything (trap 49),
+ * so 25k attractor readings in the histogram were readings of the cone. The
+ * anchor and every row now pass through resonance-space.js (the whitened
+ * reference; 256-D refused as NaN); healedSpace() names the space. The seal
+ * gate and the measured void term below were never reached by any caller —
+ * field-coupling dropped both at the door; it carries them now.
  */
 
 const fs = require('fs');
@@ -73,6 +81,10 @@ const PARAMS = {
   delta0:     0.03,    // void donation baseline
   cascadeTau: 60000,   // cascadeFactor relaxation time constant (ms)
   epsilon:    1e-8,
+  entropyHot: 10.0,    // the established entropy mechanics' hot line — the
+                       // same threshold fieldPressure() reads. S_norm in the
+                       // damping term is ξ normalized against it (the
+                       // covenant-holder's ruling, 2026-09-17).
 
   // ── goggles — structural-meta-awareness instrument tuning ──
   // The moving numbers consolidated into the core, not scattered across the
@@ -104,9 +116,9 @@ const PARAMS = {
     coherencyMixed:     0.35,  // partly repeating — some strong internal echo
     coherencyTypical:   0.10,  // the band ordinary source code lives in
     // Random/high-entropy sits below coherencyTypical (~0.09).
-    resonanceConsonant: 0.90,  // pattern-resonance verdict bands
-    resonanceFamiliar:  0.82,
-    resonanceDistinct:  0.70,
+    resonanceConsonant: 0.71,  // pattern-resonance bands = quartiles of the ONE whitened space (whitening-reference.js),
+    resonanceFamiliar:  0.67,  // measured 2026-09-06 over 42 hub files: p25 0.639 · p50 0.671 · p75 0.709 (min 0.551, max 0.828).
+    resonanceDistinct:  0.64,  // The old 0.90/0.82/0.70 were the raw cone's, where every file read ≈0.95 — see trap 49.
   },
 
   // ── composition — field-gated layer attention (encoder stack) ──
@@ -133,6 +145,19 @@ const PARAMS = {
   },
 };
 
+// Structural check that a contribution carries the Void compressor's seal
+// (the cryptographic HMAC check lives in the commit seal, where the key is).
+function _isValidVoidSeal(seal) {
+  return !!(seal && typeof seal === 'object'
+    && seal.via === 'void_compressor_v5.compress'
+    && typeof seal.sig === 'string' && seal.sig.length > 0);
+}
+_isValidVoidSeal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+// The one door into the resonance space (resonance-space.js): whitened when
+// the reference is in force, raw and labelled otherwise, 256-D refused.
+const _toSpace = (vec) => require('./resonance-space').toSpace(vec);
+
 class LivingRemembranceEngine {
   constructor(opts = {}) {
     const { persistPath, params = {} } = opts;
@@ -144,6 +169,7 @@ class LivingRemembranceEngine {
       && !process.env.ENTROPY_PATH;
     this._params = { ...PARAMS, ...params };
     this._healedVector = null;
+    this._healedSpace = null;
     this._state = this._loadOrInit();
     // Remember what was already accumulated when we loaded, so _persist()
     // can tell OUR contributions apart from a concurrent writer's.
@@ -226,7 +252,10 @@ class LivingRemembranceEngine {
     };
   }
 
+  withDeferredPersist(fn) { this._deferPersist = true; try { return fn(); } finally { this._deferPersist = false; this._persist(); } } // bulk: one disk write at the end (scripts/field-from-store.js)
+
   _persist() {
+    if (this._deferPersist) return;
     try {
       const dir = path.dirname(this._persistPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -312,19 +341,29 @@ class LivingRemembranceEngine {
     } catch (_e) { quiet('core:living-remembrance:c2', _e); /* best-effort persistence; never crash a caller */ }
   }
 
-  /** Load the healed-attractor vector (personal anchor + covenant). Sovereign. */
+  /** Load the healed-attractor vector (personal anchor + covenant). Sovereign. Carried into the one space; returns 'whitened' | 'raw', null when refused (256-D). */
   loadHealedAnchor(anchorVector) {
-    this._healedVector = Array.from(anchorVector);
+    const s = _toSpace(anchorVector);
+    if (!s) quiet('core:living-remembrance:anchor', new Error(`healed anchor refused: ${anchorVector ? anchorVector.length : 0}-D is not a decoder vector`));
+    this._healedVector = s ? Array.from(s.vec) : null;
+    this._healedSpace = s ? s.space : null;
+    return this._healedSpace;
   }
 
-  /** Compute squared-overlap coherence between currentVector and the healed attractor. */
+  /** The space the healed anchor was loaded into: 'whitened', 'raw', or null (no anchor). */
+  healedSpace() { return this._healedVector ? (this._healedSpace || 'raw') : null; }
+
+  /** |⟨ψ_healed|ψ⟩|² in the one resonance space; NaN for the retired 256-D width (a refusal, never a number). */
   computeCoherence(currentVector) {
     if (!this._healedVector) return this._state.coherence; // no anchor → preserve last reading
+    const s = _toSpace(currentVector);
+    if (!s) return NaN;
+    const cur = s.vec;
     const eps = this._params.epsilon;
-    const n = Math.min(currentVector.length, this._healedVector.length);
+    const n = Math.min(cur.length, this._healedVector.length);
     let dot = 0, normA = 0, normB = 0;
     for (let i = 0; i < n; i++) {
-      const a = currentVector[i] || 0;
+      const a = cur[i] || 0;
       const b = this._healedVector[i] || 0;
       dot   += a * b;
       normA += a * a;
@@ -344,9 +383,9 @@ class LivingRemembranceEngine {
    * @param {string} [obs.source]  — caller name for the audit trail
    * @returns {object} new state snapshot
    */
-  contribute({ cost = 1.0, coherence = null, source = null, resonance = null, void: voidTerm = null } = {}) {
+  contribute({ cost = 1.0, coherence = null, source = null, resonance = null, void: voidTerm = null, seal = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
-    const { r0, alpha, delta0, cascadeTau, epsilon } = this._params;
+    const { r0, alpha, delta0, cascadeTau, epsilon, entropyHot } = this._params;
 
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
 
@@ -395,8 +434,39 @@ class LivingRemembranceEngine {
     // it does not average coherency — that is a thing the owner adds when the
     // owner wants it, and this is not it.
     const w = (typeof resonance === 'number' && isFinite(resonance)) ? Math.max(0, Math.min(1, resonance)) : 1;
+
+    // FIELD TOKEN GATE (additive): a PRESENT-but-invalid void seal is inert
+    // (wEff=0) — a forged token cannot move the field. No seal = legacy
+    // behaviour, recorded as untokened for the field-source ratchet. Runtime
+    // half of the commit seal: that guards the codebase, this guards the field.
+    const tokened = _isValidVoidSeal(seal);
+    const wEff = (seal != null && !tokened) ? 0 : w;
+
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;
+
+    // ── ENTROPY DAMPING — the master equation's permanent −λ·ξ·|Ψ⟩ term,
+    // λ = S_norm × gap (the covenant-holder's ruling, 2026-09-17; the door
+    // docs/FIELD-DYNAMICS.md held open — "any damping variant is the
+    // covenant-holder's call" — is now closed by that call). S_norm is the
+    // field's own ξ normalized against the established entropy mechanics'
+    // hot line (entropyHot, the threshold fieldPressure reads). gap is not
+    // a constant: it is the distance the instrument itself measures at this
+    // step (1 − p, the same flow the healing and void terms read), so λ
+    // self-optimizes as readings flow through the LRE. The damping is gated
+    // by wEff like every other force — a forged seal can neither move nor
+    // damp the field. Before this term, entropy was computed and reported
+    // but never acted back on the state: coherence had no downward force
+    // except a bad reading itself (FIELD-DYNAMICS: "one voice can end the
+    // day"). Now a hot field bleeds amplitude in proportion to how hot it
+    // runs and how far the reading sits from the healed attractor.
+    const xi_prev = (typeof this._state.globalEntropy === 'number' && isFinite(this._state.globalEntropy))
+      ? Math.max(0, this._state.globalEntropy) : 0;
+    const S_norm  = Math.min(1, xi_prev / entropyHot);
+    const gap     = Math.max(0, 1 - p);
+    const lambda  = S_norm * gap;
+    const damping = lambda * xi_prev * prev;   // −λ · ξ_global_entropy · |Ψ⟩, at the scalar layer
+
     // THE LAW OF COHERENCY. A coherency reading lives in [0, 1] — always,
     // however capable the instrument that produced it. The cap enforces the
     // law. The Python LRE (living_remembrance.py) and the TS LRE
@@ -421,7 +491,7 @@ class LivingRemembranceEngine {
     // a coherency allowed past 1 lets the field drive its own entropy toward
     // zero by inflating the denominator — improvement reported no matter what
     // was fed in. The bound is what keeps the field's own readings honest.
-    const newCoherence = Math.max(0, Math.min(0.999, prev + (target - prev) * w));
+    const newCoherence = Math.max(0, Math.min(0.999, prev + ((target - prev) - damping) * wEff));
 
     // cascadeFactor is a recent-load gauge, not a running tally. It
     // relaxes toward the 1.0 baseline as time passes since the last
@@ -479,6 +549,10 @@ class LivingRemembranceEngine {
         lastCoherence: newCoherence,
         lastInput: (typeof p === 'number' && isFinite(p)) ? p : null,
         lastTimestamp: now,
+        // Provenance: did this source's last contribution carry a valid void
+        // compressor token? The field-source ratchet reads this to drive the
+        // write surface toward fully-tokened.
+        lastSealed: tokened,
       };
     }
 
@@ -493,7 +567,7 @@ class LivingRemembranceEngine {
       coherence:         newCoherence,
       // ∫p accumulates the input coherence p(t) per the master equation,
       // not the post-update newCoherence.
-      coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost * w,
+      coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost * wEff,
       globalEntropy:     cost / (newCoherence + epsilon),
       cascadeFactor,
       meanIntervalMs,
@@ -507,11 +581,20 @@ class LivingRemembranceEngine {
       ...this._state,
       r_eff,
       delta_void,
+      // The damping term's factors, visible on every reading so the field's
+      // downward force is never a hidden number.
+      lambda,
+      S_norm,
+      gap,
       // Provenance of the void term: a field measurement, or the
       // reading-derived fallback. Without this the two are indistinguishable.
       void_source,
       p,
       source: source || null,
+      // Whether this contribution carried a valid void-compressor token, and
+      // whether it was gated to inert (a present-but-invalid seal).
+      sealed: tokened,
+      seal_gated: (seal != null && !tokened),
     };
   }
 
@@ -520,48 +603,11 @@ class LivingRemembranceEngine {
     return { ...this._state };
   }
 
-  /**
-   * Entangled-node registry — presence, not a reading.
-   *
-   * entangle.js used to announce a node by contributing a flat
-   * `coherence: 0.9` under source `entangle:node:<id>`, then counted those
-   * sources to get the node census. So a REGISTRY lived inside the coherency
-   * field, and every heartbeat moved the global EMA by a constant that
-   * described nothing about the node.
-   *
-   * It could not simply be deleted — the contribution WAS the census.
-   * Presence now has its own store, so the registry and the field are
-   * separate concerns and the data can flow without one distorting the other.
-   *
-   * Nodes carry a last-seen stamp so the census reflects who is actually
-   * here. A registry that only ever grows is not a census, it is a log.
-   */
-  registerNode(nodeId, ttlMs = 15 * 60 * 1000) {
-    if (!nodeId) return 0;
-    const now = Date.now();
-    const nodes = { ...(this._state.nodes || {}) };
-    nodes[String(nodeId)] = now;
-    // Drop nodes not seen within the TTL — otherwise a machine that ran once
-    // inflates the abundance divisor forever and every later node
-    // under-reports its cost.
-    for (const [id, seen] of Object.entries(nodes)) {
-      if (typeof seen !== 'number' || now - seen > ttlMs) delete nodes[id];
-    }
-    this._state = { ...this._state, nodes };
-    this._persist();
-    return Object.keys(nodes).length;
-  }
+  /** Entangled-node registry — presence, not a reading; its own store beside the field (field-registry.js). */
+  registerNode(nodeId, ttlMs) { return require('./field-registry').registerNode(this, nodeId, ttlMs); }
 
   /** How many distinct nodes are currently entangled. Never below 1. */
-  nodeCount(ttlMs = 15 * 60 * 1000) {
-    const now = Date.now();
-    const nodes = this._state.nodes || {};
-    let n = 0;
-    for (const seen of Object.values(nodes)) {
-      if (typeof seen === 'number' && now - seen <= ttlMs) n++;
-    }
-    return Math.max(1, n);
-  }
+  nodeCount(ttlMs) { return require('./field-registry').nodeCount(this, ttlMs); }
 
   /**
    * Per-layer encoder reliability — its OWN store, deliberately not the
@@ -632,7 +678,7 @@ class LivingRemembranceEngine {
    */
   peekProjection({ cost = 1.0, coherence = null, resonance = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
-    const { r0, alpha, delta0 } = this._params;
+    const { r0, alpha, delta0, entropyHot } = this._params;
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
     const delta_void = delta0 * Math.max(0, 1 - p);
     // Must apply the SAME authority weight and the SAME prev-anchored EMA as
@@ -646,7 +692,12 @@ class LivingRemembranceEngine {
       ? Math.max(0, Math.min(1, resonance)) : 1;
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;
-    return Math.max(0, Math.min(0.999, prev + (target - prev) * w));
+    // The SAME damping term contribute() applies (−λ·ξ·|Ψ⟩, λ = S_norm×gap)
+    // — a projection without it would predict a field that no longer exists.
+    const xi_prev = (typeof this._state.globalEntropy === 'number' && isFinite(this._state.globalEntropy))
+      ? Math.max(0, this._state.globalEntropy) : 0;
+    const damping = Math.min(1, xi_prev / entropyHot) * Math.max(0, 1 - p) * xi_prev * prev;
+    return Math.max(0, Math.min(0.999, prev + ((target - prev) - damping) * w));
   }
 
   /** Reset state — primarily for tests / fresh runs. */
@@ -708,6 +759,7 @@ function getEngine(opts) {
   }
   return _instance;
 }
+getEngine.atomicProperties = { charge: 1, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Convenience: the goggles instrument's consolidated tuning, read from the
@@ -719,6 +771,7 @@ function gogglesParams() {
   try { return getEngine().params('goggles') || PARAMS.goggles; }
   catch (_) { return PARAMS.goggles; }
 }
+gogglesParams.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   LivingRemembranceEngine,

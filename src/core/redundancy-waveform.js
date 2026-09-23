@@ -54,17 +54,20 @@ function _clip(x) {
   if (x > 1) return 1;
   return x;
 }
+_clip.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _deflateLen(buf, level) {
   try { return zlib.deflateSync(buf, { level }).length; }
   catch (_) { return buf.length; }
 }
+_deflateLen.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Compression ratio in [0,1]: 0 = incompressible, →1 = pure repetition. */
 function _ratio(buf, level) {
   if (buf.length === 0) return 0;
   return _clip(1 - _deflateLen(buf, level) / buf.length);
 }
+_ratio.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _ngramStats(input, n) {
   const total = Math.max(0, input.length - n + 1);
@@ -81,6 +84,7 @@ function _ngramStats(input, n) {
     topRepeatFrac: maxCount / total,
   };
 }
+_ngramStats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _byteEntropy(input) {
   const len = input.length;
@@ -97,6 +101,7 @@ function _byteEntropy(input) {
   }
   return Math.min(1, h / 8);
 }
+_byteEntropy.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const _TOKEN_RE = /[A-Za-z_$][A-Za-z0-9_$]*/g;
 const _VOCAB_BUCKETS = 16;
@@ -110,6 +115,7 @@ function _fnv(tok) {
   }
   return h >>> 0;
 }
+_fnv.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function toRedundancyWaveform(input) {
   const out = new Float64Array(LAYER_DIM);

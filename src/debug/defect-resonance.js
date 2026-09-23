@@ -60,6 +60,7 @@ function encodeDepth() {
   try { return require('../core/decoder-stack').currentDepth(); }
   catch (_) { return 5; }
 }
+encodeDepth.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Recalibrated 2026-08 by scripts/calibrate-defect-resonance.js, run at
 // the canonical width over 1,510 blocks of real ecosystem source.
@@ -104,6 +105,7 @@ function encoder() {
   catch (_) { _encode = null; }
   return _encode;
 }
+encoder.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Seeds — classic defect shapes, multi-language ───────────────────
 // Each seed is a short, realistic offending block. The encoder reads
@@ -238,6 +240,7 @@ const SEEDS = [
 function _load() {
   try { return JSON.parse(fs.readFileSync(LIB_PATH, 'utf8')); } catch (_) { return null; }
 }
+_load.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _save(lib) {
   try {
@@ -245,10 +248,12 @@ function _save(lib) {
     fs.writeFileSync(LIB_PATH, JSON.stringify(lib));
   } catch (_) { quiet('debug:defect-resonance:_save', _); /* best-effort */ }
 }
+_save.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _sigId(label, code) {
   return crypto.createHash('sha256').update(label + '\n' + code).digest('hex').slice(0, 12);
 }
+_sigId.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Load the defect library, building it from seeds on first use.
@@ -303,6 +308,7 @@ function ensureLibrary() {
   _save(lib);
   return lib;
 }
+ensureLibrary.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Re-encode every signature at `depth`, preserving what was TAUGHT.
@@ -339,6 +345,7 @@ function _reencode(lib, enc, depth) {
   _save(out);
   return out;
 }
+_reencode.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Teach the library from a confirmed finding (e.g. an AST-checker HIGH
@@ -372,6 +379,7 @@ function teach({ label, bugClass, language, code }) {
     return true;
   } catch (_) { return false; }
 }
+teach.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Detection ───────────────────────────────────────────────────────
 
@@ -383,6 +391,7 @@ function teach({ label, bugClass, language, code }) {
 function _flow(a, b) {
   return require('../core/decoder-stack').flowCosines(a, b);
 }
+_flow.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Split source into readable blocks: blank-line groups, merged up to
@@ -409,6 +418,7 @@ function _blocks(source) {
   flush(lines.length);
   return out;
 }
+_blocks.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Scan source (any language) for blocks that resonate with known
@@ -501,6 +511,7 @@ function scan(source, opts = {}) {
 
   return { findings, scannedBlocks: blocks.length, librarySize: lib.signatures.length };
 }
+scan.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   scan, teach, ensureLibrary, SEEDS, DEFAULT_THRESHOLD, LIB_PATH,

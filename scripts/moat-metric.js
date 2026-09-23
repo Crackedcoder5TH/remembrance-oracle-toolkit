@@ -38,7 +38,7 @@ const idx = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.js
 function mulberry32(seed) { let a = seed >>> 0; return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const rnd = mulberry32(12345);
 
-const DIM = 116;
+const DIM = 232 /* the ONE width */;
 const domainOf = (name) => name.split('/')[0].replace(/[_-].*$/, '').toLowerCase();
 const l2 = (v) => { let s = Math.sqrt(v.reduce((a, x) => a + x * x, 0)) || 1; return v.map((x) => x / s); };
 const cos = (a, b) => { let d = 0; for (let i = 0; i < a.length; i++) d += a[i] * b[i]; return d; };
@@ -46,7 +46,7 @@ const cos = (a, b) => { let d = 0; for (let i = 0; i < a.length; i++) d += a[i] 
 // Load all real vectors with their domain.
 const all = [];
 for (const name of Object.keys(idx)) {
-  const v = idx[name].composed_v1;
+  const v = idx[name].composed;
   if (Array.isArray(v) && v.length === DIM) all.push({ name, dom: domainOf(name), vec: l2(v) });
 }
 console.log(`substrate: ${all.length} real vectors · ${new Set(all.map((e) => e.dom)).size} surface domains\n`);

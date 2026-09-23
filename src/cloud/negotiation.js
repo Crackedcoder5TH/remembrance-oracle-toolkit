@@ -302,6 +302,7 @@ function _quickHash(str) {
   const crypto = require('crypto');
   return crypto.createHash('sha256').update(str).digest('hex').slice(0, 12);
 }
+_quickHash.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _fetchJson(url, options = {}) {
   return new Promise((resolve) => {
@@ -336,6 +337,7 @@ function _fetchJson(url, options = {}) {
     req.end();
   });
 }
+_fetchJson.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 3, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Multi-Remote Conflict Resolution ───
 
@@ -394,7 +396,7 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-generateManifest.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+generateManifest.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 compareManifests.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
-negotiate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+negotiate.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 13, period: 5, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 resolveConflict.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 14, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

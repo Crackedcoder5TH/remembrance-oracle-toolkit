@@ -54,6 +54,7 @@ function _tokens(text) {
   }
   return toks;
 }
+_tokens.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── build the weighted co-occurrence graph ──────────────────────────
 function _graph(text) {
@@ -80,6 +81,7 @@ function _graph(text) {
   if (m2 === 0) return null;
   return { N, adj, deg, m2 };
 }
+_graph.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── deterministic label propagation → community labels ──────────────
 function _labelProp(g) {
@@ -101,6 +103,7 @@ function _labelProp(g) {
   }
   return label;
 }
+_labelProp.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── modularity of a partition (Newman); Q already subtracts the degree null ──
 function _modularity(g, label) {
@@ -117,6 +120,7 @@ function _modularity(g, label) {
   for (const [, ds] of degSum) q -= (ds / (2 * m)) ** 2;
   return q; // in [-0.5, 1]; >0 means community above the degree-preserving null
 }
+_modularity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── helpers for the feature block ───────────────────────────────────
 function _gini(arr) {
@@ -124,11 +128,13 @@ function _gini(arr) {
   let cum = 0, tot = 0; for (let i = 0; i < n; i++) { cum += (i + 1) * a[i]; tot += a[i]; }
   return tot === 0 ? 0 : (2 * cum) / (n * tot) - (n + 1) / n;
 }
+_gini.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 function _entropy(counts) {
   let tot = 0; for (const c of counts) tot += c; if (tot === 0) return 0;
   let h = 0; for (const c of counts) { if (c > 0) { const p = c / tot; h -= p * Math.log2(p); } }
   const hmax = Math.log2(counts.length || 1) || 1; return h / hmax;
 }
+_entropy.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * L9 relational/community waveform. Returns a 29-D Float64Array; a zero vector

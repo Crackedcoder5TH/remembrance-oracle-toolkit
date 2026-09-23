@@ -87,6 +87,7 @@ function syncSleep(ms) {
     while (Date.now() < end) { /* spin */ }
   }
 }
+syncSleep.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Acquire an exclusive lockfile using O_CREAT|O_EXCL (atomic on POSIX).
@@ -130,6 +131,7 @@ function acquireLock(storeDir, label = 'pattern-library') {
   }
   throw new Error(`Failed to acquire lock for ${label} after ${LOCK_DELAYS.length + 1} attempts — another process may be holding the lock at ${storeDir}`);
 }
+acquireLock.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Load JSON with .bak recovery — prevents data loss on corruption.
@@ -165,6 +167,7 @@ function loadJSONSafe(filePath, fallback) {
 
   return fallback;
 }
+loadJSONSafe.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 /**
  * Atomic write: serialize → write .tmp → backup current → rename.
@@ -186,6 +189,7 @@ function atomicWriteJSON(filePath, data) {
   }
   fs.renameSync(tmpPath, filePath);
 }
+atomicWriteJSON.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── SERF Output Sanitizer — ported from Reflector Oracle's serfSanitizer.js ───
 
@@ -209,6 +213,7 @@ function fixChainBreakingSemicolons(code) {
   }
   return result.join('\n');
 }
+fixChainBreakingSemicolons.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Remove semicolons inserted after continuation tokens: [ { ( , => || && ?
@@ -219,6 +224,7 @@ function fixBracketSemicolons(code) {
     '$1$2'
   );
 }
+fixBracketSemicolons.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Sanitize SERF-healed code — fixes known transform bugs before storage.
@@ -230,6 +236,7 @@ function sanitizePatternCode(code) {
   result = fixChainBreakingSemicolons(result);
   return result;
 }
+sanitizePatternCode.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const PATTERN_TYPES = [
   'algorithm', 'data-structure', 'utility', 'design-pattern',
@@ -278,6 +285,7 @@ function tryGetSQLite(storeDir) {
   }
   return null;
 }
+tryGetSQLite.atomicProperties = { charge: 0, valence: 3, mass: "medium", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 1, group: 10, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 class PatternLibrary {
   // Secondary-index caches — rebuilt lazily on first access and
@@ -1581,6 +1589,7 @@ function classifyPattern(code, name = '') {
   if (/test|spec|mock|stub|fixture|assert/i.test(combined)) return 'testing';
   return 'utility';
 }
+classifyPattern.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 /**
  * Infer complexity tier based on code lines and nesting depth.
@@ -1594,6 +1603,7 @@ function inferComplexity(code) {
   if (lines <= COMPLEXITY_TIER_LIMITS.COMPOSITE.MAX_LINES && depth <= COMPLEXITY_TIER_LIMITS.COMPOSITE.MAX_NESTING) return 'composite';
   return 'architectural';
 }
+inferComplexity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function maxNestingDepth(code) {
   let max = 0, current = 0;
@@ -1603,6 +1613,7 @@ function maxNestingDepth(code) {
   }
   return max;
 }
+maxNestingDepth.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Deduplicate patterns by name, keeping the highest coherency score.
@@ -1633,6 +1644,7 @@ function deduplicatePatterns(patterns) {
   const unnamed = patterns.filter(p => !p.name);
   return [...byNameLang.values(), ...unnamed];
 }
+deduplicatePatterns.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const { countBy } = require('../store/store-helpers');
 

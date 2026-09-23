@@ -30,6 +30,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_PATH = path.join(ROOT, '.cycle-baseline.json');
@@ -247,6 +248,18 @@ function main() {
 
   if (argv.includes('--save-baseline')) {
     const prev = loadBaseline();
+    // THE LAW: the graph only untangles. A new, grown or merged cycle is DEBT.
+    if (prev) {
+      const dl = compareCycles(current.load, (prev.loadCycles || []).map((c) => c.members));
+      const dx = compareCycles(current.lexical, (prev.cycles || []).map((c) => c.members));
+      const debt = [];
+      for (const [tag, v] of [['load-time', dl], ['lexical', dx]]) {
+        for (const c of v.newCycles || []) debt.push(`NEW ${tag} cycle: ${JSON.stringify(c)}`);
+        for (const c of v.grownCycles || []) debt.push(`GREW ${tag} cycle: ${JSON.stringify(c)}`);
+        for (const c of v.merged || []) debt.push(`MERGED ${tag} cycles: ${JSON.stringify(c)}`);
+      }
+      if (refuseIfLoosening('cycle-ratchet', debt, argv)) return 1;
+    }
     const data = JSON.stringify({
       note: 'cycle-ratchet baseline — require-graph SCCs in src/. load = top-level edges (the hard gate; held at ZERO since 2026-08-09). lexical = every edge (coupling debt; shrinks through real decomposition). Both lists only untangle.',
       savedAt: new Date().toISOString(),

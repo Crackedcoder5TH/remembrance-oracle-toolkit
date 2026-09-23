@@ -36,12 +36,7 @@ function runLengthEncode(data) {
   result.push([current, count]);
   return result;
 }
-runLengthEncode.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'compression',
-};
+runLengthEncode.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-2: Heavy-weight meta function (pure, inert)
@@ -91,12 +86,7 @@ function analyzeElementDensity(elements) {
   // list treated any numeric-looking return field as a coherence signal.
   return __retVal;
 }
-analyzeElementDensity.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.88, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'core',
-};
+analyzeElementDensity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-3: Light-weight async function (computed)
@@ -108,12 +98,7 @@ analyzeElementDensity.atomicProperties = {
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms || 0));
 }
-delay.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 8, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+delay.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 8, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-4: Light-weight state function (computed)
@@ -130,12 +115,7 @@ function snapshot(obj) {
   }
   return Object.freeze(clone);
 }
-snapshot.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 10, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+snapshot.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-5: Light-weight sort predicate (computed)
@@ -152,12 +132,7 @@ function isSorted(arr, compareFn) {
   }
   return true;
 }
-isSorted.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 14, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+isSorted.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-6: Light-weight search function (computed)
@@ -179,12 +154,7 @@ function binarySearch(arr, target, compareFn) {
   }
   return -1;
 }
-binarySearch.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 15, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'search',
-};
+binarySearch.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-7: Light-weight crypto function (computed)
@@ -202,12 +172,7 @@ function simpleHash(str) {
   }
   return (h >>> 0).toString(16).padStart(8, '0');
 }
-simpleHash.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 16, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+simpleHash.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-8: Light-weight compression metric (computed)
@@ -221,12 +186,7 @@ function compressionRatio(originalSize, compressedSize) {
   if (typeof compressedSize !== 'number' || compressedSize <= 0) return 0;
   return Math.round((originalSize / compressedSize) * 1000) / 1000;
 }
-compressionRatio.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.5, group: 17, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'compression',
-};
+compressionRatio.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-9: Heavy meta function (side-effecting, healing, minimal harm)
@@ -272,12 +232,7 @@ function auditAtomicCoverage(files) {
     },
   };
 }
-auditAtomicCoverage.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'quality',
-};
+auditAtomicCoverage.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0.17, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-10: Heavy meta function (pure, healing, minimal harm, period 6)
@@ -312,12 +267,7 @@ function predictEmergence(coherencyHistory, thresholds) {
     confidence: Math.min(1, recent.length / 10),
   };
 }
-predictEmergence.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 6,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'core',
-};
+predictEmergence.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-11: Light transform, mutable (liquid), minimal harm
@@ -332,12 +282,7 @@ function mutTransform(obj, fn) {
   fn(obj);
   return obj;
 }
-mutTransform.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'liquid',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+mutTransform.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-12: Light transform, reactive stream (plasma), minimal harm
@@ -358,12 +303,7 @@ function reactiveFilter(emitter, event, predicate) {
   filtered._event = event;
   return filtered;
 }
-reactiveFilter.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'plasma',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+reactiveFilter.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 9, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-13: Light filter, computed (gas), minimal harm
@@ -378,12 +318,7 @@ function filterByPattern(arr, pattern) {
   if (typeof pattern === 'string') return arr.filter(item => String(item).includes(pattern));
   return arr.slice();
 }
-filterByPattern.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 12, period: 1,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+filterByPattern.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-14: Light transform, cached (solid), minimal harm
@@ -399,12 +334,7 @@ function frozenIdentity(value) {
   const copy = Array.isArray(value) ? [...value] : { ...value };
   return Object.freeze(copy);
 }
-frozenIdentity.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+frozenIdentity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-15: Heavy meta function (complex spin, healing)
@@ -442,12 +372,7 @@ function conditionalAnalyze(code, conditions) {
   const allOk = results.every(r => r.ok);
   return { results, passing: allOk, conditionsUsed: conds };
 }
-conditionalAnalyze.atomicProperties = {
-  charge: 0, valence: 4, mass: 'heavy', spin: 'complex', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'quality',
-};
+conditionalAnalyze.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-16: Light contracting math function (cached)
@@ -460,12 +385,7 @@ function absFloor(n) {
   if (typeof n !== 'number' || isNaN(n)) return 0;
   return Math.floor(Math.abs(n));
 }
-absFloor.atomicProperties = {
-  charge: -1, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'utility',
-};
+absFloor.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-17: Medium expanding search function (stable, healing)
@@ -499,12 +419,7 @@ function fuzzySearch(items, query, keyFn) {
     .filter(r => r.score > 0)
     .sort((a, b) => b.score - a.score);
 }
-fuzzySearch.atomicProperties = {
-  charge: 1, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'stable', electronegativity: 0.7, group: 15, period: 4,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'search',
-};
+fuzzySearch.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * GAP W2-18: Medium expanding search function (reactive, healing)
@@ -531,12 +446,7 @@ function semanticSearch(items, query, scoreFn, threshold) {
     .filter(r => r.score >= minScore)
     .sort((a, b) => b.score - a.score);
 }
-semanticSearch.atomicProperties = {
-  charge: 1, valence: 4, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.8, group: 15, period: 5,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'search',
-};
+semanticSearch.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   runLengthEncode,

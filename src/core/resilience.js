@@ -58,6 +58,7 @@ async function retryWithBackoff(fn, options = {}) {
   }
   throw lastError;
 }
+retryWithBackoff.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── HTTP Retry Helpers ───
 
@@ -79,6 +80,7 @@ function isRetryableError(err) {
   if (err.statusCode === 429 || (err.statusCode >= 500 && err.statusCode < 600)) return true;
   return false;
 }
+isRetryableError.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Wrap the cloud client's request function with retry logic.
@@ -102,6 +104,7 @@ function withRetry(requestFn, retryOptions = {}) {
     );
   };
 }
+withRetry.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Generate a browser-side fetch wrapper with retry logic.
@@ -142,6 +145,7 @@ async function resilientFetch(url, options) {
   throw lastError;
 }`;
 }
+resilientFetchSource.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   retryWithBackoff,

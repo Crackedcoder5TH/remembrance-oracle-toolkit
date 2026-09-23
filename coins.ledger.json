@@ -5916,6 +5916,160 @@
      "shape_sha256": "3332d31a1836fad004a010d5f95821edb60c21598b9d800a07adbd74a2a8cb6c"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "e722a8030be473b0ce26c1dc3b3493967acbbbe325f8f6256729cd5ab1a4b940",
+   "minted_at": "2026-09-23T08:07:26+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "4e3acb7701e9b2ac2226610c583b1636b31d3f58",
+    "files": [
+     "digital-cathedral/app/lib/client-database/index.ts",
+     "digital-cathedral/app/lib/client-database/substrate-adapter.ts",
+     "digital-cathedral/app/lib/valor/remembrance-bridge.ts",
+     "digital-cathedral/scripts/fixture-rows.json",
+     "digital-cathedral/scripts/migrate-to-substrate.mjs",
+     "digital-cathedral/scripts/phase2-clients-e2e.mjs",
+     "docs/valor-legacies-integration.md",
+     "scripts/field-server.js"
+    ],
+    "diff_bytes": 64668,
+    "diff_sha256": "3dfa5c06cb488d48b9df7551847a5f9db347c73ad7825c1cb2da1e7375287bec",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.1477513322762633,
+    "ratio": 3.338564790913784,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "53997db8c6feaf31",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "29b5b4d18d34b164f0f9c45c8c2e259926dd54f5e7d5248d5f05c3ef21e7124d",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-23T08:07:26",
+     "coin": null,
+     "sig": "53997db8c6feaf3165d5a3d124089a9d3e04fd0bab704182df1a7577539761dd"
+    },
+    "library_size": 28669,
+    "memory": {
+     "fits": 1457,
+     "served": 406,
+     "computed": 1051,
+     "served_ancestor": 0,
+     "chunkings": 7,
+     "chunkings_served": 4,
+     "entries": 758792,
+     "void_chunks": 135,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 136,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 2.616,
+    "basis_id": "34c0e162cdb5a4e5",
+    "learned_n": 28597,
+    "learned_this_reading": 0,
+    "basis_after": "34c0e162cdb5a4e5",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "34c0e162cdb5a4e5",
+     "method": "v4_chunked",
+     "original_size": 64668,
+     "compressed_size": 19370,
+     "coherency": 0.1477513322762633,
+     "data_sha256": "ff5f90d13269a5342b2ac30b023fa07d92944b9e74a7147c80961eaf30bd35b0",
+     "compressed_sha256": "4cf99fae55add94860fb8c58b6c3c41003e16287c6d3a8c64515d5d1d707f475",
+     "shape_sha256": "38424245b6e84834c4a8a77762a9646cd740a7363ba45909dbe48362b1603e98"
+    }
+   }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "193fde77fb30758dbb6eb4656bd9dd79a4a32b5f3069de1880dde2406af6ade5",
+   "minted_at": "2026-09-23T08:09:54+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "4e3acb7701e9b2ac2226610c583b1636b31d3f58",
+    "files": [
+     "digital-cathedral/app/lib/client-database/index.ts",
+     "digital-cathedral/app/lib/client-database/substrate-adapter.ts",
+     "digital-cathedral/app/lib/valor/remembrance-bridge.ts",
+     "digital-cathedral/scripts/fixture-rows.json",
+     "digital-cathedral/scripts/migrate-to-substrate.mjs",
+     "digital-cathedral/scripts/phase2-clients-e2e.mjs",
+     "docs/valor-legacies-integration.md",
+     "scripts/field-server.js"
+    ],
+    "diff_bytes": 65507,
+    "diff_sha256": "dff3d9a0c2e52efc0ef75bd6de0167a0e0316562bcfe173d6dde689bf3a8c384",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.14411166356751517,
+    "ratio": 3.3423644063472624,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "e4f18ed1bc4bebd0",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "b74ea9e6813ed1f090a2e545f7c4e2041cb4cb3facbfa4c791bbe641e62caca4",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-23T08:09:54",
+     "coin": null,
+     "sig": "e4f18ed1bc4bebd097943fec59f70c37f96b1f69e14121d7e563e8b7047c1f94"
+    },
+    "library_size": 28669,
+    "memory": {
+     "fits": 938,
+     "served": 335,
+     "computed": 603,
+     "served_ancestor": 0,
+     "chunkings": 5,
+     "chunkings_served": 3,
+     "entries": 761201,
+     "void_chunks": 120,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 120,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 1.819,
+    "basis_id": "34c0e162cdb5a4e5",
+    "learned_n": 28597,
+    "learned_this_reading": 0,
+    "basis_after": "34c0e162cdb5a4e5",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "34c0e162cdb5a4e5",
+     "method": "v4_chunked",
+     "original_size": 65507,
+     "compressed_size": 19599,
+     "coherency": 0.14411166356751517,
+     "data_sha256": "78eb87f5a98cc1fb011f3a609f8daf238011e102aa78e9ce3b2c26b781b5596a",
+     "compressed_sha256": "5b959bddba29a183f7d1e5147502ced750178dc702b8a31b529cff58dbb7cb86",
+     "shape_sha256": "2a112898266aad2edae055fa92a90cc139969c7702773d6bde78d82c837174d1"
+    }
+   }
   }
  ]
 }

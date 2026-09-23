@@ -1,8 +1,9 @@
 /**
  * Client Database — Lead Buyer Management Layer.
  *
- * Dual-mode persistence (PostgreSQL / SQLite, with a no-op fallback) for
- * client accounts, lead purchases, and delivery filters. This
+ * Persistence for client accounts, lead purchases, and delivery filters:
+ * the substrate (the field's legacy store) when SUBSTRATE_LEADS is on,
+ * otherwise PostgreSQL / SQLite, with a no-op fallback. This
  * barrel keeps the public `@/app/lib/client-database` API stable: types
  * and helpers are re-exported, and every operation is dispatched to the
  * active adapter resolved by getClientAdapter().
@@ -20,6 +21,11 @@ import type {
 import { PostgresClientAdapter } from "./postgres-adapter";
 import { SqliteClientAdapter } from "./sqlite-adapter";
 import { NoopClientAdapter } from "./noop-adapter";
+import { SubstrateClientAdapter } from "./substrate-adapter";
+import { SUBSTRATE_LEADS } from "../substrate-leads";
+
+/** Buyers and purchases follow their leads: same gate, one source of truth. */
+export const SUBSTRATE_CLIENTS = SUBSTRATE_LEADS;
 
 export type {
   Result,
@@ -45,7 +51,10 @@ let _clientAdapter: ClientDbAdapter | null = null;
 function getClientAdapter(): ClientDbAdapter {
   if (_clientAdapter) return _clientAdapter;
 
-  if (process.env.DATABASE_URL) {
+  if (SUBSTRATE_CLIENTS) {
+    console.log("[client-database] Using the substrate adapter (SUBSTRATE_LEADS=1 + field URL)");
+    _clientAdapter = new SubstrateClientAdapter();
+  } else if (process.env.DATABASE_URL) {
     console.log("[client-database] Using PostgreSQL adapter (DATABASE_URL detected)");
     _clientAdapter = new PostgresClientAdapter();
   } else {

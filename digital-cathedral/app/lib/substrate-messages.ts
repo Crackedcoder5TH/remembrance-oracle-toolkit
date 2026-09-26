@@ -1,36 +1,38 @@
 /**
- * Client messages on the substrate (opt-in).
+ * Client messages and documents on the substrate (opt-in).
  *
- * Routes portal-message reads/writes to the field's `legacy` record store via
- * the bridge instead of the relational adapter — one message = one record
- * (id `msg:<numericId>`). database.ts delegates here when SUBSTRATE_MESSAGES is
- * enabled; otherwise the relational adapter is used. A deliberate, reversible
- * opt-in — the relational adapter stays the DEFAULT, so production is unchanged
- * unless the operator sets the flag.
+ * Routes portal-message and portal-document reads/writes to the field's
+ * `legacy` record store instead of the relational adapter — one message = one
+ * record (id `msg:<numericId>`), one document = one record (id `doc:<numericId>`).
+ * database.ts delegates here when SUBSTRATE_MESSAGES is enabled; otherwise the
+ * relational adapter is used. A deliberate, reversible opt-in — the relational
+ * adapter stays the DEFAULT, so production is unchanged unless the operator
+ * sets the flag.
  *
- * STORAGE SHAPE — compressor-native. The record's `content` is the message
- * TEXT (subject + body); the structured ClientMessage lives in `meta.message`.
- * This is deliberate: the field waveforms `name + "\n" + content`, so putting
- * the message text there (not a JSON blob) makes the record's OWN coherence and
- * resonance about the message — which is what makes `recall`/`resonant` over
- * messages meaningful, the whole reason to put them on the substrate. It is
- * also what makes resonance-based dedup work (see findDuplicateMessage): an
- * identical resubmit produces an identical waveform, so it resonates at ~1.0
- * with the record that already landed. (Measured: with JSON content the true
- * twin did not even rank — unrelated text out-resonated it. Text content fixed
- * it.)
+ * STORAGE SHAPE — compressor-native. A message record's `content` is the
+ * message TEXT (subject + body); the structured ClientMessage lives in
+ * `meta.message`. The field waveforms `name + "\n" + content`, so the record's
+ * OWN coherence and resonance are about the message — which is what makes
+ * `recall`/`resonant` over messages meaningful, and what makes the retry
+ * dedup below work: an identical resubmit resonates at ~1.0 with its twin.
+ * (Measured: with JSON content the true twin did not even rank.)
+ *
+ * Every read and write goes through the bridge's strict record store:
+ * an outage is an error, never an empty inbox or a silent "not updated".
  *
  * The routes' id contract is a POSITIVE INTEGER (markMessageRead validates
- * Number.isInteger(id) && id > 0), so ids are minted as a time-ordered integer
- * (Date.now()), bumped past any collision, and the substrate key is `msg:<id>`.
+ * Number.isInteger(id) && id > 0), so ids are minted time-ordered (Date.now())
+ * and inserted atomically — a same-millisecond collision bumps, never overwrites.
  *
  * No runtime dependency on database.ts (types are `import type`, erased at
  * compile time), so importing this from database.ts forms no cycle.
  */
 
-import { getRecord, storeRecord, listRecords, resonantRecords } from "./valor/remembrance-bridge";
-import type { SubstrateRecord } from "./valor/remembrance-bridge";
-import type { ClientMessage, ClientMessageInput, Result } from "./database";
+import {
+  getRecordStrict, listAllStrict, listPageStrict, newestFirst, parseJson, resonantRecords, storeGuardedStrict, storeStrict,
+  type FieldResult, type RecordInput, type SubstrateRecord,
+} from "./valor/remembrance-bridge";
+import type { ClientDocument, ClientDocumentInput, ClientMessage, ClientMessageInput, Result } from "./database";
 
 /** Enabled only when the field is configured AND the operator opts in. */
 export const SUBSTRATE_MESSAGES =
@@ -38,12 +40,30 @@ export const SUBSTRATE_MESSAGES =
   (process.env.SUBSTRATE_MESSAGES || "").trim() === "1";
 
 const MESSAGE_TAG = "client-message";
-const MESSAGE_LIST_WINDOW = 1000;
+const DOCUMENT_TAG = "client-document";
+const PAGE = 200;
 
 const ok = <T>(value: T): Result<T, string> => ({ ok: true, value });
 const err = (error: string): Result<never, string> => ({ ok: false, error });
 
+/**
+ * Mint a positive-integer id (time-ordered, collision-bumped) and insert the
+ * record under it atomically: the guarded insert refuses an id already taken,
+ * so two writers in the same millisecond never overwrite each other.
+ */
+async function insertWithMintedId(toRecord: (id: number) => RecordInput, uniqueTag: string): Promise<FieldResult<number>> {
+  let id = Date.now();
+  for (let attempt = 0; attempt < 50; attempt++, id++) {
+    const r = await storeGuardedStrict(toRecord(id), { tags: [uniqueTag], max: Number.MAX_SAFE_INTEGER });
+    if (!r.ok) return r;
+    if (r.value.outcome === "inserted") return { ok: true, value: id };
+  }
+  return { ok: false, error: "could not mint a free id after 50 attempts" };
+}
+
 const messageRecordId = (id: number): string => "msg:" + id;
+const documentRecordId = (id: number): string => "doc:" + id;
+const byCreated = (row: { createdAt: string }) => row.createdAt;
 
 /** The record `content`: the human message text, which is what the field
  *  waveforms and what `resonant` compares. Kept identical at store and at
@@ -51,8 +71,7 @@ const messageRecordId = (id: number): string => "msg:" + id;
 const messageText = (m: { subject: string; body: string }): string => m.subject + "\n" + m.body;
 
 /** The exact string the field waveforms for a message record: the record NAME
- *  (the constant tag) + "\n" + the content. Reconstructing it verbatim is what
- *  lets a dedup query resonate at 1.0 with an identical stored message. */
+ *  (the constant tag) + "\n" + the content. */
 const resonanceKey = (m: { subject: string; body: string }): string => MESSAGE_TAG + "\n" + messageText(m);
 
 /** The structured ClientMessage lives in meta.message. */
@@ -61,57 +80,52 @@ const parseMessage = (rec: SubstrateRecord | null): ClientMessage | null => {
   return m ? (m as ClientMessage) : null;
 };
 const isMessage = (m: ClientMessage | null): m is ClientMessage => m !== null;
+const toMessages = (records: SubstrateRecord[]): ClientMessage[] => records.map(parseMessage).filter(isMessage);
 
-function messageFacetTags(m: ClientMessage): string[] {
-  return [MESSAGE_TAG, "client:" + m.clientId, m.direction, m.read ? "read" : "unread"];
-}
-
-async function putMessage(record: ClientMessage): Promise<{ ok: boolean } | null> {
-  return storeRecord({
-    id: messageRecordId(record.id),
+function messageRecord(m: ClientMessage) {
+  return {
+    id: messageRecordId(m.id),
     name: MESSAGE_TAG,                    // constant → part of every message waveform, reconstructible at dedup
-    content: messageText(record),         // the message text is the waveform's substance
-    tags: messageFacetTags(record),
-    meta: { message: record },            // the structured row, recalled verbatim
-  });
-}
-
-/** Mint a positive-integer id that no record currently occupies. Time-ordered
- *  (Date.now()), bumped past any same-millisecond collision. Human-paced portal
- *  volume makes the bump loop effectively never iterate. */
-async function nextMessageId(): Promise<number> {
-  let id = Date.now();
-  while (await getRecord(messageRecordId(id))) id += 1;
-  return id;
+    content: messageText(m),              // the message text is the waveform's substance
+    tags: [MESSAGE_TAG, "client:" + m.clientId, m.direction, m.read ? "read" : "unread"],
+    meta: { message: m },                 // the structured row, recalled verbatim
+  };
 }
 
 /**
  * The substrate's established duplicate mark — the same cosine the coherency
- * mapper reads as a duplicate (duplicateAt / selfMatchAt = 0.999). Because the
- * record content is the message text and the dedup query reconstructs the exact
- * `name + "\n" + content` the field waveformed, an identical resubmit resonates
- * at 1.0, so this threshold is honest here, not a guess. (Measured live: a true
- * twin scores 1.000000; the nearest non-twin sits far below.)
+ * mapper reads as a duplicate (duplicateAt / selfMatchAt = 0.999). An
+ * identical resubmit resonates at 1.0 (measured live), so the threshold is
+ * honest here, not a guess.
  */
 const DUPLICATE_RESONANCE = 0.999;
 
 /**
- * Find the id of an already-stored message identical to `msg`, using the
- * compressor's own resonance to retrieve candidates (the established kin
- * detector) and exact fields to confirm identity — the retrieve-then-confirm
- * shape substrate-leads uses for contacts, with the field's resonance standing
- * in for the text search. Scoped to the same client. Null when there is no twin.
+ * How long an identical message counts as a RETRY of one that already landed.
+ * SQL keeps every message; the dedup exists only to absorb a write that timed
+ * out after persisting and was resubmitted. A client who writes "Thank you"
+ * again tomorrow is sending a new message, so the window is short.
  */
-async function findDuplicateMessage(msg: ClientMessageInput): Promise<number | null> {
-  const kin = await resonantRecords(resonanceKey(msg), 5);
+const RETRY_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * Find the id of a message identical to `msg` that landed within the retry
+ * window — the compressor's resonance retrieves candidates, exact fields
+ * confirm identity. Best-effort by design: if resonance is unavailable, no
+ * twin is found and the message is stored (SQL itself never dedups).
+ */
+async function findRetriedMessage(msg: ClientMessageInput): Promise<number | null> {
+  const kin = await resonantRecords(resonanceKey(msg), 10);
+  const cutoff = Date.now() - RETRY_WINDOW_MS;
   for (const r of kin) {
-    if (r.resonance < DUPLICATE_RESONANCE) break;   // ranked desc — nothing below the mark is a duplicate
+    if (r.resonance < DUPLICATE_RESONANCE) break;   // ranked desc — nothing below the mark is a twin
     const existing = parseMessage(r);
     if (existing
         && existing.clientId === msg.clientId
         && existing.direction === msg.direction
         && existing.subject === msg.subject
-        && existing.body === msg.body) {
+        && existing.body === msg.body
+        && Date.parse(existing.createdAt) > cutoff) {
       return existing.id;
     }
   }
@@ -121,60 +135,101 @@ async function findDuplicateMessage(msg: ClientMessageInput): Promise<number | n
 export async function substrateInsertClientMessage(
   msg: ClientMessageInput,
 ): Promise<Result<{ id: number }, string>> {
-  // Dedup FIRST, through the compressor's resonance. This closes the
-  // false-failure-then-retry window: the bridge is best-effort with a 1500ms
-  // write timeout, so a store can report failure while the record actually
-  // persisted; a resubmit then resonates at 1.0 with that landed record and we
-  // return ITS id instead of minting a duplicate (messages have no natural key,
-  // so this is where the lead adapter's key-upsert immunity has to be earned).
-  const twin = await findDuplicateMessage(msg);
+  if (!msg || !Number.isInteger(msg.clientId) || typeof msg.subject !== "string" || typeof msg.body !== "string") {
+    return err("clientId, subject and body are required");
+  }
+  const twin = await findRetriedMessage(msg);
   if (twin !== null) return ok({ id: twin });
 
-  const id = await nextMessageId();
-  const record: ClientMessage = {
+  const createdAt = new Date().toISOString();
+  const r = await insertWithMintedId((id) => messageRecord({
     id,
     clientId: msg.clientId,
     direction: msg.direction,
     subject: msg.subject,
     body: msg.body,
     read: false,                                   // mirrors the relational default
-    createdAt: new Date().toISOString(),
-  };
-  const r = await putMessage(record);
-  if (!r || !r.ok) return err("substrate store failed (field unreachable?)");
-  return ok({ id });
+    createdAt,
+  }), MESSAGE_TAG);
+  return r.ok ? ok({ id: r.value }) : err(r.error);
 }
 
+/** SQL: WHERE client_id = ? ORDER BY created_at DESC — every message, unbounded. */
 export async function substrateGetClientMessages(
   clientId: number,
 ): Promise<Result<ClientMessage[], string>> {
-  const { records } = await listRecords({ tags: [MESSAGE_TAG, "client:" + clientId], limit: MESSAGE_LIST_WINDOW });
-  const messages = records.map(parseMessage).filter(isMessage)
-    // client scoping is enforced by the tag; guard against tag-substring bleed
-    // ("client:1" LIKE-matching "client:11") by re-checking the parsed id.
-    .filter((m) => m.clientId === clientId)
-    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));   // newest-first, mirrors ORDER BY created_at DESC
-  return ok(messages);
+  const found = await listAllStrict([MESSAGE_TAG, "client:" + clientId]);
+  if (!found.ok) return err(found.error);
+  return ok(newestFirst(toMessages(found.value).filter((m) => m.clientId === clientId), byCreated));
 }
 
+/** SQL: UPDATE ... SET read = TRUE WHERE id = ? AND client_id = ? → updated = the row matched. */
 export async function substrateMarkMessageRead(
   messageId: number,
   clientId: number,
 ): Promise<Result<{ updated: boolean }, string>> {
-  const msg = parseMessage(await getRecord(messageRecordId(messageId)));
-  // Scope to the owning client — mirrors "WHERE id = ? AND client_id = ?".
+  const rec = await getRecordStrict(messageRecordId(messageId));
+  if (!rec.ok) return err(rec.error);
+  const msg = parseMessage(rec.value);
   if (!msg || msg.clientId !== clientId) return ok({ updated: false });
-  if (msg.read) return ok({ updated: false });     // already read → no update, like a 0-rowcount
-  const r = await putMessage({ ...msg, read: true });
-  return ok({ updated: Boolean(r && r.ok) });
+  if (msg.read) return ok({ updated: true });     // the row matched; setting read again changes nothing
+  const r = await storeStrict(messageRecord({ ...msg, read: true }));
+  return r.ok ? ok({ updated: true }) : err(r.error);
 }
 
+/** SQL: ORDER BY created_at DESC LIMIT ? OFFSET ?, total = COUNT(*). */
 export async function substrateGetAllClientMessages(
   limit: number,
   offset: number,
 ): Promise<Result<{ messages: ClientMessage[]; total: number }, string>> {
-  const { records, total } = await listRecords({ tags: [MESSAGE_TAG], limit, offset });
-  const messages = records.map(parseMessage).filter(isMessage)
-    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  return ok({ messages, total });
+  const want = Math.max(0, Math.floor(Number(limit) || 0));
+  const start = Math.max(0, Math.floor(Number(offset) || 0));
+  const out: ClientMessage[] = [];
+  let at = start;
+  let total = -1;
+  do {
+    const n = Math.max(1, Math.min(PAGE, want - out.length));
+    const page = await listPageStrict([MESSAGE_TAG], n, at);
+    if (!page.ok) return err(page.error);
+    total = page.value.total;
+    out.push(...toMessages(page.value.records));
+    at += n;
+    if (page.value.records.length === 0) break;
+  } while (out.length < want && at < total);
+  return ok({ messages: newestFirst(out, byCreated).slice(0, want), total });
+}
+
+// --- Documents -----------------------------------------------------------------
+
+const isDocument = (d: ClientDocument | null): d is ClientDocument => d !== null;
+
+function documentRecord(d: ClientDocument) {
+  return {
+    id: documentRecordId(d.id),
+    name: d.name || documentRecordId(d.id),
+    content: JSON.stringify(d),
+    tags: [DOCUMENT_TAG, "client:" + d.clientId],
+  };
+}
+
+export async function substrateInsertClientDocument(
+  doc: ClientDocumentInput,
+): Promise<Result<{ id: number }, string>> {
+  if (!doc || !Number.isInteger(doc.clientId) || !doc.name || !doc.url) return err("clientId, name and url are required");
+  const createdAt = new Date().toISOString();
+  const r = await insertWithMintedId((id) => documentRecord({
+    id, clientId: doc.clientId, name: doc.name, url: doc.url, type: doc.type, createdAt,
+  }), DOCUMENT_TAG);
+  return r.ok ? ok({ id: r.value }) : err(r.error);
+}
+
+/** SQL: WHERE client_id = ? ORDER BY created_at DESC. */
+export async function substrateGetClientDocuments(
+  clientId: number,
+): Promise<Result<ClientDocument[], string>> {
+  const found = await listAllStrict([DOCUMENT_TAG, "client:" + clientId]);
+  if (!found.ok) return err(found.error);
+  const docs = found.value.map((r) => parseJson<ClientDocument>(r.content)).filter(isDocument)
+    .filter((d) => d.clientId === clientId);
+  return ok(newestFirst(docs, byCreated));
 }

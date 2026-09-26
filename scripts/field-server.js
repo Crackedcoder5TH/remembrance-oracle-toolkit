@@ -413,7 +413,7 @@ function _legacyStore() {
     ).run();
     // Safe migration — add later columns to a table created by an earlier build.
     for (const col of ['meta TEXT', 'waveform TEXT', 'updated_at TEXT']) {
-      try { store.db.prepare('ALTER TABLE legacies ADD COLUMN ' + col).run(); } catch (_) { /* already present */ }
+      try { store.db.prepare(`ALTER TABLE legacies ADD COLUMN ${col}`).run(); } catch (_) { /* already present */ }
     }
     _legacyStoreCache = store;
   } catch (_) { _legacyStoreCache = null; }
@@ -447,7 +447,8 @@ function legacyOp(args) {
     let id = args.id ? String(args.id) : null;
     if (action === 'update') {
       if (!id) return { ok: false, error: 'id is required for update' };
-      if (!db.prepare('SELECT 1 FROM legacies WHERE id = ?').get(id)) return { ok: false, error: 'no legacy with id ' + id };
+      const exists = db.prepare('SELECT 1 FROM legacies WHERE id = ?').get(id);
+      if (!exists) return { ok: false, error: 'no legacy with id ' + id };
     }
     if (!id) id = crypto.createHash('sha256').update(name + '\n' + content).digest('hex').slice(0, 16);
     const tags = Array.isArray(args.tags) ? args.tags : [];
@@ -461,9 +462,15 @@ function legacyOp(args) {
         .run(name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, id);
       return { ok: true, id, name, coherence, updatedAt: now };
     }
-    db.prepare('INSERT OR REPLACE INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    // An upsert keeps the record's birth: created_at is set once, so re-storing
+    // a record (a message marked read, a lead stamped with its outcome) never
+    // moves it in the created_at-ordered lists every reader pages through.
+    db.prepare('INSERT INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) '
+      + 'ON CONFLICT(id) DO UPDATE SET name=excluded.name, content=excluded.content, tags=excluded.tags, author=excluded.author, '
+      + 'meta=excluded.meta, coherence=excluded.coherence, waveform=excluded.waveform, updated_at=excluded.updated_at')
       .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, now);
-    return { ok: true, id, name, coherence, createdAt: now };
+    const born = db.prepare('SELECT created_at FROM legacies WHERE id = ?').get(id);
+    return { ok: true, id, name, coherence, createdAt: born ? born.created_at : now, updatedAt: now };
   }
 
   // Capacity-guarded insert (the purchase cap). Counts the live records that
@@ -543,13 +550,24 @@ function legacyOp(args) {
     // correctly-scoped page AND total.
     const tags = Array.isArray(args.tags) ? args.tags.map(String)
       : (args.tag ? [String(args.tag)] : []);
-    const where = [];
-    const params = [];
-    if (q) { where.push('(name LIKE ? OR content LIKE ?)'); params.push('%' + q + '%', '%' + q + '%'); }
-    for (const t of tags) { where.push('tags LIKE ?'); params.push('%' + JSON.stringify(t) + '%'); }
-    const clause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-    const rows = db.prepare('SELECT * FROM legacies ' + clause + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(...params, limit, offset);
-    const total = db.prepare('SELECT COUNT(*) AS c FROM legacies ' + clause).get(...params).c;
+    // Principle 11: ONE literal statement — no SQL text assembled from
+    // variables. The optional filters ride as BOUND VALUES: q as a LIKE
+    // pattern (NULL skips it), tags as a JSON array of LIKE patterns the
+    // row must match in full. json_each unpacks that array INSIDE SQLite,
+    // so the variable-length tag filter needs no variable-length SQL.
+    const bind = {
+      q: q ? ('%' + q + '%') : null,
+      tags: JSON.stringify(tags.map((t) => '%' + JSON.stringify(t) + '%')),
+      limit,
+      offset,
+    };
+    const rows = db.prepare(
+      'SELECT * FROM legacies WHERE (@q IS NULL OR name LIKE @q OR content LIKE @q) '
+      + 'AND (SELECT COUNT(*) FROM json_each(@tags) je WHERE legacies.tags LIKE je.value) = json_array_length(@tags) '
+      + 'ORDER BY created_at DESC LIMIT @limit OFFSET @offset').all(bind);
+    const total = db.prepare(
+      'SELECT COUNT(*) AS c FROM legacies WHERE (@q IS NULL OR name LIKE @q OR content LIKE @q) '
+      + 'AND (SELECT COUNT(*) FROM json_each(@tags) je WHERE legacies.tags LIKE je.value) = json_array_length(@tags)').get(bind).c;
     return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total };
   }
 

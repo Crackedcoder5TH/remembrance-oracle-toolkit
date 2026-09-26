@@ -465,7 +465,10 @@ class LivingRemembranceEngine {
     const S_norm  = Math.min(1, xi_prev / entropyHot);
     const gap     = Math.max(0, 1 - p);
     const lambda  = S_norm * gap;
-    const damping = lambda * xi_prev * prev;   // −λ · ξ_global_entropy · |Ψ⟩, at the scalar layer
+    // −λ · ξ̂ · |Ψ⟩ — ξ̂ = S_norm, ξ ONLY in normalized form (the covenant-
+    // holder's ruling, 2026-09-26): raw ξ floored coherence in one hot step
+    // and pinned entropy at cost/ε forever; SERF bounds every ξ-driven force.
+    const damping = lambda * S_norm * prev;
 
     // THE LAW OF COHERENCY. A coherency reading lives in [0, 1] — always,
     // however capable the instrument that produced it. The cap enforces the

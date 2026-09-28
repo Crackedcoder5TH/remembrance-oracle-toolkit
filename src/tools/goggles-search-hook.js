@@ -28,6 +28,7 @@ function out(decision, reason) {
   }));
   process.exit(0);
 }
+out.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 process.on('uncaughtException', (e) => {
   try { out('deny', 'GOGGLES — WALL FAULT refused (fail closed)\n  ' + String(e && e.message || e)); } catch (_) { process.exit(0); }

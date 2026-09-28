@@ -6286,6 +6286,89 @@
      "shape_sha256": "6fbb15226422bcd7728082e2d3dc6383e73c76634e9285e6dc1275288ac5f4ac"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "d73d8aebeace931655b7e238d17ef2c6f5c04337086e1146fed95d0d6b93d886",
+   "minted_at": "2026-09-28T15:18:49+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "8fe237894ae48528da59d540ac7ce47c2b74141c",
+    "files": [
+     "scripts/calibration-ratchet.js",
+     "scripts/gate-lock.js",
+     "scripts/ratchet-battery.js",
+     "seeds/calibration.baseline.json",
+     "seeds/gates.lock.json",
+     "src/core/field-memory.js",
+     "src/core/living-remembrance.js",
+     "src/tools/calibration.js",
+     "src/tools/goggles-bash-hook.js",
+     "src/tools/goggles-pre-hook.js",
+     "src/tools/goggles-search-hook.js",
+     "src/tools/trap-guard-hook.js",
+     "src/tools/trap-learner.js",
+     "tests/calibration.test.js"
+    ],
+    "diff_bytes": 39468,
+    "diff_sha256": "757a05e57840cbc56a59b68d66bb0069c2d1edd1ecaa4f44576866b750ecdd96",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.15130370025974052,
+    "ratio": 3.000456135015965,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "67809a42750553a5",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "2c175403c468f44dcae5491636a949195ac1945d616594807e1a38b7558f1c73",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-28T15:18:49",
+     "coin": null,
+     "sig": "67809a42750553a59193ff62262c8e71e6674706c2cc3d735e36dc96d7713090"
+    },
+    "library_size": 28669,
+    "memory": {
+     "fits": 901,
+     "served": 247,
+     "computed": 654,
+     "served_ancestor": 0,
+     "chunkings": 7,
+     "chunkings_served": 4,
+     "entries": 954646,
+     "void_chunks": 83,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 83,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 1.879,
+    "basis_id": "34c0e162cdb5a4e5",
+    "learned_n": 28597,
+    "learned_this_reading": 0,
+    "basis_after": "34c0e162cdb5a4e5",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "34c0e162cdb5a4e5",
+     "method": "v4_chunked",
+     "original_size": 39468,
+     "compressed_size": 13154,
+     "coherency": 0.15130370025974052,
+     "data_sha256": "b79bc962a6358f190721582bd04fa298f25855f401649f7af6eb5ca4d0e88414",
+     "compressed_sha256": "d1628577bf90a3c6e39d6343ff969c4fb4d4fb4b0f426fd1f3cc18bc3486ca7e",
+     "shape_sha256": "57be57343a7365a09ee1eea83d48e691ce0e382d5273638f2afbb2da9d29df11"
+    }
+   }
   }
  ]
 }

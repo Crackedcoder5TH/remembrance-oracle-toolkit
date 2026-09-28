@@ -695,11 +695,11 @@ class LivingRemembranceEngine {
       ? Math.max(0, Math.min(1, resonance)) : 1;
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;
-    // The SAME damping term contribute() applies (−λ·ξ·|Ψ⟩, λ = S_norm×gap)
+    // The SAME damping term contribute() applies (−λ·ξ̂·|Ψ⟩, ξ̂ = S_norm)
     // — a projection without it would predict a field that no longer exists.
     const xi_prev = (typeof this._state.globalEntropy === 'number' && isFinite(this._state.globalEntropy))
       ? Math.max(0, this._state.globalEntropy) : 0;
-    const damping = Math.min(1, xi_prev / entropyHot) * Math.max(0, 1 - p) * xi_prev * prev;
+    const damping = Math.min(1, xi_prev / entropyHot) ** 2 * Math.max(0, 1 - p) * prev;
     return Math.max(0, Math.min(0.999, prev + ((target - prev) - damping) * w));
   }
 

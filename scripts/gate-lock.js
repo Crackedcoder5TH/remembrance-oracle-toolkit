@@ -80,9 +80,11 @@ const GATES = [
   'scripts/engine-entanglement-ratchet.js',
   'scripts/traps-ledger-ratchet.js',
   'scripts/width-ratchet.js',
+  'scripts/calibration-ratchet.js',
   // what the gates measure WITH — loosen a checker and the gate goes blind
   'scripts/cathedral-diagnostic.js',
   'scripts/audit-field-contributions.js',
+  'src/tools/calibration.js',
   'src/core/covenant-fractal.js',
   // THE ONE DOOR and the coin it mints. The goggles surface, the change-coin
   // minter/verifier every commit must pass, and the wall that refuses a commit

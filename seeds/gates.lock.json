@@ -1,11 +1,11 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-20T13:22:51.372Z",
- "digest": "d4f4df8d0b8b56e19e7653269f139b05546976757dde55f1c60bb09573e8ab36",
+ "lockedAt": "2026-09-28T13:28:51.462Z",
+ "digest": "2cb45df8db94c082afbbeda5eeac04616b935782c524ced44f0a7aa93af15bc9",
  "gates": {
-  "scripts/gate-lock.js": "f9453c2b02a53e8ff8e946079a56f734f382ba0fba8eb9f6beadc10c5886d3a2",
+  "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
-  "scripts/ratchet-battery.js": "db62de937d49fe4a582f4afe46e712a4c99e0a23b8be3a684a5d46fbc861c60a",
+  "scripts/ratchet-battery.js": "691e933d406161b7e3e4b7ad511ea492ed2de29addd3742c08888b800b38f859",
   "scripts/covenant-ratchet.js": "bc92e5647202fd996c1a444e4489d9a10fdb8cd1081f5fb8587a22da412beada",
   "scripts/exemption-ratchet.js": "678cb750310e2aa3428e6cd78c56e157b464d82b9ae5de209a65e0000ca4cf91",
   "scripts/size-ratchet.js": "f9fc77be34d0259f2fe21d34bd8b8494894a4bc698ce4e4a50cc2ec4e0d33f88",
@@ -22,12 +22,14 @@
   "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
   "scripts/traps-ledger-ratchet.js": "c24031a305d918d65d2b4fa5fc3d3c79d96d306c0b33a6991282c664a4de8f02",
   "scripts/width-ratchet.js": "64d363123fa3c6723ce006527333bc610cba167621232d7b476e65f37645b963",
+  "scripts/calibration-ratchet.js": "a989bf845a760661d193c6b42f8bbcb2fcf99cbd6830296bb0bf63ac3ee77250",
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
+  "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
   ".claude/skills/goggles/run.mjs": "17b8e050dd17014a4c377b7340accc1b1c50651b0356c349a1a8cce2ffd498fd",
   ".claude/skills/goggles/change-coin.py": "de88b031dacc2fcd739c994df17714e455c972b3e9a46d80e4e761083cc1bfdb",
-  "src/tools/goggles-bash-hook.js": "81c2408dd415876e25231ccc4ab103ad95556d32d39e135bf24754e600848165"
+  "src/tools/goggles-bash-hook.js": "be16ddb34c39a2db189b9f7e8358560ac317fae7306dfb4bcbb44483dfe91785"
  },
  "history": [
   {
@@ -307,6 +309,19 @@
    "reason": "the mint's remembered-verdict key becomes content-sensitive: git status --porcelain shows M for a modified file whether its content changed once or twenty times, so the cache served a stale ✓ over a freshly re-edited trap-guard-hook.js after silent-catch was fixed; the key now hashes git diff HEAD alongside porcelain so every real edit moves it",
    "changed": [
     ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-09-28T13:28:51.462Z",
+   "from": "d4f4df8d0b8b56e19e7653269f139b05546976757dde55f1c60bb09573e8ab36",
+   "to": "2cb45df8db94c082afbbeda5eeac04616b935782c524ced44f0a7aa93af15bc9",
+   "reason": "Operator ruling 2026-09-28: fractally layer the calibration ratchet onto the wall — new gate scripts/calibration-ratchet.js + measuring module src/tools/calibration.js; bash hook feeds the denial-rate stream, pre-hook contracts the reading window; everything beneath unchanged",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/ratchet-battery.js",
+    "scripts/calibration-ratchet.js",
+    "src/tools/calibration.js",
+    "src/tools/goggles-bash-hook.js"
    ]
   }
  ]

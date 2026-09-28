@@ -41,11 +41,13 @@ const REPEAT_TO_TRAP = 3;          // the same wall rule hit this often on a hos
 function readLocal() {
   try { return JSON.parse(fs.readFileSync(LOCAL, 'utf8')); } catch (e) { quiet('tools:trap-learner:read-local', e); return { traps: [] }; }
 }
+readLocal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function writeLocal(doc) {
   fs.mkdirSync(path.dirname(LOCAL), { recursive: true });
   fs.writeFileSync(LOCAL, JSON.stringify(doc, null, 1) + '\n');
 }
+writeLocal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 1, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const keyOf = (t) => String(t.wrong || '').slice(0, 120);
 

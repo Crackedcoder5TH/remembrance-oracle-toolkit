@@ -100,6 +100,48 @@ LEGACY_EXCLUDES = [LEDGER]                  # the rule every coin before 2026-09
 
 def _pathspec(excludes: list[str] | None) -> list[str]:
     return [f':(exclude){e}' for e in (EXCLUDES if excludes is None else excludes)]
+
+
+# THE WITNESS IS THE MEMORY OF CHANGES, NOT A CHANGE (the operator's ruling,
+# 2026-09-28). The chain's data/ledger.json REGISTERs coins; a commit that
+# only carries new blocks was recursing forever — saving the chain minted a
+# coin, the coin appended a block, the block dirtied the chain. In the chain
+# repo the witness file joins the exclusion rule: a ledger-only commit cuts
+# an empty patch, needs no coin, and appends no block — the tail converges.
+# The instrument STILL reads the witness bytes at mint (sealed, logged, and
+# coupled into the Living Remembrance field by the service), so every use of
+# the instrument is known without flooding the blockchain. Every coin keeps
+# recording the rule it was minted under and verifies under its own.
+WITNESS = 'data/ledger.json'
+
+
+def _is_chain_repo(repo: str) -> bool:
+    return os.path.isfile(os.path.join(repo, 'scripts', 'record-change-coin.js'))
+
+
+def _rule_for(repo: str) -> list[str]:
+    """The exclusion rule in force for NEW patches in this repo."""
+    return EXCLUDES + ([WITNESS] if _is_chain_repo(repo) else [])
+
+
+def _log_witness_reading(reading: dict, patch: bytes) -> None:
+    """One JSON line per witness reading (host-local, beside the denial log):
+    the seal token, coherency, basis and the bytes read — so every use of the
+    instrument on the Witness stays knowable with no coin and no block.
+    Best-effort, never blocks a commit."""
+    try:
+        d = os.path.join(TOOLKIT, '.remembrance')
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, 'witness-readings.jsonl'), 'a') as f:
+            f.write(json.dumps({
+                'at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'),
+                'seal_mint': reading.get('mint'), 'coherency': reading.get('coherency'),
+                'basis_id': reading.get('basis_id'), 'diff_sha256': sha256(patch),
+                'diff_bytes': len(patch)}) + '\n')
+    except OSError:
+        pass
+
+
 TRAILER = 'Remembrance-Coin'
 COIN_V = 'change-coin/v1'
 EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -404,11 +446,12 @@ def verify_commit(repo: str, commit: str, key: bytes | None, deep: bool):
     cid = trailer_of(msg)
     coin = next((c for c in here if c.get('coin_id') == cid), None) if cid else None
     # the patch under the rule the coin was minted under (a coin minted
-    # before the memory files were excluded says so by carrying no rule)
-    excludes = (coin.get('change') or {}).get('excludes', LEGACY_EXCLUDES) if coin else None
+    # before the memory files were excluded says so by carrying no rule);
+    # a coinless commit is judged under the rule in force for this repo
+    excludes = (coin.get('change') or {}).get('excludes', LEGACY_EXCLUDES) if coin else _rule_for(repo)
     patch = patch_between(repo, base, rev_tree(repo, commit), excludes)
     if not patch:
-        return 'ok', 'no byte change outside the ledger — no coin needed'
+        return 'ok', 'no byte change outside the ledger/witness — no coin needed'
     if not cid:
         return 'REFUSED', f'{commit[:10]} carries NO {TRAILER} trailer — a change without a coin. Mint one: goggles --do mint'
     if coin is None:
@@ -438,9 +481,9 @@ def verify_staged(repo: str, amend: bool, key: bytes | None, deep: bool):
         tree = git(repo, 'write-tree').strip()
     except RuntimeError as e:
         return 'REFUSED', None, f'cannot read the index: {e}'
-    patch = patch_between(repo, base, tree)
+    patch = patch_between(repo, base, tree, _rule_for(repo))
     if not patch:
-        return 'ok', None, 'nothing staged outside the ledger — no coin needed'
+        return 'ok', None, 'nothing staged outside the ledger/witness — no coin needed'
     ledger = ledger_at(repo, '')
     if ledger is None:
         return 'REFUSED', None, f'no {LEDGER} in the index — this change has never met the instrument. Mint: goggles --do mint'
@@ -489,13 +532,33 @@ def mint(repo: str, amend: bool) -> int:
     head = rev_tree(repo, 'HEAD')
     base = (rev_tree(repo, 'HEAD~1') or EMPTY_TREE) if (amend and head) else (head or EMPTY_TREE)
     tree = git(repo, 'write-tree').strip()
-    patch = patch_between(repo, base, tree)
+    rule = _rule_for(repo)
+    patch = patch_between(repo, base, tree, rule)
     if not patch:
+        # LEDGER-ONLY in the chain repo: no coin, no block — but the
+        # instrument still reads the witness bytes, sealed and logged, so
+        # the use is known (the operator's ruling, 2026-09-28).
+        wpatch = git(repo, *GIT_CFG, 'diff-tree', *DIFF_FLAGS, base, tree,
+                     '--', WITNESS, binary=True) if _is_chain_repo(repo) else b''
+        if wpatch:
+            gd = git(repo, 'rev-parse', '--git-dir').strip()
+            gd = gd if os.path.isabs(gd) else os.path.join(repo, gd)
+            try:
+                reading = read_through_instrument(void, wpatch, os.path.join(gd, 'change-coin'))
+            except RuntimeError as e:
+                print(str(e))
+                return 1
+            _log_witness_reading(reading, wpatch)
+            print(f"witness: {len(wpatch)} ledger-only patch bytes read through the instrument — "
+                  f"coherency {reading['coherency']:.4f} · seal mint {reading['mint']} · basis {reading.get('basis_id')}")
+            print('LEDGER-ONLY: the Witness is the memory of changes, not a change — no coin minted, '
+                  'no block appended; the commit needs no trailer. The reading above is the record of this use.')
+            return 0
         print('nothing staged (outside the coin ledger) — `git add` the change first; a coin covers bytes, not intentions')
         return 2
     diff_sha = sha256(patch)
     files = [ln.split('\t', 1)[1] for ln in git(repo, 'diff-tree', '-r', '--name-status', '--no-renames', base, tree,
-                                                 '--', '.', *_pathspec(None)).splitlines() if '\t' in ln]
+                                                 '--', '.', *_pathspec(rule)).splitlines() if '\t' in ln]
     ledger_path = os.path.join(repo, LEDGER)
     doc = {'_README': LEDGER_README, 'coins': []}
     if os.path.isfile(ledger_path):
@@ -531,7 +594,7 @@ def mint(repo: str, amend: bool) -> int:
         'change': {'repo': os.path.basename(os.path.abspath(repo)), 'base_tree': base,
                    'files': files, 'diff_bytes': len(patch), 'diff_sha256': diff_sha,
                    # the rule this patch was cut under; a verifier cuts it the same way
-                   'excludes': list(EXCLUDES)},
+                   'excludes': list(rule)},
         # library_size pins the blend basis the reading was taken against: the
         # basis grows from what the instrument consumes (scripts/build_signal_basis.py),
         # and a coin unfolded against a different basis reads the same bytes

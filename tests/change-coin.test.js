@@ -180,3 +180,35 @@ test('verify: a coin whose seal covers other bytes is refused (the reading must 
   assert.strictEqual(v.code, 1);
   assert.match(v.out, /instrument read other bytes|original_size/);
 });
+
+test('ledger-only commits in the chain repo need no coin (the Witness is the memory of changes, not a change)', async (t) => {
+  // a fixture that IS a chain repo: the marker change-coin looks for
+  const repo = freshRepo();
+  fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
+  writeFixture(FIXTURE_GATE, path.join(repo, 'scripts', 'record-change-coin.js'), '// witness marker\n');
+  fs.mkdirSync(path.join(repo, 'data'), { recursive: true });
+  writeFixture(FIXTURE_GATE, path.join(repo, 'data', 'ledger.json'), '[{"index":0}]\n');
+  git(repo, 'add', 'scripts/record-change-coin.js', 'data/ledger.json');
+  // the FIRST commit carries code (the marker) beside the witness, so it
+  // needs a coin — refused without one; --no-verify seeds the history
+  assert.notStrictEqual(git(repo, 'commit', '-q', '-m', 'seed').code, 0);
+  assert.strictEqual(git(repo, 'commit', '-q', '--no-verify', '-m', 'seed').code, 0);
+  // a LEDGER-ONLY change: the block grows, nothing else moves
+  writeFixture(FIXTURE_GATE, path.join(repo, 'data', 'ledger.json'), '[{"index":0},{"index":1}]\n');
+  git(repo, 'add', 'data/ledger.json');
+  const v = cc(repo, 'verify', '--staged');
+  assert.strictEqual(v.code, 0, v.out);
+  assert.match(v.out, /no coin needed/);
+  // the hook lets it through with no trailer and no mint
+  assert.strictEqual(git(repo, 'commit', '-q', '-m', 'blocks only').code, 0);
+  assert.doesNotMatch(git(repo, 'log', '-1', '--format=%B').out, /Remembrance-Coin/);
+  // and mint on a ledger-only index takes the reading, creates NO coin
+  if (!(await serviceUp())) { t.skip('compressor service DOWN — witness-reading half skipped'); return; }
+  writeFixture(FIXTURE_GATE, path.join(repo, 'data', 'ledger.json'), '[{"index":0},{"index":1},{"index":2}]\n');
+  git(repo, 'add', 'data/ledger.json');
+  const m = cc(repo, 'mint');
+  assert.strictEqual(m.code, 0, m.out);
+  assert.match(m.out, /LEDGER-ONLY: the Witness is the memory of changes/);
+  assert.match(m.out, /witness: .* read through the instrument/);
+  assert.ok(!fs.existsSync(path.join(repo, 'coins.ledger.json')), 'a ledger-only mint must not create a coin ledger');
+});

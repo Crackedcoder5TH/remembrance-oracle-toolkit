@@ -210,5 +210,32 @@ test('ledger-only commits in the chain repo need no coin (the Witness is the mem
   assert.strictEqual(m.code, 0, m.out);
   assert.match(m.out, /LEDGER-ONLY: the Witness is the memory of changes/);
   assert.match(m.out, /witness: .* read through the instrument/);
+  // THE RESIDUAL LINE MUST NOT REGRESS (the operator's ruling, 2026-09-28):
+  // a witness reading pulls what already resonates from the pattern library,
+  // computes only the residual, and re-compresses new shapes into the
+  // library — and it SAYS so, with the numbers, on every read.
+  assert.match(m.out, /residual: \d+ fits — \d+ pulled from what already resonates, \d+ computed \(the residual\) · \d+ void, \d+ re-compressed into the pattern library/);
   assert.ok(!fs.existsSync(path.join(repo, 'coins.ledger.json')), 'a ledger-only mint must not create a coin ledger');
+});
+
+test('memory-only commits in the Void repo need no coin (the learned ledger is the memory of readings)', () => {
+  const repo = freshRepo();
+  writeFixture(FIXTURE_GATE, path.join(repo, 'void_compressor_v5.py'), '# void marker\n');
+  writeFixture(FIXTURE_GATE, path.join(repo, 'learned_patterns.jsonl'), '{"name":"learned/data_0","waveform":[0,1]}\n');
+  git(repo, 'add', 'void_compressor_v5.py', 'learned_patterns.jsonl');
+  // code beside memory still needs a coin
+  assert.notStrictEqual(git(repo, 'commit', '-q', '-m', 'seed').code, 0);
+  assert.strictEqual(git(repo, 'commit', '-q', '--no-verify', '-m', 'seed').code, 0);
+  // memory-only: the ledger grows, nothing else moves — no coin, no trailer
+  appendFixture(FIXTURE_GATE, path.join(repo, 'learned_patterns.jsonl'), '{"name":"learned/data_1","waveform":[1,0]}\n');
+  git(repo, 'add', 'learned_patterns.jsonl');
+  const v = cc(repo, 'verify', '--staged');
+  assert.strictEqual(v.code, 0, v.out);
+  assert.match(v.out, /no coin needed/);
+  const m = cc(repo, 'mint');
+  assert.strictEqual(m.code, 0, m.out);
+  assert.match(m.out, /MEMORY-ONLY: the learned ledger is the memory of readings/);
+  assert.match(m.out, /every row was born inside a sealed reading/);
+  assert.strictEqual(git(repo, 'commit', '-q', '-m', 'memory only').code, 0);
+  assert.doesNotMatch(git(repo, 'log', '-1', '--format=%B').out, /Remembrance-Coin/);
 });

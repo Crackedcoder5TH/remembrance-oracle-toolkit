@@ -113,15 +113,30 @@ def _pathspec(excludes: list[str] | None) -> list[str]:
 # the instrument is known without flooding the blockchain. Every coin keeps
 # recording the rule it was minted under and verifies under its own.
 WITNESS = 'data/ledger.json'
+# THE LEARNED LEDGER IS THE MEMORY OF READINGS, NOT A CHANGE (the same
+# ruling, extended 2026-09-28): every row in Void's memory files was BORN
+# inside a sealed reading (the ingestion door couples each one to the
+# field as it enters), so re-reading a memory patch to coin it is the
+# recursion again — measured when the 246,489,592-byte migration patch
+# overflowed the read timeout and would have re-read 33k rows the
+# instrument itself had just ingested. In the Void repo the memory files
+# ride coinless; the code beside them still coins.
+VOID_MEMORY = ('learned_patterns.jsonl', 'learned_patterns.part*.jsonl',
+               'basis_index.jsonl', 'learned_patterns.json')
 
 
 def _is_chain_repo(repo: str) -> bool:
     return os.path.isfile(os.path.join(repo, 'scripts', 'record-change-coin.js'))
 
 
+def _is_void_repo(repo: str) -> bool:
+    return os.path.isfile(os.path.join(repo, 'void_compressor_v5.py'))
+
+
 def _rule_for(repo: str) -> list[str]:
     """The exclusion rule in force for NEW patches in this repo."""
-    return EXCLUDES + ([WITNESS] if _is_chain_repo(repo) else [])
+    return (EXCLUDES + ([WITNESS] if _is_chain_repo(repo) else [])
+            + (list(VOID_MEMORY) if _is_void_repo(repo) else []))
 
 
 def _log_witness_reading(reading: dict, patch: bytes) -> None:
@@ -330,7 +345,8 @@ def verify_coin(coin: dict, patch: bytes, key: bytes | None, deep: bool) -> list
     return f
 
 
-def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: str | None = None) -> dict:
+def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: str | None = None,
+                            witness: bool = True) -> dict:
     """THE reading path: the bytes go to scripts/read-signal.py (→ /compress_signal
     → void_compressor_v5.compress) and come back sealed, with the commitment.
     The search is the resonance: every chunk's coherency against every
@@ -345,7 +361,14 @@ def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: st
     patch_file = os.path.join(scratch_dir, 'bytes.patch')
     with open(patch_file, 'wb') as f:
         f.write(patch)
-    args = [sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json', '--witness']
+    # `witness=False` (the operator's ruling, 2026-09-28): the reading may
+    # TEACH — its residual series enter the pattern library, so the next
+    # reading of the same shapes is served from memory and only the new
+    # residual is computed. Coin readings stay --witness (a coin never
+    # teaches, 2026-09-16); the ledger-only witness reading is not a coin.
+    args = [sys.executable, os.path.join(void, 'scripts', 'read-signal.py'), patch_file, '--json']
+    if witness:
+        args.append('--witness')
     if basis:
         args += ['--basis', basis]
     # The instrument's time is proportional to the input (read-signal's own
@@ -353,8 +376,12 @@ def read_through_instrument(void: str, patch: bytes, scratch_dir: str, basis: st
     # series by series). A fixed 900 s here killed the reading of a 47 MB
     # ledger patch at 15 minutes (2026-09-14) while the service went on
     # computing a request nobody would receive. Floor 900, then the size.
+    # capped: a 246 MB memory patch computed a 91-day timeout and Python
+    # raised OverflowError before the read began (2026-09-28); six hours is
+    # the ceiling for any single reading, and a patch that needs more is a
+    # memory container the rules above keep out of the coin path anyway.
     proc = subprocess.run(args, cwd=void, capture_output=True, text=True,
-                          timeout=max(900.0, len(patch) * 64 / 4000.0 * 2))
+                          timeout=min(max(900.0, len(patch) * 64 / 4000.0 * 2), 6 * 3600.0))
     if proc.returncode != 0:
         raise RuntimeError('the instrument refused or is down — no reading:\n' + (proc.stdout + proc.stderr).strip()
                            + '\n  goggles --do service status   ·   goggles --do service start --wait')
@@ -538,19 +565,37 @@ def mint(repo: str, amend: bool) -> int:
         # LEDGER-ONLY in the chain repo: no coin, no block — but the
         # instrument still reads the witness bytes, sealed and logged, so
         # the use is known (the operator's ruling, 2026-09-28).
+        if _is_void_repo(repo):
+            mpatch = git(repo, *GIT_CFG, 'diff-tree', *DIFF_FLAGS, base, tree,
+                         '--', *VOID_MEMORY, binary=True)
+            if mpatch:
+                # No re-read: every row entered through the ingestion door
+                # inside a sealed reading; the record of each use already
+                # exists. The digest line is the record of THIS save.
+                print(f'memory:  {len(mpatch)} bytes of the instrument\N{RIGHT SINGLE QUOTATION MARK}s own memory ledgers staged '
+                      f'(sha256 {sha256(mpatch)[:12]}\N{HORIZONTAL ELLIPSIS}) — every row was born inside a sealed reading')
+                print('MEMORY-ONLY: the learned ledger is the memory of readings, not a change — no coin minted, '
+                      'no block appended; the commit needs no trailer.')
+                return 0
         wpatch = git(repo, *GIT_CFG, 'diff-tree', *DIFF_FLAGS, base, tree,
                      '--', WITNESS, binary=True) if _is_chain_repo(repo) else b''
         if wpatch:
             gd = git(repo, 'rev-parse', '--git-dir').strip()
             gd = gd if os.path.isabs(gd) else os.path.join(repo, gd)
             try:
-                reading = read_through_instrument(void, wpatch, os.path.join(gd, 'change-coin'))
+                reading = read_through_instrument(void, wpatch, os.path.join(gd, 'change-coin'), witness=False)
             except RuntimeError as e:
                 print(str(e))
                 return 1
             _log_witness_reading(reading, wpatch)
+            mem = reading.get('memory') or {}
             print(f"witness: {len(wpatch)} ledger-only patch bytes read through the instrument — "
                   f"coherency {reading['coherency']:.4f} · seal mint {reading['mint']} · basis {reading.get('basis_id')}")
+            if mem:
+                print(f"residual: {mem.get('fits')} fits — {mem.get('served')} pulled from what already resonates, "
+                      f"{mem.get('computed')} computed (the residual) · {mem.get('void_chunks')} void, "
+                      f"{mem.get('ingested')} re-compressed into the pattern library"
+                      + (f" · basis → {reading.get('basis_after')}" if reading.get('basis_after') != reading.get('basis_id') else ''))
             print('LEDGER-ONLY: the Witness is the memory of changes, not a change — no coin minted, '
                   'no block appended; the commit needs no trailer. The reading above is the record of this use.')
             return 0
@@ -797,9 +842,40 @@ def install_hooks(repo: str) -> int:
 # ── verify: ranges ─────────────────────────────────────────────────────────
 
 def verify_many(repo: str, revs: list[str], key: bytes | None, deep: bool) -> int:
+    """THE VERDICT ON AN IMMUTABLE COMMIT IS REMEMBERED (the plateau ruling,
+    2026-09-17: never recalculate what is already calculated). A commit's
+    bytes never change, so its coin verdict is a fact once computed — keyed
+    on (repo, commit, the verifier's own bytes, the key mode) so a rule
+    change or a different key is a different fact. Only ok/skip are
+    remembered; a REFUSED is recomputed every time, and --deep never reads
+    the memory (its answer depends on the live substrate). Measured
+    2026-09-28: C-65 spent 70 s re-verifying 34 unchanged commits per
+    contracts run."""
     refused = ok = skipped = 0
+    memo_path = os.path.join(TOOLKIT, '.remembrance', 'coin-verdicts.json')
+    memo: dict = {}
+    try:
+        with open(memo_path, encoding='utf-8') as f:
+            memo = json.load(f)
+        if not isinstance(memo, dict):
+            memo = {}
+    except (OSError, ValueError):
+        memo = {}
+    with open(os.path.abspath(__file__), 'rb') as f:
+        rules = hashlib.sha256(f.read()).hexdigest()[:12]
+    mode = ('k' + hashlib.sha256(key).hexdigest()[:8]) if key is not None else 's'
+    base = os.path.basename(os.path.abspath(repo))
+    dirty = False
     for c in revs:
-        status, detail = verify_commit(repo, c, key, deep)
+        mk = f'{base}:{c}:{rules}:{mode}'
+        held = None if deep else memo.get(mk)
+        if isinstance(held, dict) and held.get('status') in ('ok', 'skip'):
+            status, detail = held['status'], str(held.get('detail') or '') + ' · remembered'
+        else:
+            status, detail = verify_commit(repo, c, key, deep)
+            if not deep and status in ('ok', 'skip'):
+                memo[mk] = {'status': status, 'detail': detail}
+                dirty = True
         if status == 'REFUSED':
             refused += 1
             print(f'  ✗ {detail}')
@@ -808,6 +884,15 @@ def verify_many(repo: str, revs: list[str], key: bytes | None, deep: bool) -> in
         else:
             ok += 1
             print(f'  ✓ {c[:10]} {detail}')
+    if dirty:
+        try:
+            if len(memo) > 8000:
+                memo = dict(list(memo.items())[-4000:])
+            os.makedirs(os.path.dirname(memo_path), exist_ok=True)
+            with open(memo_path, 'w', encoding='utf-8') as f:
+                json.dump(memo, f)
+        except OSError:
+            pass
     mode = 'cryptographically' if key is not None else 'structurally (seam — set VOID_SEAL_KEY to make it a wall)'
     if refused:
         print(f'\nCHANGE-COIN VERIFY FAILED — {refused} commit(s) REFUSED, {ok} verified, {skipped} pre-epoch. The merge must be refused.', file=sys.stderr)

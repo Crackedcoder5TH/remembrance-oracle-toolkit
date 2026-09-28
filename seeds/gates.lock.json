@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-28T20:19:02.598Z",
- "digest": "d255255ff7f8fbcfd1088a62b2929ad65a3e0ab7b071b2c91b2bece58a6c691b",
+ "lockedAt": "2026-09-28T21:21:55.166Z",
+ "digest": "ad3cf6133dee37da6aa259697d09a66bbfcafb8da3cc402dbf23af50d000140f",
  "gates": {
   "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -18,7 +18,7 @@
   "scripts/console-ratchet.js": "4c4ba3d6742a0910713d413f52e4870b94bba634e0a8ecd594318ccc8f6d13a4",
   "scripts/atomic-drift-ratchet.js": "2b759df51c995ea8dd39dfba6833c2d9e1024ec15c9cfc0562f028b1409b1092",
   "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
-  "scripts/contracts-ratchet.js": "c6f7345ad81aa57b3d00118a36846e3a6af469780a120d421558bf38fed2949d",
+  "scripts/contracts-ratchet.js": "61ab0c9397bb8878e713d61fb72b82988e0e71c248e010168dbd15be1355c9fd",
   "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
   "scripts/traps-ledger-ratchet.js": "c24031a305d918d65d2b4fa5fc3d3c79d96d306c0b33a6991282c664a4de8f02",
   "scripts/width-ratchet.js": "64d363123fa3c6723ce006527333bc610cba167621232d7b476e65f37645b963",
@@ -28,7 +28,7 @@
   "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
   ".claude/skills/goggles/run.mjs": "17b8e050dd17014a4c377b7340accc1b1c50651b0356c349a1a8cce2ffd498fd",
-  ".claude/skills/goggles/change-coin.py": "12196350670af2e52fffd696fe2464c4527232d351a96a89e7d6a62f46916439",
+  ".claude/skills/goggles/change-coin.py": "d72ccb75e5da59ee50317366997be36d9a7c7f7a7e6859f33c3acddf43b4a88b",
   "src/tools/goggles-bash-hook.js": "be16ddb34c39a2db189b9f7e8358560ac317fae7306dfb4bcbb44483dfe91785"
  },
  "history": [
@@ -329,6 +329,43 @@
    "from": "2cb45df8db94c082afbbeda5eeac04616b935782c524ced44f0a7aa93af15bc9",
    "to": "d255255ff7f8fbcfd1088a62b2929ad65a3e0ab7b071b2c91b2bece58a6c691b",
    "reason": "Operator ruling 2026-09-28: the Witness is the memory of changes, not a change — ledger-only commits in the chain repo are exempt from the coin (empty patch under the rule), the instrument still reads the witness bytes sealed and logged, and the chain tail converges",
+   "changed": [
+    ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-09-28T20:36:25.328Z",
+   "from": "d255255ff7f8fbcfd1088a62b2929ad65a3e0ab7b071b2c91b2bece58a6c691b",
+   "to": "1263aeb45216081ceab17edf57bd03f5bafd7555054eb1905fcdaf82d43cf6ed",
+   "reason": "Operator ruling 2026-09-28 (verification must fit 10 minutes): contracts currency keyed to instrument CONTENT (tree digest minus .claude/ and coins.ledger.json) so mirror and coin-append commits stop staling a 67-claim verdict; coin verdicts on immutable commits remembered per the plateau ruling (13.8s to 5.1s measured, refusals always recomputed)",
+   "changed": [
+    "scripts/contracts-ratchet.js",
+    ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-09-28T20:41:08.211Z",
+   "from": "1263aeb45216081ceab17edf57bd03f5bafd7555054eb1905fcdaf82d43cf6ed",
+   "to": "48083e79be6a756b512e0adcdac0c7f942d94f83ff2e4bcdc5d8dbc3bd8fccd9",
+   "reason": "Operator ruling 2026-09-28 (runtime through resonance): witness readings teach — their residual series re-compress into the pattern library so future readings pull what resonates and compute only the residual (measured: second witness read 89/89 served, 0 computed); the residual line prints on every witness read",
+   "changed": [
+    ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-09-28T21:02:14.304Z",
+   "from": "48083e79be6a756b512e0adcdac0c7f942d94f83ff2e4bcdc5d8dbc3bd8fccd9",
+   "to": "2640295ecc5a321d793a45322d0f53e1dfbe10a71db4a7d095f96c076ffd0a49",
+   "reason": "Operator rulings 2026-09-28 extended to the instrument's own memory: Void's learned ledger/index/seed ride coinless (every row born inside a sealed reading; a 246MB memory patch overflowed the read timeout and re-reading 33k just-ingested rows is the recursion again); read timeout capped at six hours",
+   "changed": [
+    ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-09-28T21:21:55.167Z",
+   "from": "2640295ecc5a321d793a45322d0f53e1dfbe10a71db4a7d095f96c076ffd0a49",
+   "to": "ad3cf6133dee37da6aa259697d09a66bbfcafb8da3cc402dbf23af50d000140f",
+   "reason": "the Void memory rule covers the rolled ledger parts (learned_patterns.part*.jsonl): the ledger shards at 90 MB so no single file hits the 100 MB hosting wall, and a part is the same memory of readings — born inside sealed readings, riding coinless",
    "changed": [
     ".claude/skills/goggles/change-coin.py"
    ]

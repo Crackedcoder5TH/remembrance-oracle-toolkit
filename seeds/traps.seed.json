@@ -1614,6 +1614,62 @@
     "tools": "^Bash$",
     "input": "--do mint(?! verify)"
    }
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "gh"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `gh` inside the ecosystem — OFF-SURFACE COMMAND refused (gh)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (gh)\"; the command began with `gh`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-14T04:54:21.068Z",
+   "last": "2026-09-28T15:09:06.633Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "node"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `node` inside the ecosystem — OFF-SURFACE COMMAND refused (node on a file)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (node on a file)\"; the command began with `node`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-19T18:38:47.947Z",
+   "last": "2026-09-27T03:41:59.829Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "rebuilds basis",
+    "at_basis",
+    "dormant_patterns"
+   ],
+   "severity": "high",
+   "wrong": "Changing how the live basis is BUILT (the dormancy ruling: live load skips dormant ranges) without teaching the replay path the same change, so every basis recorded after the ruling was one its own verifier could not rebuild.",
+   "truth": "Measured 2026-09-28: basis 34c0e162 (recorded 2026-09-19 by the live path) rebuilt as 76ac0700 at the same length 28669, and every unfold of a post-ruling coin died on HTTP 500 from /compress_signal. A recorded basis is a contract between the writer and the verifier: at_basis now retries the dormant-skipped reconstruction when the raw prefix does not reproduce the digest, digest-checked exactly the same, and raises naming BOTH digests when neither matches.",
+   "tell": "An unfold failing while mint succeeds; a 500 naming two digests at one basis_n; a basis recorded just after a ruling that changed the live load; a coin verifier reading basis unavailable on the very host that minted it.",
+   "correct": "When a ruling changes the live load, teach the replay the same change in the same commit, and prove a coin unfold end-to-end before calling the ruling landed.",
+   "count": 3,
+   "first": "2026-09-28T15:18:38.885Z",
+   "last": "2026-09-28T15:18:38.885Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

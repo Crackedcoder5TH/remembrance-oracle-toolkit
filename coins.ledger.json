@@ -6584,6 +6584,76 @@
      "shape_sha256": "21751115ce60e0c18cb87df34fc20165759c6013bbd807dc0e768c3c8cc7e5f2"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "a310f6838aeb00d5d5d34e54b61545630cd0cf2163fa548314eb4b4893132ed2",
+   "minted_at": "2026-09-30T14:58:23+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "1613071dfd0913eeeb3e9fdc3a896c6b0d840508",
+    "files": [
+     "seeds/trap-shape.equation.json"
+    ],
+    "diff_bytes": 4234,
+    "diff_sha256": "5e76c99f7d8480c1c12cc14f0a7971dc4c6f7c1be939a9d442bae101d2bcff34",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.28011364981306147,
+    "ratio": 2.696815286624204,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "d7243d2121512d10",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "f8920a2feb90dc0f45a6762790dc1dde6641c979228e8faa0e22c868b8facc56",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-09-30T14:58:23",
+     "coin": null,
+     "sig": "d7243d2121512d10793e51b997d54f524b04ae4bdf94bf6320c4f1e6c11cb191"
+    },
+    "library_size": 63056,
+    "memory": {
+     "fits": 109,
+     "served": 31,
+     "computed": 78,
+     "served_ancestor": 0,
+     "chunkings": 7,
+     "chunkings_served": 4,
+     "entries": 1135679,
+     "void_chunks": 10,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 11,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 0.308,
+    "basis_id": "946f986225f0f422",
+    "learned_n": 62984,
+    "learned_this_reading": 0,
+    "basis_after": "946f986225f0f422",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "946f986225f0f422",
+     "method": "v4_chunked",
+     "original_size": 4234,
+     "compressed_size": 1570,
+     "coherency": 0.28011364981306147,
+     "data_sha256": "80b4677996630580b69b98b5422de6a29724596d48dc46064f466781ccadc2fb",
+     "compressed_sha256": "2578d997281352809f12688a25fdc0e8d41ea2fe8040b182a663b10ec066d691",
+     "shape_sha256": "16c43729bbb0bc31e2598a4169a50c66b22b758361dd142e5603c3a6c08b1c40"
+    }
+   }
   }
  ]
 }

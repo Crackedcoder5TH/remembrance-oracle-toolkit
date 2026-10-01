@@ -432,11 +432,21 @@ function printAndRecordDelta(root, rel, current) {
     const df = (current.findingsHigh ?? 0) - (prev.findingsHigh ?? 0);
     console.log('\n  Δ SINCE LAST READ  (' + agoMin + 'm ago — what your edits did)');
 
-    // An older reading with no recorded source predates the rewiring.
-    if (prev.coherenceSource !== COHERENCE_SOURCE) {
-      console.log(`    coherence   not comparable — the previous reading (${prev.coherence.toFixed(3)}) predates`);
-      console.log('                the rewiring onto the Void compressor and measured a different');
-      console.log(`                quantity. This read: ${current.coherence.toFixed(3)}. The next read will compare.`);
+    // A delta needs a reading on BOTH sides. A missing one used to be stored
+    // as 0 under the compressor's own label, so the next read reported a
+    // phantom rise or "this edit weakened the structure" off a number the
+    // compressor never produced.
+    const noReading = typeof current.coherence !== 'number' ? 'this read'
+      : typeof prev.coherence !== 'number' ? 'the previous read' : null;
+    if (noReading || prev.coherenceSource !== COHERENCE_SOURCE) {
+      // No comparison: a side has no reading, or the older reading has no
+      // recorded source and predates the rewiring.
+      const why = noReading
+        ? `no comparison — ${noReading} had no compressor reading (null, not 0)`
+        : `not comparable — the previous reading (${prev.coherence.toFixed(3)}) predates\n`
+          + '                the rewiring onto the Void compressor and measured a different\n'
+          + `                quantity. This read: ${current.coherence.toFixed(3)}. The next read will compare.`;
+      console.log(`    coherence   ${why}`);
       console.log(`    resonance ${fmt(dr)}`
         + (df !== 0 ? ` · high findings ${prev.findingsHigh ?? 0}→${current.findingsHigh ?? 0}` : ''));
     } else {
@@ -449,7 +459,7 @@ function printAndRecordDelta(root, rel, current) {
            df > 0 ? ' — ⚠ new high finding(s) since last read' : ''));
     }
   }
-  all[rel] = { ...current, coherenceSource: COHERENCE_SOURCE, at: Date.now() };
+  all[rel] = { ...current, coherenceSource: typeof current.coherence === 'number' ? COHERENCE_SOURCE : null, at: Date.now() };
   try {
     fs.mkdirSync(path.dirname(readingsPath(root)), { recursive: true });
     fs.writeFileSync(readingsPath(root), JSON.stringify(all));
@@ -1044,7 +1054,7 @@ function main() {
     const root = findRepoRoot(path.dirname(abs));
     if (root) {
       printAndRecordDelta(root, path.relative(root, abs), {
-        coherence: r.coherence ?? 0,
+        coherence: typeof r.coherence === 'number' ? r.coherence : null,
         resonance: meanTopK,
         findingsHigh: md ? md.high : null,
       });

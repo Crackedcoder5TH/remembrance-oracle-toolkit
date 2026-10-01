@@ -152,7 +152,11 @@ if (sec && postRange) {
     const preEnd = oldStr ? postRange.startLine + oldStr.split('\n').length - 1 : postRange.startLine - 1;
     const preRegion = regionAt(preContent, postRange.startLine, Math.max(postRange.startLine, preEnd));
     if (preRegion.text !== scopeText) {
-      delta = (r.coherence ?? 0) - (score(preRegion.text, `${base}#pre`).coherence ?? 0);
+      // A delta needs TWO readings. A missing one is not 0: subtracting a
+      // null-as-0 reported an invented drop (or a flat Δ +0.000) whenever the
+      // compressor gave no reading on either side.
+      const pre = score(preRegion.text, `${base}#pre`).coherence;
+      if (typeof r.coherence === 'number' && typeof pre === 'number') delta = r.coherence - pre;
     }
   } catch (_) { quiet('tools:goggles-hook:score', _); /* delta is optional */ }
 }
@@ -224,7 +228,10 @@ if (!notable) process.exit(0); // no news is good news
 //   coherence = intrinsic structure (does this hold together on its own);
 //   resonance = ecosystem-fit + its nearest neighbour (where this sits in the
 //               whole codebase). Never collapsed — they answer different questions.
-const cohStr = (r.coherence ?? 0).toFixed(3);
+// No reading prints as NO READING — measured 2026-10-01: five edits in a row
+// printed "coherence 0.000" while the compressor door was mid-edit and gave
+// no reading at all. Absence of a reading is not a reading of zero.
+const cohStr = typeof r.coherence === 'number' ? r.coherence.toFixed(3) : 'NO READING (null, not 0)';
 const resStr = m.toFixed(3);
 const deltaStr = delta === null
   ? ''

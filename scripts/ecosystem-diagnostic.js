@@ -45,6 +45,7 @@ const SKIP_DIRS = new Set([
 ]);
 const JS_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
 const SLOW_FILE_MS = 2000;
+const TRACE = process.argv.includes('--trace');
 const PY_EXT = new Set(['.py']);
 
 /** Ecosystem primitives + the import patterns that show they're wired in. */
@@ -160,6 +161,9 @@ function auditRepo(repoPath, repoName, subdir = null) {
   const findings = [];
   const slowFiles = [];
   for (const f of jsFiles) {
+    // A file that never returns is never "slow" — --trace names each file as
+    // it starts, so the last line of a hung run is the file that holds it.
+    if (TRACE) process.stderr.write(`    start: ${path.relative(repoPath, f)}\n`);
     const t0 = Date.now();
     const fs_ = auditJsFile(f);
     const ms = Date.now() - t0;

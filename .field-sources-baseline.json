@@ -1,7 +1,7 @@
 {
  "note": "field-source baseline — every call site allowed to feed contribute({coherence}). New sites are a decision; the grandfathered non-measured list is shrink-only and each entry awaits owner adjudication.",
- "savedAt": "2026-08-09T04:56:48.654Z",
- "count": 12,
+ "savedAt": "2026-10-01T04:37:52.612Z",
+ "count": 11,
  "measured": [
   {
    "key": "src/core/covenant.js#void:compress_signal:covenant",
@@ -25,11 +25,6 @@
   },
   {
    "key": "src/core/field-tool.js#(unlabeled)",
-   "kind": "MEASURED",
-   "why": "coherency"
-  },
-  {
-   "key": "src/core/living-remembrance.js#(unlabeled)",
    "kind": "MEASURED",
    "why": "coherency"
   },

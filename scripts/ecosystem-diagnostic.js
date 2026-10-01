@@ -82,12 +82,24 @@ function auditJsFile(filePath) {
   try { source = fs.readFileSync(filePath, 'utf-8'); } catch { return []; }
   let program = null;
   let astFindings = [];
+  const phase = (name) => { if (TRACE) process.stderr.write(`      ${name}\n`); };
   try {
+    phase('parse');
     program = parseProgram(source);
+    phase('ast');
     const astResult = astCheckers.auditCode(source, { program });
     astFindings = (astResult.findings || []).map((f) => ({ ...f, source: 'ast' }));
   } catch { program = null; }
 
+  phase('static');
+  if (TRACE) {
+    // One bug class at a time, so a hang names its checker.
+    for (const cls of Object.values(staticCheckers.BUG_CLASSES || {})) {
+      phase(`static:${cls}`);
+      staticCheckers.auditCode(source, { bugClasses: cls });
+    }
+    phase('static:all');
+  }
   const staticResult = staticCheckers.auditCode(source);
   let staticFindings = (staticResult.findings || []).map((f) => ({ ...f, source: 'static' }));
   if (program && program.comments) {
@@ -151,7 +163,8 @@ function auditRepo(repoPath, repoName, subdir = null) {
   if (!fs.existsSync(repoPath)) {
     return { repo: repoName, found: false };
   }
-  const files = walkFiles(subdir ? path.join(repoPath, subdir) : repoPath);
+  const target = subdir ? path.join(repoPath, subdir) : repoPath;
+  const files = fs.statSync(target).isFile() ? [target] : walkFiles(target);
   const jsFiles = files.filter((f) => JS_EXT.has(path.extname(f)));
   const pyFiles = files.filter((f) => PY_EXT.has(path.extname(f)));
 

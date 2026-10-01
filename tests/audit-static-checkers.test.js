@@ -85,6 +85,43 @@ describe('checkSecurity', () => {
     const findings = checkSecurity(code, code.split('\n'));
     assert(findings.some(f => f.bugClass === BUG_CLASSES.SECURITY));
   });
+
+  // Push provenance: a WHERE clause built only from literal pushes is not
+  // injection; one unproven push makes the whole array unproven.
+  const sqlFrom = (pushes) => [
+    'const conditions = [];',
+    ...pushes,
+    'const where = `WHERE ${conditions.join(" AND ")}`;',
+    'db.prepare(`SELECT * FROM t ${where}`).all(...params);',
+  ].join('\n');
+  const sqlFindings = (code) => checkSecurity(code, code.split('\n'))
+    .filter(f => f.assumption.includes('SQL'));
+
+  it('clears a WHERE built from literal and placeholder-index pushes', () => {
+    const code = sqlFrom(['conditions.push("(name LIKE ? OR email LIKE ?)");', 'conditions.push(`id = $${i++}`);']);
+    assert.strictEqual(sqlFindings(code).length, 0);
+  });
+
+  it('reports a WHERE once any push interpolates a value', () => {
+    const code = sqlFrom(['conditions.push("status = ?");', 'conditions.push(`id = ${userId}`);']);
+    assert.strictEqual(sqlFindings(code).length, 1);
+  });
+
+  it('reports a WHERE when a push cannot be read (nested call)', () => {
+    const code = sqlFrom(['conditions.push("status = ?");', 'conditions.push(clause(userInput));']);
+    assert.strictEqual(sqlFindings(code).length, 1);
+  });
+
+  // Measured 2026-10-01: a push whose argument held many strings and a nested
+  // call never returned (2^n readings of n strings) and held the ecosystem
+  // diagnostic past a 30-minute limit.
+  it('returns promptly on a push of many strings with a nested call', () => {
+    const fields = Array.from({ length: 40 }, (_, k) => `  f${k}: 'v${k}',`).join('\n');
+    const code = `findings.push({\n${fields}\n  n: x.toFixed(2),\n});`;
+    const t0 = Date.now();
+    checkSecurity(code, code.split('\n'));
+    assert(Date.now() - t0 < 1000, `took ${Date.now() - t0}ms`);
+  });
 });
 
 // ─── Concurrency Checker ───

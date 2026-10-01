@@ -175,12 +175,28 @@ function literalOnlyIdents(code) {
   //   conditions.push("(company_name LIKE ? OR email LIKE ?)")
   // A naive [^)]* stops inside the string, yielding an unbalanced quote that
   // fails the literal test and poisons a perfectly safe array.
-  const PUSH = /\b([A-Za-z_$][\w$]*)\s*\.push\(\s*((?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\$]|\\.)*`|[^()])*)\)/g;
+  //
+  // The catch-all excludes the quote characters. When it did not, every quoted
+  // string could be read whole OR char-by-char, and a failed match (a push
+  // whose argument holds a nested call, e.g. `findings.push({ … x.toFixed(2) … })`)
+  // retried 2^n readings for n strings. Measured 2026-10-01: the ecosystem
+  // diagnostic never returned on src/audit/bayesian-prior.js or
+  // src/core/compliance.js, and a full run outlived a 30-minute limit.
+  // A template is consumed whole, interpolations included (LIT judges it), so
+  // `x.push(\`id = ${v}\`)` is read and rejected rather than skipped.
+  const PUSH = /\b([A-Za-z_$][\w$]*)\s*\.push\(\s*((?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|[^()'"`])*)\)/g;
   const pushed = new Map();
+  const readAt = new Set();
   for (const m of code.matchAll(PUSH)) {
+    readAt.add(m.index);
     const ok = LIT(m[2]);
     if (!pushed.has(m[1])) pushed.set(m[1], true);
     if (!ok) pushed.set(m[1], false);
+  }
+  // A push the matcher could not read (a nested call, an unclosed quote) is
+  // unproven, so it poisons its array — never silently left out of the count.
+  for (const m of code.matchAll(/\b([A-Za-z_$][\w$]*)\s*\.push\(/g)) {
+    if (!readAt.has(m.index)) pushed.set(m[1], false);
   }
   for (const [name, ok] of pushed) { if (ok) lits.add(name); else lits.delete(name); }
   // Fixpoint: an assignment whose every interpolation is already literal-only.
@@ -203,7 +219,7 @@ function literalOnlyIdents(code) {
   }
   return lits;
 }
-literalOnlyIdents.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+literalOnlyIdents.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Does this text guard `v` against null?

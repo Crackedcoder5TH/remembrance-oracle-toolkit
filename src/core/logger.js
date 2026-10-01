@@ -27,6 +27,7 @@ function _format(level, subsystem, message, meta) {
   }
   return base;
 }
+_format.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _log(level, subsystem, message, meta) {
   if (!ENABLED) return;
@@ -41,6 +42,7 @@ function _log(level, subsystem, message, meta) {
     console.log(formatted);
   }
 }
+_log.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   debug: (subsystem, message, meta) => _log('debug', subsystem, message, meta),

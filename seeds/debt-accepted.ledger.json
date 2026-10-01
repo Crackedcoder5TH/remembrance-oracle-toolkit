@@ -1,0 +1,14 @@
+{
+ "_README": "Append-only. Every time an owner carried DEBT into a gate floor with --accept-debt, the gate, the reason and every item are recorded here. ledger-append-ratchet refuses any edit or deletion of a past entry.",
+ "accepted": [
+  {
+   "at": "2026-09-07T19:01:49.141Z",
+   "gate": "size-ratchet",
+   "reason": "atomic growth, owner-directed 2026-09-07: every top-level function carries its computed atomic signature (atomic-drift-ratchet --sync --grow); goggles.js +22 and field-memory.js +46 declaration lines. Decomposition of both monoliths remains owed.",
+   "items": [
+    "GREW: src/tools/goggles.js 997 -> 1057 lines (slack 40)",
+    "GREW: src/core/field-memory.js 647 -> 693 lines (slack 40)"
+   ]
+  }
+ ]
+}

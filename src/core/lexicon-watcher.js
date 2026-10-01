@@ -29,12 +29,7 @@ function observe(score, context = {}) {
   if (history.length > RECENT_WINDOW * 4) history.shift();
   return detectFluctuation();
 }
-observe.atomicProperties = {
-  charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'plasma',
-  reactivity: 'reactive', electronegativity: 0.75, group: 13, period: 4,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
+observe.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function detectFluctuation() {
   if (history.length < 2) return { fluctuated: false, reason: 'insufficient samples' };
@@ -65,12 +60,7 @@ function parseAtomicBlock(body) {
   }
   return out;
 }
-parseAtomicBlock.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 3, period: 2,
-  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
-  domain: 'covenant',
-};
+parseAtomicBlock.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function scanChanges(opts = {}) {
   const findings = { functions: [], elements: [], terms: [], architectural: [] };
@@ -102,12 +92,7 @@ function scanChanges(opts = {}) {
   }
   return findings;
 }
-scanChanges.atomicProperties = {
-  charge: 1, valence: 3, mass: 'medium', spin: 'odd', phase: 'gas',
-  reactivity: 'reactive', electronegativity: 0.8, group: 15, period: 5,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
+scanChanges.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function proposeLexiconEntries(findings, coherencyContext = {}) {
   const now = new Date().toISOString();
@@ -169,12 +154,7 @@ function runCycle({ coherency, ref }) {
   const promotion = coherency != null ? autoApproveIfCoherent(coherency) : { promoted: 0, reason: 'no coherency' };
   return { action: 'scanned', fluctuation, findings: { functionCount: findings.functions.length, elementCount: findings.elements.length, termCount: findings.terms.length, archCount: findings.architectural.length }, proposals: proposals.length, persistResult, promotion, sealCount: SEAL_REGISTRY.length };
 }
-runCycle.atomicProperties = {
-  charge: 1, valence: 4, mass: 'heavy', spin: 'odd', phase: 'plasma',
-  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 6,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
+runCycle.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 if (require.main === module) {
   const arg = process.argv[2];
@@ -188,6 +168,6 @@ module.exports = { observe, detectFluctuation, scanChanges, parseAtomicBlock, pr
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 detectFluctuation.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-proposeLexiconEntries.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+proposeLexiconEntries.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 persist.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
-autoApproveIfCoherent.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+autoApproveIfCoherent.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };

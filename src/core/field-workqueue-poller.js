@@ -43,6 +43,7 @@ function _resolveNodeId() {
     .digest('hex').slice(0, 12);
   return _nodeId;
 }
+_resolveNodeId.atomicProperties = { charge: 0, valence: 3, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Register an executor for a work kind: fn(payload) -> result. */
 function register(kind, fn) {
@@ -62,10 +63,12 @@ function _auditExecutor(payload) {
     covenant: { sealed: env.covenant.sealed },
   };
 }
+_auditExecutor.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 function _echoExecutor(payload) {
   return { echo: payload === undefined ? null : payload, at: Date.now() };
 }
+_echoExecutor.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 _executors.set('audit', _auditExecutor);
 _executors.set('echo', _echoExecutor);
@@ -92,6 +95,7 @@ async function _tick() {
     _busy = false;
   }
 }
+_tick.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 /** Start polling the work-queue. Idempotent. Auto-called on MCP server start. */
 function engage(opts = {}) {
@@ -128,6 +132,6 @@ module.exports = { engage, disengage, register, status, _tick };
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 register.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-engage.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-disengage.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+engage.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+disengage.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 status.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -196,6 +196,7 @@ function _sanitizeTag(tag) {
   if (typeof tag !== 'string') return String(tag || '');
   return tag.replace(/\.\.\//g, '').replace(/[/\\]/g, '-').replace(/[\x00-\x1f]/g, '').trim();
 }
+_sanitizeTag.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Parse tags from various formats (string, JSON string, array).
@@ -213,5 +214,6 @@ function _parseTags(tags) {
   }
   return [];
 }
+_parseTags.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { ChromaDBBridge };

@@ -148,6 +148,7 @@ function _skipTemplateLiteral(code, i) {
   }
   return i;
 }
+_skipTemplateLiteral.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Advance past a ${...} expression inside a template literal. */
 function _skipTemplateExpression(code, i) {
@@ -191,6 +192,7 @@ function _skipTemplateExpression(code, i) {
   }
   return i;
 }
+_skipTemplateExpression.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Advance past regex body, handling character classes [..] where / doesn't terminate. */
 function _skipRegexBody(code, i) {
@@ -204,6 +206,7 @@ function _skipRegexBody(code, i) {
   }
   return i;
 }
+_skipRegexBody.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Scores code completeness by detecting incomplete-work markers, placeholders, and empty function bodies.
@@ -349,4 +352,4 @@ scoreSyntax.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "ev
 checkBalancedBraces.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 scoreCompleteness.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 scoreConsistency.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 12, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-computeCoherencyScore.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+computeCoherencyScore.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

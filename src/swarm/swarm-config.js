@@ -14,6 +14,7 @@ function _deriveKey() {
   const identity = `${os.hostname()}:${os.userInfo().username}:remembrance-swarm`;
   return crypto.scryptSync(identity, 'remembrance-swarm-salt', 32);
 }
+_deriveKey.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _encryptKey(plaintext) {
   if (!plaintext || plaintext.startsWith('enc:')) return plaintext;
@@ -24,6 +25,7 @@ function _encryptKey(plaintext) {
   const tag = cipher.getAuthTag();
   return 'enc:' + iv.toString('hex') + ':' + tag.toString('hex') + ':' + encrypted.toString('hex');
 }
+_encryptKey.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _decryptKey(stored) {
   if (!stored || !stored.startsWith('enc:')) return stored;
@@ -40,6 +42,7 @@ function _decryptKey(stored) {
     return null;
   }
 }
+_decryptKey.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Remembrance dimensions — the specialist lenses for swarm agents.

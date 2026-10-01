@@ -215,6 +215,7 @@ function _generateNarrative(total, covered, totalDomains, blindSpots, strengths,
 
   return lines.join(' ');
 }
+_generateNarrative.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   generateCoverageMap,

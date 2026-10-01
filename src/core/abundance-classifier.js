@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * abundance-classifier.js — classifier head over the composed 116-D
- * fractal signature: extraction-aligned vs abundance-aligned.
+ * abundance-classifier.js — classifier head over the L1–L4 blocks of the
+ * canonical 232-D fractal decoder vector: extraction-aligned vs abundance-aligned.
  *
  * The encoder stack (L1 structural, L2 lexical, L3 numerical,
  * L4 spectral) was never given an "extraction" or "abundance" label,
@@ -35,7 +35,7 @@
  * Two entry points:
  *   classifyAlignment(text)       — full: geometry + lexicon
  *   classifySignature(composed)   — geometry only, from a
- *                                   precomputed 116-D vector
+ *                                   precomputed 232-D vector (its L1–L4 blocks are read)
  *
  * Output (both): {
  *   extraction:  0..1,
@@ -49,11 +49,11 @@
  * Deterministic. Pure. No external dependencies.
  */
 
-const { compose, composedAtDepth } = require('./decoder-stack');
+const { compose, composedAtDepth, currentDepth } = require('./decoder-stack');
 
-const COMPOSED_DIM = 116;
+const COMPOSED_DIM = 4 * 29;   // the L1–L4 blocks of the 232-D vector the markers read
 
-// ── Dimension indices in the composed 116-D vector ──────────────
+// ── Dimension indices in the L1–L4 blocks of the 232-D vector ────
 // L1 occupies 0..28, L2 29..57, L3 58..86, L4 87..115. Each index
 // below is (layer base + within-layer dim) per the inspect* maps in
 // the four encoder files. If an encoder's layout changes, the spec
@@ -124,6 +124,7 @@ function _clip(x) {
   if (x > 1) return 1;
   return x;
 }
+_clip.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Geometric marker extraction ──────────────────────────────────
 
@@ -137,6 +138,7 @@ function _extractionMarkers(v) {
     narrowBand: _clip(1 - v[DIM.l4SpectralEntropy]),
   };
 }
+_extractionMarkers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _abundanceMarkers(v) {
   return {
@@ -152,12 +154,14 @@ function _abundanceMarkers(v) {
     healingBalance: _clip((v[DIM.l1Alignment] + v[DIM.l1Intention]) / 2),
   };
 }
+_abundanceMarkers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _weightedMean(markers, weights) {
   let sum = 0;
   for (const [name, w] of Object.entries(weights)) sum += markers[name] * w;
   return _clip(sum);
 }
+_weightedMean.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Lexicon pass (text mode) ─────────────────────────────────────
 
@@ -169,6 +173,7 @@ function _countTerms(lower, terms) {
   }
   return n;
 }
+_countTerms.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 15, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Lexical tilt in [-1, 1]: positive toward abundance vocabulary,
@@ -182,6 +187,7 @@ function _lexiconTilt(text) {
   if (total === 0) return 0;
   return (ab - ex) / total;
 }
+_lexiconTilt.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Evidence assembly ────────────────────────────────────────────
 
@@ -197,12 +203,14 @@ function _evidence(exMarkers, abMarkers) {
   rows.sort((a, b) => b.value * b.weight - a.value * a.weight);
   return rows;
 }
+_evidence.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _label(alignment) {
   if (alignment > 0.15) return 'abundance-aligned';
   if (alignment < -0.15) return 'extraction-aligned';
   return 'mixed';
 }
+_label.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Confidence grows with how decisively the poles separate and how
@@ -214,6 +222,7 @@ function _confidence(extraction, abundance) {
   const magnitude = (extraction + abundance) / 2;
   return _clip(separation * 0.7 + magnitude * 0.3);
 }
+_confidence.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Public API ───────────────────────────────────────────────────
 
@@ -227,13 +236,17 @@ function _confidence(extraction, abundance) {
  *             label:string, confidence:number, evidence:Array }}
  */
 function classifySignature(composed) {
-  // Accepts the 116-D core or any deeper composition (e.g. 145-D with
-  // L5) — the classifier's DIM map addresses the first four layers, so
-  // deeper vectors are read by their 116-D core. Shorter vectors are
-  // still refused: the markers live in L3/L4.
-  if (!composed || composed.length < COMPOSED_DIM) {
+  // Reads the first four layers (116 of the 232-D decoder vector) — the
+  // classifier's DIM map addresses L1–L4, where its markers live; the one
+  // canonical vector is passed whole and read by its L1–L4 blocks. Shorter
+  // vectors are refused: the markers live in L3/L4.
+  // ONE WIDTH: the canonical 232-D decoder vector, whole. The markers live in
+  // its L1–L4 blocks (the first COMPOSED_DIM = 116 entries) and are read from
+  // the one vector; a 116-D checkpoint or a 145-D one is not accepted on its
+  // own, and the retired 256-D waveform never was.
+  if (!composed || composed.length !== 232) {
     throw new Error(
-      `classifySignature expects at least a ${COMPOSED_DIM}-D composed vector (depth 4), got length ${composed ? composed.length : 'none'}`
+      `classifySignature expects the canonical 232-D decoder vector (markers read from its L1–L4 blocks), got length ${composed ? composed.length : 'none'}`
     );
   }
   const exMarkers = _extractionMarkers(composed);
@@ -266,7 +279,7 @@ function classifyAlignment(text) {
       label: 'mixed', confidence: 0, lexiconTilt: 0, evidence: [],
     };
   }
-  const composed = composedAtDepth(text, 4);
+  const composed = composedAtDepth(text, currentDepth());   // the ONE width — the classifier reads its L1–L4 blocks
   const base = classifySignature(composed);
   const tilt = _lexiconTilt(text);
   // Vocabulary nudges, geometry decides: shift alignment by at most
@@ -291,7 +304,7 @@ function classifyAlignment(text) {
  * inspecting WHY a pattern classified the way it did.
  */
 function inspectAlignmentMarkers(text) {
-  const composed = composedAtDepth(typeof text === 'string' ? text : '', 4);
+  const composed = composedAtDepth(typeof text === "string" ? text : "", currentDepth());
   return {
     extraction: _extractionMarkers(composed),
     abundance: _abundanceMarkers(composed),

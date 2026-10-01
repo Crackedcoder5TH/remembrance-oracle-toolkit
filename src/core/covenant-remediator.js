@@ -39,12 +39,7 @@ function remediateFile(filePath) {
   fs.writeFileSync(filePath, current);
   return { changed: true, applied, filePath };
 }
-remediateFile.atomicProperties = {
-  charge: 1, valence: 2, mass: 'medium', spin: 'odd', phase: 'liquid',
-  reactivity: 'reactive', electronegativity: 0.8, group: 11, period: 5,
-  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
+remediateFile.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function remediatePaths(paths) {
   const results = [];

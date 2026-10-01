@@ -62,7 +62,7 @@ console.log(`  largest climb: +${best.gain.toFixed(3)} from write ${best.start} 
 const seriesText = JSON.stringify(means.map(x=>+x.toFixed(4)));
 const sig = compose(seriesText);
 console.log('\n  ──────────────────────────────────────────────────────────────');
-console.log('  THE TRAJECTORY AS A PATTERN — through the same 116-D encoder');
+console.log('  THE TRAJECTORY AS A PATTERN — through the same 232-D decoder');
 console.log('  ──────────────────────────────────────────────────────────────');
 
 // L3 numerical read
@@ -101,7 +101,7 @@ const idx = new FieldIndex();
 const sigs = [];
 for (const id of Object.keys(voidRaw.index)) {
   const e = voidRaw.index[id];
-  if (e && Array.isArray(e.composed_v1) && e.composed_v1.length === 116) sigs.push({ id, vec: e.composed_v1 });
+  if (e && Array.isArray(e.composed) && e.composed.length === 232) sigs.push({ id, vec: e.composed });
 }
 idx.loadSignatures(sigs);
 const hits = idx.searchVec(sig, { topK: 10, depth: 4 });

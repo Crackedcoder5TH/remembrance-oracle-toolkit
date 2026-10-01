@@ -25,6 +25,7 @@ function _absorbAccepted(pattern, source) {
     return maybeAbsorbPattern(pattern, { source });
   } catch (_) { return null; }
 }
+_absorbAccepted.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 
 // Quantum capture engine

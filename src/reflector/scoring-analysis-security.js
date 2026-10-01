@@ -18,6 +18,7 @@ function stripStringsAndComments(code) {
     .replace(/"(?:\\.|[^"\\])*"/g, '""')
     .replace(/'(?:\\.|[^'\\])*'/g, "''");
 }
+stripStringsAndComments.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildSecretPatterns() {
   const apiK = _k('api', '[_-]?', 'key|api', 'key');
@@ -34,6 +35,7 @@ function _buildSecretPatterns() {
     { pattern: new RegExp(privKey, 'g'), severity: 'critical', message: _k('Private key in ', 'source code') },
   ];
 }
+_buildSecretPatterns.atomicProperties = { charge: 1, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildJsPatterns() {
   return [
@@ -43,6 +45,7 @@ function _buildJsPatterns() {
     { test: new RegExp(_k('document\\.wr', 'ite\\s*\\(')), severity: 'medium', message: _k('document.wr', 'ite() — XSS risk') },
   ];
 }
+_buildJsPatterns.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _buildPyPatterns() {
   return [
@@ -52,6 +55,7 @@ function _buildPyPatterns() {
     { test: new RegExp(_k('pic', 'kle\\.load')), severity: 'high', message: _k('Unpickling untrusted data — ', 'arbitrary code execution risk') },
   ];
 }
+_buildPyPatterns.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function securityScan(code, language) {
   if (!code) {
@@ -244,5 +248,6 @@ function securityScan(code, language) {
   // list treated any numeric-looking return field as a coherence signal.
   return __retVal;
 }
+securityScan.atomicProperties = { charge: 1, valence: 4, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 2, period: 5, harmPotential: "dangerous", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 module.exports = { securityScan, stripStringsAndComments };

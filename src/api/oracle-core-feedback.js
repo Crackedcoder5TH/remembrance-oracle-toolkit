@@ -61,6 +61,7 @@ function _tryCompound(oracle, id, updated, source) {
     return null;
   }
 }
+_tryCompound.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   /**

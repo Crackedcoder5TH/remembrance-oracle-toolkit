@@ -234,23 +234,8 @@ function syncBidirectional(localStore, options = {}) {
 }
 
 
-syncToGlobal.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-syncFromGlobal.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-syncBidirectional.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+syncToGlobal.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+syncFromGlobal.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+syncBidirectional.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { syncBidirectional, syncFromGlobal, syncToGlobal };

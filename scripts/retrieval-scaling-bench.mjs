@@ -15,7 +15,7 @@ const { createPage, holoSearch } = require('../src/compression/holographic');
 
 const VOID = process.env.VOID_DIR || '/home/user/Void-Data-Compressor';
 const idx = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8')).index;
-const keys = Object.keys(idx).filter((k) => Array.isArray(idx[k].composed_v1) && idx[k].composed_v1.length === 116);
+const keys = Object.keys(idx).filter((k) => Array.isArray(idx[k].composed) && idx[k].composed.length === 232);
 const hr = () => Number(process.hrtime.bigint()) / 1e6;
 
 // The substrate-bypass guard is RIGHT to flag the next line — this hand-rolled cosine
@@ -28,7 +28,7 @@ console.log('  N        naive scan     FractalIndex.searchFlow     holoSearch (p
 const Q = 60;
 for (const N of [1000, 10000, 40000]) {
   const sel = keys.slice(0, N);
-  const vecs = sel.map((k) => idx[k].composed_v1);
+  const vecs = sel.map((k) => idx[k].composed);
   const queries = Array.from({ length: Q }, (_, i) => vecs[(i * 613) % N]);   // real vectors as queries
 
   // naive brute-force (the wrong method I used)

@@ -41,6 +41,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_PATH = path.join(ROOT, '.covenant-exemption-baseline.json');
@@ -145,6 +146,12 @@ function main() {
 
   if (save) {
     const first = !baseline;
+    // THE LAW: the surface only shrinks. A new exempt file is DEBT, named here,
+    // never saved into the floor (owner override: --accept-debt --reason).
+    if (!first && refuseIfLoosening('exemption-ratchet',
+      cmp.added.map((e) => `NEW exempt file: ${e.file}  [@oracle-${e.kind}]`), argv)) {
+      process.exitCode = 1; return;
+    }
     const doc = {
       note: 'Covenant exemption-surface baseline — the ratchet allows this list to SHRINK only. '
         + 'A new exemption requires an explicit --save-baseline, which also feeds each new file\'s '

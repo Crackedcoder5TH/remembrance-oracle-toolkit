@@ -40,6 +40,7 @@ function _parseSeries(input) {
   const s = m.map(Number).filter(Number.isFinite);
   return s.length >= MIN_SERIES ? s : null;
 }
+_parseSeries.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _factorial(n) { let f = 1; for (let i = 2; i <= n; i++) f *= i; return f; }
 
@@ -57,6 +58,8 @@ function _ordinalDist(s, d, tau) {
   }
   return { counts, total };
 }
+_ordinalDist.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+_factorial.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Normalized permutation entropy H ∈ [0,1]. */
 function _permEntropy(s, d, tau) {
@@ -66,6 +69,7 @@ function _permEntropy(s, d, tau) {
   for (const c of counts.values()) { const p = c / total; H -= p * Math.log(p); }
   return H / Math.log(_factorial(d));
 }
+_permEntropy.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** MPR statistical complexity C = H · Q_J, Q_J = normalized Jensen-Shannon
  *  disequilibrium of the ordinal distribution vs the uniform distribution. */
@@ -90,6 +94,7 @@ function _statComplexity(s, d, tau) {
   const Qj = Qmax > 0 ? JS / Qmax : 0;
   return Hnorm * Qj;                          // complexity
 }
+_statComplexity.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Delay-embedding 1-step predictability: build m-dim delay vectors, for each
  *  find its nearest spatial neighbour (temporally separated by >= Theiler w),
@@ -122,6 +127,7 @@ function _predictability(s, m, tau) {
   const rmse = Math.sqrt(se / n);
   return Math.max(0, 1 - rmse / Math.sqrt(varr));   // 1 = perfectly predictable
 }
+_predictability.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Encode the determinism / return-map identity of `input`. 29-D; ~0 for

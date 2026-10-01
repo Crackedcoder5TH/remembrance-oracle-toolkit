@@ -40,6 +40,7 @@ function _clip(x) {
   if (x > 1) return 1;
   return x;
 }
+_clip.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _extractNumbers(input) {
   const out = [];
@@ -51,6 +52,7 @@ function _extractNumbers(input) {
   }
   return out;
 }
+_extractNumbers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 1, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Cooley-Tukey radix-2 FFT (in-place, length must be power of 2) ─
 function _fftInPlace(real, imag) {
@@ -87,6 +89,7 @@ function _fftInPlace(real, imag) {
     }
   }
 }
+_fftInPlace.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _powerSpectrum(samples) {
   // Pad or truncate to FFT_SIZE, then mean-center
@@ -108,6 +111,7 @@ function _powerSpectrum(samples) {
   }
   return power;
 }
+_powerSpectrum.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _normalize(power) {
   let sum = 0;
@@ -117,6 +121,7 @@ function _normalize(power) {
   for (let i = 0; i < power.length; i++) out[i] = power[i] / sum;
   return out;
 }
+_normalize.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _logFreqBins(power, nBins) {
   // Log-spaced bin assignment over [1, half]
@@ -139,6 +144,7 @@ function _logFreqBins(power, nBins) {
   if (maxBin > 0) for (let b = 0; b < nBins; b++) bins[b] /= maxBin;
   return bins;
 }
+_logFreqBins.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _spectralShape(power) {
   const half = power.length;
@@ -183,6 +189,7 @@ function _spectralShape(power) {
     flatness,
   };
 }
+_spectralShape.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _spectralEntropy(power) {
   let sum = 0;
@@ -198,6 +205,7 @@ function _spectralEntropy(power) {
   // Normalize by max entropy (log2 of bin count)
   return Math.min(1, h / Math.log2(power.length));
 }
+_spectralEntropy.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _multiLagAutocorr(samples) {
   const n = samples.length;
@@ -219,6 +227,7 @@ function _multiLagAutocorr(samples) {
   }
   return out;
 }
+_multiLagAutocorr.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _nonStationarity(samples) {
   const n = samples.length;
@@ -288,6 +297,7 @@ function _nonStationarity(samples) {
     largestGap: _clip(largestGap),
   };
 }
+_nonStationarity.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _spectralDomainMarkers(power, samples) {
   // 1/f noise likeness — slope of log power vs log frequency
@@ -330,6 +340,7 @@ function _spectralDomainMarkers(power, samples) {
   const period7 = maxNoise > 1e-12 ? _clip(peak7 / maxNoise / 3) : 0;
   return { onefLike, whiteLike, period24, period7 };
 }
+_spectralDomainMarkers.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Main encoder ──────────────────────────────────────────────────
 

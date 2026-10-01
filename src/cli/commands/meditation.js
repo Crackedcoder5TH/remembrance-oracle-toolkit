@@ -24,6 +24,7 @@ function _getEngine(oracle) {
   _engine = new MeditationEngine(oracle);
   return _engine;
 }
+_getEngine.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function registerMeditationCommands(handlers, { oracle }) {
 
@@ -124,5 +125,6 @@ function registerMeditationCommands(handlers, { oracle }) {
   };
 
 }
+registerMeditationCommands.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { registerMeditationCommands };

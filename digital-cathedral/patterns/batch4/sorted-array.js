@@ -4,7 +4,7 @@
  */
 function createSortedArray(compareFn) {
   const compare = compareFn || ((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  const items = [];
+  let items = [];
 
   function binarySearch(value) {
     let lo = 0;
@@ -22,13 +22,13 @@ function createSortedArray(compareFn) {
 
   function insert(value) {
     const index = binarySearch(value);
-    items.splice(index, 0, value);
+    items = [...items.slice(0, index), value, ...items.slice(index)];
   }
 
   function remove(value) {
     const index = binarySearch(value);
     if (index < items.length && compare(items[index], value) === 0) {
-      items.splice(index, 1);
+      items = [...items.slice(0, index), ...items.slice(index + 1)];
       return true;
     }
     return false;

@@ -17,8 +17,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { toFractalWaveform, fractalCoherency, inspectFractalWaveform } =
+const { fractalCoherency, inspectFractalWaveform } =
   require('../src/core/fractal-waveform');
+// ONE representation: file-vs-file coherency reads the canonical 232-D vector.
+const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
 const { scoreResonance, libraryStatus } =
   require('../src/scoring/pattern-resonance');
 const { covenantCheck } = require('../src/core/covenant');
@@ -150,9 +152,11 @@ if (lowStruct.length) {
 console.log('\n─── cross-file coherency (do the two reference impls agree?) ' + '─'.repeat(20));
 
 function fc(a, b) {
-  const wfA = toFractalWaveform(fs.readFileSync(path.join(ROOT, a), 'utf8'));
-  const wfB = toFractalWaveform(fs.readFileSync(path.join(ROOT, b), 'utf8'));
-  return fractalCoherency(wfA, wfB);
+  // ONE representation, one cosine: the canonical 232-D vector of each file,
+  // compared in the one space (this used to read the 29-D L1 alone).
+  const wfA = codeToWaveform(fs.readFileSync(path.join(ROOT, a), 'utf8'));
+  const wfB = codeToWaveform(fs.readFileSync(path.join(ROOT, b), 'utf8'));
+  return waveformCosine(wfA, wfB);
 }
 
 const pairs = [

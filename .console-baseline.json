@@ -1,7 +1,7 @@
 {
  "note": "console baseline — token-verified console.<method>( call sites in src/, per file. Shrink-only: migrate to a logger or remove; new print surface blocks.",
- "savedAt": "2026-08-10T21:48:23.100Z",
- "total": 2622,
+ "savedAt": "2026-09-17T08:17:49.429Z",
+ "total": 2614,
  "byFile": {
   "src/action.js": 31,
   "src/analytics/actionable-insights.js": 8,
@@ -47,7 +47,7 @@
   "src/cli/commands/library/out.js": 3,
   "src/cli/commands/meditation.js": 40,
   "src/cli/commands/onboard.js": 20,
-  "src/cli/commands/quality.js": 117,
+  "src/cli/commands/quality.js": 115,
   "src/cli/commands/reasoning.js": 37,
   "src/cli/commands/reflector.js": 201,
   "src/cli/commands/self-manage.js": 176,
@@ -171,7 +171,7 @@
   "src/tools/brief.js": 31,
   "src/tools/goggles-call.js": 13,
   "src/tools/goggles-fp.js": 4,
-  "src/tools/goggles.js": 111,
+  "src/tools/goggles.js": 105,
   "src/unified/coherency.js": 3,
   "src/unified/debug-bridge.js": 2,
   "src/unified/emergent-coherency.js": 1,

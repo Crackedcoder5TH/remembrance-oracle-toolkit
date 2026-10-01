@@ -50,12 +50,7 @@ function substrateSelfNames(namespace, rel) {
   }
   return names;
 }
-substrateSelfNames.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.2, group: 12, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'analysis',
-};
+substrateSelfNames.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const DEFAULT_CATEGORIZER = (rel) => {
   if (rel.startsWith('app/api/')) {
@@ -91,6 +86,7 @@ function _inferLang(rel) {
     '.sh': 'bash',
   })[ext] || 'unknown';
 }
+_inferLang.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Routes to the canonical walker (ECOSYSTEM §7: one implementation). The
 // mapper walks with its own DEFAULT_SKIP_DIRS/DEFAULT_EXTENSIONS, and does
@@ -103,6 +99,7 @@ function _walk(dir, opts) {
     skipHidden: false,
   });
 }
+_walk.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Median of a set of readings. Deliberately NOT a mean: the median is a
 // value some file in the set actually measured, so it is still a reading the
@@ -112,6 +109,7 @@ function _median(values) {
   const s = [...values].sort((a, b) => a - b);
   return s[Math.floor(s.length / 2)];
 }
+_median.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   DEFAULT_EXTENSIONS,

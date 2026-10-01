@@ -237,5 +237,6 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
 
 
 }
+registerAdminCommands.atomicProperties = { charge: 1, valence: 8, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 3, period: 5, harmPotential: "minimal", alignment: "healing", intention: "malevolent", domain: "utility" };
 
 module.exports = { registerAdminCommands };

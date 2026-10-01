@@ -66,6 +66,7 @@ function isTrustedSource(expr) {
   const s = expr.trim();
   return _BASE_TRUSTED.has(s) || _OPERATOR_TRUSTED.has(s);
 }
+isTrustedSource.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Extend the trusted-source registry. Idempotent. */
 function addTrustedSource(expr) {
@@ -75,6 +76,7 @@ function addTrustedSource(expr) {
   }
   return false;
 }
+addTrustedSource.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Role-annotated files ────────────────────────────────────────────────
 
@@ -89,6 +91,7 @@ function isPatternDefinitionFile(code) {
   const header = code.split('\n').slice(0, 40).join('\n');
   return /@oracle-pattern-definitions\b/.test(header);
 }
+isPatternDefinitionFile.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Learning hook ───────────────────────────────────────────────────────
 
@@ -117,6 +120,7 @@ function recordFalsePositive(snippet, _reason) {
   }
   return { learned: false, expression: null };
 }
+recordFalsePositive.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Field-validated growth: covenant absorbs patterns that raise coherency ──
 
@@ -153,6 +157,7 @@ function _recordConsensusDecision(agreement, source) {
   _consensusHistory.push({ agreement, source: source || null, ts: Date.now() });
   if (_consensusHistory.length > _CONSENSUS_HISTORY_MAX) _consensusHistory.shift();
 }
+_recordConsensusDecision.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Return histogram of the four consensus outcomes over the last `windowN`
@@ -189,6 +194,7 @@ function consensusHistogram(windowN) {
     recent: window.slice(-10),
   };
 }
+consensusHistogram.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 5, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Test-only: drop the in-memory consensus history. */
 function _resetConsensusHistory() { _consensusHistory.length = 0; }
@@ -197,6 +203,8 @@ function _growthLogPath() {
   const path = require('node:path');
   return path.join(__dirname, '..', '..', '.remembrance', 'covenant-growth.jsonl');
 }
+_growthLogPath.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_resetConsensusHistory.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _persistGrowth(record) {
   try {
@@ -209,6 +217,7 @@ function _persistGrowth(record) {
     return true;
   } catch (_) { return false; }
 }
+_persistGrowth.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 6, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Field-validated covenant growth via two-oracle consensus. The covenant
@@ -378,6 +387,7 @@ function maybeAbsorbPattern(pattern, opts = {}) {
 
   return { absorbed: true, ...record };
 }
+maybeAbsorbPattern.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Batch absorption via two-oracle consensus at batch granularity.
@@ -581,6 +591,7 @@ function maybeAbsorbBatch(patterns, opts = {}) {
 
   return { batch: batchInfo, perPattern };
 }
+maybeAbsorbBatch.atomicProperties = { charge: 1, valence: 2, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 2, period: 5, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /** Test-only: drop the in-memory registry. Does NOT touch the growth log. */
 function _resetGrowth() { _RECOGNIZED_PATTERNS.clear(); }

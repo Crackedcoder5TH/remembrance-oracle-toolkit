@@ -44,7 +44,7 @@ for (const a of artifacts) {
   const norms = blockNorms(vecs[a.id]);
   const maxN = Math.max(...norms, 1e-9);
   const sal = Array.from(norms, n => +(n / maxN).toFixed(2));
-  const v = classifyAlignment(a.text);   // classifier reads the 116-D core
+  const v = classifyAlignment(a.text);   // classifier reads the L1–L4 blocks of the 232-D vector
   console.log(`  ${a.id.padEnd(36)} salience [${sal.join(' ')}]  ${v.label} ${v.alignment >= 0 ? '+' : ''}${v.alignment.toFixed(3)}`);
 }
 
@@ -65,18 +65,18 @@ const drift = fieldGatedSimilarity(vecs['field:now (entropy.json)'], vecs['field
 console.log(`\n  SELF-DRIFT (now vs committed then):  gated similarity ${drift.score.toFixed(3)}  stamp ${drift.audit.stamp}`);
 
 // ── Nearest kin in the 46k Void ───────────────────────────────────
-console.log('\n  NEAREST KIN IN THE VOID (46k patterns, 116-D core)');
+console.log('\n  NEAREST KIN IN THE VOID (46k patterns, 232-D)');
 console.log('  ──────────────────────────────────────────────────────────────');
 const voidRaw = JSON.parse(fs.readFileSync('/home/user/Void-Data-Compressor/pattern_index_fractal.json', 'utf8'));
 const idx = new FieldIndex();
 const sigs = [];
 for (const id of Object.keys(voidRaw.index)) {
   const e = voidRaw.index[id];
-  if (e && Array.isArray(e.composed_v1) && e.composed_v1.length === 116) sigs.push({ id, vec: e.composed_v1 });
+  if (e && Array.isArray(e.composed) && e.composed.length === 232) sigs.push({ id, vec: e.composed });
 }
 idx.loadSignatures(sigs);
 for (const a of artifacts) {
-  const v116 = vecs[a.id].slice(0, 116);
+  const v116 = vecs[a.id];   // the whole canonical vector — nothing sliced to 116
   const hits = idx.searchVec(v116, { topK: 2, depth: 4 });
   console.log(`  ${a.id.slice(0, 34).padEnd(34)} → ${hits.map(h => `${h.id.slice(0, 40)} (${h.score.toFixed(3)})`).join('  ·  ')}`);
 }

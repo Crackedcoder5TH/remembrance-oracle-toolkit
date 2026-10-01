@@ -4,7 +4,7 @@
 // addresses the whole library). Its retrieval CAPACITY — patterns reliably recalled from a
 // noisy cue — is governed by EFFECTIVE DIMENSIONALITY, not by how many patterns are stored.
 //
-// MEASURED on the real substrate (composed_v1, 116-D):
+// MEASURED on the real substrate (composed, 232-D):
 //   - accuracy falls with library size (93% @N=100 → 26% @N=47,613) as distractors accumulate
 //   - DECISIVE control: real substrate effDim≈6 → 60% retrieval; full-rank random effDim≈112 → 100%.
 //     Same dimension + noise; capacity rides entirely on the number of independent directions.
@@ -21,10 +21,10 @@
 import fs from 'node:fs';
 const idx = JSON.parse(fs.readFileSync('/home/user/Void-Data-Compressor/pattern_index_fractal.json','utf8')).index;
 const names = Object.keys(idx);
-const DIM = 116;
+const DIM = 232 /* the ONE width */;
 const V = [];
-for (const n of names) { const v = idx[n].composed_v1; if (Array.isArray(v) && v.length === DIM) V.push(Float64Array.from(v)); }
-console.log('substrate: '+V.length+' composed_v1 vectors ('+DIM+'-D)\n');
+for (const n of names) { const v = idx[n].composed; if (Array.isArray(v) && v.length === DIM) V.push(Float64Array.from(v)); }
+console.log('substrate: '+V.length+' composed vectors ('+DIM+'-D)\n');
 
 function mul(a){let s=a;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 const rnd = mul(7);

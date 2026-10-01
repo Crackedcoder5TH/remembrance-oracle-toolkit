@@ -1,0 +1,21 @@
+{
+ "_README": "Fixture rows for migrate-to-substrate.mjs --test-fixture ONLY: raw snake_case rows shaped exactly as SELECT * returns them from app/lib/database.ts's schema. The pipe is proven end-to-end (map → store → read back → byte-compare) and the stored records are deleted afterwards. Fixture data never remains in the store and is never presented as a measurement.",
+ "leadRows": [
+  {"id": 1, "lead_id": "FIXTURE-0001", "first_name": "Fixture", "last_name": "One", "date_of_birth": "", "email": "fixture-one@test.invalid", "phone": "+10000000001", "state": "TX", "coverage_interest": "term-life", "purchase_intent": "", "veteran_status": "veteran", "military_branch": "army", "consent_tcpa": 1, "consent_privacy": 1, "consent_timestamp": "2026-09-19T00:00:00Z", "consent_text": "FIXTURE consent text — migration pipe test row", "consent_ip": "unknown", "consent_user_agent": "Mozilla/5.0 (fixture)", "consent_page_url": "/", "utm_source": null, "utm_medium": null, "utm_campaign": null, "utm_term": null, "utm_content": null, "lattice_src": null, "lattice_from": null, "created_at": "2026-09-19 00:00:00"},
+  {"id": 2, "lead_id": "FIXTURE-0002", "first_name": "Fixture", "last_name": "Two", "date_of_birth": "", "email": "fixture-two@test.invalid", "phone": "+10000000002", "state": "GA", "coverage_interest": "whole-life", "purchase_intent": "researching", "veteran_status": "", "military_branch": "", "consent_tcpa": 1, "consent_privacy": 1, "consent_timestamp": "2026-09-19T00:00:00Z", "consent_text": "FIXTURE consent text — migration pipe test row", "consent_ip": "unknown", "consent_user_agent": "AI-Agent/1.0 (fixture)", "consent_page_url": "/quote", "utm_source": "fixture", "utm_medium": null, "utm_campaign": null, "utm_term": null, "utm_content": null, "lattice_src": "lattice-fixture", "lattice_from": null, "created_at": "2026-09-19 00:00:01"},
+  {"id": 3, "lead_id": "FIXTURE-0003", "first_name": "Fixture", "last_name": "Three", "date_of_birth": "1980-01-01", "email": "fixture-three@test.invalid", "phone": "+10000000003", "state": "CA", "coverage_interest": "final-expense", "purchase_intent": "", "veteran_status": "spouse", "military_branch": "", "consent_tcpa": 0, "consent_privacy": 1, "consent_timestamp": "2026-09-19T00:00:00Z", "consent_text": "FIXTURE consent text — migration pipe test row", "consent_ip": "unknown", "consent_user_agent": "Mozilla/5.0 (fixture)", "consent_page_url": "/", "utm_source": null, "utm_medium": null, "utm_campaign": null, "utm_term": null, "utm_content": null, "lattice_src": null, "lattice_from": null, "created_at": "2026-09-19 00:00:02"}
+ ],
+ "msgRows": [
+  {"id": 900001, "client_id": 101, "direction": "inbound", "subject": "FIXTURE subject one", "body": "FIXTURE body — migration pipe test message", "read": 0, "created_at": "2026-09-19 00:00:03"},
+  {"id": 900002, "client_id": 101, "direction": "outbound", "subject": "FIXTURE subject two", "body": "FIXTURE reply — migration pipe test message", "read": 1, "created_at": "2026-09-19 00:00:04"}
+ ],
+ "clientRows": [
+  {"id": 1, "client_id": "client_fixture_0001", "company_name": "FIXTURE Buyer One", "contact_name": "Fixture Contact", "email": "Fixture.Buyer@test.invalid", "phone": "+10000000011", "password_hash": "fixturesalt:fixturehash", "status": "active", "pricing_tier": "standard", "price_per_lead": 2500, "exclusive_price": 5000, "state_licenses": "[\"TX\",\"GA\"]", "coverage_types": "[\"term-life\"]", "daily_cap": 50, "monthly_cap": 1000, "min_score": 0, "balance": 0, "created_at": "2026-09-19 00:00:05", "updated_at": "2026-09-19 00:00:05"}
+ ],
+ "filterRows": [
+  {"id": 1, "client_id": "client_fixture_0001", "states": "[\"TX\"]", "coverage_types": "[\"term-life\"]", "veteran_only": 1, "min_score": 10, "max_lead_age": 72, "distribution_mode": "shared"}
+ ],
+ "purchaseRows": [
+  {"id": 1, "purchase_id": "purchase_fixture_0001", "lead_id": "FIXTURE-0001", "client_id": "client_fixture_0001", "price_paid": 2500, "purchased_at": "2026-09-19T00:00:06.000Z", "status": "delivered", "exclusive": 0, "return_reason": "", "return_deadline": "2026-09-22T00:00:06.000Z"}
+ ]
+}

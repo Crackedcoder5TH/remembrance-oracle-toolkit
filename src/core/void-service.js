@@ -26,12 +26,27 @@ const { quiet } = require('./quiet');
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawn } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const PORT = process.env.VOID_SVC_PORT || '8765';
 const VOID_ROOT = process.env.VOID_ROOT
   || path.resolve(__dirname, '..', '..', '..', 'Void-Data-Compressor');
+
+// Front-door token: the service's measurement routes require it (see the
+// FRONT-DOOR WALL block in compressor_service.py). Minted by the service;
+// read once per process. Fails open to '' against an open/unwalled service.
+let _gogTok = null;
+function _goggleToken() {
+  if (_gogTok !== null) return _gogTok;
+  try {
+    _gogTok = fs.readFileSync(
+      path.join(VOID_ROOT, '.remembrance', 'goggles-token'), 'utf8').trim();
+  } catch (e) { quiet('core:void-service:goggleToken', e); _gogTok = ''; }
+  return _gogTok;
+}
+_goggleToken.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 const CACHE = new Map();               // sha1(content) → number | null
 
@@ -62,6 +77,7 @@ function _isSelfMatch(blend) {
   if (Array.isArray(blend)) return blend.length > 0 && blend.every(one);
   return one(blend);
 }
+_isSelfMatch.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The distinct pattern names a reading blended from. */
 function _blendNames(blend) {
@@ -71,6 +87,7 @@ function _blendNames(blend) {
   for (const b of arr) { if (b.name1) names.add(b.name1); if (b.name2) names.add(b.name2); }
   return [...names];
 }
+_blendNames.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 const CACHE_MAX = 5000;
 
 let _startAttempted = false;
@@ -99,13 +116,15 @@ function _curl(path, payload) {
   try {
     return execFileSync('curl', [
       '-s', '--noproxy', '127.0.0.1', '--max-time', '120',
-      '-H', 'Content-Type: application/json', '--data-binary', '@-',
+      '-H', 'Content-Type: application/json',
+      '-H', 'x-goggles-token: ' + _goggleToken(), '--data-binary', '@-',
       `http://127.0.0.1:${PORT}${path}`,
     ], { input: JSON.stringify(payload), maxBuffer: 1 << 26, encoding: 'utf8' });
   } catch (_) {
     return '';
   }
 }
+_curl.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 /** The canonical read: byte series in, blend provenance out. */
 function _postSignal(series) { return _curl('/compress_signal', { series }); }
@@ -117,6 +136,9 @@ function _postLegacy(content) { return _curl('/compress', { input: content }); }
 function _isUnknownRoute(raw) {
   return !!raw && raw.includes('unknown route');
 }
+_isUnknownRoute.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_postLegacy.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 17, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_postSignal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Read through whichever route this compressor serves.
@@ -141,6 +163,7 @@ function _post(series, content) {
   }
   return { raw: '', route: null };
 }
+_post.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Is the service answering right now? */
 function isUp() {
@@ -175,9 +198,16 @@ function ensureUp(opts = {}) {
       + '(first start loads the pattern library, ~65-100s; then reads are ~1.5s)');
   }
   try {
-    spawn('python3', [path.join(VOID_ROOT, 'compressor_service.py'),
-      '--host', '127.0.0.1', '--port', String(PORT)],
-    { cwd: VOID_ROOT, detached: true, stdio: 'ignore' }).unref();
+    // ONE spawner. This used to spawn compressor_service.py itself (detached,
+    // stdio ignored) — a second manager beside Void's scripts/service-ctl.py,
+    // with no start stamp in the service log, no pid discipline, and a
+    // process that lived and died with whatever hub process happened to call
+    // ensureUp first. Measured 2026-09-08: the service went down three times
+    // in one session and no start in the log matched the instance that died.
+    // The controller is the only thing that starts it now (start_new_session,
+    // stdout/stderr into the service log, duplicate-start refused).
+    execFileSync('python3', [path.join(VOID_ROOT, 'scripts', 'service-ctl.py'), 'start'],
+      { cwd: VOID_ROOT, stdio: 'ignore', timeout: 30000 });
   } catch (e) {
     if (!opts.quiet) console.error('[void] could not start the service — ' + e.message);
     return false;
@@ -260,6 +290,10 @@ function coherencyOf(content, opts = {}) {
 
   let value = null;
   let blend = null;
+  // The compressor's own token on this reading (void_seal mint + the
+  // void-seal/v3 commitment's shape hash) — carried so a caller can show that
+  // the number came through the instrument, never re-derived here.
+  let seal = null;
   try {
     const r = JSON.parse(raw);
     if (typeof r.avg_coherence === 'number' && isFinite(r.avg_coherence)) {
@@ -267,6 +301,14 @@ function coherencyOf(content, opts = {}) {
     }
     // Chunked path reports per-chunk blends; single-shot path reports one.
     blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null) || null;
+    if (r.mint && r.void_seal) {
+      // `sig` rides along: the field's seal gate (living-remembrance
+      // _isValidVoidSeal) is structural on {via, sig}; without the sig the
+      // token was carried but could never pass the gate.
+      seal = { mint: r.mint, via: r.void_seal.via || null,
+        sig: typeof r.void_seal.sig === 'string' ? r.void_seal.sig : null,
+        shapeSha256: (r.commitment && r.commitment.shape_sha256) || null };
+    }
   } catch (_) { quiet('core:void-service:_post', _); /* unparseable → no reading */ }
 
   // A response that carries no number is an ABSENT reading, not a zero. The
@@ -314,6 +356,7 @@ function coherencyOf(content, opts = {}) {
     blend,
     selfMatched,
     route,
+    seal,
     matchedPatterns: _blendNames(blend),
     // A reading that came from matching the content against itself describes
     // the library, not the content.
@@ -333,6 +376,7 @@ function _reset() {
   _startAttempted = false;
   _unavailable = false;
 }
+_reset.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Provenance of the most recent reading: which route served it, the blend it
@@ -343,11 +387,112 @@ function _reset() {
  */
 function lastReading() { return LAST_READING; }
 
-module.exports = { coherencyOf, ensureUp, isUp, lastReading, _reset };
+// ── THE DATA A RECORD HOLDS (the container rule, at the field's door) ────
+//
+// The operator's ruling (2026-09-14, read-signal.py): "if you tell it to
+// look at a file it will tell you it's a file; you have to run the data of
+// the file into the instrument to have it read the data." coherencyOf()
+// reads a record's UTF-8 BYTES — the reading of the file, which stays. A
+// record whose content is a JSON value holding numeric series (a God's Eye
+// View layer snapshot: latitudes, magnitudes, depths) ALSO carries data, and
+// the data is read as a SIGNAL, series by series, through /compress_signal —
+// never averaged, never taught (ingest off: the no-auto-teaching ruling),
+// never contributed (the record's one reading is the field's observation;
+// series read-backs entering the field were the 19,800-reading flood).
+//
+// The rule mirrors Void scripts/read-signal.py _container/_walk/_columns for
+// a JSON value: a numeric array of >= MIN_POINTS finite, non-constant values
+// is a series; an array of records yields each numeric key present in >=
+// MIN_POINTS records as a column. read-signal is the canonical statement of
+// the rule; this is its face at the field's door, kept to the same constants.
+const DATA_MIN_POINTS = 8;
+const DATA_MAX_SERIES = 16;     // one record never holds the field's door open longer than this
+
+function _finiteSeries(v) {
+  if (!Array.isArray(v) || v.length < DATA_MIN_POINTS) return null;
+  const out = [];
+  for (const x of v) {
+    if (typeof x !== 'number' || !Number.isFinite(x)) return null;
+    out.push(x);
+  }
+  return Math.max(...out) === Math.min(...out) ? null : out;
+}
+
+function _columnsOf(records, path, found) {
+  const cols = new Map();
+  for (const r of records) {
+    if (!r || typeof r !== 'object' || Array.isArray(r)) continue;
+    for (const [k, x] of Object.entries(r)) {
+      if (typeof x === 'number') {
+        if (!cols.has(k)) cols.set(k, []);
+        cols.get(k).push(x);
+      }
+    }
+  }
+  for (const [k, col] of cols) {
+    const s = _finiteSeries(col);
+    if (s) found.push([`${path}[*].${k}`, s]);
+  }
+}
+
+function _walkData(node, path, found) {
+  if (Array.isArray(node)) {
+    const s = _finiteSeries(node);
+    if (s) { found.push([path, s]); return; }
+    if (node.some((x) => x && typeof x === 'object' && !Array.isArray(x))) _columnsOf(node, path, found);
+    node.forEach((x, i) => { if (x && typeof x === 'object') _walkData(x, `${path}[${i}]`, found); });
+  } else if (node && typeof node === 'object') {
+    for (const [k, x] of Object.entries(node)) {
+      if (x && typeof x === 'object') _walkData(x, `${path}.${k}`, found);
+    }
+  }
+}
+
+/** The numeric series a record's content holds, by the container rule; [] when none. */
+function dataSeriesOf(content) {
+  const t = String(content || '').trim();
+  if (!t || (t[0] !== '{' && t[0] !== '[')) return [];
+  let doc;
+  try { doc = JSON.parse(t); } catch (_) { return []; }
+  const found = [];
+  _walkData(doc, '$', found);
+  return found;
+}
+
+/**
+ * Read each series a record holds AS DATA. Returns
+ * [{ name, points, coherency, mint, void_chunks }] — one reading per series,
+ * in the record's own order, capped at DATA_MAX_SERIES; [] for a record that
+ * holds no data or when the instrument is unreachable (null is never a 0).
+ */
+function dataReadingsOf(content) {
+  const found = dataSeriesOf(content).slice(0, DATA_MAX_SERIES);
+  if (!found.length || _unavailable) return [];
+  const out = [];
+  for (const [name, series] of found) {
+    const raw = _curl('/compress_signal', { series, ingest: false, contribute: false });
+    if (!raw || _isUnknownRoute(raw)) continue;
+    try {
+      const r = JSON.parse(raw);
+      if (typeof r.avg_coherence !== 'number' || !Number.isFinite(r.avg_coherence)) continue;
+      out.push({
+        name,
+        points: series.length,
+        coherency: r.avg_coherence,
+        mint: r.mint || null,
+        void_chunks: (r.memory && r.memory.void_chunks) ?? null,
+      });
+    } catch (_) { quiet('core:void-service:dataReadingsOf', _); }
+  }
+  return out;
+}
+lastReading.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+module.exports = { coherencyOf, dataReadingsOf, dataSeriesOf, ensureUp, isUp, lastReading, _reset };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 isUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

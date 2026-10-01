@@ -1,0 +1,73 @@
+'use strict';
+// ONE representation. The width gate's census finds a consumer that reads a
+// depth checkpoint, the L1 alone, or the retired 256-sample waveform, and
+// leaves the decoder, the refusals and the instrument's own chunk window alone.
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const W = require('../scripts/width-ratchet');
+
+const hit = (line) => W.PATTERNS.find((p) => p.re.test(line));
+
+test('reads of a non-canonical vector are found', () => {
+  assert.equal(hit("const v = idx[k].composed_v1;").id, 'checkpoint-key');
+  assert.equal(hit("if (v.length === 116) lib.push(v);").id, 'width-116');
+  assert.equal(hit("const DIM = 116;").id, 'width-116');
+  assert.equal(hit("wf = np.interp(np.linspace(0, raw.size - 1, 256), np.arange(raw.size), raw)").id, 'byte-waveform-256');
+  assert.equal(hit("const waveform = new Array(256).fill(0);").id, 'byte-waveform-256');
+  assert.equal(hit("if not wf or len(wf) != 256:").id, 'width-256');
+  assert.equal(hit("const TARGET_LEN = 128;").id, 'width-128');
+  assert.equal(hit("if (!inputL1 || inputL1.length !== 29) return null;").id, 'l1-width-29');
+  assert.equal(hit("fractals.set(name, Float64Array.from(entry.composed.slice(0, 29)));").id, 'l1-width-29');
+  assert.equal(hit("const r = lib.scoreWithFlow(waveform.slice(0, LAYER_DIM), waveform, { k });").id, 'l1-width-29');
+  assert.equal(hit("l1 = vec[:29]").id, 'l1-width-29');
+  assert.equal(hit("if (vec.length === 256) return null;").id, 'width-256');
+  assert.equal(hit("const c = _cosineL1(entry.fractal, e.fractal);").id, 'l1-as-vector');
+  assert.equal(hit("vec = v.get('fractal')").id, 'l1-as-vector');
+});
+
+test('the canonical vector, the refusals and template names are not consumers', () => {
+  assert.equal(hit("const v = idx[k].composed; if (v.length === 232) lib.push(v);"), undefined);
+  assert.equal(hit("resonantTemplate: { fractal: resonant.fractal, resonance: resonant.resonance }"), undefined);
+  assert.equal(hit("handlers['fractal'] = (args) => {"), undefined);
+  assert.equal(hit("if (voices.fractal.isCode) signals.push(1);"), undefined);
+  assert.equal(hit("if not wf or len(wf) != WIDTH:"), undefined);
+  assert.equal(hit("const deep = entry.composed.length % 29 === 0 && entry.composed;"), undefined);
+  assert.equal(hit("for (let i = 0; i < 29; i++) out[i] = adims[i];"), undefined);
+  assert.equal(hit("function _canonicalWidth() { return currentDepth() * LAYER_DIM; }"), undefined);
+  assert.equal(hit("for (let i = 0; i < 256; i++) acc += chunk[i];"), undefined);
+});
+
+test('the live census is empty: every consumer reads the 232-D decoder', () => {
+  const c = W.census();
+  assert.equal(c.total, 0, c.sites.map((s) => `${s.file}:${s.line} [${s.id}] ${s.text}`).join('\n'));
+});
+
+test('the L1 boundary is drawn by the FORM: the decoder building its block never matches, the block carried alone always does', () => {
+  // building (never a hit)
+  assert.equal(hit("for (let i = 0; i < LAYER_DIM; i++) out[l * LAYER_DIM + i] = layers[l][i];"), undefined);
+  assert.equal(hit("const out = new Float64Array(FRACTAL_DIM);"), undefined);
+  assert.equal(hit("if (entry.composed.length % 29 !== 0) return null;"), undefined);
+  // carrying (always a hit, whatever file it sits in — no name-allowlist for this pattern)
+  assert.equal(hit("const r = library.scoreWithFlow(Array.from(composed).slice(0, 29), composed, { k: size });").id, 'l1-width-29');
+  assert.equal(hit("fractals.set(name, row.subarray(0, 29));").id, 'l1-width-29');
+});
+
+test('the shape reading is recorded on every L1 hit and never decides it', () => {
+  const c = W.census();
+  for (const s of c.shapes) {
+    assert.ok(Number.isFinite(s.builder) && Number.isFinite(s.breach), 'both resonances are numbers');
+    assert.ok(['decoder', 'consumer'].includes(s.verdict));
+    assert.ok(c.sites.some((x) => x.file === s.file && x.line === s.line), `${s.file}:${s.line} reads ${s.verdict} — still a site`);
+  }
+  // the probe reads the fixtures themselves: both cosines in [-1, 1], the flow one reading per active layer
+  const r = W.shapeAt({ file: require('node:path').join(__dirname, '..', 'seeds', 'width-shape', 'breach.txt'), line: 12, window: 8 });
+  assert.ok(Math.abs(r.builder) <= 1 && Math.abs(r.breach) <= 1);
+  assert.equal(r.flowBuilder.length, r.checkpoints.length);
+});
+
+test('the decoder, the one space and the compressor internals are allowed by name with a reason', () => {
+  for (const f of ['src/core/decoder-stack.js', 'src/core/resonance-space.js', 'Void-Data-Compressor/void_compressor_v5.py']) {
+    const a = W.ALLOW.find(([re]) => re.test('/home/user/x/' + f) || re.test('/home/user/' + f));
+    assert.ok(a && a[1].length > 10, `${f} allowed with a reason`);
+  }
+});

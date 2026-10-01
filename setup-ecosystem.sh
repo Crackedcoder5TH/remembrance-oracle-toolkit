@@ -157,6 +157,20 @@ else
   fi
 fi
 
+# ─── Step 6.5: The instrument itself ──────────────────────────────────
+# The setup used to stop at deps and baselines: it never installed the
+# fast-path wheel and never started the compressor — a fresh host came up
+# with the goggles but without the instrument behind them (measured
+# 2026-09-17). The boot script owns those two steps; the installer reuses
+# it (SKIP_CLONE: the repos are already here; BOOT_VOID_ONLY: no port).
+if [ "${SKIP_INSTALL:-0}" != "1" ] && [ -f "remembrance-oracle-toolkit/scripts/ecosystem-boot.sh" ]; then
+  step "Bringing the Void instrument up (wheel + compressor service)..."
+  ECOSYSTEM_HOME="$(pwd)" SKIP_CLONE=1 BOOT_VOID_ONLY=1 \
+    sh remembrance-oracle-toolkit/scripts/ecosystem-boot.sh \
+    && ok "  instrument up (compressor service healthy)" \
+    || warn "  instrument did not come up — cd Void-Data-Compressor && python3 scripts/service-ctl.py start --wait"
+fi
+
 # ─── Step 7: Install the unified `remembrance` CLI ─────────────────────
 step "Installing unified CLI..."
 BIN_PATH="remembrance-oracle-toolkit/bin/remembrance"

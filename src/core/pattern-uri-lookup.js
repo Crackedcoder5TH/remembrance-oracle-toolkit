@@ -25,6 +25,7 @@ const DEFAULT_DB_PATH = path.resolve(__dirname, '../../.remembrance/oracle.db');
 function _baseOf(uri) {
   return uri.split('#')[0].split('@')[0];
 }
+_baseOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 class PatternUriLookup {
   /**

@@ -179,6 +179,7 @@ function registerCompressCommands(handlers, deps) {
     }
   };
 }
+registerCompressCommands.atomicProperties = { charge: -1, valence: 4, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 1, group: 3, period: 5, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 
 function _formatBytes(bytes) {
@@ -186,5 +187,6 @@ function _formatBytes(bytes) {
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
+_formatBytes.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { registerCompressCommands };

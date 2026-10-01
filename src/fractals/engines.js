@@ -32,6 +32,7 @@ function sierpinski(level) {
 
   return { level: n, triangles, filledRatio, voidRatio, vertices };
 }
+sierpinski.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _sierpinskiVertices(level, a, b, c) {
   if (level === 0) return [[a, b, c]];
@@ -45,6 +46,7 @@ function _sierpinskiVertices(level, a, b, c) {
     // Central triangle is removed (the void)
   ];
 }
+_sierpinskiVertices.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Sierpinski density — measures how much "void" exists at a given depth.
@@ -56,6 +58,7 @@ function _sierpinskiVertices(level, a, b, c) {
 function sierpinskiDensity(level) {
   return 1 - Math.pow(3 / 4, Math.max(0, level));
 }
+sierpinskiDensity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── 2. Mandelbrot Set ───
 
@@ -89,6 +92,7 @@ function mandelbrot(cr, ci, maxIter = 100) {
 
   return { inSet, iterations: n, magnitude, escapeSpeed: Math.max(0, Math.min(1, escapeSpeed)) };
 }
+mandelbrot.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Mandelbrot boundary distance — measures proximity to the set boundary.
@@ -108,6 +112,7 @@ function mandelbrotResonance(cr, ci, maxIter = 100) {
   // Exterior points: resonance based on how slowly they escaped
   return 1 - result.escapeSpeed;
 }
+mandelbrotResonance.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── 3. Barnsley Fern ───
 
@@ -156,6 +161,7 @@ function barnsleyFern(iterations = 10000) {
 
   return { points, bounds: { minX, maxX, minY, maxY } };
 }
+barnsleyFern.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Barnsley growth rate — measures cascade amplification at each iteration.
@@ -172,6 +178,7 @@ function barnsleyGrowthRate(iterations) {
   const approachRate = 1 - Math.pow(dominantScale, iterations);
   return effectiveGrowth * approachRate;
 }
+barnsleyGrowthRate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── 4. Julia Set ───
 
@@ -206,6 +213,7 @@ function julia(zr, zi, cr, ci, maxIter = 100) {
 
   return { inSet, iterations: n, magnitude, stability };
 }
+julia.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Julia stability map — scans a region and returns average stability.
@@ -241,6 +249,7 @@ function juliaStabilityMap(cr, ci, resolution = 20, maxIter = 50) {
     connectedRatio: connectedCount / total,
   };
 }
+juliaStabilityMap.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── 5. Lyapunov Fractal ───
 
@@ -286,6 +295,7 @@ function lyapunov(r, iterations = 200, warmup = 100) {
 
   return { exponent, isOrdered, isChaotic, stability };
 }
+lyapunov.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 1, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Lyapunov sequence — evaluates a sequence of r-values (e.g., "AABB" with rA, rB).
@@ -325,6 +335,7 @@ function lyapunovSequence(sequence, rA, rB, iterations = 200, warmup = 100) {
   const exponent = count > 0 ? lambda / count : 0;
   return { exponent, isOrdered: exponent < 0, isChaotic: exponent > 0 };
 }
+lyapunovSequence.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Fractal Template Registry ───
 

@@ -58,6 +58,7 @@ function _readDirectionLines(p) {
     return out;
   } catch (_) { return []; }
 }
+_readDirectionLines.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _loadDirectionHistory() {
   if (_directionLoaded) return;
@@ -68,6 +69,7 @@ function _loadDirectionHistory() {
   if (lines.length === 0) lines = _readDirectionLines(_DIRECTION_SEED);
   for (const s of lines) _directionHistory.push(s);
 }
+_loadDirectionHistory.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _captureDirectionSnapshot(state) {
   if (!state) return;
@@ -89,6 +91,7 @@ function _captureDirectionSnapshot(state) {
       _directionHistory.map((s) => JSON.stringify(s)).join('\n') + '\n');
   } catch (_) { quiet('core:field-coupling:history:_sealedGate', _); /* best-effort persistence */ }
 }
+_captureDirectionSnapshot.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Compute the field's direction-of-flow over a recent window. Returns
@@ -216,6 +219,6 @@ function recordTemporalSnapshot({ repoDir, filePath, maxVersions = 12 } = {}) {
   };
 }
 
-recordTemporalSnapshot.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+recordTemporalSnapshot.atomicProperties = { charge: 0, valence: 4, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 13, period: 4, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { _readDirectionLines, _loadDirectionHistory, _captureDirectionSnapshot, fieldDirection, recordTemporalSnapshot };

@@ -137,5 +137,6 @@ function registerFractalCommands(handlers, { oracle, getCode }) {
     console.error(`Unknown fractal sub-command: ${sub}. Run ${c.cyan('oracle fractal help')}`);
   };
 }
+registerFractalCommands.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 3, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 module.exports = { registerFractalCommands };

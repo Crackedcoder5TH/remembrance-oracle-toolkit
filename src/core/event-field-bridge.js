@@ -71,6 +71,7 @@ function _coherenceFor(event) {
     default: return null; // unknown type — let the caller decide
   }
 }
+_coherenceFor.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function _costFor(event) {
   if (!event) return 1;
@@ -83,6 +84,7 @@ function _costFor(event) {
   if (typeof event.imported === 'number' && event.imported > 0) return event.imported;
   return 1;
 }
+_costFor.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function clamp01(n) {
   if (typeof n !== 'number' || !isFinite(n)) return 0.5;

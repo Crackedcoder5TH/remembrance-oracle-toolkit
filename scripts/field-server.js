@@ -110,7 +110,8 @@ Endpoints (once running):
   GET  /                    Health peek
   GET  /.well-known/mcp     MCP discovery manifest
 
-Auth: reads are open; writes require the bearer token when one is set.
+Auth: field reads are open; writes, the legacy record store and recall
+require the bearer token when one is set.
 CORS is enabled so browsers and web agents can call this directly.
 
 Examples:
@@ -258,11 +259,13 @@ const TOOLS = [
   },
   {
     name: 'legacy',
-    description: "Durable record store on the field's SQLite — the Valor Legacies database. action: store (write { name, content, tags?, author? }; bearer-gated, coherence-scored), get ({ id }), list ({ q?, limit?, offset? }). Reads open; store requires the bearer token.",
+    description: "Durable record store on the field's SQLite — the Valor Legacies database. action: store / update ({ id?, name, content, tags?, author?, meta? }; coherence-scored on entry), store_guarded ({ id, name, content, tags?, guard: { tags, max, blockTag? } } — atomic capacity-checked insert; outcome inserted | duplicate | sold_out), get ({ id }), list ({ q?, tags?, limit?, offset? }), resonant ({ q | id, k? }), delete ({ id }). Every action requires the bearer token when one is configured — these are private records.",
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', description: 'store | get | list (default list)' },
+        action: { type: 'string', description: 'store | update | store_guarded | get | list | resonant | delete (default list)' },
+        guard: { type: 'object', description: 'store_guarded only: { tags: string[] (tags[0] the selective key), max: integer >= 1, blockTag?: string }' },
+        meta: { type: 'object' },
         id: { type: 'string' },
         name: { type: 'string' },
         content: { type: 'string' },
@@ -276,7 +279,7 @@ const TOOLS = [
   },
   {
     name: 'recall',
-    description: "Retro-causal projection retrieval — the ecosystem's own RAG. Resonant retrieval over the field's substrate, re-ranked by the healed-anchor pull (future pulls present) — the same geometry as fractal_retro_search / temporal-projection. Returns the top-k decoded slices to inject as context. { query (or q/content), k? }. Open read — the chat and any agent use this identically.",
+    description: "Retro-causal projection retrieval — the ecosystem's own RAG. Resonant retrieval over the field's substrate, re-ranked by the healed-anchor pull (future pulls present) — the same geometry as fractal_retro_search / temporal-projection. Returns the top-k decoded slices to inject as context. { query (or q/content), k? }. Bearer-gated when a token is configured: the slices are the legacy store's private records.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -315,7 +318,10 @@ function isPrivilegedTool(name, action) {
   // execute:true, treat it as privileged.
   if (isContributeTool(name, action)) return true;
   if (name === 'exec_verify') return true;
-  if (name === 'legacy' && action === 'store') return true;
+  // The legacy store is the Valor Legacies database (leads, buyer accounts,
+  // purchases) — every action reads or mutates private records, and recall
+  // returns their decoded content. None of it is a public read.
+  if (name === 'legacy' || name === 'recall') return true;
   return false;
 }
 function isPrivilegedEvaluate(args) {
@@ -406,8 +412,8 @@ function _legacyStore() {
       'CREATE TABLE IF NOT EXISTS legacies (id TEXT PRIMARY KEY, name TEXT, content TEXT, tags TEXT, author TEXT, coherence REAL, created_at TEXT)',
     ).run();
     // Safe migration — add later columns to a table created by an earlier build.
-    for (const col of ['meta TEXT', 'waveform TEXT', 'updated_at TEXT']) {
-      try { store.db.prepare('ALTER TABLE legacies ADD COLUMN ' + col).run(); } catch (_) { /* already present */ }
+    for (const col of ['meta TEXT', 'waveform TEXT', 'updated_at TEXT', 'data_readings TEXT']) {
+      try { store.db.prepare(`ALTER TABLE legacies ADD COLUMN ${col}`).run(); } catch (_) { /* already present */ }
     }
     _legacyStoreCache = store;
   } catch (_) { _legacyStoreCache = null; }
@@ -416,16 +422,22 @@ function _legacyStore() {
 function _legacyRow(r) {
   let tags = []; try { tags = JSON.parse(r.tags || '[]'); } catch (_) { /* */ }
   let meta = {}; try { meta = JSON.parse(r.meta || '{}'); } catch (_) { /* */ }
-  return { id: r.id, name: r.name, content: r.content, tags, meta, author: r.author, coherence: r.coherence, createdAt: r.created_at, updatedAt: r.updated_at };
+  let dataReadings = []; try { dataReadings = JSON.parse(r.data_readings || '[]'); } catch (_) { /* */ }
+  return { id: r.id, name: r.name, content: r.content, tags, meta, author: r.author, coherence: r.coherence, dataReadings, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 // Encode a record the way the field encodes everything: a coherence score plus
 // the substrate's own waveform, so resonance search is just cosine over these.
+// `coherence` is the record READ AS A FILE (its bytes); `dataReadings` is the
+// data it holds READ AS DATA — each numeric series through /compress_signal,
+// one reading per series, never averaged (the container rule, read-signal.py).
+// A record that carries no series has dataReadings [].
 function _legacyEncode(name, content) {
-  let coherence = 0; let waveform = null;
+  let coherence = 0; let waveform = null; let dataReadings = [];
   const ft = _ft();
   if (ft) { try { coherence = (ft.read({ content, name, language: 'text' }, { source: 'field-server:legacy', growSubstrate: false }).coherence) || 0; } catch (_) { /* */ } }
   try { waveform = Array.from(codeToWaveform(name + '\n' + content)); } catch (_) { waveform = null; }
-  return { coherence, waveform };
+  try { dataReadings = require('../src/core/void-service').dataReadingsOf(content); } catch (_) { dataReadings = []; }
+  return { coherence, waveform, dataReadings };
 }
 function legacyOp(args) {
   const store = _legacyStore();
@@ -441,23 +453,86 @@ function legacyOp(args) {
     let id = args.id ? String(args.id) : null;
     if (action === 'update') {
       if (!id) return { ok: false, error: 'id is required for update' };
-      if (!db.prepare('SELECT 1 FROM legacies WHERE id = ?').get(id)) return { ok: false, error: 'no legacy with id ' + id };
+      const exists = db.prepare('SELECT 1 FROM legacies WHERE id = ?').get(id);
+      if (!exists) return { ok: false, error: 'no legacy with id ' + id };
     }
     if (!id) id = crypto.createHash('sha256').update(name + '\n' + content).digest('hex').slice(0, 16);
     const tags = Array.isArray(args.tags) ? args.tags : [];
     const author = args.author ? String(args.author) : null;
     const meta = (args.meta && typeof args.meta === 'object') ? args.meta : {};
-    const { coherence, waveform } = _legacyEncode(name, content);
+    const { coherence, waveform, dataReadings } = _legacyEncode(name, content);
     const now = new Date().toISOString();
     const wf = waveform ? JSON.stringify(waveform) : null;
+    const dr = JSON.stringify(dataReadings || []);
     if (action === 'update') {
-      db.prepare('UPDATE legacies SET name=?, content=?, tags=?, author=?, meta=?, coherence=?, waveform=?, updated_at=? WHERE id=?')
-        .run(name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, id);
-      return { ok: true, id, name, coherence, updatedAt: now };
+      db.prepare('UPDATE legacies SET name=?, content=?, tags=?, author=?, meta=?, coherence=?, waveform=?, data_readings=?, updated_at=? WHERE id=?')
+        .run(name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, dr, now, id);
+      return { ok: true, id, name, coherence, dataReadings, updatedAt: now };
     }
-    db.prepare('INSERT OR REPLACE INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-      .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, now);
-    return { ok: true, id, name, coherence, createdAt: now };
+    // An upsert keeps the record's birth: created_at is set once, so re-storing
+    // a record (a message marked read, a lead stamped with its outcome) never
+    // moves it in the created_at-ordered lists every reader pages through.
+    db.prepare('INSERT INTO legacies (id, name, content, tags, author, meta, coherence, waveform, data_readings, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) '
+      + 'ON CONFLICT(id) DO UPDATE SET name=excluded.name, content=excluded.content, tags=excluded.tags, author=excluded.author, '
+      + 'meta=excluded.meta, coherence=excluded.coherence, waveform=excluded.waveform, data_readings=excluded.data_readings, updated_at=excluded.updated_at')
+      .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, dr, now, now);
+    const born = db.prepare('SELECT created_at FROM legacies WHERE id = ?').get(id);
+    return { ok: true, id, name, coherence, dataReadings, createdAt: born ? born.created_at : now, updatedAt: now };
+  }
+
+  // Capacity-guarded insert (the purchase cap). Counts the live records that
+  // carry EVERY tag in guard.tags — exact match, re-checked after the LIKE
+  // prefilter because '_' and '%' are LIKE wildcards inside ids — and refuses
+  // once that count reaches guard.max, or when any live record carries
+  // guard.blockTag. The check and the insert share one BEGIN IMMEDIATE, so two
+  // concurrent checkouts cannot both pass the cap. An id already stored comes
+  // back as a duplicate, untouched, so a retried fulfillment is idempotent.
+  if (action === 'store_guarded') {
+    const id = args.id ? String(args.id) : '';
+    const name = String(args.name || '').trim();
+    const content = String(args.content || '');
+    const guard = (args.guard && typeof args.guard === 'object') ? args.guard : {};
+    const guardTags = Array.isArray(guard.tags) ? guard.tags.map(String).filter(Boolean) : [];
+    const max = Number(guard.max);
+    if (!id || !name || !content) return { ok: false, error: 'id, name and content are required' };
+    if (guardTags.length === 0 || !Number.isInteger(max) || max < 1) {
+      return { ok: false, error: 'guard { tags: [..], max: positive integer } is required' };
+    }
+    const blockTag = guard.blockTag ? String(guard.blockTag) : null;
+    const tags = Array.isArray(args.tags) ? args.tags.map(String) : [];
+    const author = args.author ? String(args.author) : null;
+    const meta = (args.meta && typeof args.meta === 'object') ? args.meta : {};
+    // Scored before the lock: the compressor call must not hold the write lock.
+    const { coherence, waveform } = _legacyEncode(name, content);
+    const wf = waveform ? JSON.stringify(waveform) : null;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const dup = db.prepare('SELECT * FROM legacies WHERE id = ?').get(id);
+      if (dup) { db.exec('COMMIT'); return { ok: true, outcome: 'duplicate', legacy: _legacyRow(dup) }; }
+      // guard.tags[0] is the selective key (e.g. lead:<id>); the rest are
+      // verified exactly below.
+      const rows = db.prepare('SELECT tags FROM legacies WHERE tags LIKE ?')
+        .all('%' + JSON.stringify(guardTags[0]) + '%');
+      let live = 0;
+      let blocked = false;
+      for (const r of rows) {
+        let rowTags;
+        try { rowTags = JSON.parse(r.tags || '[]'); } catch (_) { continue; }
+        if (!Array.isArray(rowTags) || !guardTags.every((t) => rowTags.includes(t))) continue;
+        live += 1;
+        if (blockTag && rowTags.includes(blockTag)) blocked = true;
+      }
+      if (blocked || live >= max) { db.exec('COMMIT'); return { ok: true, outcome: 'sold_out', live }; }
+      const now = new Date().toISOString();
+      db.prepare('INSERT INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+        .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, now);
+      db.exec('COMMIT');
+      return { ok: true, outcome: 'inserted', id, name, coherence, createdAt: now };
+    } catch (e) {
+      let rolledBack = true;
+      try { db.exec('ROLLBACK'); } catch (_) { rolledBack = false; }
+      return { ok: false, error: String((e && e.message) || e), rolledBack };
+    }
   }
 
   if (action === 'delete') {
@@ -482,13 +557,24 @@ function legacyOp(args) {
     // correctly-scoped page AND total.
     const tags = Array.isArray(args.tags) ? args.tags.map(String)
       : (args.tag ? [String(args.tag)] : []);
-    const where = [];
-    const params = [];
-    if (q) { where.push('(name LIKE ? OR content LIKE ?)'); params.push('%' + q + '%', '%' + q + '%'); }
-    for (const t of tags) { where.push('tags LIKE ?'); params.push('%' + JSON.stringify(t) + '%'); }
-    const clause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-    const rows = db.prepare('SELECT * FROM legacies ' + clause + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(...params, limit, offset);
-    const total = db.prepare('SELECT COUNT(*) AS c FROM legacies ' + clause).get(...params).c;
+    // Principle 11: ONE literal statement — no SQL text assembled from
+    // variables. The optional filters ride as BOUND VALUES: q as a LIKE
+    // pattern (NULL skips it), tags as a JSON array of LIKE patterns the
+    // row must match in full. json_each unpacks that array INSIDE SQLite,
+    // so the variable-length tag filter needs no variable-length SQL.
+    const bind = {
+      q: q ? ('%' + q + '%') : null,
+      tags: JSON.stringify(tags.map((t) => '%' + JSON.stringify(t) + '%')),
+      limit,
+      offset,
+    };
+    const rows = db.prepare(
+      'SELECT * FROM legacies WHERE (@q IS NULL OR name LIKE @q OR content LIKE @q) '
+      + 'AND (SELECT COUNT(*) FROM json_each(@tags) je WHERE legacies.tags LIKE je.value) = json_array_length(@tags) '
+      + 'ORDER BY created_at DESC LIMIT @limit OFFSET @offset').all(bind);
+    const total = db.prepare(
+      'SELECT COUNT(*) AS c FROM legacies WHERE (@q IS NULL OR name LIKE @q OR content LIKE @q) '
+      + 'AND (SELECT COUNT(*) FROM json_each(@tags) je WHERE legacies.tags LIKE je.value) = json_array_length(@tags)').get(bind).c;
     return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total };
   }
 
@@ -691,7 +777,8 @@ function send(res, code, obj) {
 const ok = (id, result) => ({ jsonrpc: '2.0', id, result });
 const err = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
-// Reads are open; writes require the bearer token when one is configured.
+// Field reads are open; writes and the private record store (legacy, recall)
+// require the bearer token when one is configured.
 function isAuthed(req) {
   if (!TOKEN) return true;
   return (req.headers['authorization'] || '') === 'Bearer ' + TOKEN;
@@ -728,7 +815,7 @@ function manifest() {
       'POST /contribute': '{ coherence, source, cost? } -> field state  (write — bearer token if configured)',
     },
     auth: TOKEN
-      ? 'public reads; writes (field_contribute / POST /contribute) require Authorization: Bearer <FIELD_TOKEN>'
+      ? 'field reads are public; writes (field_contribute / POST /contribute) and every legacy-store / recall call require Authorization: Bearer <FIELD_TOKEN>'
       : 'open (no FIELD_TOKEN set — anyone can read and write)',
     cors: 'enabled (*)',
   };
@@ -744,7 +831,7 @@ function health() {
 
   // 1) Write auth posture.
   add('Write token', !!TOKEN, TOKEN ? 'info' : 'warn',
-    TOKEN ? 'FIELD_TOKEN set — reads are open, writes require the bearer.' : 'No FIELD_TOKEN — writes are OPEN to anyone who can reach this URL.',
+    TOKEN ? 'FIELD_TOKEN set — field reads are open; writes, the legacy store and recall require the bearer.' : 'No FIELD_TOKEN — writes AND the legacy store (leads, buyer accounts, purchases) are OPEN to anyone who can reach this URL.',
     TOKEN ? undefined : 'Set the FIELD_TOKEN env var on the host (Railway → Variables) to require a bearer token for writes.');
 
   // 2) Durable persistence — is state on a mounted volume, and is it writable?
@@ -943,9 +1030,7 @@ const server = http.createServer((req, res) => {
   if (path === '/legacy' || path === '/legacies') {
     return readBody(req, (raw) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
-      if ((p.action || 'list') === 'store' && !authed) {
-        return send(res, 401, { error: 'unauthorized — bearer token required to store a legacy' });
-      }
+      if (!authed) return send(res, 401, { error: 'unauthorized — bearer token required for the legacy store' });
       try { return send(res, 200, callTool('legacy', p)); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
@@ -953,6 +1038,7 @@ const server = http.createServer((req, res) => {
   if (path === '/recall') {
     return readBody(req, (raw) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      if (!authed) return send(res, 401, { error: 'unauthorized — bearer token required for recall' });
       try { return send(res, 200, callTool('recall', p)); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
@@ -1013,7 +1099,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`[field-server] Remembrance Field on ${HOST}:${PORT}` +
-    (TOKEN ? ' (public read; bearer write)' : ' (open — set FIELD_TOKEN to gate writes)') +
+    (TOKEN ? ' (public field read; bearer write + records)' : ' (open — set FIELD_TOKEN to gate writes and records)') +
     ` | MCP: /mcp · REST: /coherency,/contribute,/field · manifest: /.well-known/mcp` +
     ` | rate: ${RATE_LIMIT_PER_MIN > 0 ? RATE_LIMIT_PER_MIN + '/min/ip' : 'off'}` +
     ` | persist: ${process.env.ENTROPY_PATH || '.remembrance/entropy.json (ephemeral without a volume)'}`);

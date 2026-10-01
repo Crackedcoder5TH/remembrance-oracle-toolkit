@@ -105,7 +105,7 @@ if (!process.argv.includes('--no-harvest')) {
   const store = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.json'), 'utf8'));
   const index = store.index; let seq = SL.nextSequence(index); const now = new Date().toISOString(); let added = 0;
   const ser = (ys) => { const m = Math.max(...ys.map(Math.abs)) || 1; return ys.map((y) => (y / m).toFixed(5)).join(','); };
-  for (const [key, series] of Object.entries(results)) { if (index[key] || !series.length) continue; const entry = { composed_v2: Array.from(composedAtDepth(ser(series), 8)), waveform: series, source: 'sc-tests-full' }; SL.stamp(entry, { sequence: seq++, now, series, cadence: 'event' }); index[key] = entry; added++; }
+  for (const [key, series] of Object.entries(results)) { if (index[key] || !series.length) continue; const entry = { composed: Array.from(composedAtDepth(ser(series), 8)), waveform: series, source: 'sc-tests-full' }; SL.stamp(entry, { sequence: seq++, now, series, cadence: 'event' }); index[key] = entry; added++; }
   fs.writeFileSync(path.join(VOID, 'pattern_index_fractal.json'), JSON.stringify(store));
   console.log('\nFED BACK: compressed ' + added + ' SC result series into the substrate (namespace sc-research/), time-stamped.');
 }

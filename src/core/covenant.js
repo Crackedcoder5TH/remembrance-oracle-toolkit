@@ -62,6 +62,7 @@ function _cacheKey(code) {
   const crypto = require('crypto');
   return crypto.createHash('sha256').update(code).digest('hex');
 }
+_cacheKey.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function covenantCheck(code, metadata = {}) {
   // Fast-path: if no metadata and not trusted, check cache
@@ -438,39 +439,9 @@ module.exports = {
 };
 
 // ── Atomic self-description (batch-generated) ────────────────────
-covenantCheck.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-getCovenant.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 2, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-formatCovenantResult.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 3, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-deepSecurityScan.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-safeJsonParse.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-setPrincipleRegistry.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+covenantCheck.atomicProperties = { charge: 1, valence: 3, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 1, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "malevolent", domain: "utility" };
+getCovenant.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+formatCovenantResult.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+deepSecurityScan.atomicProperties = { charge: 0, valence: 5, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 13, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+safeJsonParse.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+setPrincipleRegistry.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 10, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

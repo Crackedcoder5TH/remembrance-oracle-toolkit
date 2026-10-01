@@ -31,6 +31,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_PATH = path.join(ROOT, '.covenant-size-baseline.json');
@@ -104,6 +105,11 @@ function main() {
   const cmp = compareSizes(census, baseMap);
 
   if (save) {
+    // THE LAW: no new monolith and no growth is ever saved into the floor.
+    if (baseline && refuseIfLoosening('size-ratchet', [
+      ...cmp.newMonoliths.map((m) => `NEW monolith: ${m.file} is ${m.lines} lines (cap ${MAX_LINES})`),
+      ...cmp.grown.map((g) => `GREW: ${g.file} ${g.baseline} -> ${g.lines} lines (slack ${SLACK})`),
+    ], argv)) { process.exitCode = 1; return; }
     const modules = {};
     for (const e of census) if (e.lines > MAX_LINES) modules[e.file] = e.lines;
     const doc = {

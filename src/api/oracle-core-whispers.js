@@ -38,6 +38,7 @@ function _generateResolveWhisper(decision, pattern, healing) {
   }
   return base;
 }
+_generateResolveWhisper.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _generateCandidateNotes(decision) {
   if (!decision.alternatives || decision.alternatives.length === 0) return null;
@@ -62,6 +63,7 @@ function _generateCandidateNotes(decision) {
   if (notes.length === 0) return null;
   return `Chose "${winner.name}" (${winnerScore.toFixed(3)}) over: ${notes.join('; ')}`;
 }
+_generateCandidateNotes.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   RESOLVE_WHISPERS,

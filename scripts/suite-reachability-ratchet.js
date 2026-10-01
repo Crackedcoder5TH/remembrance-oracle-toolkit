@@ -30,6 +30,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
+const { refuseIfLoosening } = require('./lib/ratchet-law');
 
 const ROOT = path.resolve(__dirname, '..');
 const BASELINE_PATH = path.join(ROOT, '.suite-reachability-baseline.json');
@@ -77,6 +78,9 @@ function main() {
   if (argv.includes('--save-baseline')) {
     const prev = loadBaseline();
     const prevByFile = new Map(((prev && prev.unreachable) || []).map((e) => [e.file, e]));
+    // THE LAW: the unreachable list only shrinks. A new unreachable test is DEBT.
+    if (prev && refuseIfLoosening('suite-reachability',
+      current.filter((f) => !prevByFile.has(f)).map((f) => `NEW unreachable test: ${f}`), argv)) return 1;
     const data = JSON.stringify({
       note: 'suite-reachability baseline — tracked *.test.js the runner glob cannot reach. Shrink-only; each entry needs a verdict to stay.',
       savedAt: new Date().toISOString(),

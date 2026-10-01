@@ -1,0 +1,56 @@
+// REFERENCE SHAPE — the decoder BUILDING its 29-D L1 block into the one vector.
+// This is what a legitimate `29` looks like: a layer produces 29 dims and the
+// stack concatenates layers into the canonical 232-D vector. Read by
+// scripts/width-ratchet.js as a pattern, never as a name.
+
+function toFractalWaveform(input, _opts = {}) {
+  const out = new Float64Array(FRACTAL_DIM);
+  if (typeof input !== 'string' || input.length === 0) return out;
+  const p = _atomicProps(input);
+  const adims = _atomicDims(p);
+  const sdims = _structuralDims(input);
+  const sig = _structurality(input);
+  for (let i = 0; i < 12; i++) out[i] = adims[i];
+  for (let i = 0; i < 16; i++) out[12 + i] = sdims[i];
+  out[28] = sig;
+  return out;
+}
+
+function composedAtDepth(input, depth) {
+  const k = Number.isFinite(depth) ? Math.min(depth, _registry.length) : currentDepth();
+  if (k <= 0) return new Float64Array(0);
+  const parts = [];
+  let total = 0;
+  for (let i = 0; i < k; i++) {
+    const v = _registry[i].encode(input);
+    parts.push(v);
+    total += v.length;
+  }
+  const out = new Float64Array(total);
+  let off = 0;
+  for (const v of parts) {
+    for (let i = 0; i < v.length; i++) out[off + i] = v[i];
+    off += v.length;
+  }
+  try { require('./void-seal').record(out, k); } catch (_) { quiet('core:decoder-stack:require', _); }
+  return out;
+}
+
+function compose(input) {
+  return composedAtDepth(input, currentDepth());
+}
+
+const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 232
+
+function _compose(input) {
+  const out = new Float64Array(COMPOSED_DIM);
+  const layers = [
+    toFractalWaveform(input), toLexicalWaveform(input), toNumericalWaveform(input),
+    toSpectralWaveform(input), toRedundancyWaveform(input),
+    toContentProjection(input), toDimensionalWaveform(input), toDynamicalWaveform(input),
+  ];
+  for (let l = 0; l < layers.length; l++) {
+    for (let i = 0; i < LAYER_DIM; i++) out[l * LAYER_DIM + i] = layers[l][i];
+  }
+  return out;
+}

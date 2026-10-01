@@ -39,12 +39,7 @@ function renderFile(elements) {
   }
   return header + elements.map(renderElement).join('\n\n') + `\n\nmodule.exports = { ingested: ${elements.length}, generatedAt: new Date().toISOString() };\n`;
 }
-renderFile.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.3, group: 3, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'covenant',
-};
+renderFile.atomicProperties = { charge: 1, valence: 1, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0.33, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function runIngest(opts = {}) {
   const elements = getActiveElements();
@@ -65,12 +60,7 @@ function runIngest(opts = {}) {
   if (!opts.dryRun) fs.writeFileSync(ADDITIONS_FILE, content);
   return { changed: true, count: unique.length, file: ADDITIONS_FILE };
 }
-runIngest.atomicProperties = {
-  charge: 1, valence: 3, mass: 'medium', spin: 'odd', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.8, group: 13, period: 6,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
+runIngest.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 if (require.main === module) {
   const result = runIngest();

@@ -6,26 +6,36 @@
 # matrix clones each peer repo, npm-installs the toolkit from the
 # PR SHA, and runs their test suite.
 #
-# Trigger: every pull request touching src/ or every push to main.
-# Failures surface as a single CI check on the toolkit PR.
+# Trigger: trusted owner-controlled pushes and manual dispatch only.
+# Private peers are never exposed to pull-request-controlled workflow code.
 
 name: Cross-Repo Matrix
 
+concurrency:
+  group: cross-repo-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
-  pull_request:
+  # Private peers require ECOSYSTEM_PAT. Keep that credential away from
+  # pull-request-controlled code: this matrix runs only on trusted pushes to
+  # the canonical branch or this coordinated owner-controlled fix branch.
+  push:
+    branches:
+      - main
+      - fix/pr-355-sync-review-findings
     paths:
       - 'src/**'
       - 'tests/**'
       - 'package.json'
       - 'remembrance.json'
       - '.github/workflows/cross-repo-matrix.yml'
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   reflector-against-toolkit:
     name: Reflector tests against toolkit PR
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout toolkit (this PR)
         uses: actions/checkout@v4
@@ -37,8 +47,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Crackedcoder5TH/Reflector-oracle-
+          ref: fix/cross-repo-test-failures
           path: reflector
           fetch-depth: 1
+          token: ${{ secrets.ECOSYSTEM_PAT }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -66,59 +78,163 @@ jobs:
         run: npm test
 
   void-against-toolkit:
-    name: Void Compressor compat against toolkit PR
+    name: Void ${{ matrix.suite }} against toolkit
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [compatibility, contracts]
+    env:
+      ORACLE_TOOLKIT: ${{ github.workspace }}/ecosystem/remembrance-oracle-toolkit
     steps:
       - name: Checkout toolkit
         uses: actions/checkout@v4
         with:
-          path: toolkit
+          path: ecosystem/remembrance-oracle-toolkit
           fetch-depth: 1
 
       - name: Checkout Void Compressor
         uses: actions/checkout@v4
         with:
           repository: Crackedcoder5TH/Void-Data-Compressor
-          path: void
+          ref: fix/pr-355-vdc-contracts-coined
+          path: ecosystem/Void-Data-Compressor
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
+
+      - name: Checkout Reflector
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/Reflector-oracle-
+          ref: fix/cross-repo-test-failures
+          path: ecosystem/Reflector-oracle-
           fetch-depth: 1
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
+
+      - name: Checkout Swarm
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/REMEMBRANCE-AGENT-Swarm-
+          ref: fix/ecosystem-contract-sync
+          path: ecosystem/REMEMBRANCE-AGENT-Swarm-
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
+
+      - name: Checkout Blockchain
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/REMEMBRANCE-BLOCKCHAIN
+          path: ecosystem/REMEMBRANCE-BLOCKCHAIN
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
+
+      - name: Checkout Dialer
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/Remembrance-dialer
+          ref: fix/ecosystem-contract-sync
+          path: ecosystem/Remembrance-dialer
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
+
+      - name: Checkout MOONS
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/MOONS-OF-REMEMBRANCE
+          path: ecosystem/MOONS-OF-REMEMBRANCE
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
+
+      - name: Checkout API key plugger
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/REMEMBRANCE-API-Key-Plugger
+          path: ecosystem/REMEMBRANCE-API-Key-Plugger
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
+
+      - name: Checkout Interface
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/REMEMBRANCE-Interface
+          path: ecosystem/REMEMBRANCE-Interface
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ secrets.ECOSYSTEM_PAT }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Setup Node (for toolkit ecosystem tests)
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: ecosystem/remembrance-oracle-toolkit/package-lock.json
 
-      - name: Install Void deps
-        working-directory: void
+      - name: Install Void dependencies
+        working-directory: ecosystem/Void-Data-Compressor
         run: |
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python -m pip install --upgrade pip
+          python -m pip install numpy pytest maturin
+          if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
 
-      - name: Verify manifests line up across repos
-        run: |
-          node -e "
-            const fs = require('fs');
-            const tm = JSON.parse(fs.readFileSync('toolkit/remembrance.json', 'utf-8'));
-            const vm = JSON.parse(fs.readFileSync('void/remembrance.json', 'utf-8'));
-            if (!tm.peers || !tm.peers['void-data-compressor']) {
-              console.error('Toolkit manifest is missing void-data-compressor peer entry');
-              process.exit(1);
-            }
-            if (vm.role !== 'substrate') {
-              console.error('Void manifest role should be substrate, got:', vm.role);
-              process.exit(1);
-            }
-            console.log('Ecosystem manifests look good.');
-          "
+      - name: Install toolkit dependencies
+        working-directory: ecosystem/remembrance-oracle-toolkit
+        run: npm ci --ignore-scripts
 
-      - name: Run Void compat tests (if present)
-        working-directory: void
+      - name: Build canonical substrate decoder
+        working-directory: ecosystem/Void-Data-Compressor
         run: |
-          if [ -d tests ] && ls tests/test_*.py 2>/dev/null; then
-            python -m pytest tests/ -q || exit 1
-          else
-            echo 'No pytest suite found; skipping'
-          fi
+          python -m maturin build --release --manifest-path substrate-fractal/py/Cargo.toml --out dist
+          python -m pip install dist/*.whl
+
+      - name: Seed isolated field state
+        working-directory: ecosystem/remembrance-oracle-toolkit
+        run: |
+          node - <<'NODE'
+          const { contribute } = require('./src/core/field-coupling');
+          const state = contribute({ source: 'ci:cross-repo-contracts', coherence: 0.9, cost: 1 });
+          if (!state) throw new Error('field state was not initialized');
+          NODE
+
+      - name: Verify manifests line up
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const tm = JSON.parse(fs.readFileSync('ecosystem/remembrance-oracle-toolkit/remembrance.json', 'utf-8'));
+          const vm = JSON.parse(fs.readFileSync('ecosystem/Void-Data-Compressor/remembrance.json', 'utf-8'));
+          if (!tm.peers || !tm.peers['void-data-compressor']) {
+            throw new Error('Toolkit manifest is missing void-data-compressor peer entry');
+          }
+          if (vm.role !== 'substrate') {
+            throw new Error(`Void manifest role should be substrate, got: ${vm.role}`);
+          }
+          NODE
+
+      - name: Run Void compatibility tests
+        if: matrix.suite == 'compatibility'
+        working-directory: ecosystem/Void-Data-Compressor
+        run: |
+          test -d tests
+          find tests -maxdepth 1 -name 'test_*.py' -print -quit | grep -q .
+          python -m pytest tests/ -q
+
+      - name: Run the full truth-spine and ratchet family through goggles
+        if: matrix.suite == 'contracts'
+        working-directory: ecosystem/remembrance-oracle-toolkit
+        run: |
+          node .claude/skills/goggles/run.mjs --do service start --wait
+          node .claude/skills/goggles/run.mjs --do contracts --strict
+          node .claude/skills/goggles/run.mjs --do gate contracts
+          node .claude/skills/goggles/run.mjs --do ratchets

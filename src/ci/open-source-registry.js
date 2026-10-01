@@ -94,6 +94,7 @@ function listRegistry(options = {}) {
 
   return repos;
 }
+listRegistry.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Search the curated registry by query string.
@@ -123,6 +124,7 @@ function searchRegistry(query, options = {}) {
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 }
+searchRegistry.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Get a curated repo by name.
@@ -130,6 +132,7 @@ function searchRegistry(query, options = {}) {
 function getRegistryEntry(name) {
   return CURATED_REPOS.find(r => r.name.toLowerCase() === name.toLowerCase()) || null;
 }
+getRegistryEntry.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Layer 2: Batch Import ──────────────────────────────────────────────────
 
@@ -225,6 +228,7 @@ function batchImport(oracle, sources, options = {}) {
 
   return result;
 }
+batchImport.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 16, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Layer 3: GitHub Search ─────────────────────────────────────────────────
 
@@ -290,6 +294,7 @@ function discoverRepos(query, options = {}) {
     });
   });
 }
+discoverRepos.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Synchronous GitHub search fallback using `curl` (for CLI use).
@@ -333,6 +338,7 @@ function discoverReposSync(query, options = {}) {
     return [];
   }
 }
+discoverReposSync.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Layer 4: License Checking ──────────────────────────────────────────────
 
@@ -398,6 +404,7 @@ function checkLicense(spdxId, options = {}) {
 
   return { allowed: false, category: 'unknown', reason: `Unrecognized license: ${normalized}` };
 }
+checkLicense.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Detect license from a cloned repo by reading LICENSE/COPYING file.
@@ -462,6 +469,7 @@ function detectLicenseFromClone(repoUrl) {
     }
   }
 }
+detectLicenseFromClone.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Layer 5: Provenance Tracking ───────────────────────────────────────────
 
@@ -503,6 +511,7 @@ function trackProvenance(oracle, harvestResult, provenance) {
     });
   }
 }
+trackProvenance.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Get the latest commit hash from a repo URL.
@@ -520,6 +529,7 @@ function getRepoCommitHash(repoUrl, branch) {
     return null;
   }
 }
+getRepoCommitHash.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Query provenance info for patterns from a specific source.
@@ -566,6 +576,7 @@ function getProvenance(oracle, options = {}) {
     return __retVal;
   });
 }
+getProvenance.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 12, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Layer 6: Deduplication ─────────────────────────────────────────────────
 
@@ -595,6 +606,7 @@ function codeFingerprint(code) {
 
   return crypto.createHash('sha256').update(normalized).digest('hex').slice(0, 16);
 }
+codeFingerprint.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Compute structural similarity between two code strings.
@@ -627,6 +639,7 @@ function codeSimilarity(codeA, codeB) {
   const union = tokensA.size + tokensB.size - intersection;
   return union > 0 ? intersection / union : 0;
 }
+codeSimilarity.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Find duplicate or near-duplicate patterns in the library.
@@ -679,6 +692,7 @@ function findDuplicates(oracle, options = {}) {
 
   return duplicates.sort((a, b) => b.similarity - a.similarity);
 }
+findDuplicates.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Check if code already exists in the library (before importing).
@@ -707,6 +721,7 @@ function isDuplicate(oracle, code, options = {}) {
 
   return { duplicate: false };
 }
+isDuplicate.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -715,6 +730,7 @@ function extractRepoName(url) {
   const match = url.match(/\/([^/]+?)(?:\.git)?$/);
   return match ? match[1] : 'unknown';
 }
+extractRepoName.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 12, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Exports ────────────────────────────────────────────────────────────────
 

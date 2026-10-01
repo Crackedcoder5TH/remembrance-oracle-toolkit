@@ -172,24 +172,9 @@ module.exports = {
 };
 
 // ── Atomic self-description ─────────────────────────────────────────
-rankEntries.atomicProperties = {
-  charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.6, group: 13, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'oracle',
-};
-cosineSimilarity.atomicProperties = {
-  charge: -1, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-computeRelevance.atomicProperties = {
-  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'inert', electronegativity: 0.2, group: 2, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+rankEntries.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 4, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+cosineSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 5, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+computeRelevance.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's

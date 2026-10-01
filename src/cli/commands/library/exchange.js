@@ -106,6 +106,7 @@ function registerExchangeCommands(handlers, deps) {
     out(`Library now has ${c.bold(String(oracle.patternStats().totalPatterns))} patterns`);
   };
 }
+registerExchangeCommands.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 3, period: 4, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 
 module.exports = { registerExchangeCommands };

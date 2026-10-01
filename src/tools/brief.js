@@ -49,6 +49,7 @@ const VOID = process.env.VOID_ROOT || path.resolve(ROOT, '..', 'Void-Data-Compre
 function _readJSON(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
 }
+_readJSON.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── TRAPS ──────────────────────────────────────────────────────────────
 
@@ -76,7 +77,11 @@ function _readJSON(p) {
  * keeps it; it just no longer starts from zero.
  */
 function _allTraps() {
-  const seed = _readJSON(path.join(ROOT, 'seeds', 'traps.seed.json'));
+  // The tracked seed; when the hub's copy is unreadable (a checkout without
+  // the hub), the mirror every repo carries beside its goggles surface
+  // (traps-ledger-ratchet keeps the two byte-identical) — the memory travels.
+  const seed = _readJSON(path.join(ROOT, 'seeds', 'traps.seed.json'))
+    || _readJSON(path.join(process.cwd(), '.claude', 'skills', 'goggles', 'traps.seed.json'));
   const local = _readJSON(path.join(ROOT, '.remembrance', 'traps.json'));
   const byKey = new Map();
   for (const db of [seed, local]) {
@@ -85,6 +90,7 @@ function _allTraps() {
   }
   return [...byKey.values()];
 }
+_allTraps.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function trapsFor(target) {
   const db = { traps: _allTraps() };
@@ -102,7 +108,23 @@ function trapsFor(target) {
       } catch (_e) { quiet('tools:brief:String', _e); /* not this one */ }
     }
   }
-  return db.traps.filter((x) => (x.match || []).some((m) => hay.includes(m.toLowerCase())));
+  const hits = db.traps.filter((x) => (x.match || []).some((m) => hay.includes(m.toLowerCase())));
+  // THE TRAP EQUATION (the operator's ruling, 2026-09-30: complete the
+  // loop) — the fitted equation evaluates the same hay beside the
+  // hand-written match[] lists it generalizes. It ADDS the loudest
+  // trap when I(x) clears the fitted θ_I; it never removes a keyword
+  // hit, and an absent or out-of-step seed is silent, never wrong.
+  try {
+    const { fire } = require('./trap-equation');
+    const fired = fire(hay);
+    if (fired && fired.trap) {
+      const key = String(fired.trap.wrong || '').slice(0, 120);
+      const held = hits.find((h) => String(h.wrong || '').slice(0, 120) === key);
+      if (held) held._equationScore = fired.score;
+      else { fired.trap._equationScore = fired.score; hits.push(fired.trap); }
+    }
+  } catch (_e) { quiet('tools:brief:trap-equation', _e); }
+  return hits;
 }
 
 /** Render traps as text so callers that are not a terminal can carry them. */
@@ -112,6 +134,9 @@ function renderTraps(hits) {
   for (const h of hits) {
     L.push('║');
     L.push(`║ [${(h.severity || '?').toUpperCase()}]  ✗ WRONG: ${h.wrong}`);
+    if (typeof h._equationScore === 'number') {
+      L.push(`║        ⨍ THE TRAP EQUATION fired: I(x) = ${h._equationScore.toFixed(4)} > θ_I`);
+    }
     L.push(`║        ✓ TRUTH: ${h.truth}`);
     if (h.tell) L.push(`║        ⚑ TELL:  ${h.tell}`);
     if (h.correct) L.push(`║        → DO:    ${h.correct}`);
@@ -233,6 +258,7 @@ function _printLive() {
       + `${Number(s.updateCount).toLocaleString()} updates`);
   } catch (_e) { quiet('tools:brief:peekField', _e); /* field optional */ }
 }
+_printLive.atomicProperties = { charge: 0, valence: 2, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── CAVEATS ────────────────────────────────────────────────────────────
 function _printCaveats(file) {
@@ -247,6 +273,7 @@ function _printCaveats(file) {
     console.log(out.slice(start, end > 0 ? end : start + 900).split('\n').slice(1).join('\n'));
   } catch (_e) { quiet('tools:brief:execFileSync', _e); /* goggles optional */ }
 }
+_printCaveats.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── resolve a target to a file, if one exists ──────────────────────────
 function _resolveFile(target) {
@@ -277,6 +304,7 @@ function _resolveFile(target) {
   }
   return null;
 }
+_resolveFile.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _main() {
   const target = process.argv[2];
@@ -304,41 +332,17 @@ function _main() {
   if (n) console.log(`  ${n} trap(s) matched. They are recorded because they already happened.`);
   console.log('  Read the body before you quote a number from it.\n');
 }
+_main.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-if (require.main === module) main();
+if (require.main === module) _main();
 // ── Periodic table declarations (covenant fractal, atomic scale) ──────
 // The exported surface is elements; underscore helpers are internal. The
 // brief's whole job is pre-call guidance, so every element is inert,
 // harmless and healing-aligned — a tool that only reads and warns.
-printTraps.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.4, group: 13, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'guidance',
-};
-printIdentity.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 13, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'guidance',
-};
-printContract.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.3, group: 13, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'guidance',
-};
-trapsFor.atomicProperties = {
-  charge: -1, valence: 2, mass: 'light', spin: 'odd', phase: 'liquid',
-  reactivity: 'stable', electronegativity: 0.5, group: 15, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'guidance',
-};
-renderTraps.atomicProperties = {
-  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.2, group: 13, period: 2,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'guidance',
-};
+printTraps.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+printIdentity.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+printContract.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+trapsFor.atomicProperties = { charge: -1, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+renderTraps.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { printTraps, printIdentity, printContract, trapsFor, renderTraps };

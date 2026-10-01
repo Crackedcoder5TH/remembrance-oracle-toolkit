@@ -23,6 +23,7 @@ function findPatternLocation(code, pattern) {
   }
   return null;
 }
+findPatternLocation.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // Anti-self-match key helper — definition in src/core/k.js
 const { _k } = require('./k');
@@ -86,6 +87,7 @@ function buildFixSuggestions() {
 
   return s;
 }
+buildFixSuggestions.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "low", electronegativity: 1, group: 3, period: 4, harmPotential: "dangerous", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 const FIX_SUGGESTIONS = buildFixSuggestions();
 
@@ -119,5 +121,6 @@ function covenantFeedback(code, covenantResult) {
 
   return feedback;
 }
+covenantFeedback.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { findPatternLocation, buildFixSuggestions, FIX_SUGGESTIONS, covenantFeedback };

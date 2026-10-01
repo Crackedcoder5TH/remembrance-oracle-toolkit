@@ -287,15 +287,5 @@ module.exports = {
 };
 
 // ── Atomic self-description (batch-generated) ────────────────────
-validateCode.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-executeTest.atomicProperties = {
-  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
-  reactivity: 'high', electronegativity: 1, group: 3, period: 4,
-  harmPotential: 'moderate', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+validateCode.atomicProperties = { charge: 1, valence: 4, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 3, period: 5, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+executeTest.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 1, group: 3, period: 4, harmPotential: "moderate", alignment: "neutral", intention: "neutral", domain: "utility" };

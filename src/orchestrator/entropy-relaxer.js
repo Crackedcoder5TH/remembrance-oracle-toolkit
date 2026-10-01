@@ -39,6 +39,7 @@ let lastFiredAt = 0;
 function _resetCooldown() {
   lastFiredAt = 0;
 }
+_resetCooldown.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function clamp01(n) {
   if (typeof n !== 'number' || !isFinite(n)) return 0;
@@ -149,15 +150,35 @@ async function relaxIfHot(opts = {}) {
     const current = (peekField && peekField().coherence);
     const anchor = (typeof current === 'number' && isFinite(current))
       ? Math.max(0, Math.min(1, current)) : null;
-    if (anchor !== null) {
-      contribute({
-        cost: RELAX_COST,
-        coherence: anchor,
-        resonance: discovered,
-        source: 'orchestrator:entropy-relax',
-      });
+    // A RELAXATION MUST RELAX (2026-09-26). Zero passed the old null-guard,
+    // so a field already pinned at coherence 0 was re-fed its own zero:
+    // entropy is recomputed as cost/(coherence+ε) on the LAST contribution,
+    // so the "relaxation" re-pinned globalEntropy at RELAX_COST/ε — the
+    // very ceiling it was called to lower — and spent the cooldown doing it.
+    // The guard is the equation itself, no new constants: contribute only
+    // when this contribution's own projected entropy lands BELOW the hot
+    // line it is trying to get under. ε is the engine's canonical PARAMS
+    // value (one representation), required lazily like the engine's other
+    // consumers so no load-time edge enters the cycle graph.
+    lastFiredAt = Date.now();          // the detector DID run — space the next attempt
+    const { PARAMS } = require('../core/living-remembrance');
+    const projectedEntropy = anchor === null
+      ? Infinity : RELAX_COST / (anchor + PARAMS.epsilon);
+    if (projectedEntropy >= entropyThreshold) {
+      return {
+        triggered: false,
+        reason: 'anchor-cannot-relax',
+        anchor,
+        projectedEntropy,
+        discovered,
+      };
     }
-    lastFiredAt = Date.now();
+    contribute({
+      cost: RELAX_COST,
+      coherence: anchor,
+      resonance: discovered,
+      source: 'orchestrator:entropy-relax',
+    });
 
     const post = fieldPressure({ entropyThreshold, cascadeThreshold });
     return {
@@ -183,4 +204,4 @@ module.exports = { relaxIfHot, _resetCooldown };
 // own extractAtomicProperties over the function body.
 clamp01.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 mean.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-relaxIfHot.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+relaxIfHot.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 1, group: 2, period: 4, harmPotential: "none", alignment: "healing", intention: "benevolent", domain: "utility" };

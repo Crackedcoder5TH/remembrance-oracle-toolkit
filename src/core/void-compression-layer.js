@@ -587,5 +587,6 @@ function getVoidStore(options) {
   }
   return _store;
 }
+getVoidStore.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { VoidStore, getVoidStore, COMPRESSION_DEFAULTS };

@@ -50,11 +50,6 @@ function checkHooksInstalled(cwd = process.cwd()) {
   if (!postOk) missing.push('post-commit');
   return { installed: false, reason: `Missing hooks: ${missing.join(', ')}` };
 }
-checkHooksInstalled.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0.4, group: 12, period: 2,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'security',
-};
+checkHooksInstalled.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "high", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { checkHooksInstalled };

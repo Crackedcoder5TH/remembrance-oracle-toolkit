@@ -227,7 +227,7 @@ async function run() {
   const throughput = COUNT / ingestSec;
 
   // ── Phase 2: signature corpus for residual analysis ───────────
-  console.log(`\n  ▸ Phase 2: composing 116-D signatures for residual analysis...`);
+  console.log(`\n  ▸ Phase 2: composing 232-D signatures for residual analysis...`);
   const sigStart = process.hrtime.bigint();
   for (const p of patterns) p.signature = compose(p.code);
   const sigSec = Number(process.hrtime.bigint() - sigStart) / 1e9;

@@ -1,0 +1,6 @@
+{
+ "note": "width baseline — live sites that read a non-canonical vector (the 116/145/203-D checkpoints, the 29-D L1 alone, the retired 256-sample byte waveform). Shrink-only: route the site through the 232-D decoder and the one space, never widen the allowlist.",
+ "savedAt": "2026-09-07T20:27:44.803Z",
+ "total": 0,
+ "byFile": {}
+}

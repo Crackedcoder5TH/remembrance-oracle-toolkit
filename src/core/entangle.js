@@ -43,6 +43,7 @@ function _resolveNodeId() {
   _nodeId = crypto.createHash('sha256').update(seed).digest('hex').slice(0, 12);
   return _nodeId;
 }
+_resolveNodeId.atomicProperties = { charge: 0, valence: 2, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 16, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Count of distinct nodes currently entangled with the field.
@@ -65,6 +66,7 @@ function _entangledNodeCount() {
   } catch (_) { quiet('core:entangle:require', _); /* field unreachable */ }
   return 1;
 }
+_entangledNodeCount.atomicProperties = { charge: 0, valence: 1, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Abundance amortization — the abundance equation made concrete: with
@@ -77,6 +79,7 @@ function _abundanceCost() {
   const n = _entangledNodeCount();
   return n > 0 ? BASE_COST / n : BASE_COST;
 }
+_abundanceCost.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Contribute one observation — abundance-amortized, entropy-throttled. */
 function _sense(coherence, kind) {
@@ -91,6 +94,7 @@ function _sense(coherence, kind) {
     });
   } catch (_) { quiet('core:entangle:_abundanceCost', _); /* best-effort — entanglement never breaks the host */ }
 }
+_sense.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Engage entanglement. Idempotent. Registers this node in the field

@@ -252,6 +252,7 @@ function tokenize(source) {
 
   return tokens;
 }
+tokenize.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 5, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 // ─── Token stream helpers ────────────────────────────────────────────────────
 
@@ -304,6 +305,7 @@ function parseProgram(source) {
 
   return program;
 }
+parseProgram.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function parseTopLevel(stream, program) {
   const t = stream.peek();
@@ -322,6 +324,7 @@ function parseTopLevel(stream, program) {
   stream.advance();
   return null;
 }
+parseTopLevel.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function parseFunctionDeclaration(stream, program, isAsync = false) {
   const fnTok = stream.advance(); // consume 'function'
@@ -426,6 +429,7 @@ function parseFunctionDeclaration(stream, program, isAsync = false) {
   program.functions.push(fn);
   return fn;
 }
+parseFunctionDeclaration.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 /**
  * Extract return values from a flat body token stream. We categorize each
@@ -450,6 +454,7 @@ function extractReturns(bodyTokens) {
   if (returns.length === 0) returns.push({ kind: 'implicit', line: -1 });
   return returns;
 }
+extractReturns.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Walker: walk every function in the program + top-level ─────────────────
 
@@ -485,6 +490,7 @@ function walkFunctions(program, visit) {
     }
   }
 }
+walkFunctions.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function extractInlineFunction(toks, i, fnTok) {
   // function name?(params){body}
@@ -523,6 +529,7 @@ function extractInlineFunction(toks, i, fnTok) {
     returns: extractReturns(bodyTokens),
   };
 }
+extractInlineFunction.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function extractMethodLike(toks, i) {
   // Pattern: identifier ( ... ) { body }
@@ -567,6 +574,7 @@ function extractMethodLike(toks, i) {
     returns: extractReturns(bodyTokens),
   };
 }
+extractMethodLike.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 

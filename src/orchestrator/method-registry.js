@@ -156,6 +156,7 @@ function _parseTrigger(trig) {
   if (m) return { field: m[1], op: m[2], value: parseFloat(m[3]) };
   return null;
 }
+_parseTrigger.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 12, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _evalTrigger(parsed, state) {
   if (!parsed) return false;
@@ -171,6 +172,7 @@ function _evalTrigger(parsed, state) {
     default:   return false;
   }
 }
+_evalTrigger.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _methodMatches(method, state) {
   if (!method.triggers || method.triggers.length === 0) return false;
@@ -180,6 +182,7 @@ function _methodMatches(method, state) {
   if (mode === 'any') return parsed.some(p => _evalTrigger(p, state));
   return parsed.every(p => _evalTrigger(p, state));
 }
+_methodMatches.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ── Public introspection API ────────────────────────────────────────────
 

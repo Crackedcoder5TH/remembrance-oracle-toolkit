@@ -30,7 +30,7 @@ const PARENT = path.resolve(ORACLE, '..');
 // goggles can resonate what you're looking at directly against functions (not just files).
 let composedAtDepth = null;
 try { composedAtDepth = require('../src/core/decoder-stack').composedAtDepth; } catch (_) { /* engine-only */ }
-const SIG_DEPTH = 4; // composed_v1 (116-D) — matches the depth the goggles query at
+const SIG_DEPTH = require('../src/core/decoder-stack').currentDepth(); // the active depth (232-D) — the ONE width the goggles query at
 
 // extract a function's definition snippet from source for encoding its shape
 function bodyOf(src, name) {

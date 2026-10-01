@@ -299,6 +299,7 @@ function registerPublishCommands(handlers, deps) {
     out(`  Languages:       ${Object.entries(langBreakdown).map(([k, v]) => `${c.blue(k)}(${v})`).join(', ')}`);
   };
 }
+registerPublishCommands.atomicProperties = { charge: 0, valence: 5, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0.56, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "malevolent", domain: "utility" };
 
 
 module.exports = { registerPublishCommands };

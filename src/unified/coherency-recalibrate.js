@@ -147,9 +147,4 @@ module.exports = {
 };
 
 // ── Atomic self-description ─────────────────────────────────────────
-recalibrateCoherency.atomicProperties = {
-  charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.4, group: 18, period: 5,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'oracle',
-};
+recalibrateCoherency.atomicProperties = { charge: 0, valence: 1, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 1, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

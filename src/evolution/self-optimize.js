@@ -388,6 +388,7 @@ function _normalizeCode(code) {
     .trim()
     .toLowerCase();
 }
+_normalizeCode.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _codeSimilarity(a, b) {
   if (!a || !b) return 0;
@@ -413,6 +414,7 @@ function _codeSimilarity(a, b) {
   const totalBigrams = longer.length - 1 + shorter.length - 1;
   return totalBigrams > 0 ? (2 * matches) / totalBigrams : 0;
 }
+_codeSimilarity.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _generateRecommendations(report, patterns) {
   const recs = [];
@@ -475,6 +477,7 @@ function _generateRecommendations(report, patterns) {
 
   return recs;
 }
+_generateRecommendations.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 13, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function _generateWhisper(improveReport, optimizeReport, evolutionReport) {
   const lines = [];
@@ -552,6 +555,7 @@ function _generateWhisper(improveReport, optimizeReport, evolutionReport) {
 
   return lines.join('\n');
 }
+_generateWhisper.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Near-Duplicate Consolidation ───
 
@@ -1250,6 +1254,7 @@ function _deletePatternFallback(oracle, id) {
     if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:_deletePatternFallback] skip if delete not supported:', e?.message || e);
   }
 }
+_deletePatternFallback.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 3, period: 3, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = {
   selfImprove,
@@ -1266,11 +1271,11 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-selfImprove.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-selfOptimize.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-fullCycle.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-consolidateDuplicates.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-consolidateTags.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-pruneStuckCandidates.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-polishCycle.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-iterativePolish.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+selfImprove.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 0, group: 9, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+selfOptimize.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 0, group: 13, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+fullCycle.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 13, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+consolidateDuplicates.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+consolidateTags.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "low", electronegativity: 0, group: 13, period: 5, harmPotential: "minimal", alignment: "neutral", intention: "benevolent", domain: "utility" };
+pruneStuckCandidates.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 10, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
+polishCycle.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+iterativePolish.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -123,6 +123,6 @@ function runPatternDetectors(source, emit, isEnabled, opts) {
     }
   }
 }
-runPatternDetectors.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility", taint: "none" };
+runPatternDetectors.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
 module.exports = { runPatternDetectors, DETECTORS };

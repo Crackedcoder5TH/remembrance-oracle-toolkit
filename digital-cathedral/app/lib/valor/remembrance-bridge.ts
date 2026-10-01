@@ -58,14 +58,19 @@ function isLoopbackOrHttps(url: string): boolean {
   }
 }
 
+export type FieldResult<T> = { ok: true; value: T } | { ok: false; error: string };
+
 /**
- * Low-level MCP call. Best-effort: returns the result body on success,
- * null on any failure (network, timeout, non-2xx, malformed JSON).
- * Never throws.
+ * One MCP round trip, reporting WHY it failed instead of collapsing every
+ * failure to null. Never throws.
  */
-async function mcpTool<T = unknown>(toolName: string, args: Record<string, unknown> = {}): Promise<T | null> {
+async function mcpRequest<T = unknown>(
+  toolName: string,
+  args: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<FieldResult<T>> {
   const url = fieldUrl();
-  if (!isLoopbackOrHttps(url) && !url.startsWith("http://")) return null;
+  if (!isLoopbackOrHttps(url) && !url.startsWith("http://")) return { ok: false, error: "field URL is not http(s)" };
   const body = {
     jsonrpc: "2.0",
     id: 1,
@@ -78,7 +83,7 @@ async function mcpTool<T = unknown>(toolName: string, args: Record<string, unkno
     headers.Authorization = `Bearer ${token}`;
   }
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -87,22 +92,50 @@ async function mcpTool<T = unknown>(toolName: string, args: Record<string, unkno
       signal: ctrl.signal,
       redirect: "manual",
     });
-    clearTimeout(timer);
-    if (!res.ok) return null;
+    if (!res.ok) return { ok: false, error: `field HTTP ${res.status}` };
     const json = (await res.json()) as { result?: { content?: Array<{ text?: string }> }; error?: unknown };
-    if (json.error) return null;
+    if (json.error) return { ok: false, error: "field RPC error" };
     const content = json.result?.content?.[0]?.text;
-    if (!content) return null;
+    if (!content) return { ok: false, error: "empty field response" };
     try {
-      return JSON.parse(content) as T;
+      return { ok: true, value: JSON.parse(content) as T };
     } catch {
-      return null;
+      return { ok: false, error: content.slice(0, 200) };
     }
-  } catch {
-    return null;
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "field unreachable" };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Low-level MCP call. Best-effort: returns the result body on success,
+ * null on any failure (network, timeout, non-2xx, malformed JSON).
+ * Never throws.
+ */
+async function mcpTool<T = unknown>(toolName: string, args: Record<string, unknown> = {}): Promise<T | null> {
+  const r = await mcpRequest<T>(toolName, args, TIMEOUT_MS);
+  return r.ok ? r.value : null;
+}
+
+// Every legacy write is scored by the Void compressor before it commits, so
+// a write can outlast the best-effort 1.5 s budget and still land.
+const STRICT_TIMEOUT_MS = 15_000;
+
+/**
+ * Strict legacy-store call for stores that must tell "the field is down"
+ * apart from "no such record" — buyer accounts and purchases. The field's
+ * own { ok:false, error } answer is returned as an error, never as data.
+ */
+export async function legacyStrict<T extends { ok?: boolean; error?: string }>(
+  args: Record<string, unknown>,
+  timeoutMs = STRICT_TIMEOUT_MS,
+): Promise<FieldResult<T>> {
+  const r = await mcpRequest<T>("legacy", args, timeoutMs);
+  if (!r.ok) return r;
+  if (!r.value || r.value.ok !== true) return { ok: false, error: r.value?.error || "legacy store refused" };
+  return r;
 }
 
 // Field-dynamics calls use the legacy "field" tool with an action argument.
@@ -198,6 +231,115 @@ export async function listRecords(
     ? { records: r.legacies, total: typeof r.total === "number" ? r.total : r.legacies.length }
     : { records: [], total: 0 };
 }
+
+/**
+ * Resonant records — the field's OWN cosine over the stored waveforms, ranked
+ * high→low. This is the substrate's established kin/duplicate detector: the
+ * same waveform cosine the coherency mapper reads as a duplicate at 0.999
+ * (duplicateAt / selfMatchAt). Unlike `listRecords`, which text-matches, this
+ * asks the compressor which stored records share this content's SHAPE. Wraps
+ * the legacy store's `resonant` action ({ q, k } → { legacies:[…,resonance] }).
+ * Best-effort: [] when the field is unreachable.
+ */
+export async function resonantRecords(
+  content: string,
+  k = 5,
+): Promise<Array<SubstrateRecord & { resonance: number }>> {
+  const r = await mcpTool<{ ok: boolean; legacies: Array<SubstrateRecord & { resonance: number }> }>(
+    "legacy",
+    { action: "resonant", q: content, k },
+  );
+  return r && r.ok && Array.isArray(r.legacies) ? r.legacies : [];
+}
+
+// ── Strict record store ──────────────────────────────────────────────
+// The same store for the site's records of truth (leads, messages, buyers,
+// purchases): every call reports "field unreachable" as an error, never as an
+// empty answer, and tag filters are re-checked exactly — the field matches
+// tags with LIKE, and ids carry '_' (a LIKE wildcard).
+
+type ListAnswer = { ok: boolean; error?: string; legacies: SubstrateRecord[]; total: number };
+export type Guard = { tags: string[]; max: number; blockTag?: string };
+export type GuardedAnswer = { ok: boolean; error?: string; outcome?: "inserted" | "duplicate" | "sold_out"; legacy?: SubstrateRecord };
+export type RecordInput = { id: string; name: string; content: string; tags: string[]; meta?: Record<string, unknown> };
+const LIST_PAGE = 200;                       // the field's list cap per call
+
+const hasAllTags = (rec: SubstrateRecord, tags: readonly string[]) =>
+  tags.every((t) => (Array.isArray(rec.tags) ? rec.tags : []).includes(t));
+
+export function parseJson<T>(content: string | undefined | null): T | null {
+  if (!content) return null;
+  try { return JSON.parse(content) as T; } catch { return null; }
+}
+
+export async function getRecordStrict(id: string): Promise<FieldResult<SubstrateRecord | null>> {
+  if (!id) return { ok: false, error: "an id is required" };
+  const r = await legacyStrict<{ ok: boolean; error?: string; legacy: SubstrateRecord | null }>({ action: "get", id });
+  return r.ok ? { ok: true, value: r.value.legacy ?? null } : r;
+}
+
+/** One page, newest-created first; `total` is the field's count for the filter. */
+export async function listPageStrict(
+  tags: string[], limit: number, offset: number, q?: string,
+): Promise<FieldResult<{ records: SubstrateRecord[]; total: number }>> {
+  if (!Array.isArray(tags) || tags.length === 0) return { ok: false, error: "tags are required" };
+  const r = await legacyStrict<ListAnswer>({ action: "list", tags, q, limit: Math.min(LIST_PAGE, Math.max(1, limit)), offset: Math.max(0, offset) });
+  if (!r.ok) return r;
+  const page = Array.isArray(r.value.legacies) ? r.value.legacies : [];
+  return { ok: true, value: { records: page.filter((rec) => hasAllTags(rec, tags)), total: Number(r.value.total) || 0 } };
+}
+
+/** Every record carrying ALL of `tags` (and matching the text prefilter `q`), past the list cap. */
+export async function listAllStrict(tags: string[], q?: string): Promise<FieldResult<SubstrateRecord[]>> {
+  if (!Array.isArray(tags) || tags.length === 0) return { ok: false, error: "tags are required" };
+  const out: SubstrateRecord[] = [];
+  const seen = new Set<string>();
+  for (let offset = 0; ; offset += LIST_PAGE) {
+    const r = await legacyStrict<ListAnswer>({ action: "list", tags, q, limit: LIST_PAGE, offset });
+    if (!r.ok) return r;
+    const page = Array.isArray(r.value.legacies) ? r.value.legacies : [];
+    for (const rec of page) {
+      if (seen.has(rec.id) || !hasAllTags(rec, tags)) continue;
+      seen.add(rec.id);
+      out.push(rec);
+    }
+    if (page.length < LIST_PAGE || offset + LIST_PAGE >= (Number(r.value.total) || 0)) return { ok: true, value: out };
+  }
+}
+
+export async function storeStrict(rec: RecordInput): Promise<FieldResult<true>> {
+  if (!rec?.id || !rec.name || typeof rec.content !== "string" || !Array.isArray(rec.tags)) {
+    return { ok: false, error: "id, name, content and tags are required" };
+  }
+  const r = await legacyStrict<{ ok: boolean; error?: string }>({ action: "store", ...rec });
+  return r.ok ? { ok: true, value: true } : r;
+}
+
+/** Atomic check-and-insert on the field server (`store_guarded`): the cap and the insert share one lock. */
+export async function storeGuardedStrict(rec: RecordInput, guard: Guard): Promise<FieldResult<GuardedAnswer>> {
+  if (!rec?.id || !rec.name || typeof rec.content !== "string" || !Array.isArray(rec.tags)) {
+    return { ok: false, error: "id, name, content and tags are required" };
+  }
+  if (!guard || !Array.isArray(guard.tags) || guard.tags.length === 0 || !Number.isInteger(guard.max) || guard.max < 1) {
+    return { ok: false, error: "a guard { tags, max } is required" };
+  }
+  return legacyStrict<GuardedAnswer>({ action: "store_guarded", ...rec, guard });
+}
+
+export async function deleteStrict(id: string): Promise<FieldResult<number>> {
+  if (!id) return { ok: false, error: "an id is required" };
+  const r = await legacyStrict<{ ok: boolean; error?: string; deleted: number }>({ action: "delete", id });
+  return r.ok ? { ok: true, value: Number(r.value.deleted) || 0 } : r;
+}
+
+/** Newest first by a string timestamp; sorts a copy so a caller's array is never reordered. */
+export function newestFirst<T>(rows: readonly T[], at: (row: T) => string | undefined | null): T[] {
+  if (!Array.isArray(rows) || typeof at !== "function") return [];
+  return [...rows].sort((a, b) => String(at(b) ?? "").localeCompare(String(at(a) ?? "")));
+}
+
+/** SQL's calendar-date windows (date('now'), CURRENT_DATE): the UTC date `msAgo` ago. */
+export const utcDate = (msAgo = 0): string => new Date(Date.now() - msAgo).toISOString().slice(0, 10);
 
 /**
  * Attach a resolved outcome to a record — the write that makes the retro-causal

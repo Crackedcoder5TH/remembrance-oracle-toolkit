@@ -118,6 +118,6 @@ function _fieldAudit(fc, args) {
     },
   };
 }
-_fieldAudit.atomicProperties = { charge: 0, valence: 5, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility", taint: "none" };
+_fieldAudit.atomicProperties = { charge: 0, valence: 5, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 module.exports = { _fieldAudit };

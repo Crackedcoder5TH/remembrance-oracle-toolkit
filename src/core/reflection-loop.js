@@ -12,6 +12,7 @@ function _getCoherency() {
   }
   return { computeCoherencyScore: _computeCoherencyScore, detectLanguage: _detectLanguage };
 }
+_getCoherency.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 11, period: 2, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 const { observeCoherence } = require('./reflection-scorers');
 const { reflectionScore, MAX_LOOPS, TARGET_COHERENCE, R_EFF_BASE, R_EFF_ALPHA, EPSILON_BASE, H_RVA_WEIGHT, H_CANVAS_WEIGHT, DELTA_VOID_BASE, LAMBDA_LIGHT } = require('./reflection-serf');
 const { applySimplify, applySecure, applyReadable, applyUnify, applyCorrect, applyHeal, applyPatternGuidance } = require('./reflection-transforms');
@@ -326,33 +327,8 @@ module.exports = {
 };
 
 // ── Atomic self-description (batch-generated) ────────────────────
-reflectionLoop.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-formatReflectionResult.atomicProperties = {
-  charge: 1, valence: 0, mass: 'medium', spin: 'even', phase: 'liquid',
-  reactivity: 'inert', electronegativity: 0, group: 3, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-generateCandidates.atomicProperties = {
-  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
-generateWhisper.atomicProperties = {
-  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
-  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
-  domain: 'oracle',
-};
-checkDimensionMonotonicity.atomicProperties = {
-  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'gas',
-  reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'oracle',
-};
+reflectionLoop.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 4, period: 5, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+formatReflectionResult.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
+generateCandidates.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+generateWhisper.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+checkDimensionMonotonicity.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

@@ -57,11 +57,6 @@ ${c.bold('Tune + calibrate:')}
     outErr(c.boldRed('Error:') + ` Unknown audit subcommand: ${sub}. Run ${c.cyan('oracle audit')} for help.`);
   };
 }
-registerAuditCommands.atomicProperties = {
-  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
-  reactivity: 'stable', electronegativity: 0.5, group: 14, period: 3,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'orchestration',
-};
+registerAuditCommands.atomicProperties = { charge: 0, valence: 8, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
 
 module.exports = { registerAuditCommands };

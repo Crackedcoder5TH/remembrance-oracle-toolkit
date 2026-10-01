@@ -47,6 +47,7 @@ function _newSession() {
     },
   };
 }
+_newSession.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Get or create the current session.
@@ -73,6 +74,7 @@ function _startAutoFlush() {
   // Unref so the timer doesn't prevent process exit
   if (_autoFlushTimer.unref) _autoFlushTimer.unref();
 }
+_startAutoFlush.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Flush current session state to disk without ending the session.
@@ -109,6 +111,7 @@ function _flushToDisk() {
     if (process.env.ORACLE_DEBUG) console.warn('[session-tracker] auto-flush failed:', e.message);
   }
 }
+_flushToDisk.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 6, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Record a resolve interaction.
@@ -380,6 +383,7 @@ function _duration(start, end) {
     return 'unknown';
   }
 }
+_duration.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Record that feedback was given for a pattern.

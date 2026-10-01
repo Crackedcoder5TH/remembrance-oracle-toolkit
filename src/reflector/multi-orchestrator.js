@@ -388,5 +388,5 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-orchestrate.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+orchestrate.atomicProperties = { charge: 1, valence: 3, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 1, group: 9, period: 5, harmPotential: "none", alignment: "healing", intention: "benevolent", domain: "utility" };
 formatOrchestration.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };

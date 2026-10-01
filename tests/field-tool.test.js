@@ -14,6 +14,7 @@ const uniquePattern = (label) => {
 // Most tests skip the Void warmup (~2-3s on first call). Tests that
 // explicitly verify Void engagement enable it.
 const FAST = { useVoidSubstrate: false };
+const { TARGET_LEN } = require('../src/core/code-to-waveform'); // the canonical width, asked for
 
 test('read() engages all five layers on valid input (Void enabled)', () => {
   const ft = new FieldTool();
@@ -28,7 +29,7 @@ test('read() engages all five layers on valid input (Void enabled)', () => {
 test('read() returns the documented shape', () => {
   const r = read(uniquePattern('shape'), { ...FAST, language: 'js' });
   assert.ok(Array.isArray(r.waveform), 'waveform must be an array');
-  assert.equal(r.waveform.length, 29, '29-D fractal');
+  assert.equal(r.waveform.length, TARGET_LEN, 'the canonical 232-D decoder vector');
   assert.ok('voidResonance' in r);
   assert.ok('codeResonance' in r);
   assert.ok(Number.isFinite(r.coherence));
@@ -138,12 +139,12 @@ test('FieldTool with custom agentSource tags its contributions', () => {
   assert.ok(sources && sources['field-tool:test:custom-source']);
 });
 
-test('waveform is the 29-D fractal, not the 256-D byte', () => {
+test('waveform is the canonical decoder vector — never the retired 29-D L1 alone or the 256-D byte', () => {
   const r = read(uniquePattern('encoder-check'), { ...FAST, language: 'js' });
-  assert.equal(r.waveform.length, 29, 'must be 29-D fractal');
-  for (const v of r.waveform) {
-    assert.ok(v >= 0 && v <= 1, `fractal dim ${v} out of [0,1]`);
-  }
+  assert.equal(r.waveform.length, TARGET_LEN, 'must be the canonical width');
+  assert.strictEqual(r.waveform, r.composed, 'ONE representation: the same vector under both names');
+  for (const v of r.waveform) assert.ok(Number.isFinite(v), `dim ${v} not finite`);
+  for (let i = 0; i < 29; i++) assert.ok(r.waveform[i] >= 0 && r.waveform[i] <= 1, `L1 dim ${r.waveform[i]} out of [0,1]`);
 });
 
 // ── Void 29-D substrate (slow first call — ~2-3s warmup) ────────────

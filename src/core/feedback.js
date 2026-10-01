@@ -29,6 +29,7 @@ function _contributeValidation(validationResult, passed) {
     });
   } catch (_) { quiet('core:feedback:_contributeValidation', _); /* field optional */ }
 }
+_contributeValidation.atomicProperties = { charge: 0, valence: 1, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 9, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 function actionableFeedback(code, validationResult) {
   const result = { summary: '', covenantFeedback: [], coherencyFeedback: [], suggestions: [] };

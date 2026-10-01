@@ -72,6 +72,7 @@ function registerResolveCommands(handlers, deps) {
     }
   };
 }
+registerResolveCommands.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 1, group: 3, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 
 module.exports = { registerResolveCommands };

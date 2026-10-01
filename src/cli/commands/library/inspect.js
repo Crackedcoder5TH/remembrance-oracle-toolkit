@@ -186,6 +186,7 @@ function registerInspectCommands(handlers, deps) {
     out(`\n${c.green(String(result.stats.added) + ' added')}, ${c.red(String(result.stats.removed) + ' removed')}, ${c.dim(String(result.stats.same) + ' unchanged')}`);
   };
 }
+registerInspectCommands.atomicProperties = { charge: 1, valence: 2, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 1, group: 3, period: 5, harmPotential: "dangerous", alignment: "healing", intention: "neutral", domain: "utility" };
 
 
 module.exports = { registerInspectCommands };

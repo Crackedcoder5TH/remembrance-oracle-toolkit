@@ -107,6 +107,7 @@ function toContentProjection(input) {
   for (let k = 0; k < raw.length && k < DIM_TARGET; k++) out[k] = raw[k] / norm;
   return out;
 }
+_gz.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function contentProjectionCosine(a, b) {
   if (!a || !b || a.length !== b.length) return 0;

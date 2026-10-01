@@ -206,6 +206,7 @@ function parseIfHeader(tokens, i) {
     bodyCloseIdx: k,
   };
 }
+parseIfHeader.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 /**
  * Analyze a condition's tokens to figure out which variables are non-null
@@ -299,6 +300,7 @@ function isSingleStmtEarlyExit(tokens, start) {
   }
   return false;
 }
+isSingleStmtEarlyExit.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "degrading", intention: "neutral", domain: "utility" };
 
 function splitTopLevel(tokens, op) {
   const parts = [];
@@ -317,6 +319,7 @@ function splitTopLevel(tokens, op) {
   if (current.length) parts.push(current);
   return parts;
 }
+splitTopLevel.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   buildScope,
@@ -324,15 +327,5 @@ module.exports = {
 };
 
 // ── Atomic self-description (batch-generated) ────────────────────
-buildScope.atomicProperties = {
-  charge: 1, valence: 0, mass: 'heavy', spin: 'odd', phase: 'liquid',
-  reactivity: 'inert', electronegativity: 0, group: 2, period: 4,
-  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
-  domain: 'quality',
-};
-analyzeCondition.atomicProperties = {
-  charge: 1, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
-  reactivity: 'inert', electronegativity: 0, group: 2, period: 4,
-  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-  domain: 'quality',
-};
+buildScope.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "benevolent", domain: "utility" };
+analyzeCondition.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 2, period: 4, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

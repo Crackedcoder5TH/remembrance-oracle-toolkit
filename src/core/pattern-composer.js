@@ -142,6 +142,7 @@ function _selectDiverse(matches, max) {
 
   return selected;
 }
+_selectDiverse.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Extract the function signature from code.
@@ -159,6 +160,7 @@ function _extractSignature(code, name) {
   }
   return { name: name || 'unknown', params: '', isAsync: false };
 }
+_extractSignature.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 8, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Generate a name from a description.
@@ -174,6 +176,7 @@ function _generateName(description) {
   if (/^\d/.test(name)) name = '_' + name;
   return name;
 }
+_generateName.atomicProperties = { charge: -1, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Compose building blocks into a unified function.
@@ -238,6 +241,7 @@ if (result === undefined && ${name}.length === 0) {} // void function ok
     },
   };
 }
+_composeFunction.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Build a pipeline that chains the helper functions.
@@ -263,6 +267,7 @@ function _buildPipeline(signatures, hasAsync) {
   lines.push(`  return current;`);
   return lines.join('\n');
 }
+_buildPipeline.atomicProperties = { charge: 1, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 3, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = {
   compose,
@@ -271,4 +276,4 @@ module.exports = {
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
-compose.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+compose.atomicProperties = { charge: 1, valence: 1, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "medium", electronegativity: 1, group: 9, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };

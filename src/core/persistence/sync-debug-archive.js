@@ -51,6 +51,7 @@ function _syncDebugToPersonal(localStore, personalStore, options = {}) {
 
   return report;
 }
+_syncDebugToPersonal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Inline debug pull for syncFromGlobal.
@@ -104,6 +105,7 @@ function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
 
   return report;
 }
+_syncDebugFromPersonal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // ─── Archive Sync Helpers ───
 
@@ -132,6 +134,7 @@ function _ensureArchiveSchema(store) {
     if (process.env.ORACLE_DEBUG) console.warn('[persistence:_ensureArchiveSchema] table may already exist:', e?.message || e);
   }
 }
+_ensureArchiveSchema.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Sync pattern archives from local to personal store.
@@ -198,6 +201,7 @@ function _syncArchivesToPersonal(localStore, personalStore, options = {}) {
 
   return report;
 }
+_syncArchivesToPersonal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 /**
  * Pull pattern archives from personal to local store.
@@ -262,6 +266,7 @@ function _syncArchivesFromPersonal(localStore, personalStore, options = {}) {
 
   return report;
 }
+_syncArchivesFromPersonal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "liquid", reactivity: "low", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 // ─── Debug Helpers ───
 
@@ -297,6 +302,7 @@ function _ensureDebugSchema(store) {
     `);
   } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
 }
+_ensureDebugSchema.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 9, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _transferDebugPattern(dp, targetStore) {
   _ensureDebugSchema(targetStore);
@@ -329,6 +335,7 @@ function _transferDebugPattern(dp, targetStore) {
     dp.parent_debug, dp.generation_method || 'shared', now, now
   );
 }
+_transferDebugPattern.atomicProperties = { charge: -1, valence: 1, mass: "medium", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 1, group: 16, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 
 
 

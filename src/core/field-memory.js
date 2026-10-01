@@ -624,8 +624,11 @@ function _restoreFromLedger() {
   let committed = null;
   try {
     const lp = _committedLedgerPath(), sp = _seedPath();
+    // >= not >: an mtime TIE cannot prove the seed is newer — the block and
+    // the seed land in the same millisecond on fast disks, and a skipped
+    // walk on a tie silently drops a richer committed witness.
     const walk = !fs.existsSync(sp) || !fs.existsSync(lp)
-      || fs.statSync(lp).mtimeMs > fs.statSync(sp).mtimeMs;
+      || fs.statSync(lp).mtimeMs >= fs.statSync(sp).mtimeMs;
     committed = walk ? _restoreFromLedgerFile(lp) : null;
   } catch (_) { committed = _restoreFromLedgerFile(_committedLedgerPath()); }
   if (!local) return committed;

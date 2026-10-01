@@ -41,6 +41,9 @@ const RATCHETS = [
   { name: 'traps-ledger', script: 'scripts/traps-ledger-ratchet.js' },
   // ONE representation: no consumer reads anything but the 232-D fractal decoder (shrink-only, at 0)
   { name: 'width', script: 'scripts/width-ratchet.js' },
+  // the wall measures its operator: rolling denial rate vs the governed line
+  // (enforcement is the pre-hook's contracting reading window, not this row)
+  { name: 'calibration', script: 'scripts/calibration-ratchet.js' },
 ];
 
 function runOne(r) {

@@ -82,7 +82,14 @@ const content = ti.content || ti.new_string || '';
   if (!root) return;                              // outside the ecosystem: the scratchpad is yours
   if (!fs.existsSync(abs)) return;                // a new file: nothing to read yet
   if (/[\\/]\.remembrance[\\/]|[\\/]coins\.ledger\.json$|[\\/]seal\.lock\.json$/.test(abs)) return;   // the instrument's own ledgers
-  const WINDOW_MS = 2 * 60 * 60 * 1000;
+  // CALIBRATION LAYER (2026-09-28, the operator's ratchet ruling): the
+  // reading window is no longer a constant — it contracts linearly from
+  // the standing two hours toward fifteen minutes as the wall's rolling
+  // denial rate rises (src/tools/calibration.js, S_norm-bounded like every
+  // ξ-driven force in the engines). A calm or cold ledger yields exactly
+  // the old two hours, so beneath the layer nothing changes.
+  let WINDOW_MS = 2 * 60 * 60 * 1000;
+  try { WINDOW_MS = require('./calibration').windowMs(); } catch (e) { quiet('tools:goggles-pre-hook:calibration', e); }
   const now = Date.now();
   const ledgers = [path.join(__dirname, '..', '..', '.remembrance', 'goggles-readings.json'),
                    path.join(root, '.remembrance', 'goggles-readings.json')];
@@ -104,6 +111,35 @@ const content = ti.content || ti.new_string || '';
     '  (run from ' + path.basename(root) + '). The reading places the file in the map, the field and the\n' +
     '  META-DEBUG findings before the change; an edit without it is a change made blind.');
 })();
+
+// ── CALIBRATION BRIEF ── when the wall's rolling denial rate is at/over the
+// governed line, the contraction announces itself ONCE per session before
+// the next edit, with the number that caused it. Deny-once, then pass — the
+// enforcement itself is the shortened window above, which needs no consent.
+try {
+  if (fp) {
+    const cal = require('./calibration').reading();
+    if (cal.hot) {
+      const seenPath = path.join(__dirname, '..', '..', '.remembrance', 'briefed.json');
+      let seen = {};
+      try { seen = JSON.parse(fs.readFileSync(seenPath, 'utf8')); } catch (e) { quiet('tools:goggles-pre-hook:cal-brief', e); }
+      const key = (input.session_id || 'nosession') + '::CALIBRATION-HOT';
+      if (!seen[key]) {
+        seen[key] = Date.now();
+        try {
+          fs.mkdirSync(path.dirname(seenPath), { recursive: true });
+          fs.writeFileSync(seenPath, JSON.stringify(seen, null, 1));
+        } catch (e) { quiet('tools:goggles-pre-hook:cal-brief-write', e); }
+        out('deny',
+          'CALIBRATION HOT — ' + cal.ratePer100.toFixed(2) + ' denials/100 over ' + cal.attempts
+          + ' commands is at/over the line ' + cal.linePer100 + '/100. The goggled-first reading '
+          + 'window has contracted (reading: goggles --do gate calibration). Measure before acting: '
+          + 'goggle the file, then retry the identical edit — it will go through. Clean commands '
+          + 'relax the window on their own; there is no other way out.');
+      }
+    }
+  }
+} catch (e) { quiet('tools:goggles-pre-hook:calibration', e); }
 
 // ── BRIEF GATE ── the correction arrives BEFORE the edit, or not at all.
 //

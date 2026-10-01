@@ -1,0 +1,22 @@
+{
+ "_README": "THE CALIBRATION LINE. Wall denials per 100 commands, judged over a rolling window (src/tools/calibration.js). Ratchets DOWN only, through scripts/calibration-ratchet.js --save-baseline under ratchet-law: the line may tighten toward the cleanest measured era, never loosen. Published with both measured edges beside it, as the calibration trap requires: the line sits between the cleanest and hottest measured eras and the gap is positive.",
+ "linePer100": 8.6,
+ "window": 200,
+ "minAttempts": 50,
+ "measuredEdges": {
+  "cleanestEraPer100": 4.26,
+  "hottestEraPer100": 18.18,
+  "gap": "positive (4.26 < 18.18); line 8.6 = 2x the cleanest edge, below the hottest"
+ },
+ "provenance": {
+  "measuredAt": "2026-09-28",
+  "method": "session transcript 60fa4f8b: 396 tool denials and 3,513 Bash-calling assistant records bucketed by the harness's own model-switch events; rates per model era",
+  "eras": {
+   "claude-fable-5-1 (2026-09-01..19)": 12.61,
+   "claude-opus-4-7 (four eras)": 10.19,
+   "claude-opus-5-5 (2026-09-23..25)": 18.18,
+   "claude-fable-5 (2026-09-25..28)": 4.26
+  },
+  "rulingBy": "operator (Crackedcoder5TH), 2026-09-28: fractally layer the calibration ratchet onto the wall, everything underneath unchanged, the instrument's mathematics guiding the gate"
+ }
+}

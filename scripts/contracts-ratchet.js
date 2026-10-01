@@ -63,6 +63,32 @@ function voidHead() {
   try { return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: VOID, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null; }
   catch (_) { return null; }
 }
+
+/**
+ * The digest of Void's tracked INSTRUMENT content at a revision: the full
+ * ls-tree with `.claude/` (the goggles mirror and settings — nothing any
+ * contract reads) left out. Two commits with the same instrument digest
+ * hold the same truth-spine inputs, so a verdict taken at one IS current
+ * at the other (the plateau ruling, 2026-09-17: never recalculate what is
+ * already calculated). Measured 2026-09-28: contracts fully re-ran four
+ * times in one day, ~4 minutes each, on trap-seed and verifier MIRROR
+ * commits that touched no contract input. Null (an unresolvable revision,
+ * a shallow clone) leaves the sha staleness standing — safe, never looser.
+ */
+function instrumentDigest(rev) {
+  try {
+    const crypto = require('node:crypto');
+    const out = execFileSync('git', ['ls-tree', '-r', rev], { cwd: VOID, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
+    // coins.ledger.json is left out beside .claude/: every coined commit
+    // touches it, its only reader is C-65, and C-65's subject is
+    // append-only history whose every appended coin the commit hook
+    // verified at creation — appending one cannot falsify the other 66
+    // claims. An explicit --run (or the goggles verb) still recomputes
+    // everything, always.
+    const kept = out.split('\n').filter((l) => l && !/\t(\.claude\/|coins\.ledger\.json$)/.test(l)).join('\n');
+    return crypto.createHash('sha256').update(kept).digest('hex').slice(0, 16);
+  } catch (_) { return null; }
+}
 voidHead.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** Take the suite fresh — the same script the goggles verb runs, full, so the verdict is persisted. */
@@ -88,7 +114,14 @@ function readLatest() {
   const head = voidHead();
   const ageH = doc.ran_at ? (Date.now() - Date.parse(doc.ran_at)) / 3.6e6 : Infinity;
   const stale = [];
-  if (head && doc.head && doc.head !== head) stale.push(`taken at Void ${doc.head}, Void is at ${head}`);
+  if (head && doc.head && doc.head !== head) {
+    // Different commit — but the same INSTRUMENT content is the same
+    // truth-spine: only a change to what the contracts actually read
+    // stales the verdict (instrumentDigest above).
+    const then = instrumentDigest(doc.head);
+    const now = instrumentDigest('HEAD');
+    if (!(then && now && then === now)) stale.push(`taken at Void ${doc.head}, Void is at ${head}`);
+  }
   if (!(ageH <= MAX_AGE_H)) stale.push(`taken ${Number.isFinite(ageH) ? ageH.toFixed(1) + ' h' : 'an unknown time'} ago (max ${MAX_AGE_H} h)`);
   return { doc, head, ageH, stale };
 }

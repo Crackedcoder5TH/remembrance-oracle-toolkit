@@ -412,8 +412,8 @@ function _legacyStore() {
       'CREATE TABLE IF NOT EXISTS legacies (id TEXT PRIMARY KEY, name TEXT, content TEXT, tags TEXT, author TEXT, coherence REAL, created_at TEXT)',
     ).run();
     // Safe migration — add later columns to a table created by an earlier build.
-    for (const col of ['meta TEXT', 'waveform TEXT', 'updated_at TEXT']) {
-      try { store.db.prepare('ALTER TABLE legacies ADD COLUMN ' + col).run(); } catch (_) { /* already present */ }
+    for (const col of ['meta TEXT', 'waveform TEXT', 'updated_at TEXT', 'data_readings TEXT']) {
+      try { store.db.prepare(`ALTER TABLE legacies ADD COLUMN ${col}`).run(); } catch (_) { /* already present */ }
     }
     _legacyStoreCache = store;
   } catch (_) { _legacyStoreCache = null; }
@@ -422,16 +422,22 @@ function _legacyStore() {
 function _legacyRow(r) {
   let tags = []; try { tags = JSON.parse(r.tags || '[]'); } catch (_) { /* */ }
   let meta = {}; try { meta = JSON.parse(r.meta || '{}'); } catch (_) { /* */ }
-  return { id: r.id, name: r.name, content: r.content, tags, meta, author: r.author, coherence: r.coherence, createdAt: r.created_at, updatedAt: r.updated_at };
+  let dataReadings = []; try { dataReadings = JSON.parse(r.data_readings || '[]'); } catch (_) { /* */ }
+  return { id: r.id, name: r.name, content: r.content, tags, meta, author: r.author, coherence: r.coherence, dataReadings, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 // Encode a record the way the field encodes everything: a coherence score plus
 // the substrate's own waveform, so resonance search is just cosine over these.
+// `coherence` is the record READ AS A FILE (its bytes); `dataReadings` is the
+// data it holds READ AS DATA — each numeric series through /compress_signal,
+// one reading per series, never averaged (the container rule, read-signal.py).
+// A record that carries no series has dataReadings [].
 function _legacyEncode(name, content) {
-  let coherence = 0; let waveform = null;
+  let coherence = 0; let waveform = null; let dataReadings = [];
   const ft = _ft();
   if (ft) { try { coherence = (ft.read({ content, name, language: 'text' }, { source: 'field-server:legacy', growSubstrate: false }).coherence) || 0; } catch (_) { /* */ } }
   try { waveform = Array.from(codeToWaveform(name + '\n' + content)); } catch (_) { waveform = null; }
-  return { coherence, waveform };
+  try { dataReadings = require('../src/core/void-service').dataReadingsOf(content); } catch (_) { dataReadings = []; }
+  return { coherence, waveform, dataReadings };
 }
 function legacyOp(args) {
   const store = _legacyStore();
@@ -447,23 +453,31 @@ function legacyOp(args) {
     let id = args.id ? String(args.id) : null;
     if (action === 'update') {
       if (!id) return { ok: false, error: 'id is required for update' };
-      if (!db.prepare('SELECT 1 FROM legacies WHERE id = ?').get(id)) return { ok: false, error: 'no legacy with id ' + id };
+      const exists = db.prepare('SELECT 1 FROM legacies WHERE id = ?').get(id);
+      if (!exists) return { ok: false, error: 'no legacy with id ' + id };
     }
     if (!id) id = crypto.createHash('sha256').update(name + '\n' + content).digest('hex').slice(0, 16);
     const tags = Array.isArray(args.tags) ? args.tags : [];
     const author = args.author ? String(args.author) : null;
     const meta = (args.meta && typeof args.meta === 'object') ? args.meta : {};
-    const { coherence, waveform } = _legacyEncode(name, content);
+    const { coherence, waveform, dataReadings } = _legacyEncode(name, content);
     const now = new Date().toISOString();
     const wf = waveform ? JSON.stringify(waveform) : null;
+    const dr = JSON.stringify(dataReadings || []);
     if (action === 'update') {
-      db.prepare('UPDATE legacies SET name=?, content=?, tags=?, author=?, meta=?, coherence=?, waveform=?, updated_at=? WHERE id=?')
-        .run(name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, id);
-      return { ok: true, id, name, coherence, updatedAt: now };
+      db.prepare('UPDATE legacies SET name=?, content=?, tags=?, author=?, meta=?, coherence=?, waveform=?, data_readings=?, updated_at=? WHERE id=?')
+        .run(name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, dr, now, id);
+      return { ok: true, id, name, coherence, dataReadings, updatedAt: now };
     }
-    db.prepare('INSERT OR REPLACE INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-      .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, now);
-    return { ok: true, id, name, coherence, createdAt: now };
+    // An upsert keeps the record's birth: created_at is set once, so re-storing
+    // a record (a message marked read, a lead stamped with its outcome) never
+    // moves it in the created_at-ordered lists every reader pages through.
+    db.prepare('INSERT INTO legacies (id, name, content, tags, author, meta, coherence, waveform, data_readings, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) '
+      + 'ON CONFLICT(id) DO UPDATE SET name=excluded.name, content=excluded.content, tags=excluded.tags, author=excluded.author, '
+      + 'meta=excluded.meta, coherence=excluded.coherence, waveform=excluded.waveform, data_readings=excluded.data_readings, updated_at=excluded.updated_at')
+      .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, dr, now, now);
+    const born = db.prepare('SELECT created_at FROM legacies WHERE id = ?').get(id);
+    return { ok: true, id, name, coherence, dataReadings, createdAt: born ? born.created_at : now, updatedAt: now };
   }
 
   // Capacity-guarded insert (the purchase cap). Counts the live records that
@@ -543,13 +557,24 @@ function legacyOp(args) {
     // correctly-scoped page AND total.
     const tags = Array.isArray(args.tags) ? args.tags.map(String)
       : (args.tag ? [String(args.tag)] : []);
-    const where = [];
-    const params = [];
-    if (q) { where.push('(name LIKE ? OR content LIKE ?)'); params.push('%' + q + '%', '%' + q + '%'); }
-    for (const t of tags) { where.push('tags LIKE ?'); params.push('%' + JSON.stringify(t) + '%'); }
-    const clause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-    const rows = db.prepare('SELECT * FROM legacies ' + clause + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(...params, limit, offset);
-    const total = db.prepare('SELECT COUNT(*) AS c FROM legacies ' + clause).get(...params).c;
+    // Principle 11: ONE literal statement — no SQL text assembled from
+    // variables. The optional filters ride as BOUND VALUES: q as a LIKE
+    // pattern (NULL skips it), tags as a JSON array of LIKE patterns the
+    // row must match in full. json_each unpacks that array INSIDE SQLite,
+    // so the variable-length tag filter needs no variable-length SQL.
+    const bind = {
+      q: q ? ('%' + q + '%') : null,
+      tags: JSON.stringify(tags.map((t) => '%' + JSON.stringify(t) + '%')),
+      limit,
+      offset,
+    };
+    const rows = db.prepare(
+      'SELECT * FROM legacies WHERE (@q IS NULL OR name LIKE @q OR content LIKE @q) '
+      + 'AND (SELECT COUNT(*) FROM json_each(@tags) je WHERE legacies.tags LIKE je.value) = json_array_length(@tags) '
+      + 'ORDER BY created_at DESC LIMIT @limit OFFSET @offset').all(bind);
+    const total = db.prepare(
+      'SELECT COUNT(*) AS c FROM legacies WHERE (@q IS NULL OR name LIKE @q OR content LIKE @q) '
+      + 'AND (SELECT COUNT(*) FROM json_each(@tags) je WHERE legacies.tags LIKE je.value) = json_array_length(@tags)').get(bind).c;
     return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total };
   }
 

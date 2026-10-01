@@ -22,6 +22,7 @@ const { createGate, requireGate } = require('../core/covenant-fractal');
 const _appendDenial = requireGate((gate, file, line) => fs.appendFileSync(file, line));
 const _denialGate = () => createGate().seal({ charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid', reactivity: 'inert', electronegativity: 0.2, group: 12, period: 2, harmPotential: 'none', alignment: 'neutral', intention: 'benevolent', domain: 'audit' });
 
+let _calDenied = null;   // the denying rule, read by the calibration exit hook below
 function out(decision, reason) {
   // THE DENIAL LOG (leak map: "the measurement that makes this durable").
   // Every deny is appended as one JSON line — timestamp, the rule's first
@@ -30,6 +31,7 @@ function out(decision, reason) {
   // verb to build. When it goes quiet across fresh sessions, the surface
   // is closed. Read it: goggles --do denials. Best-effort, never blocks.
   if (decision === 'deny') {
+    _calDenied = String(reason);
     try {
       const path = require('node:path');
       const dir = path.join(__dirname, '..', '..', '.remembrance');
@@ -63,6 +65,7 @@ out.atomicProperties = { charge: 0, valence: 2, mass: "heavy", spin: "odd", phas
 // denials in a round of hundreds of off-surface commands). Any internal
 // error is now a denial that names itself.
 process.on('uncaughtException', (e) => {
+  _calDenied = 'GOGGLES — WALL FAULT refused (fail closed)';
   try {
     process.stdout.write(JSON.stringify({
       hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny',
@@ -81,6 +84,24 @@ if (!input || typeof input !== 'object') {
 }
 const cmd = (input.tool_input || {}).command || '';
 if (!cmd) process.exit(0);
+
+// ── CALIBRATION STREAM (2026-09-28, the operator's ratchet ruling) ──────────
+// Every command the wall sees becomes one line in the rolling window that
+// src/tools/calibration.js reads: clean or denied, with the denying rule and
+// the serving model on a denial. The exit hook fires on every path out of
+// this file (out() and the plain exits alike), so allow and deny are counted
+// by the same door. Nothing below this line changes how any command is
+// judged — the layer only observes; the consequence (the contracting
+// goggled-first window) lives in goggles-pre-hook.js.
+process.on('exit', () => {
+  try {
+    require('./calibration').record({
+      denied: _calDenied !== null,
+      rule: _calDenied || undefined,
+      transcriptPath: input.transcript_path,
+    });
+  } catch (e) { quiet('tools:goggles-bash-hook:calibration', e); }
+});
 
 // ── 0. THE WALL IS DEFAULT-DENY INSIDE THE ECOSYSTEM ────────────────────────
 //

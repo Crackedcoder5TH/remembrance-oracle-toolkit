@@ -10,7 +10,7 @@
  *     `store_guarded` action — the capacity check and the insert share one
  *     BEGIN IMMEDIATE on the field's SQLite, so two concurrent checkouts
  *     cannot both pass the cap (the SQL path's transaction, server-side).
- *   - Every call goes through `legacyStrict`, which reports "field
+ *   - Every call goes through the bridge's strict record store, which reports "field
  *     unreachable" as an error instead of an empty result — a money store
  *     must never read an outage as "no purchases yet".
  *   - Tags are re-checked exactly after the field's LIKE-based tag filter,
@@ -28,7 +28,9 @@
  */
 
 import { createHash } from "crypto";
-import { legacyStrict, type SubstrateRecord } from "../valor/remembrance-bridge";
+import {
+  getRecordStrict, listAllStrict, newestFirst, parseJson, storeGuardedStrict, storeStrict, utcDate, type Guard,
+} from "../valor/remembrance-bridge";
 import type {
   ClientRecord,
   ClientFilters,
@@ -45,7 +47,6 @@ const CLIENT_TAG = "valor-client";
 const FILTERS_TAG = "valor-client-filters";
 const PURCHASE_TAG = "valor-purchase";
 const EXCLUSIVE_TAG = "purchase-exclusive";
-const PAGE = 200;                       // the field's list cap per call
 
 const clientRecordId = (clientId: string) => `client:${clientId}`;
 const filtersRecordId = (clientId: string) => `client-filters:${clientId}`;
@@ -63,71 +64,27 @@ const purchaseTags = (p: LeadPurchase) => [
   p.exclusive ? EXCLUSIVE_TAG : "purchase-shared",
 ];
 
-const parse = <T>(content: string | undefined | null): T | null => {
-  if (!content) return null;
-  try { return JSON.parse(content) as T; } catch { return null; }
-};
-
-/** SQLite's date('now') and date('now','-30 days'): UTC calendar dates compared as strings. */
-const utcDate = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString().slice(0, 10);
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-type GetAnswer = { ok: boolean; error?: string; legacy: SubstrateRecord | null };
-type ListAnswer = { ok: boolean; error?: string; legacies: SubstrateRecord[]; total: number };
-type StoreAnswer = { ok: boolean; error?: string; id?: string };
-type GuardedAnswer = {
-  ok: boolean;
-  error?: string;
-  outcome?: "inserted" | "duplicate" | "sold_out";
-  legacy?: SubstrateRecord;
-};
-
+// Records are the typed row as JSON, named by their id; the bridge's strict
+// store does the rest (outage = error, exact tags).
 async function getJson<T>(id: string): Promise<Result<T | null, string>> {
-  const r = await legacyStrict<GetAnswer>({ action: "get", id });
-  if (!r.ok) return Err(r.error);
-  return Ok(r.value.legacy ? parse<T>(r.value.legacy.content) : null);
+  const r = await getRecordStrict(id);
+  return r.ok ? Ok(r.value ? parseJson<T>(r.value.content) : null) : r;
 }
-
-/** Every record carrying ALL of `tags` (exactly), paged through the field's list cap. */
 async function listAll<T>(tags: string[]): Promise<Result<T[], string>> {
-  const out: T[] = [];
-  const seen = new Set<string>();
-  for (let offset = 0; ; offset += PAGE) {
-    const r = await legacyStrict<ListAnswer>({ action: "list", tags, limit: PAGE, offset });
-    if (!r.ok) return Err(r.error);
-    const page = Array.isArray(r.value.legacies) ? r.value.legacies : [];
-    for (const rec of page) {
-      if (seen.has(rec.id)) continue;
-      const recTags = Array.isArray(rec.tags) ? rec.tags : [];
-      if (!tags.every((t) => recTags.includes(t))) continue;
-      const row = parse<T>(rec.content);
-      if (row !== null) { seen.add(rec.id); out.push(row); }
-    }
-    if (page.length < PAGE || offset + PAGE >= r.value.total) return Ok(out);
-  }
+  const r = await listAllStrict(tags);
+  return r.ok ? Ok(r.value.map((rec) => parseJson<T>(rec.content)).filter((row): row is T => row !== null)) : r;
 }
-
-async function store(id: string, content: unknown, tags: string[]): Promise<Result<true, string>> {
+async function store(id: string, content: unknown, tags: string[]) {
   if (!id || content === undefined || !Array.isArray(tags)) return Err("store requires an id, content and tags");
-  const r = await legacyStrict<StoreAnswer>({ action: "store", id, name: id, content: JSON.stringify(content), tags });
-  return r.ok ? Ok(true) : Err(r.error);
+  return storeStrict({ id, name: id, content: JSON.stringify(content), tags });
+}
+async function storeGuarded(id: string, content: unknown, tags: string[], guard: Guard) {
+  if (!id || content === undefined || !Array.isArray(tags) || !guard) return Err("storeGuarded requires an id, content, tags and a guard");
+  return storeGuardedStrict({ id, name: id, content: JSON.stringify(content), tags }, guard);
 }
 
-async function storeGuarded(
-  id: string, content: unknown, tags: string[],
-  guard: { tags: string[]; max: number; blockTag?: string },
-): Promise<Result<GuardedAnswer, string>> {
-  const r = await legacyStrict<GuardedAnswer>({
-    action: "store_guarded", id, name: id, content: JSON.stringify(content), tags, guard,
-  });
-  return r.ok ? Ok(r.value) : Err(r.error);
-}
-
-/** Newest first; sorts a copy so a caller's array is never reordered. */
-function newestFirst<T>(rows: readonly T[], at: (row: T) => string): T[] {
-  if (!Array.isArray(rows) || typeof at !== "function") return [];
-  return [...rows].sort((a, b) => String(at(b) ?? "").localeCompare(String(at(a) ?? "")));
-}
 const purchasedAt = (p: LeadPurchase) => p.purchasedAt;
 const createdAt = (c: ClientRecord) => c.createdAt;
 
@@ -236,7 +193,7 @@ export class SubstrateClientAdapter implements ClientDbAdapter {
     if (!r.ok) return r;
     if (r.value.outcome === "sold_out") return Ok({ outcome: "sold_out" });
     if (r.value.outcome === "duplicate") {
-      const existing = parse<LeadPurchase>(r.value.legacy?.content);
+      const existing = parseJson<LeadPurchase>(r.value.legacy?.content);
       return existing ? Ok({ outcome: "duplicate", purchase: existing }) : Err("duplicate purchase record is unreadable");
     }
     return Ok({ outcome: "inserted", purchase });

@@ -8,7 +8,7 @@
  * All exported functions are async (return Promise<Result<...>>).
  */
 import path from "path";
-import { getRecord, storeRecord } from "./valor/remembrance-bridge";
+import { getRecordStrict, storeStrict } from "./valor/remembrance-bridge";
 import {
   SUBSTRATE_LEADS,
   substrateInsertLead,
@@ -27,6 +27,8 @@ import {
   substrateGetClientMessages,
   substrateMarkMessageRead,
   substrateGetAllClientMessages,
+  substrateInsertClientDocument,
+  substrateGetClientDocuments,
 } from "./substrate-messages";
 
 // --- Result type for typed error handling ---
@@ -1425,16 +1427,19 @@ const siteRecordId = (key: string): string => "site:" + key;
 
 export async function getDbSiteContent(key: string): Promise<Result<string | null, string>> {
   if (SUBSTRATE_FIELD) {
-    const rec = await getRecord(siteRecordId(key));
-    return Ok(rec ? rec.content : null);
+    // strict: an unreachable field is an error, not "no saved content" (the
+    // page would silently fall back to its defaults over the operator's copy)
+    const rec = await getRecordStrict(siteRecordId(key));
+    if (!rec.ok) return Err(rec.error);
+    return Ok(rec.value ? rec.value.content : null);
   }
   return getAdapter().getSiteContent(key);
 }
 
 export async function setDbSiteContent(key: string, value: string): Promise<Result<void, string>> {
   if (SUBSTRATE_FIELD) {
-    const r = await storeRecord({ id: siteRecordId(key), name: siteRecordId(key), content: value, tags: ["site-content"] });
-    return r && r.ok ? Ok(undefined) : Err("substrate store failed (field unreachable?)");
+    const r = await storeStrict({ id: siteRecordId(key), name: siteRecordId(key), content: value, tags: ["site-content"] });
+    return r.ok ? Ok(undefined) : Err(r.error);
   }
   return getAdapter().setSiteContent(key, value);
 }
@@ -1445,7 +1450,7 @@ export async function setDbSiteContent(key: string, value: string): Promise<Resu
 
 /** Get leads associated with a client email (for portal dashboard). */
 export async function getClientLeads(email: string): Promise<Result<LeadRecord[], string>> {
-  return getAdapter().getLeadsByEmail(email);
+  return getLeadsByEmail(email);   // honours SUBSTRATE_LEADS like every other lead read
 }
 
 /** Client message record (portal messaging). */
@@ -1510,6 +1515,7 @@ export type ClientDocumentInput = Pick<ClientDocument, "clientId" | "name" | "ur
 export async function createClientDocument(
   doc: ClientDocumentInput,
 ): Promise<Result<{ id: number }, string>> {
+  if (SUBSTRATE_MESSAGES) return substrateInsertClientDocument(doc);
   return getAdapter().insertClientDocument(doc);
 }
 
@@ -1517,5 +1523,6 @@ export async function createClientDocument(
 export async function getClientDocuments(
   clientId: number,
 ): Promise<Result<ClientDocument[], string>> {
+  if (SUBSTRATE_MESSAGES) return substrateGetClientDocuments(clientId);
   return getAdapter().getClientDocuments(clientId);
 }

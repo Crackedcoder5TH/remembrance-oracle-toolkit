@@ -1432,6 +1432,244 @@
    "sources": [
     "wall"
    ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "cd"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `cd` inside the ecosystem — OFF-SURFACE COMMAND refused (grep)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (grep)\"; the command began with `cd`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-15T20:15:10.856Z",
+   "last": "2026-09-23T09:08:06.363Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "S=/tmp/claude-0/-home-user/60fa4f8b-c04e-5edc-bf6f-62f7cbe6f68b/scratchpad/head;"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `S=/tmp/claude-0/-home-user/60fa4f8b-c04e-5edc-bf6f-62f7cbe6f68b/scratchpad/head;` inside the ecosystem — OFF-SURFACE COMMAND refused (mkdir)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (mkdir)\"; the command began with `S=/tmp/claude-0/-home-user/60fa4f8b-c04e-5edc-bf6f-62f7cbe6f68b/scratchpad/head;`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-23T08:48:46.996Z",
+   "last": "2026-09-23T08:49:01.252Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "gates.lock.json"
+   ],
+   "severity": "high",
+   "wrong": "Editing the wall or the workflow itself (the goggles hooks, gate-lock.js, the pre-commit generator, the mint, orient) with ordinary edits, without first reading how they are wired, because the change looked obviously right.",
+   "truth": "2026-09-23: an agent edited goggles-pre-hook.js, goggles-bash-hook.js and gate-lock.js directly; gate-lock went red, the operator caught it, and every edit had to be reverted and re-delivered as a patch outside the ecosystem. The gates and the wall belong to the owner: seeds/gates.lock.json hashes them and the one door is the owner relock (node scripts/gate-lock.js --relock --reason) then an anchor on the Witness. The same round rewrote the commit workflow (pre-commit generator, mint pre-checks, orient) without first reading that the oracle git hooks were never installed and that the gates already ride every mint.",
+   "tell": "You are about to edit a file under src/tools/goggles-*, trap-guard-hook.js, trap-learner.js, src/ci/hooks.js, scripts/gate-lock.js, scripts/ecosystem-orient.sh, scripts/install-goggles-wall.sh or .claude/skills/goggles/, and you have not goggled it and read its wiring this session.",
+   "correct": "Goggle the file and read how it is wired first. Never edit a gate: check seeds/gates.lock.json, and hand the owner a patch outside the ecosystem to apply, relock and anchor.",
+   "count": 3,
+   "first": "2026-09-25T01:25:17.772Z",
+   "last": "2026-09-25T01:25:17.772Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^(Edit|Write|MultiEdit|NotebookEdit)$",
+    "input": "src/tools/goggles-|trap-guard-hook|trap-learner|src/ci/hooks|gate-lock|gates\\.lock|ecosystem-orient|install-goggles-wall|skills/goggles/"
+   }
+  },
+  {
+   "match": [
+    "remembrance-bridge",
+    "substrate-messages",
+    "substrate-leads"
+   ],
+   "severity": "high",
+   "wrong": "Creating a new file (substrate-store.ts) for code whose kind already lived in an existing module, without asking resonance what already holds it.",
+   "truth": "2026-09-23: substrate-store.ts was written beside valor/remembrance-bridge.ts, which already held the record-store section; it had to be folded back and deleted. The operator: creating new files is unnecessary, it is bloat. Code belongs in the file that already holds its kind; the goggles overlay and the capability index name that file before the write.",
+   "tell": "You are about to Write a path that does not exist yet inside an ecosystem repo, or the overlay lists an existing function at 0.6+ that does what you are about to add.",
+   "correct": "Ask first: --do find for the name and the kind, read the overlay resonance, open the nearest file it names. Add to that file. A new file is justified only by a search that proved nothing holds it, stated to the operator before writing.",
+   "count": 3,
+   "first": "2026-09-25T01:25:24.094Z",
+   "last": "2026-09-25T01:25:24.094Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^Write$",
+    "input": "digital-cathedral/|remembrance-oracle-toolkit/src/|remembrance-oracle-toolkit/scripts/"
+   }
+  },
+  {
+   "match": [
+    "atomic-drift"
+   ],
+   "severity": "high",
+   "wrong": "Typing an atomicProperties declaration by hand for a new or changed function, guessing its charge, valence, mass, phase and group.",
+   "truth": "2026-09-23: seven hand-typed declarations (messageOf, denialTrap, recordDenial, learnDenial, two out(), resolveRef) all drifted from what the extractor measures; the atomic-drift ratchet went red and --sync rewrote every one (e.g. recordDenial declared light/liquid/benevolent/audit, measured heavy/gas/neutral/utility). The ratchet itself says it: a declaration is never typed by hand; the extractor measures it.",
+   "tell": "You are writing NAME.atomicProperties = { ... } with values you chose yourself.",
+   "correct": "Write the function, then run the atomic-drift ratchet with --sync (and --grow for a new top-level function) so the declaration is computed from the body. Re-run the battery to confirm it holds.",
+   "count": 3,
+   "first": "2026-09-25T01:25:29.598Z",
+   "last": "2026-09-25T01:25:29.599Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^(Edit|Write|MultiEdit)$",
+    "input": "atomicProperties\\s*=\\s*\\{"
+   }
+  },
+  {
+   "match": [
+    "BRIEF REQUIRED"
+   ],
+   "severity": "high",
+   "wrong": "Sending several edits in one message (to the same file, or two new files), so the first is refused by the brief gate and the siblings land before the brief was ever read.",
+   "truth": "2026-09-23, reproduced at least five times in one session: seven parallel edits to database.ts, one refused, six landed; an export landed without the function it exported (brief.js); a search-hook edit landed while its sibling was refused. Every time the refused one had to be retried alone. The brief is delivered to the NEXT message, so anything sent beside the refused call acted without reading it.",
+   "tell": "Your message contains more than one Edit/Write/MultiEdit call, or one of your edits comes back BRIEF REQUIRED while another in the same message succeeded.",
+   "correct": "One edit per message. Read the brief that comes back, then retry the identical edit in the next message. If a sibling slipped through, check it against the brief before going on.",
+   "count": 3,
+   "first": "2026-09-25T01:25:35.584Z",
+   "last": "2026-09-25T01:25:35.584Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^(Edit|MultiEdit|Write)$"
+   }
+  },
+  {
+   "match": [
+    "ecosystem-protocol-sync"
+   ],
+   "severity": "high",
+   "wrong": "Changing a surface file in one repo (run.mjs, install-goggles-wall.sh, ecosystem-orient.sh, SKILL.md) without building the macro map, so it is never seen that the file is a byte-identical mirror of a copy in another repo.",
+   "truth": "2026-09-25: --map showed .claude/skills/goggles/run.mjs and scripts/install-goggles-wall.sh bridged to Void at 1.0000 and scripts/ecosystem-orient.sh bridged to REMEMBRANCE-BLOCKCHAIN at 1.0000. A wall patch written two days earlier changed all three in the hub only; applied, it would have broken every mirror. The map had not been rebuilt for 16 days and was never run before the patch was written.",
+   "tell": "You are about to change or patch a file and have not run --map in this repo this session, or the map lists the file under TOP CROSS-SYSTEM BRIDGES.",
+   "correct": "goggles --map first, every session, before any change. A file on the bridge list changes in every mirror at once, the way the ecosystem syncs it (ecosystem-protocol-sync), never in one repo.",
+   "count": 3,
+   "first": "2026-09-25T01:25:42.467Z",
+   "last": "2026-09-25T01:25:42.468Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^(Edit|Write|MultiEdit)$",
+    "input": "skills/goggles/(run\\.mjs|SKILL\\.md)|install-goggles-wall\\.sh|ecosystem-orient\\.sh|ECOSYSTEM\\.md"
+   }
+  },
+  {
+   "match": [
+    "goggles-map.json"
+   ],
+   "severity": "high",
+   "wrong": "Using the goggles as a formality: skipping --map, goggling files through a pipe and taking whatever came back as the reading, never checking that FOCUS, META, MACRO and META-DEBUG actually arrived, and reporting the rest from memory.",
+   "truth": "2026-09-25: a per-file read of scripts/field-server.js piped to the agent stopped at 65,623 bytes, mid-word, exit 0: 95 traps printed (44 of them wall-learned candidates matched by generic keys) and not one reading. The agent had goggled files this way for a whole session and edited on that basis, and had not built the macro map in 16 days. The skill makes the report of every lens mandatory; an absent lens is itself a reading and must be said.",
+   "tell": "Your goggle output has no FOCUS / META / MACRO / META-DEBUG section, ends mid-line, or you are about to report a file without quoting what each lens saw.",
+   "correct": "--map at the start of work. After every per-file read, confirm each lens is present and report each in words; if one is missing, say so and find out why before acting on the file.",
+   "count": 3,
+   "first": "2026-09-25T01:25:52.196Z",
+   "last": "2026-09-25T01:25:52.196Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^Bash$",
+    "input": "skills/goggles/run\\.mjs\\s+(?!--)"
+   }
+  },
+  {
+   "match": [
+    "void_seal",
+    "signature INVALID",
+    "change-coin-verify",
+    "VOID_SEAL_KEY"
+   ],
+   "severity": "high",
+   "wrong": "Minting coins on a host whose seal key differs from the key the verifier holds (or with no key at all, structural-seam mode), so the coins verify structurally but fail the HMAC when a keyed verifier reads them.",
+   "truth": "Measured 2026-09-25 by mint verify since-epoch: 14 commits REFUSED, 58 verified, every refusal the same line — void_seal signature INVALID, the coin was not minted by the compressor holding this key. The drift started 2026-09-08 17:59 CDT at 7b0e0cba (satisfy PR 355 review and ratchet gates — the same cathedral lead-operations layer later phases touched) and ran through 4bb09f75 and 4d0b304f (2026-09-08), then 29dde633, 95da15c1, a837001a, b6166cd4, b43cf4bb, 923816b4, df4b6b32, 876ed287, c9d75a44, 0b641c74, 45a3f92c (Codex CI work, 2026-09-09). The key lives in Void .substrate_seal.key or the VOID_SEAL_KEY env, is gitignored, and is absent on this host — change-coin.py calls unkeyed mode a seam, not a wall.",
+   "tell": "mint verify prints void_seal signature INVALID on commits whose content is otherwise intact; the refusals cluster by author and date rather than by content; the host has neither .substrate_seal.key nor VOID_SEAL_KEY.",
+   "correct": "Before minting, check which key the host holds; a mint in seam mode must be called out to the operator, never silently produced. A signature-INVALID refusal is key-provenance memory, not content corruption — read WHERE the drift started from the refusal cluster before touching any file it names.",
+   "count": 3,
+   "first": "2026-09-25T02:06:01.791Z",
+   "last": "2026-09-25T02:06:01.791Z",
+   "sources": [
+    "agent"
+   ],
+   "guard": {
+    "tools": "^Bash$",
+    "input": "--do mint(?! verify)"
+   }
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "gh"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `gh` inside the ecosystem — OFF-SURFACE COMMAND refused (gh)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (gh)\"; the command began with `gh`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-14T04:54:21.068Z",
+   "last": "2026-09-28T15:09:06.633Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "node"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `node` inside the ecosystem — OFF-SURFACE COMMAND refused (node on a file)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (node on a file)\"; the command began with `node`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-19T18:38:47.947Z",
+   "last": "2026-09-27T03:41:59.829Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "rebuilds basis",
+    "at_basis",
+    "dormant_patterns"
+   ],
+   "severity": "high",
+   "wrong": "Changing how the live basis is BUILT (the dormancy ruling: live load skips dormant ranges) without teaching the replay path the same change, so every basis recorded after the ruling was one its own verifier could not rebuild.",
+   "truth": "Measured 2026-09-28: basis 34c0e162 (recorded 2026-09-19 by the live path) rebuilt as 76ac0700 at the same length 28669, and every unfold of a post-ruling coin died on HTTP 500 from /compress_signal. A recorded basis is a contract between the writer and the verifier: at_basis now retries the dormant-skipped reconstruction when the raw prefix does not reproduce the digest, digest-checked exactly the same, and raises naming BOTH digests when neither matches.",
+   "tell": "An unfold failing while mint succeeds; a 500 naming two digests at one basis_n; a basis recorded just after a ruling that changed the live load; a coin verifier reading basis unavailable on the very host that minted it.",
+   "correct": "When a ruling changes the live load, teach the replay the same change in the same commit, and prove a coin unfold end-to-end before calling the ruling landed.",
+   "count": 3,
+   "first": "2026-09-28T15:18:38.885Z",
+   "last": "2026-09-28T15:18:38.885Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

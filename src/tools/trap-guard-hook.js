@@ -42,6 +42,7 @@ function out(decision, reason) {
   }));
   process.exit(0);
 }
+out.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 let input = {};
 try { input = JSON.parse(fs.readFileSync(0, 'utf8')); } catch (_) { process.exit(0); }

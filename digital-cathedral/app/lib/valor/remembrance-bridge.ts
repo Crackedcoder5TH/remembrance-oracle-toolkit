@@ -252,6 +252,95 @@ export async function resonantRecords(
   return r && r.ok && Array.isArray(r.legacies) ? r.legacies : [];
 }
 
+// ── Strict record store ──────────────────────────────────────────────
+// The same store for the site's records of truth (leads, messages, buyers,
+// purchases): every call reports "field unreachable" as an error, never as an
+// empty answer, and tag filters are re-checked exactly — the field matches
+// tags with LIKE, and ids carry '_' (a LIKE wildcard).
+
+type ListAnswer = { ok: boolean; error?: string; legacies: SubstrateRecord[]; total: number };
+export type Guard = { tags: string[]; max: number; blockTag?: string };
+export type GuardedAnswer = { ok: boolean; error?: string; outcome?: "inserted" | "duplicate" | "sold_out"; legacy?: SubstrateRecord };
+export type RecordInput = { id: string; name: string; content: string; tags: string[]; meta?: Record<string, unknown> };
+const LIST_PAGE = 200;                       // the field's list cap per call
+
+const hasAllTags = (rec: SubstrateRecord, tags: readonly string[]) =>
+  tags.every((t) => (Array.isArray(rec.tags) ? rec.tags : []).includes(t));
+
+export function parseJson<T>(content: string | undefined | null): T | null {
+  if (!content) return null;
+  try { return JSON.parse(content) as T; } catch { return null; }
+}
+
+export async function getRecordStrict(id: string): Promise<FieldResult<SubstrateRecord | null>> {
+  if (!id) return { ok: false, error: "an id is required" };
+  const r = await legacyStrict<{ ok: boolean; error?: string; legacy: SubstrateRecord | null }>({ action: "get", id });
+  return r.ok ? { ok: true, value: r.value.legacy ?? null } : r;
+}
+
+/** One page, newest-created first; `total` is the field's count for the filter. */
+export async function listPageStrict(
+  tags: string[], limit: number, offset: number, q?: string,
+): Promise<FieldResult<{ records: SubstrateRecord[]; total: number }>> {
+  if (!Array.isArray(tags) || tags.length === 0) return { ok: false, error: "tags are required" };
+  const r = await legacyStrict<ListAnswer>({ action: "list", tags, q, limit: Math.min(LIST_PAGE, Math.max(1, limit)), offset: Math.max(0, offset) });
+  if (!r.ok) return r;
+  const page = Array.isArray(r.value.legacies) ? r.value.legacies : [];
+  return { ok: true, value: { records: page.filter((rec) => hasAllTags(rec, tags)), total: Number(r.value.total) || 0 } };
+}
+
+/** Every record carrying ALL of `tags` (and matching the text prefilter `q`), past the list cap. */
+export async function listAllStrict(tags: string[], q?: string): Promise<FieldResult<SubstrateRecord[]>> {
+  if (!Array.isArray(tags) || tags.length === 0) return { ok: false, error: "tags are required" };
+  const out: SubstrateRecord[] = [];
+  const seen = new Set<string>();
+  for (let offset = 0; ; offset += LIST_PAGE) {
+    const r = await legacyStrict<ListAnswer>({ action: "list", tags, q, limit: LIST_PAGE, offset });
+    if (!r.ok) return r;
+    const page = Array.isArray(r.value.legacies) ? r.value.legacies : [];
+    for (const rec of page) {
+      if (seen.has(rec.id) || !hasAllTags(rec, tags)) continue;
+      seen.add(rec.id);
+      out.push(rec);
+    }
+    if (page.length < LIST_PAGE || offset + LIST_PAGE >= (Number(r.value.total) || 0)) return { ok: true, value: out };
+  }
+}
+
+export async function storeStrict(rec: RecordInput): Promise<FieldResult<true>> {
+  if (!rec?.id || !rec.name || typeof rec.content !== "string" || !Array.isArray(rec.tags)) {
+    return { ok: false, error: "id, name, content and tags are required" };
+  }
+  const r = await legacyStrict<{ ok: boolean; error?: string }>({ action: "store", ...rec });
+  return r.ok ? { ok: true, value: true } : r;
+}
+
+/** Atomic check-and-insert on the field server (`store_guarded`): the cap and the insert share one lock. */
+export async function storeGuardedStrict(rec: RecordInput, guard: Guard): Promise<FieldResult<GuardedAnswer>> {
+  if (!rec?.id || !rec.name || typeof rec.content !== "string" || !Array.isArray(rec.tags)) {
+    return { ok: false, error: "id, name, content and tags are required" };
+  }
+  if (!guard || !Array.isArray(guard.tags) || guard.tags.length === 0 || !Number.isInteger(guard.max) || guard.max < 1) {
+    return { ok: false, error: "a guard { tags, max } is required" };
+  }
+  return legacyStrict<GuardedAnswer>({ action: "store_guarded", ...rec, guard });
+}
+
+export async function deleteStrict(id: string): Promise<FieldResult<number>> {
+  if (!id) return { ok: false, error: "an id is required" };
+  const r = await legacyStrict<{ ok: boolean; error?: string; deleted: number }>({ action: "delete", id });
+  return r.ok ? { ok: true, value: Number(r.value.deleted) || 0 } : r;
+}
+
+/** Newest first by a string timestamp; sorts a copy so a caller's array is never reordered. */
+export function newestFirst<T>(rows: readonly T[], at: (row: T) => string | undefined | null): T[] {
+  if (!Array.isArray(rows) || typeof at !== "function") return [];
+  return [...rows].sort((a, b) => String(at(b) ?? "").localeCompare(String(at(a) ?? "")));
+}
+
+/** SQL's calendar-date windows (date('now'), CURRENT_DATE): the UTC date `msAgo` ago. */
+export const utcDate = (msAgo = 0): string => new Date(Date.now() - msAgo).toISOString().slice(0, 10);
+
 /**
  * Attach a resolved outcome to a record — the write that makes the retro-causal
  * recall path live. Re-stores the record (store is upsert-by-id) with a

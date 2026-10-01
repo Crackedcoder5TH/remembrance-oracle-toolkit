@@ -44,6 +44,7 @@ const SKIP_DIRS = new Set([
   '__tests__', 'tests', '.git', 'venv', '.venv', '__pycache__',
 ]);
 const JS_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
+const SLOW_FILE_MS = 2000;
 const PY_EXT = new Set(['.py']);
 
 /** Ecosystem primitives + the import patterns that show they're wired in. */
@@ -145,17 +146,27 @@ function expectedPrimitivesFor(repoName) {
   return [...base];
 }
 
-function auditRepo(repoPath, repoName) {
+function auditRepo(repoPath, repoName, subdir = null) {
   if (!fs.existsSync(repoPath)) {
     return { repo: repoName, found: false };
   }
-  const files = walkFiles(repoPath);
+  const files = walkFiles(subdir ? path.join(repoPath, subdir) : repoPath);
   const jsFiles = files.filter((f) => JS_EXT.has(path.extname(f)));
   const pyFiles = files.filter((f) => PY_EXT.has(path.extname(f)));
 
+  // Every file is timed (measured 2026-10-01: a full run outlived a 30-minute
+  // limit while six of seven repos finished in ~10 s — a run that hangs must
+  // name the file that holds it, never go silent).
   const findings = [];
+  const slowFiles = [];
   for (const f of jsFiles) {
+    const t0 = Date.now();
     const fs_ = auditJsFile(f);
+    const ms = Date.now() - t0;
+    if (ms >= SLOW_FILE_MS) {
+      slowFiles.push({ file: path.relative(repoPath, f), ms });
+      process.stderr.write(`    slow: ${path.relative(repoPath, f)} ${ms}ms\n`);
+    }
     for (const x of fs_) findings.push({ file: path.relative(repoPath, f), ...x });
   }
 
@@ -183,6 +194,7 @@ function auditRepo(repoPath, repoName) {
       totalFiles: files.length,
       findings: findings.length,
     },
+    slowFiles,
     bySeverity,
     byClass,
     primitives,
@@ -250,22 +262,35 @@ async function main() {
   const parent = parentIdx >= 0 && args[parentIdx + 1]
     ? path.resolve(args[parentIdx + 1])
     : path.resolve(REPO_ROOT, '..');
+  // --only <repo> / --subdir <rel>: bound a run to one repo or one folder of it
+  // (a partial run never overwrites the full report).
+  const onlyIdx = args.indexOf('--only');
+  const only = onlyIdx >= 0 ? args[onlyIdx + 1] : null;
+  const subIdx = args.indexOf('--subdir');
+  const subdir = subIdx >= 0 ? args[subIdx + 1] : null;
+  const repos = only ? REPOS.filter((n) => n === only) : REPOS;
 
   console.log(`[ecosystem] parent=${parent}`);
-  console.log(`[ecosystem] auditing ${REPOS.length} repos...`);
+  console.log(`[ecosystem] auditing ${repos.length} repos...`);
 
   const results = [];
-  for (const name of REPOS) {
+  for (const name of repos) {
     const p = path.join(parent, name);
     process.stdout.write(`  ${name.padEnd(32)} `);
-    const r = auditRepo(p, name);
+    const t0 = Date.now();
+    const r = auditRepo(p, name, subdir);
     if (!r.found) {
       console.log('[missing]');
       results.push(r);
       continue;
     }
-    console.log(`${r.counts.totalFiles} files, ${r.counts.findings} findings, ${r.wiringGaps.length} gaps`);
+    console.log(`${r.counts.totalFiles} files, ${r.counts.findings} findings, ${r.wiringGaps.length} gaps, ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     results.push(r);
+  }
+
+  if (only || subdir) {
+    console.log('[ecosystem] partial run — full report left untouched');
+    return;
   }
 
   const report = {

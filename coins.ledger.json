@@ -6872,6 +6872,78 @@
      "shape_sha256": "f237f65af2c80905e55ddf57f921861eb97adc84be5a0fcaa1c18f866fbb5ec7"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "402bd307a207553888bf55d8efecd62f86eb8d4542d64fdb311a7b77c32137de",
+   "minted_at": "2026-10-01T03:10:08+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "e1d47f76b34f60e8ca5f278829fd992ea3c4030f",
+    "files": [
+     "scripts/field-server.js",
+     "src/core/void-service.js",
+     "tests/void-service-data.test.js"
+    ],
+    "diff_bytes": 13088,
+    "diff_sha256": "157db6491eee47f82f3ea3153d7b178031a6ffda0c5a6db0c35c86a44ee4d4b4",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.15012381660371588,
+    "ratio": 2.827392525383452,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "89829703c2107721",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "542b152fa8c8d61c09c54f81e40bc61a06f7c23c31fe63d353b00916c2db46c8",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-10-01T03:10:08",
+     "coin": null,
+     "sig": "89829703c21077213f6c442fce38058f236bcd5281e10e2c137f158e7fe3d6ce"
+    },
+    "library_size": 63056,
+    "memory": {
+     "fits": 211,
+     "served": 82,
+     "computed": 129,
+     "served_ancestor": 0,
+     "chunkings": 6,
+     "chunkings_served": 4,
+     "entries": 1144123,
+     "void_chunks": 28,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 28,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 0.593,
+    "basis_id": "946f986225f0f422",
+    "learned_n": 62984,
+    "learned_this_reading": 0,
+    "basis_after": "946f986225f0f422",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "946f986225f0f422",
+     "method": "v4_chunked",
+     "original_size": 13088,
+     "compressed_size": 4629,
+     "coherency": 0.15012381660371588,
+     "data_sha256": "4a9c03e897908099f574ee6d7cbd3120b469976a6d7bff4f3e28f7902aac16e7",
+     "compressed_sha256": "a4f10d01530c4ac4d4f4fd98eb7a39a3b9083f9a4d182e252599c8bac5e321b6",
+     "shape_sha256": "3f1a52448b34c7c76ceb9db96cd055939a43ece8970aba11cbc45a350eb572cb"
+    }
+   }
   }
  ]
 }

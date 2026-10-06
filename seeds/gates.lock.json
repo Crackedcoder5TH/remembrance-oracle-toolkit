@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-28T21:21:55.166Z",
- "digest": "ad3cf6133dee37da6aa259697d09a66bbfcafb8da3cc402dbf23af50d000140f",
+ "lockedAt": "2026-10-01T04:42:31.617Z",
+ "digest": "92ec4231c50be41e484c7970fa71d855c1cd046582456569519eb3cd043e6cf1",
  "gates": {
   "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -24,7 +24,7 @@
   "scripts/width-ratchet.js": "64d363123fa3c6723ce006527333bc610cba167621232d7b476e65f37645b963",
   "scripts/calibration-ratchet.js": "a989bf845a760661d193c6b42f8bbcb2fcf99cbd6830296bb0bf63ac3ee77250",
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
-  "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
+  "scripts/audit-field-contributions.js": "08551aafd1472a96b1ea01f4ec4b8baa5b396f4d1218dd9d242f7586ed7f983f",
   "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
   ".claude/skills/goggles/run.mjs": "17b8e050dd17014a4c377b7340accc1b1c50651b0356c349a1a8cce2ffd498fd",
@@ -368,6 +368,15 @@
    "reason": "the Void memory rule covers the rolled ledger parts (learned_patterns.part*.jsonl): the ledger shards at 90 MB so no single file hits the 100 MB hosting wall, and a part is the same memory of readings — born inside sealed readings, riding coinless",
    "changed": [
     ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-10-01T04:42:31.617Z",
+   "from": "ad3cf6133dee37da6aa259697d09a66bbfcafb8da3cc402dbf23af50d000140f",
+   "to": "92ec4231c50be41e484c7970fa71d855c1cd046582456569519eb3cd043e6cf1",
+   "reason": "the field-contribution census widened, never loosened: --root reaches any ecosystem repo (the chain's invented 0.85/0.999/0.5/0.3/0.2/1 coherencies were invisible to it for months), the fieldContribute wrapper form is matched, a literal beside a coherency name (fallback or factor) reads SUBSTITUTED, definitions are not write sites; proven adversarially — the pre-fix chain lights 12 of 15 sites, the fixed chain 0, hub surface 12->11 (the 12th was the engine's own method definition)",
+   "changed": [
+    "scripts/audit-field-contributions.js"
    ]
   }
  ]

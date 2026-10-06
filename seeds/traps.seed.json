@@ -1670,6 +1670,82 @@
    "sources": [
     "agent"
    ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "cd"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `cd` inside the ecosystem — OFF-SURFACE COMMAND refused (Q)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (Q)\"; the command began with `cd`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-14T14:13:41.329Z",
+   "last": "2026-10-01T04:37:02.808Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "cd"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `cd` inside the ecosystem — OFF-SURFACE COMMAND refused (ls)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (ls)\"; the command began with `cd`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-14T15:15:26.283Z",
+   "last": "2026-10-01T03:13:21.197Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "ps"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `ps` inside the ecosystem — OFF-SURFACE COMMAND refused (ps)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (ps)\"; the command began with `ps`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-15T20:15:51.541Z",
+   "last": "2026-10-01T06:56:31.237Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "cd"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `cd` inside the ecosystem — OFF-SURFACE COMMAND refused (wc)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (wc)\"; the command began with `cd`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 3,
+   "first": "2026-09-14T15:15:16.326Z",
+   "last": "2026-10-01T10:09:51.009Z",
+   "sources": [
+    "wall"
+   ]
   }
  ]
 }

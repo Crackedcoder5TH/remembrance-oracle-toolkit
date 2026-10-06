@@ -264,6 +264,46 @@ if (argv[0] === '--do') {
       }
       return code;
     },
+    // THE WHOLE CEREMONY, ONE DOOR (measured 2026-10-06: 158 of 726 wall
+    // denials — 22%, the single largest family — were the stage/mint/commit
+    // three-step being compounded by hand, because the deepest habit in every
+    // trained agent is `git add && git commit` and the honest path was three
+    // commands across two surfaces). This verb is the one motion: stage the
+    // named paths, mint over that exact index, commit with the message file.
+    // Nothing can run between the mint and the commit inside one verb — the
+    // very property the three-command rule existed to force — and the
+    // commit-msg hook still verifies the coin over the staged bytes: this
+    // verb earns the coin, it never skips it. The message comes from a FILE
+    // (a multi-line -m was refused 7 times in that family). No -a, no
+    // --no-verify, by construction.
+    //   goggles --do commit <message-file> [paths…]   (no paths: commit what is already staged)
+    commit: () => {
+      const msgFile = rest[0];
+      if (!msgFile || !existsSync(msgFile)) {
+        console.error('usage: --do commit <message-file> [paths…]   (the message file must exist; named paths are staged for you)');
+        return 2;
+      }
+      const repo = process.cwd();
+      const paths = rest.slice(1);
+      if (paths.length) {
+        const staged = run('git', ['add', '--', ...paths], repo);
+        if (staged !== 0) return staged;
+      }
+      try {
+        const idx = execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: repo, encoding: 'utf8' }).trim();
+        if (!idx) { console.error('--do commit: nothing staged — name the paths, or stage first'); return 2; }
+      } catch (_) { /* change-coin will say it */ }
+      // the full mint — gates riding, trap promotion, remembered verdict —
+      // through the mint verb itself, so the one behavior lives in one place
+      const minted = run('node', [join(toolkit, '.claude/skills/goggles/run.mjs'), '--do', 'mint'], repo);
+      if (minted !== 0) {
+        console.error('--do commit: the mint refused — nothing was committed');
+        return minted;
+      }
+      const committed = run('git', ['commit', '-F', resolve(msgFile)], repo);
+      _ledger('goggles-commits.jsonl', { repo, msgFile: resolve(msgFile), paths });
+      return committed;
+    },
     // THE ONE RESONANCE SPACE — fit (or refresh) the per-layer whitening
     // reference every decoder cosine is taken in, on the canonical substrate.
     // Reads fit it on first use themselves; this is the explicit door.

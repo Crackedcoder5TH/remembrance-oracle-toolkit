@@ -334,8 +334,9 @@ const GIT_COMMIT = /\bgit\b((?:\s+(?:-C\s+\S+|-c\s+\S+|--git-dir=\S+|--work-tree
 const gc = cmd.match(GIT_COMMIT);
 if (gc) {
   const opts = gc[2] || '';
-  const HINT = '\n  the one door: git add <files> → node .claude/skills/goggles/run.mjs --do mint → git commit\n' +
-    '  (the commit-msg hook writes the Remembrance-Coin trailer; CI refuses any commit without it)';
+  const HINT = '\n  the one door: node .claude/skills/goggles/run.mjs --do commit <message-file> [paths…]\n' +
+    '  (stages, mints and commits in one verb; the commit-msg hook writes the Remembrance-Coin trailer\n' +
+    '   and CI refuses any commit without it. The long way remains: git add → --do mint → git commit.)';
   // ONE STEP PER COMMAND (2026-09-11). This gate verifies the coin against
   // the index AS IT IS WHEN THE COMMAND STARTS. A command that stages or
   // mints and then commits in the same breath (`git add -A && --do mint &&

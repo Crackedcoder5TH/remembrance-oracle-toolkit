@@ -183,6 +183,35 @@ process.on('exit', () => {
         '  segment: ' + seg.slice(0, 120));
     }
     if (afterPipe && FILTER.has(base)) continue;
+    // THE WALL AS TRANSLATOR (operator order 2026-10-06, leak #2: 162 of the
+    // 726 logged denials were hand searches — grep 102, rg 30, find 30 —
+    // while the verb existed the whole time: an affordance failure, not a
+    // missing door). For the simple shapes, the refusal now CARRIES THE
+    // ANSWER: the pattern is lifted from the refused command and served
+    // through --do find itself, so the reading is taken and ledgered in
+    // goggles-finds.jsonl by the same door that refused the path. An
+    // unparseable shape falls through to the plain refusal. The deny stands
+    // either way — the wall teaches, it never opens.
+    let served = '';
+    if ((base === 'grep' || base === 'egrep' || base === 'fgrep' || base === 'rg') && !afterPipe) {
+      try {
+        const m = new RegExp('(?:^|[;&|]\\s*)' + base + '\\s+([^;&|]{1,200})').exec(cmd);
+        if (m) {
+          const toks = []; const tokRe = /'([^']*)'|"((?:[^"\\]|\\.)*)"|(\S+)/g; let t;
+          while ((t = tokRe.exec(m[1])) !== null) toks.push(t[1] !== undefined ? t[1] : (t[2] !== undefined ? t[2] : t[3]));
+          const args = toks.filter((w) => w && !/^-/.test(w));
+          const pattern = args[0];
+          const fpaths = args.slice(1).filter((p) => { try { return fs.existsSync(path.resolve(cwd, p)); } catch (_) { return false; } });
+          if (pattern && pattern.length <= 200) {
+            const runner = path.join(path.resolve(__dirname, '..', '..'), '.claude', 'skills', 'goggles', 'run.mjs');
+            const r = require('node:child_process').spawnSync('node', [runner, '--do', 'find', pattern, ...fpaths.slice(0, 3)],
+              { cwd: cwd || undefined, encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024 });
+            const lines = String(r.stdout || '').split('\n').filter((l) => l.trim()).slice(0, 24);
+            if (lines.length) served = '\n  the door answers anyway — the same search, taken through --do find (recorded):\n        ' + lines.join('\n        ').slice(0, 2400) + '\n';
+          }
+        }
+      } catch (e) { quiet('tools:goggles-bash-hook:translate', e); }
+    }
     out('deny',
       'GOGGLES — OFF-SURFACE COMMAND refused (' + base + ')\n' +
       '  Inside the ecosystem the goggles are the only surface, for any model, without exception.\n' +
@@ -197,6 +226,7 @@ process.on('exit', () => {
       '        --do call <path>#<fn> \'<json>\'   run a capability\n' +
       '        --do service status|start|stop   the instrument\'s lifecycle\n' +
       '  Outside the ecosystem (the scratchpad) the shell is yours.\n' +
+      served +
       '  segment: ' + seg.slice(0, 120));
   }
 })();

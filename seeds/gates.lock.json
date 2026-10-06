@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-09-28T21:21:55.166Z",
- "digest": "ad3cf6133dee37da6aa259697d09a66bbfcafb8da3cc402dbf23af50d000140f",
+ "lockedAt": "2026-10-06T13:53:26.746Z",
+ "digest": "d076ce3702cf9dba01a20deaf8a1f7812f282fcaa3c682c9c88c218bb9d75fee",
  "gates": {
   "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -27,9 +27,9 @@
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
-  ".claude/skills/goggles/run.mjs": "17b8e050dd17014a4c377b7340accc1b1c50651b0356c349a1a8cce2ffd498fd",
+  ".claude/skills/goggles/run.mjs": "089be210d6425d0d8b69883e2f34b92982627aa23587a5c73c2db26627fcb20b",
   ".claude/skills/goggles/change-coin.py": "d72ccb75e5da59ee50317366997be36d9a7c7f7a7e6859f33c3acddf43b4a88b",
-  "src/tools/goggles-bash-hook.js": "be16ddb34c39a2db189b9f7e8358560ac317fae7306dfb4bcbb44483dfe91785"
+  "src/tools/goggles-bash-hook.js": "3ce5bc6a08c1b06bab7138b8633f296d604cdd838464ae79920d944cb42e5c0e"
  },
  "history": [
   {
@@ -368,6 +368,25 @@
    "reason": "the Void memory rule covers the rolled ledger parts (learned_patterns.part*.jsonl): the ledger shards at 90 MB so no single file hits the 100 MB hosting wall, and a part is the same memory of readings — born inside sealed readings, riding coinless",
    "changed": [
     ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-10-06T13:50:02.933Z",
+   "from": "ad3cf6133dee37da6aa259697d09a66bbfcafb8da3cc402dbf23af50d000140f",
+   "to": "c8c159c0034fa2a9b562465ec9ba5665f8f22c574a8c0fcf95397d622476fe5c",
+   "reason": "operator order 2026-10-06: close the door's biggest leak (158/726 denials) — --do commit added to run.mjs, wall HINT updated to teach the one door; coin 0ae23c2241f8, commit 32978dd",
+   "changed": [
+    ".claude/skills/goggles/run.mjs",
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-10-06T13:53:26.746Z",
+   "from": "c8c159c0034fa2a9b562465ec9ba5665f8f22c574a8c0fcf95397d622476fe5c",
+   "to": "d076ce3702cf9dba01a20deaf8a1f7812f282fcaa3c682c9c88c218bb9d75fee",
+   "reason": "operator order 2026-10-06, leak #2 (162/726 hand searches): the wall now serves the refused search through --do find inside the denial - the wall teaches, it never opens",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
    ]
   }
  ]

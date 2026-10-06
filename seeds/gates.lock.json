@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-10-06T14:15:20.412Z",
- "digest": "ef14a3d6e407fb8d997ec2102ed2b0c91cc175fc9cefd1b384a7b45d9c114b22",
+ "lockedAt": "2026-10-06T14:21:40.175Z",
+ "digest": "808e7bfb7c218717fd717c10511000b4a35898be7b95fadafacb54ce8d25031d",
  "gates": {
   "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -27,7 +27,7 @@
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
-  ".claude/skills/goggles/run.mjs": "089be210d6425d0d8b69883e2f34b92982627aa23587a5c73c2db26627fcb20b",
+  ".claude/skills/goggles/run.mjs": "40dfd385ab8fffc328e4534562547dd2415a579f13c8e78aaef98cea9b98be8f",
   ".claude/skills/goggles/change-coin.py": "d72ccb75e5da59ee50317366997be36d9a7c7f7a7e6859f33c3acddf43b4a88b",
   "src/tools/goggles-bash-hook.js": "e2b04ffc298600a9041bf1a389ce2e87b8032cfdb0320d00fe66abd7e4c916a5"
  },
@@ -405,6 +405,15 @@
    "reason": "operator order 2026-10-06 (leak-fix loop, leak #3, size ratchet): the translation layer (leaks 2+3) extracted to src/tools/goggles-wall-translate.js — the hook judges and denies, the module serves; hook back under the 500-line cap; all four probes re-measured holding",
    "changed": [
     "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-10-06T14:21:40.175Z",
+   "from": "ef14a3d6e407fb8d997ec2102ed2b0c91cc175fc9cefd1b384a7b45d9c114b22",
+   "to": "808e7bfb7c218717fd717c10511000b4a35898be7b95fadafacb54ce8d25031d",
+   "reason": "operator order 2026-10-06 (leak-fix loop, C-65 follow-through): --do commit now writes its own Remembrance-Coin trailer from the repo ledger's last coin — the trailer no longer depends on the hub-only commit-msg hook; six existing trailerless mirror commits reported to the operator, not rewritten",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
    ]
   }
  ]

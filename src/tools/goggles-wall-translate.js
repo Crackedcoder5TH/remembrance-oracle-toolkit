@@ -54,6 +54,7 @@ function scratchTarget(base, words, afterPipe, within, roots, cmd) {
   }
   return false;
 }
+scratchTarget.atomicProperties = { charge: -1, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 // The served translation for a refusal, or '' when no shape matches.
 function serve(base, words, seg, cmd, cwd, afterPipe, roots) {
@@ -102,5 +103,6 @@ function serve(base, words, seg, cmd, cwd, afterPipe, roots) {
   }
   return '';
 }
+serve.atomicProperties = { charge: -1, valence: 2, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "high", electronegativity: 1, group: 2, period: 3, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { scratchTarget, serve };

@@ -4,15 +4,10 @@ const { quiet } = require('./quiet');
 /**
  * void-service.js — the one way to ask the Void compressor for a coherency.
  *
- * There is exactly one producer of coherency in this ecosystem: the Void
- * compressor. This module is the single client for it, so that "ask the
- * instrument" is implemented once rather than once per caller.
- *
- * It exists because it was already implemented twice. scripts/goggle-web.js
- * knew how to start the service and wait for it; the reader added to
- * field-tool.js did not, and simply gave up when the service was cold. Same
- * job, two behaviours, and the weaker one sat on the hottest read path — the
- * same class of drift the one-encoder rule (Void C-53) exists to prevent.
+ * One producer of coherency exists — the Void compressor — and this module
+ * is its single client: "ask the instrument", implemented once. It had been
+ * implemented twice before (goggle-web.js waited out a cold service;
+ * field-tool.js's reader gave up) — the drift Void C-53 exists to prevent.
  *
  * Contract:
  *   - Reads the artifact's OWN BYTES as a uint8 waveform, quantised the way
@@ -417,6 +412,7 @@ function _finiteSeries(v) {
   }
   return Math.max(...out) === Math.min(...out) ? null : out;
 }
+_finiteSeries.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _columnsOf(records, path, found) {
   const cols = new Map();
@@ -434,6 +430,7 @@ function _columnsOf(records, path, found) {
     if (s) found.push([`${path}[*].${k}`, s]);
   }
 }
+_columnsOf.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _walkData(node, path, found) {
   if (Array.isArray(node)) {
@@ -447,6 +444,7 @@ function _walkData(node, path, found) {
     }
   }
 }
+_walkData.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /** The numeric series a record's content holds, by the container rule; [] when none. */
 function dataSeriesOf(content) {
@@ -458,6 +456,7 @@ function dataSeriesOf(content) {
   _walkData(doc, '$', found);
   return found;
 }
+dataSeriesOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Read each series a record holds AS DATA. Returns
@@ -486,6 +485,7 @@ function dataReadingsOf(content) {
   }
   return out;
 }
+dataReadingsOf.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 lastReading.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { coherencyOf, dataReadingsOf, dataSeriesOf, ensureUp, isUp, lastReading, _reset };

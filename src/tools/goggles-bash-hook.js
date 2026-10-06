@@ -125,6 +125,7 @@ process.on('exit', () => {
 // bypass-specific checks below still apply everywhere.
 (function defaultDeny() {
   const path = require('node:path');
+  const translate = require('./goggles-wall-translate');
   const ECO = path.resolve(__dirname, '..', '..', '..');
   let roots = [];
   try {
@@ -172,23 +173,14 @@ process.on('exit', () => {
     const base = path.basename(word);
     if (GLUE.has(base)) continue;
     if (base === 'git') continue;
-    // THE TARGET, NOT THE CHAIR (operator order 2026-10-06, leak #3: ~100 of
-    // the 726 logged denials were hand compute — python3 63, npm 32, node on
-    // a file — and a measured share aimed at the SCRATCH AREA while only the
-    // shell's cwd sat in a repo). An interpreter whose script lives under
-    // /tmp or /var/tmp, in a command that names no ecosystem path, is scratch
-    // work: outside the ecosystem the shell is yours, judged by where the
-    // work is, not where the chair sits. The scratch-script weld below still
-    // reads every such script's body and refuses one that reaches into the
-    // substrate — this moves the judgment, it opens nothing.
-    if ((base === 'python3' || base === 'python' || base === 'node' || base === 'nodejs') && !afterPipe) {
-      const sTok = words.slice(1).find((w) => w && !/^-/.test(w));
-      if (sTok && /^\/(?:var\/)?tmp\//.test(sTok) && !within(sTok)
-          && !roots.some((r) => cmd.includes(r))) {
-        let ok = false; try { ok = fs.existsSync(sTok); } catch (_) { ok = false; }
-        if (ok) continue;
-      }
-    }
+    // THE TARGET, NOT THE CHAIR and THE WALL AS TRANSLATOR (leaks #2 and #3,
+    // operator orders 2026-10-06) live in goggles-wall-translate.js: the
+    // scratch-target allowance (an interpreter on a /tmp script naming no
+    // ecosystem path is scratch work — the scratch-script weld below still
+    // reads every such body), and the served translations in the refusals
+    // (--do find taken for a hand search; --do exec named for a tracked
+    // script; --do test for a test run). The deny always stands.
+    if (translate.scratchTarget(base, words, afterPipe, within, roots, cmd)) continue;
     if (base === 'node' || base === 'nodejs') {
       if (GOGGLES.test(seg)) continue;
       out('deny',
@@ -200,58 +192,9 @@ process.on('exit', () => {
         '  segment: ' + seg.slice(0, 120));
     }
     if (afterPipe && FILTER.has(base)) continue;
-    // THE WALL AS TRANSLATOR (operator order 2026-10-06, leak #2: 162 of the
-    // 726 logged denials were hand searches — grep 102, rg 30, find 30 —
-    // while the verb existed the whole time: an affordance failure, not a
-    // missing door). For the simple shapes, the refusal now CARRIES THE
-    // ANSWER: the pattern is lifted from the refused command and served
-    // through --do find itself, so the reading is taken and ledgered in
-    // goggles-finds.jsonl by the same door that refused the path. An
-    // unparseable shape falls through to the plain refusal. The deny stands
-    // either way — the wall teaches, it never opens.
     let served = '';
-    if ((base === 'grep' || base === 'egrep' || base === 'fgrep' || base === 'rg') && !afterPipe) {
-      try {
-        const m = new RegExp('(?:^|[;&|]\\s*)' + base + '\\s+([^;&|]{1,200})').exec(cmd);
-        if (m) {
-          const toks = []; const tokRe = /'([^']*)'|"((?:[^"\\]|\\.)*)"|(\S+)/g; let t;
-          while ((t = tokRe.exec(m[1])) !== null) toks.push(t[1] !== undefined ? t[1] : (t[2] !== undefined ? t[2] : t[3]));
-          const args = toks.filter((w) => w && !/^-/.test(w));
-          const pattern = args[0];
-          const fpaths = args.slice(1).filter((p) => { try { return fs.existsSync(path.resolve(cwd, p)); } catch (_) { return false; } });
-          if (pattern && pattern.length <= 200) {
-            const runner = path.join(path.resolve(__dirname, '..', '..'), '.claude', 'skills', 'goggles', 'run.mjs');
-            const r = require('node:child_process').spawnSync('node', [runner, '--do', 'find', pattern, ...fpaths.slice(0, 3)],
-              { cwd: cwd || undefined, encoding: 'utf8', timeout: 10000, maxBuffer: 4 * 1024 * 1024 });
-            const lines = String(r.stdout || '').split('\n').filter((l) => l.trim()).slice(0, 24);
-            if (lines.length) served = '\n  the door answers anyway — the same search, taken through --do find (recorded):\n        ' + lines.join('\n        ').slice(0, 2400) + '\n';
-          }
-        }
-      } catch (e) { quiet('tools:goggles-bash-hook:translate', e); }
-    }
-    // leak #3, the other two shapes. python3 on a GIT-TRACKED repo script:
-    // the refusal names the exact door (--do exec <relpath>) — named, never
-    // auto-taken: --do find is a pure reading, --do exec runs code, and the
-    // wall hands over the door without walking through it. npm/npx/pytest
-    // test runs: the door is --do test.
-    if ((base === 'python3' || base === 'python') && !afterPipe && !served) {
-      try {
-        const sTok = words.slice(1).find((w) => w && !/^-/.test(w));
-        if (sTok && /\.py$/.test(sTok)) {
-          const abs = path.resolve(cwd, sTok);
-          const root = roots.find((r) => abs === r || abs.startsWith(r + path.sep));
-          if (root) {
-            const rel = path.relative(root, abs);
-            const g = require('node:child_process').spawnSync('git', ['-C', root, 'ls-files', '--error-unmatch', rel], { encoding: 'utf8', timeout: 5000 });
-            if (g.status === 0) served = '\n  that script is git-tracked — its door, exactly (recorded):\n        node .claude/skills/goggles/run.mjs --do exec ' + rel + '\n';
-          }
-        }
-      } catch (e) { quiet('tools:goggles-bash-hook:translate-exec', e); }
-    }
-    if ((base === 'npm' || base === 'npx' || base === 'pytest') && !served
-        && (base === 'pytest' || /\btest\b/.test(seg))) {
-      served = '\n  the repo\'s own tests run through the door (recorded):\n        node .claude/skills/goggles/run.mjs --do test [args]\n';
-    }
+    try { served = translate.serve(base, words, seg, cmd, cwd, afterPipe, roots); }
+    catch (e) { quiet('tools:goggles-bash-hook:translate', e); }
     out('deny',
       'GOGGLES — OFF-SURFACE COMMAND refused (' + base + ')\n' +
       '  Inside the ecosystem the goggles are the only surface, for any model, without exception.\n' +

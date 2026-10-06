@@ -300,7 +300,23 @@ if (argv[0] === '--do') {
         console.error('--do commit: the mint refused — nothing was committed');
         return minted;
       }
-      const committed = run('git', ['commit', '-F', resolve(msgFile)], repo);
+      // THE TRAILER IS THE VERB'S OWN (C-65, measured 2026-10-06: all six
+      // mirror-sync commits rode trailerless — the verb relied on the
+      // commit-msg hook, which only the hub has installed). The mint just
+      // appended this change's coin to the repo's ledger, so the verb names
+      // the last coin itself; where the hook is installed it sees the
+      // trailer already present and verifies the same coin.
+      let msg = readFileSync(resolve(msgFile), 'utf8');
+      if (!/^Remembrance-Coin:/m.test(msg)) {
+        try {
+          const led = JSON.parse(readFileSync(join(repo, 'coins.ledger.json'), 'utf8'));
+          const last = (led.coins || [])[(led.coins || []).length - 1];
+          if (last && last.coin_id) msg = msg.replace(/\s*$/, '\n') + '\nRemembrance-Coin: ' + last.coin_id + '\n';
+        } catch (_) { /* no ledger to name — the hook still writes it where installed */ }
+      }
+      let committed = 0;
+      try { execFileSync('git', ['commit', '-F', '-'], { cwd: repo, input: msg, stdio: ['pipe', 'inherit', 'inherit'] }); }
+      catch (e) { committed = (e && e.status) || 1; }
       _ledger('goggles-commits.jsonl', { repo, msgFile: resolve(msgFile), paths });
       return committed;
     },

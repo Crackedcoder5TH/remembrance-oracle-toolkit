@@ -172,6 +172,23 @@ process.on('exit', () => {
     const base = path.basename(word);
     if (GLUE.has(base)) continue;
     if (base === 'git') continue;
+    // THE TARGET, NOT THE CHAIR (operator order 2026-10-06, leak #3: ~100 of
+    // the 726 logged denials were hand compute — python3 63, npm 32, node on
+    // a file — and a measured share aimed at the SCRATCH AREA while only the
+    // shell's cwd sat in a repo). An interpreter whose script lives under
+    // /tmp or /var/tmp, in a command that names no ecosystem path, is scratch
+    // work: outside the ecosystem the shell is yours, judged by where the
+    // work is, not where the chair sits. The scratch-script weld below still
+    // reads every such script's body and refuses one that reaches into the
+    // substrate — this moves the judgment, it opens nothing.
+    if ((base === 'python3' || base === 'python' || base === 'node' || base === 'nodejs') && !afterPipe) {
+      const sTok = words.slice(1).find((w) => w && !/^-/.test(w));
+      if (sTok && /^\/(?:var\/)?tmp\//.test(sTok) && !within(sTok)
+          && !roots.some((r) => cmd.includes(r))) {
+        let ok = false; try { ok = fs.existsSync(sTok); } catch (_) { ok = false; }
+        if (ok) continue;
+      }
+    }
     if (base === 'node' || base === 'nodejs') {
       if (GOGGLES.test(seg)) continue;
       out('deny',
@@ -211,6 +228,29 @@ process.on('exit', () => {
           }
         }
       } catch (e) { quiet('tools:goggles-bash-hook:translate', e); }
+    }
+    // leak #3, the other two shapes. python3 on a GIT-TRACKED repo script:
+    // the refusal names the exact door (--do exec <relpath>) — named, never
+    // auto-taken: --do find is a pure reading, --do exec runs code, and the
+    // wall hands over the door without walking through it. npm/npx/pytest
+    // test runs: the door is --do test.
+    if ((base === 'python3' || base === 'python') && !afterPipe && !served) {
+      try {
+        const sTok = words.slice(1).find((w) => w && !/^-/.test(w));
+        if (sTok && /\.py$/.test(sTok)) {
+          const abs = path.resolve(cwd, sTok);
+          const root = roots.find((r) => abs === r || abs.startsWith(r + path.sep));
+          if (root) {
+            const rel = path.relative(root, abs);
+            const g = require('node:child_process').spawnSync('git', ['-C', root, 'ls-files', '--error-unmatch', rel], { encoding: 'utf8', timeout: 5000 });
+            if (g.status === 0) served = '\n  that script is git-tracked — its door, exactly (recorded):\n        node .claude/skills/goggles/run.mjs --do exec ' + rel + '\n';
+          }
+        }
+      } catch (e) { quiet('tools:goggles-bash-hook:translate-exec', e); }
+    }
+    if ((base === 'npm' || base === 'npx' || base === 'pytest') && !served
+        && (base === 'pytest' || /\btest\b/.test(seg))) {
+      served = '\n  the repo\'s own tests run through the door (recorded):\n        node .claude/skills/goggles/run.mjs --do test [args]\n';
     }
     out('deny',
       'GOGGLES — OFF-SURFACE COMMAND refused (' + base + ')\n' +

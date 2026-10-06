@@ -94,6 +94,12 @@ function serve(base, words, seg, cmd, cwd, afterPipe, roots) {
       && (base === 'pytest' || /\btest\b/.test(seg))) {
     return '\n  the repo\'s own tests run through the door (recorded):\n        node .claude/skills/goggles/run.mjs --do test [args]\n';
   }
+  // the curl family (32 of the 726): the door existed the whole time —
+  // --do browse reads the web through the substrate, witnessed; the
+  // instrument's own port belongs to --do read / --do service status.
+  if (base === 'curl' || base === 'wget') {
+    return '\n  the web is read through the substrate (recorded, witnessed):\n        node .claude/skills/goggles/run.mjs --do browse <url>\n  (the instrument\'s own port: --do read <file> · --do service status)\n';
+  }
   return '';
 }
 

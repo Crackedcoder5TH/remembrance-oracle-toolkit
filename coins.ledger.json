@@ -7442,6 +7442,76 @@
      "shape_sha256": "f504359498e63f96798d55226ad2ce83627ca18bc65741246a89ca0967a73e3f"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "b5cbdd380bfb73272dcb7f58fac282fbec7f07490ff60ea639eb449c20e5e4e8",
+   "minted_at": "2026-10-06T15:02:26+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "4a06ddd9bdcb78abc04885b7479c093b113246bc",
+    "files": [
+     "src/tools/goggles-wall-translate.js"
+    ],
+    "diff_bytes": 1053,
+    "diff_sha256": "43dc726d81cd9b83e8d44c3afb77f9bc795b4f53d5b5066b59be573165969f7f",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.14935921116139167,
+    "ratio": 1.9867924528301886,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "4748646e9da6f0a5",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "5b62d2654ba1ffdd75bd4c7f7195c00b26ceb0a88f8a4149309e71a416f59118",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-10-06T15:02:26",
+     "coin": null,
+     "sig": "4748646e9da6f0a5aa828bc634c949331ad4c29e9b72118b9fe6bc0607971c1a"
+    },
+    "library_size": 63056,
+    "memory": {
+     "fits": 27,
+     "served": 5,
+     "computed": 22,
+     "served_ancestor": 0,
+     "chunkings": 6,
+     "chunkings_served": 3,
+     "entries": 121509,
+     "void_chunks": 3,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 3,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 0.743,
+    "basis_id": "946f986225f0f422",
+    "learned_n": 62984,
+    "learned_this_reading": 0,
+    "basis_after": "946f986225f0f422",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "946f986225f0f422",
+     "method": "v4_chunked",
+     "original_size": 1053,
+     "compressed_size": 530,
+     "coherency": 0.14935921116139167,
+     "data_sha256": "3c57f4d70cc7e15d23be95421a5e7c86a85c125fb2df6c139d5d4bcb03f38142",
+     "compressed_sha256": "04eafa314edddc8124bd49ac161a462d97183e4a48d9856c8a0149e9e59e83e1",
+     "shape_sha256": "742284a93cc5b47aad0c92b74e79c187b4b12083b9383818b501cddb6ebdd34a"
+    }
+   }
   }
  ]
 }

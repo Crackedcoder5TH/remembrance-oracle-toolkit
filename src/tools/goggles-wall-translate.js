@@ -32,14 +32,27 @@ const { quiet } = require('../core/quiet');
 
 const INTERP = new Set(['python3', 'python', 'node', 'nodejs']);
 const SEARCH = new Set(['grep', 'egrep', 'fgrep', 'rg']);
+// leak #4 (operator order 2026-10-06, the file-management family: ~45 of the
+// 726 logged denials — rm 32, mkdir 7, cp 3): the same target-not-chair
+// judgment. Deleting, making or copying under /tmp is scratch housekeeping
+// wherever the shell sits; EVERY path argument must live there, so a copy
+// out of a repo (cp src/x /tmp/y) still refuses.
+const FILEMGMT = new Set(['rm', 'rmdir', 'mkdir', 'cp', 'mv', 'touch']);
 
 // The scratch-target allowance: true means the segment is scratch work.
 function scratchTarget(base, words, afterPipe, within, roots, cmd) {
-  if (!INTERP.has(base) || afterPipe) return false;
-  const sTok = words.slice(1).find((w) => w && !/^-/.test(w));
-  if (!sTok || !/^\/(?:var\/)?tmp\//.test(sTok) || within(sTok)) return false;
-  if (roots.some((r) => cmd.includes(r))) return false;
-  try { return fs.existsSync(sTok); } catch (_) { return false; }
+  if (afterPipe || roots.some((r) => cmd.includes(r))) return false;
+  const SCRATCH = /^\/(?:var\/)?tmp\//;
+  if (INTERP.has(base)) {
+    const sTok = words.slice(1).find((w) => w && !/^-/.test(w));
+    if (!sTok || !SCRATCH.test(sTok) || within(sTok)) return false;
+    try { return fs.existsSync(sTok); } catch (_) { return false; }
+  }
+  if (FILEMGMT.has(base)) {
+    const args = words.slice(1).filter((w) => w && !/^-/.test(w));
+    return args.length > 0 && args.every((a) => SCRATCH.test(a) && !within(a));
+  }
+  return false;
 }
 
 // The served translation for a refusal, or '' when no shape matches.

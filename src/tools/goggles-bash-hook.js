@@ -147,7 +147,7 @@ process.on('exit', () => {
     .replace(/\$\(/g, ' ; ').replace(/`/g, ' ; ').replace(/[()]/g, ' ');
   const parts = text.split(/(\|\||&&|;|\n|\|)/);
   const GLUE = new Set(['cd', 'pwd', 'echo', 'printf', 'true', 'false', 'exit', 'return', 'sleep', 'test', '[', '[[', ':', 'export', 'break', 'continue', 'wait']);
-  const FILTER = new Set(['grep', 'egrep', 'fgrep', 'head', 'tail', 'cut', 'sort', 'uniq', 'wc', 'tr', 'awk', 'sed', 'jq', 'tee', 'cat', 'python3', 'python', 'xargs', 'column', 'nl', 'tac', 'rev']);
+  const FILTER = new Set(['grep', 'egrep', 'fgrep', 'head', 'tail', 'cut', 'sort', 'uniq', 'wc', 'tr', 'awk', 'sed', 'jq', 'tee', 'cat', 'python3', 'python', 'xargs', 'column', 'nl', 'tac', 'rev', 'paste']);
   const KEYWORDS = new Set(['do', 'done', 'then', 'else', 'elif', 'fi', 'if', 'while', 'until', 'esac', '{', '}', '!', 'in']);
   const GOGGLES = /\.claude\/skills\/goggles\/run\.mjs\b/;
   let afterPipe = false;

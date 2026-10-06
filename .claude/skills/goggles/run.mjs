@@ -465,7 +465,7 @@ if (argv[0] === '--do') {
     // THE TRAP LEDGER, driven. `promote` appends traps learned on this host into
     // the tracked seed; `sync` writes the byte-identical mirror into every repo;
     // `floor` raises the count floor; `anchor` witnesses the seed on the chain.
-    //   goggles --do traps [promote | sync | floor | anchor | status]
+    //   goggles --do traps [learn | promote | retract | sync | floor | anchor | status]
     //   goggles --do traps learn <json | json-file>   record a mistake as a candidate
     //          trap (wrong/truth/tell/correct[/match/severity]); an agent's own
     //          account counts in full and is promoted by the next hub mint
@@ -499,7 +499,7 @@ if (argv[0] === '--do') {
         return code;
       }
       const flag = { promote: '--promote', sync: '--sync', floor: '--save-baseline', status: '--json' }[sub];
-      if (!flag) { console.error('goggles --do traps [promote | sync | floor | anchor | status]'); return 1; }
+      if (!flag) { console.error('goggles --do traps [learn | promote | retract | sync | floor | anchor | status]'); return 1; }
       return run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), flag, ...rest.slice(1)], toolkit);
     },
     gate: () => run('node', [join(toolkit, rest[0] === 'gate-lock' ? 'scripts/gate-lock.js' : `scripts/${rest[0] || 'covenant'}-ratchet.js`), ...rest.slice(1)], toolkit),

@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-10-06T14:21:40.175Z",
- "digest": "808e7bfb7c218717fd717c10511000b4a35898be7b95fadafacb54ce8d25031d",
+ "lockedAt": "2026-10-06T14:59:13.732Z",
+ "digest": "76c6f147b60ce299970bfedbf7b91e24ea75ed2acf361ca0c8602d164f1a3c1f",
  "gates": {
   "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -27,9 +27,9 @@
   "scripts/audit-field-contributions.js": "e4a91e261727457100af4dbd47b71b20f7b1aff1b707bc960218ca6d4a307d8d",
   "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
-  ".claude/skills/goggles/run.mjs": "40dfd385ab8fffc328e4534562547dd2415a579f13c8e78aaef98cea9b98be8f",
+  ".claude/skills/goggles/run.mjs": "6369ba307d1daf6bb0e34f0460ec8cea73ddf211974e44111184d7f8f210d797",
   ".claude/skills/goggles/change-coin.py": "d72ccb75e5da59ee50317366997be36d9a7c7f7a7e6859f33c3acddf43b4a88b",
-  "src/tools/goggles-bash-hook.js": "e2b04ffc298600a9041bf1a389ce2e87b8032cfdb0320d00fe66abd7e4c916a5"
+  "src/tools/goggles-bash-hook.js": "80c532ecc7d9635eea83f8bb7a1d07127722d9f92858b4e1f6079247be697828"
  },
  "history": [
   {
@@ -414,6 +414,16 @@
    "reason": "operator order 2026-10-06 (leak-fix loop, C-65 follow-through): --do commit now writes its own Remembrance-Coin trailer from the repo ledger's last coin — the trailer no longer depends on the hub-only commit-msg hook; six existing trailerless mirror commits reported to the operator, not rewritten",
    "changed": [
     ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-10-06T14:59:13.733Z",
+   "from": "808e7bfb7c218717fd717c10511000b4a35898be7b95fadafacb54ce8d25031d",
+   "to": "76c6f147b60ce299970bfedbf7b91e24ea75ed2acf361ca0c8602d164f1a3c1f",
+   "reason": "operator order 2026-10-06 (leak-fix loop, leak #4 + signage): the scratch-target allowance extends to the file-management family (rm/rmdir/mkdir/cp/mv/touch with every path under /tmp and no ecosystem path named — measured ~45 of 726 denials); paste joins the sanctioned post-pipe filter class; the traps usage line finally names learn and retract",
+   "changed": [
+    ".claude/skills/goggles/run.mjs",
+    "src/tools/goggles-bash-hook.js"
    ]
   }
  ]

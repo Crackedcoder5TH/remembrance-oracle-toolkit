@@ -31,7 +31,15 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..');
+// `--root <repo>` audits another ecosystem repo's src/ (measured
+// 2026-10-01: the chain's fieldContribute sites pushed invented 0.85 /
+// 0.999 / 0.5 / 0.3 / 0.2 for months because this audit could only see
+// the hub). Default: the hub itself, so the field-source ratchet is
+// unchanged.
+const _rootAt = process.argv.indexOf('--root');
+const ROOT = _rootAt > 0 && process.argv[_rootAt + 1]
+  ? path.resolve(process.argv[_rootAt + 1])
+  : path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'src');
 
 // Names that genuinely denote a substrate coherency reading.
@@ -60,10 +68,18 @@ const walk = (dir) => walkFiles(dir, { skipDirs: new Set(['node_modules', '.git'
  * version of this function did exactly that, which is the same
  * name-shape-matching that produced the bug it is here to clean up.
  */
+// A literal riding BESIDE a coherency name — a ternary/fallback branch
+// (`? x.coherency : 0.85`, `|| 0`) or a factor (`* (ok ? 1 : 0.5)`).
+// Measured 2026-10-01 on the chain: an invented 0.85 fallback and a 0.5x
+// "dampener" both read MEASURED because the expression also named a
+// coherency — the literal hid behind the name.
+const LITERAL_BESIDE = /(?:\?|:|\|\||\?\?|\*|\/)\s*\(?\s*-?\d*\.?\d+(?![\w.])/;
+
 function classify(expr, context = '') {
   const inner = expr.replace(/^Math\.max\(0,\s*Math\.min\(1,\s*/, '').replace(/\)\s*\)$/, '');
   if (/^[\d.]+$/.test(inner.trim())) return ['CONSTANT', 'literal value'];
   if (/1\s*-\s*\(?\w*compressedSize/.test(inner)) return ['SUBSTITUTED', 'compression savings ratio'];
+  if (MEASURED.test(inner) && LITERAL_BESIDE.test(inner)) return ['SUBSTITUTED', 'literal beside a coherency'];
   if (MEASURED.test(inner)) return ['MEASURED', 'coherency'];
 
   // The expression names nothing recognisable — resolve its local variables.
@@ -84,6 +100,7 @@ function classify(expr, context = '') {
     for (const re of res) {
       let m;
       while ((m = re.exec(context)) !== null) {
+        if (MEASURED.test(m[1]) && LITERAL_BESIDE.test(m[1])) return ['SUBSTITUTED', 'literal beside a coherency (via ' + v + ')'];
         if (MEASURED.test(m[1])) return ['MEASURED', 'coherency (via ' + v + ')'];
         const o = m[1].match(OTHER);
         if (o) return ['SUBSTITUTED', o[0] + ' (via ' + v + ')'];
@@ -126,7 +143,9 @@ for (const f of walk(SRC)) {
   // `contribute({`. Seeing only the auto-wired form meant a
   // hand-written substitution could never be caught — the audit was
   // blind to exactly the contributions a human would add by hand.
-  if (!/\b_?_?contribute\(\{/.test(src)) continue;
+  // …and the wrapper form `fieldContribute({` the chain repo writes
+  // (capital C: the lowercase matcher never saw it).
+  if (!/(?:\b_?_?c|\bfieldC)ontribute\(\{/.test(src)) continue;
   const lines = src.split('\n');
   // Key-order-independent, multi-line-tolerant matcher. The first version
   // required the literal order `cost:, coherence:, source:` on ONE line —
@@ -135,12 +154,24 @@ for (const f of walk(SRC)) {
   // the field-source ratchet riding on it. A census with a spelling
   // requirement is not a census. The window joins the call's next 8 lines
   // and each field is extracted independently of its position.
-  const siteRe = /\b_?_?contribute\(\{/g;
+  const siteRe = /(?:\b_?_?c|\bfieldC)ontribute\(\{/g;
   let sm;
   while ((sm = siteRe.exec(src)) !== null) {
+    // A DEFINITION is not a write site: `fieldContribute({…}) {` or the
+    // engine's method `contribute({ coherence = null, … } = {}) {` — a body
+    // follows the balanced parameter list; a call is followed by `)` then
+    // `;`/`,`/`)`. (Measured 2026-10-01: both definitions read as sites.)
+    {
+      let q = src.indexOf('(', sm.index), d = 0;
+      for (; q < src.length; q++) {
+        if (src[q] === '(') d++;
+        else if (src[q] === ')' && --d === 0) break;
+      }
+      if (/^\s*\{/.test(src.slice(q + 1, q + 40))) continue;
+    }
     const i = src.slice(0, sm.index).split('\n').length - 1;
     const window = lines.slice(i, i + 8).join('\n');
-    const local = window.slice(window.indexOf('contribute({'));
+    const local = window.slice(window.search(/ontribute\(\{/));
     // Balanced extraction: the coherence expression ends at the first
     // comma or closing brace at paren/bracket depth 0 — a truncating
     // regex here turns Math.max(0, Math.min(1, x.coherence)) into

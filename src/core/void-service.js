@@ -4,10 +4,15 @@ const { quiet } = require('./quiet');
 /**
  * void-service.js — the one way to ask the Void compressor for a coherency.
  *
- * One producer of coherency exists — the Void compressor — and this module
- * is its single client: "ask the instrument", implemented once. It had been
- * implemented twice before (goggle-web.js waited out a cold service;
- * field-tool.js's reader gave up) — the drift Void C-53 exists to prevent.
+ * There is exactly one producer of coherency in this ecosystem: the Void
+ * compressor. This module is the single client for it, so that "ask the
+ * instrument" is implemented once rather than once per caller.
+ *
+ * It exists because it was already implemented twice. scripts/goggle-web.js
+ * knew how to start the service and wait for it; the reader added to
+ * field-tool.js did not, and simply gave up when the service was cold. Same
+ * job, two behaviours, and the weaker one sat on the hottest read path — the
+ * same class of drift the one-encoder rule (Void C-53) exists to prevent.
  *
  * Contract:
  *   - Reads the artifact's OWN BYTES as a uint8 waveform, quantised the way
@@ -121,8 +126,23 @@ function _curl(path, payload) {
 }
 _curl.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "malevolent", domain: "utility" };
 
-/** The canonical read: byte series in, blend provenance out. */
-function _postSignal(series) { return _curl('/compress_signal', { series }); }
+/**
+ * The canonical read: byte series in, blend provenance out.
+ *
+ * The bytes ride as base64 (`series_b64`), the way read-signal sends them:
+ * the same values into the same quantise-and-read path, without a JSON list
+ * of one number per byte (~4x the body; a 48 MB file once rode as ~300 MB,
+ * 2026-09-19). A generation that predates the field answers that `series`
+ * is missing — a missing FIELD, not a missing instrument — so the same bytes
+ * are resent as the list.
+ */
+function _postSignal(bytes) {
+  const raw = _curl('/compress_signal', { series_b64: bytes.toString('base64') });
+  if (raw && raw.includes('series must be a list')) {
+    return _curl('/compress_signal', { series: Array.from(bytes) });
+  }
+  return raw;
+}
 
 /** The legacy read: text in, avg_coherence out, no blend provenance. */
 function _postLegacy(content) { return _curl('/compress', { input: content }); }
@@ -133,16 +153,16 @@ function _isUnknownRoute(raw) {
 }
 _isUnknownRoute.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 _postLegacy.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 17, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-_postSignal.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+_postSignal.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Read through whichever route this compressor serves.
  * @returns {{raw: string, route: string|null}}
  */
-function _post(series, content) {
+function _post(bytes, content) {
   if (_route === 'legacy') return { raw: _postLegacy(content), route: 'legacy' };
 
-  const raw = _postSignal(series);
+  const raw = _postSignal(bytes);
   if (raw && !_isUnknownRoute(raw)) {
     // A 500 here is a real failure of a route that EXISTS — surfacing it as
     // "no reading" is correct, but it must not silently pin the route.
@@ -218,7 +238,7 @@ function ensureUp(opts = {}) {
 }
 
 /**
- * THE coherency reading for a piece of content.
+ * THE reading for a piece of content, WITH its provenance.
  *
  * @param {string} content
  * @param {object} [opts]
@@ -226,13 +246,20 @@ function ensureUp(opts = {}) {
  *   quiet?      — suppress the cold-start notice
  *   cachedOnly? — NEVER block. Return a reading only if one is already held;
  *                 otherwise null. For hot paths (see below).
- * @returns {number|null} the compressor's reading, or null if none was taken.
+ * @returns {object|null} { coherence, measures, selfMatched, route, seal,
+ *   matchedPatterns, blend, mint, basisId, elapsedS, memory } — or null when
+ *   no reading was taken.
  */
-function coherencyOf(content, opts = {}) {
+function readingOf(content, opts = {}) {
   if (typeof content !== 'string' || content.length === 0) return null;
 
+  // The cache holds the WHOLE reading, not just its number. It used to hold
+  // the number alone while provenance lived in LAST_READING, which only an
+  // uncached read set — so a cache hit returned this content's coherency
+  // beside the PREVIOUS content's provenance and seal, and field-tool carried
+  // that seal into the field on the wrong reading.
   const key = crypto.createHash('sha1').update(content).digest('hex');
-  if (CACHE.has(key)) return CACHE.get(key);
+  if (CACHE.has(key)) { LAST_READING = CACHE.get(key); return LAST_READING; }
 
   // HOT PATHS MUST NOT PAY FOR A ROUND TRIP.
   //
@@ -263,11 +290,10 @@ function coherencyOf(content, opts = {}) {
   // buying correctness, only truncation.
   const bytes = Buffer.from(content, 'utf8');
   if (bytes.length < 8) return null;          // no signal to read
-  const series = Array.from(bytes);
 
-  let { raw, route } = _post(series, content);
+  let { raw, route } = _post(bytes, content);
   if (!raw && opts.autoStart !== false) {
-    if (ensureUp({ quiet: opts.quiet })) ({ raw, route } = _post(series, content));
+    if (ensureUp({ quiet: opts.quiet })) ({ raw, route } = _post(bytes, content));
   }
   if (!raw) {
     // NO READING IS A LOUD EVENT. The field must never accumulate while its
@@ -289,13 +315,22 @@ function coherencyOf(content, opts = {}) {
   // void-seal/v3 commitment's shape hash) — carried so a caller can show that
   // the number came through the instrument, never re-derived here.
   let seal = null;
+  let resp = null;
   try {
     const r = JSON.parse(raw);
+    resp = r;
     if (typeof r.avg_coherence === 'number' && isFinite(r.avg_coherence)) {
       value = r.avg_coherence;
     }
     // Chunked path reports per-chunk blends; single-shot path reports one.
-    blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null) || null;
+    // /compress_signal carries them inside the SHAPE it sealed
+    // (shape.blends: name1, name2, alpha, beta per chunk) and never as a
+    // top-level `blend`/`blends` — reading only the top level left every
+    // canonical reading with no provenance, so a self-match could never be
+    // seen on the route every reading takes.
+    const shapeBlends = (s) => (s && Array.isArray(s.blends) && s.blends.length ? s.blends : null);
+    blend = r.blend || (Array.isArray(r.blends) && r.blends.length ? r.blends : null)
+      || shapeBlends(r.shape) || shapeBlends(r.commitment && r.commitment.shape) || null;
     if (r.mint && r.void_seal) {
       // `sig` rides along: the field's seal gate (living-remembrance
       // _isValidVoidSeal) is structural on {via, sig}; without the sig the
@@ -355,14 +390,37 @@ function coherencyOf(content, opts = {}) {
     matchedPatterns: _blendNames(blend),
     // A reading that came from matching the content against itself describes
     // the library, not the content.
+    // A canonical reading with NO blends is the fallback path's number: the
+    // fractal path reconstructed nothing and a symbolic/zlib strategy won
+    // (trap #1's tell). Measured 2026-10-01: seeds/code/async-mutex.testcode.js
+    // read 0.0000 via void_symbolic with 0 blends — the diagnostic ranked it
+    // "weakest structure" until this named it.
     measures: !provenanceAvailable
-      ? 'unknown (no blend provenance on the legacy /compress route)'
+      ? (route === 'legacy'
+        ? 'unknown (no blend provenance on the legacy /compress route)'
+        : `fallback (${(resp && resp.strategy) || 'unknown strategy'} — no blend; the number measures the fallback, not the shape)`)
       : (selfMatched ? 'library-membership' : 'artifact-shape'),
+    // What the instrument reported about this reading, as it reported it.
+    strategy: (resp && resp.strategy) || null,
+    mint: (resp && resp.mint) || null,
+    basisId: (resp && resp.basis_id) || null,
+    elapsedS: resp && typeof resp.elapsed_s === 'number' ? resp.elapsed_s : null,
+    memory: (resp && resp.memory) || null,
   };
 
   if (CACHE.size >= CACHE_MAX) CACHE.clear();
-  CACHE.set(key, value);
-  return value;
+  CACHE.set(key, LAST_READING);
+  return LAST_READING;
+}
+
+/**
+ * THE coherency reading for a piece of content — the number alone.
+ * Same options as readingOf.
+ * @returns {number|null} the compressor's reading, or null if none was taken.
+ */
+function coherencyOf(content, opts = {}) {
+  const r = readingOf(content, opts);
+  return r ? r.coherence : null;
 }
 
 /** Test helper: forget cached readings and re-enable start attempts. */
@@ -382,81 +440,10 @@ _reset.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", 
  */
 function lastReading() { return LAST_READING; }
 
-// ── THE DATA A RECORD HOLDS (the container rule, at the field's door) ────
-//
-// The operator's ruling (2026-09-14, read-signal.py): "if you tell it to
-// look at a file it will tell you it's a file; you have to run the data of
-// the file into the instrument to have it read the data." coherencyOf()
-// reads a record's UTF-8 BYTES — the reading of the file, which stays. A
-// record whose content is a JSON value holding numeric series (a God's Eye
-// View layer snapshot: latitudes, magnitudes, depths) ALSO carries data, and
-// the data is read as a SIGNAL, series by series, through /compress_signal —
-// never averaged, never taught (ingest off: the no-auto-teaching ruling),
-// never contributed (the record's one reading is the field's observation;
-// series read-backs entering the field were the 19,800-reading flood).
-//
-// The rule mirrors Void scripts/read-signal.py _container/_walk/_columns for
-// a JSON value: a numeric array of >= MIN_POINTS finite, non-constant values
-// is a series; an array of records yields each numeric key present in >=
-// MIN_POINTS records as a column. read-signal is the canonical statement of
-// the rule; this is its face at the field's door, kept to the same constants.
-const DATA_MIN_POINTS = 8;
-const DATA_MAX_SERIES = 16;     // one record never holds the field's door open longer than this
-
-function _finiteSeries(v) {
-  if (!Array.isArray(v) || v.length < DATA_MIN_POINTS) return null;
-  const out = [];
-  for (const x of v) {
-    if (typeof x !== 'number' || !Number.isFinite(x)) return null;
-    out.push(x);
-  }
-  return Math.max(...out) === Math.min(...out) ? null : out;
-}
-_finiteSeries.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 1, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-
-function _columnsOf(records, path, found) {
-  const cols = new Map();
-  for (const r of records) {
-    if (!r || typeof r !== 'object' || Array.isArray(r)) continue;
-    for (const [k, x] of Object.entries(r)) {
-      if (typeof x === 'number') {
-        if (!cols.has(k)) cols.set(k, []);
-        cols.get(k).push(x);
-      }
-    }
-  }
-  for (const [k, col] of cols) {
-    const s = _finiteSeries(col);
-    if (s) found.push([`${path}[*].${k}`, s]);
-  }
-}
-_columnsOf.atomicProperties = { charge: 1, valence: 0, mass: "heavy", spin: "even", phase: "solid", reactivity: "inert", electronegativity: 0, group: 2, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-
-function _walkData(node, path, found) {
-  if (Array.isArray(node)) {
-    const s = _finiteSeries(node);
-    if (s) { found.push([path, s]); return; }
-    if (node.some((x) => x && typeof x === 'object' && !Array.isArray(x))) _columnsOf(node, path, found);
-    node.forEach((x, i) => { if (x && typeof x === 'object') _walkData(x, `${path}[${i}]`, found); });
-  } else if (node && typeof node === 'object') {
-    for (const [k, x] of Object.entries(node)) {
-      if (x && typeof x === 'object') _walkData(x, `${path}.${k}`, found);
-    }
-  }
-}
-_walkData.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-
-/** The numeric series a record's content holds, by the container rule; [] when none. */
-function dataSeriesOf(content) {
-  const t = String(content || '').trim();
-  if (!t || (t[0] !== '{' && t[0] !== '[')) return [];
-  let doc;
-  try { doc = JSON.parse(t); } catch (_) { return []; }
-  const found = [];
-  _walkData(doc, '$', found);
-  return found;
-}
-dataSeriesOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+// ── THE DATA A RECORD HOLDS — the container rule lives in void-data-series.js;
+// the door reads each series it finds as a SIGNAL, never averaged, never
+// taught, never contributed (the record's one reading is the observation).
+const { dataSeriesOf, DATA_MAX_SERIES } = require('./void-data-series');
 
 /**
  * Read each series a record holds AS DATA. Returns
@@ -485,14 +472,13 @@ function dataReadingsOf(content) {
   }
   return out;
 }
-dataReadingsOf.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
 lastReading.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-module.exports = { coherencyOf, dataReadingsOf, dataSeriesOf, ensureUp, isUp, lastReading, _reset };
+module.exports = { coherencyOf, readingOf, dataReadingsOf, dataSeriesOf, ensureUp, isUp, lastReading, _reset };
 
 // ── Periodic-table declarations (covenant fractal, atomic scale) ──
 // Each element's 13-dimension atomic identity, computed by the substrate's
 // own extractAtomicProperties over the function body.
 isUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 ensureUp.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "medium", electronegativity: 0, group: 9, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
-coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "odd", phase: "solid", reactivity: "medium", electronegativity: 0, group: 3, period: 4, harmPotential: "none", alignment: "healing", intention: "neutral", domain: "utility" };
+coherencyOf.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 11, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };

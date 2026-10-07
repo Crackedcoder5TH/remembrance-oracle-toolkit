@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-10-01T04:42:31.617Z",
- "digest": "92ec4231c50be41e484c7970fa71d855c1cd046582456569519eb3cd043e6cf1",
+ "lockedAt": "2026-10-07T00:43:14.045Z",
+ "digest": "dc34633acc37b0f4fbe278782b6e62cc1d898e8367a12933be2acd105834cd74",
  "gates": {
   "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -27,9 +27,9 @@
   "scripts/audit-field-contributions.js": "08551aafd1472a96b1ea01f4ec4b8baa5b396f4d1218dd9d242f7586ed7f983f",
   "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
-  ".claude/skills/goggles/run.mjs": "17b8e050dd17014a4c377b7340accc1b1c50651b0356c349a1a8cce2ffd498fd",
+  ".claude/skills/goggles/run.mjs": "6369ba307d1daf6bb0e34f0460ec8cea73ddf211974e44111184d7f8f210d797",
   ".claude/skills/goggles/change-coin.py": "d72ccb75e5da59ee50317366997be36d9a7c7f7a7e6859f33c3acddf43b4a88b",
-  "src/tools/goggles-bash-hook.js": "be16ddb34c39a2db189b9f7e8358560ac317fae7306dfb4bcbb44483dfe91785"
+  "src/tools/goggles-bash-hook.js": "80c532ecc7d9635eea83f8bb7a1d07127722d9f92858b4e1f6079247be697828"
  },
  "history": [
   {
@@ -371,10 +371,66 @@
    ]
   },
   {
-   "at": "2026-10-01T04:42:31.617Z",
+   "at": "2026-10-06T13:50:02.933Z",
    "from": "ad3cf6133dee37da6aa259697d09a66bbfcafb8da3cc402dbf23af50d000140f",
-   "to": "92ec4231c50be41e484c7970fa71d855c1cd046582456569519eb3cd043e6cf1",
-   "reason": "the field-contribution census widened, never loosened: --root reaches any ecosystem repo (the chain's invented 0.85/0.999/0.5/0.3/0.2/1 coherencies were invisible to it for months), the fieldContribute wrapper form is matched, a literal beside a coherency name (fallback or factor) reads SUBSTITUTED, definitions are not write sites; proven adversarially — the pre-fix chain lights 12 of 15 sites, the fixed chain 0, hub surface 12->11 (the 12th was the engine's own method definition)",
+   "to": "c8c159c0034fa2a9b562465ec9ba5665f8f22c574a8c0fcf95397d622476fe5c",
+   "reason": "operator order 2026-10-06: close the door's biggest leak (158/726 denials) — --do commit added to run.mjs, wall HINT updated to teach the one door; coin 0ae23c2241f8, commit 32978dd",
+   "changed": [
+    ".claude/skills/goggles/run.mjs",
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-10-06T13:53:26.746Z",
+   "from": "c8c159c0034fa2a9b562465ec9ba5665f8f22c574a8c0fcf95397d622476fe5c",
+   "to": "d076ce3702cf9dba01a20deaf8a1f7812f282fcaa3c682c9c88c218bb9d75fee",
+   "reason": "operator order 2026-10-06, leak #2 (162/726 hand searches): the wall now serves the refused search through --do find inside the denial - the wall teaches, it never opens",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-10-06T14:10:18.684Z",
+   "from": "d076ce3702cf9dba01a20deaf8a1f7812f282fcaa3c682c9c88c218bb9d75fee",
+   "to": "4ae4386710da94197b0d4bd2fe61416d385d3f5a04e6a7311ef5b3f53b802d86",
+   "reason": "operator order 2026-10-06 (leak-fix loop, leak #3): the wall judges interpreters by target not chair — scratch-targeted python3/node allowed when no ecosystem path is named (SCRATCH_RUN weld still guards the body); tracked-script denials serve their exact --do exec door; npm/pytest test denials serve --do test",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-10-06T14:15:20.412Z",
+   "from": "4ae4386710da94197b0d4bd2fe61416d385d3f5a04e6a7311ef5b3f53b802d86",
+   "to": "ef14a3d6e407fb8d997ec2102ed2b0c91cc175fc9cefd1b384a7b45d9c114b22",
+   "reason": "operator order 2026-10-06 (leak-fix loop, leak #3, size ratchet): the translation layer (leaks 2+3) extracted to src/tools/goggles-wall-translate.js — the hook judges and denies, the module serves; hook back under the 500-line cap; all four probes re-measured holding",
+   "changed": [
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-10-06T14:21:40.175Z",
+   "from": "ef14a3d6e407fb8d997ec2102ed2b0c91cc175fc9cefd1b384a7b45d9c114b22",
+   "to": "808e7bfb7c218717fd717c10511000b4a35898be7b95fadafacb54ce8d25031d",
+   "reason": "operator order 2026-10-06 (leak-fix loop, C-65 follow-through): --do commit now writes its own Remembrance-Coin trailer from the repo ledger's last coin — the trailer no longer depends on the hub-only commit-msg hook; six existing trailerless mirror commits reported to the operator, not rewritten",
+   "changed": [
+    ".claude/skills/goggles/run.mjs"
+   ]
+  },
+  {
+   "at": "2026-10-06T14:59:13.733Z",
+   "from": "808e7bfb7c218717fd717c10511000b4a35898be7b95fadafacb54ce8d25031d",
+   "to": "76c6f147b60ce299970bfedbf7b91e24ea75ed2acf361ca0c8602d164f1a3c1f",
+   "reason": "operator order 2026-10-06 (leak-fix loop, leak #4 + signage): the scratch-target allowance extends to the file-management family (rm/rmdir/mkdir/cp/mv/touch with every path under /tmp and no ecosystem path named — measured ~45 of 726 denials); paste joins the sanctioned post-pipe filter class; the traps usage line finally names learn and retract",
+   "changed": [
+    ".claude/skills/goggles/run.mjs",
+    "src/tools/goggles-bash-hook.js"
+   ]
+  },
+  {
+   "at": "2026-10-07T00:43:14.045Z",
+   "from": "76c6f147b60ce299970bfedbf7b91e24ea75ed2acf361ca0c8602d164f1a3c1f",
+   "to": "dc34633acc37b0f4fbe278782b6e62cc1d898e8367a12933be2acd105834cd74",
+   "reason": "operator order 2026-10-07 (push everything): merge of the diverged remote line 4f37f0d — re-censused over the merged tree; this entry APPENDS to the 39-entry relock history (the first attempt regenerated from a conflicted file and lost it; the ledger-append gate caught it)",
    "changed": [
     "scripts/audit-field-contributions.js"
    ]

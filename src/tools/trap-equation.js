@@ -32,6 +32,7 @@ let _cache = null;
 function _readJSON(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_e) { return null; }
 }
+_readJSON.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 6, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _load() {
   if (_cache !== null) return _cache;
@@ -47,10 +48,12 @@ function _load() {
   _cache = { idf: model.idf, shapes: model.shapes, thetaI: Number(model.theta_I), traps };
   return _cache;
 }
+_load.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 10, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function _tokens(text) {
   return String(text || '').toLowerCase().match(/[a-z_][a-z0-9_]{2,}/g) || [];
 }
+_tokens.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 12, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 /**
  * Evaluate THE TRAP EQUATION's I(x) on `text`.
@@ -88,5 +91,6 @@ function fire(text) {
   if (bestIdx < 0 || !(best > m.thetaI)) return null;
   return { trap: m.traps[bestIdx], score: best, index: bestIdx };
 }
+fire.atomicProperties = { charge: 0, valence: 0, mass: "heavy", spin: "even", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 5, period: 3, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 module.exports = { fire };

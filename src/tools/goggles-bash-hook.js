@@ -125,6 +125,7 @@ process.on('exit', () => {
 // bypass-specific checks below still apply everywhere.
 (function defaultDeny() {
   const path = require('node:path');
+  const translate = require('./goggles-wall-translate');
   const ECO = path.resolve(__dirname, '..', '..', '..');
   let roots = [];
   try {
@@ -146,7 +147,7 @@ process.on('exit', () => {
     .replace(/\$\(/g, ' ; ').replace(/`/g, ' ; ').replace(/[()]/g, ' ');
   const parts = text.split(/(\|\||&&|;|\n|\|)/);
   const GLUE = new Set(['cd', 'pwd', 'echo', 'printf', 'true', 'false', 'exit', 'return', 'sleep', 'test', '[', '[[', ':', 'export', 'break', 'continue', 'wait']);
-  const FILTER = new Set(['grep', 'egrep', 'fgrep', 'head', 'tail', 'cut', 'sort', 'uniq', 'wc', 'tr', 'awk', 'sed', 'jq', 'tee', 'cat', 'python3', 'python', 'xargs', 'column', 'nl', 'tac', 'rev']);
+  const FILTER = new Set(['grep', 'egrep', 'fgrep', 'head', 'tail', 'cut', 'sort', 'uniq', 'wc', 'tr', 'awk', 'sed', 'jq', 'tee', 'cat', 'python3', 'python', 'xargs', 'column', 'nl', 'tac', 'rev', 'paste']);
   const KEYWORDS = new Set(['do', 'done', 'then', 'else', 'elif', 'fi', 'if', 'while', 'until', 'esac', '{', '}', '!', 'in']);
   const GOGGLES = /\.claude\/skills\/goggles\/run\.mjs\b/;
   let afterPipe = false;
@@ -172,6 +173,14 @@ process.on('exit', () => {
     const base = path.basename(word);
     if (GLUE.has(base)) continue;
     if (base === 'git') continue;
+    // THE TARGET, NOT THE CHAIR and THE WALL AS TRANSLATOR (leaks #2 and #3,
+    // operator orders 2026-10-06) live in goggles-wall-translate.js: the
+    // scratch-target allowance (an interpreter on a /tmp script naming no
+    // ecosystem path is scratch work — the scratch-script weld below still
+    // reads every such body), and the served translations in the refusals
+    // (--do find taken for a hand search; --do exec named for a tracked
+    // script; --do test for a test run). The deny always stands.
+    if (translate.scratchTarget(base, words, afterPipe, within, roots, cmd)) continue;
     if (base === 'node' || base === 'nodejs') {
       if (GOGGLES.test(seg)) continue;
       out('deny',
@@ -183,6 +192,9 @@ process.on('exit', () => {
         '  segment: ' + seg.slice(0, 120));
     }
     if (afterPipe && FILTER.has(base)) continue;
+    let served = '';
+    try { served = translate.serve(base, words, seg, cmd, cwd, afterPipe, roots); }
+    catch (e) { quiet('tools:goggles-bash-hook:translate', e); }
     out('deny',
       'GOGGLES — OFF-SURFACE COMMAND refused (' + base + ')\n' +
       '  Inside the ecosystem the goggles are the only surface, for any model, without exception.\n' +
@@ -197,6 +209,7 @@ process.on('exit', () => {
       '        --do call <path>#<fn> \'<json>\'   run a capability\n' +
       '        --do service status|start|stop   the instrument\'s lifecycle\n' +
       '  Outside the ecosystem (the scratchpad) the shell is yours.\n' +
+      served +
       '  segment: ' + seg.slice(0, 120));
   }
 })();
@@ -334,8 +347,9 @@ const GIT_COMMIT = /\bgit\b((?:\s+(?:-C\s+\S+|-c\s+\S+|--git-dir=\S+|--work-tree
 const gc = cmd.match(GIT_COMMIT);
 if (gc) {
   const opts = gc[2] || '';
-  const HINT = '\n  the one door: git add <files> → node .claude/skills/goggles/run.mjs --do mint → git commit\n' +
-    '  (the commit-msg hook writes the Remembrance-Coin trailer; CI refuses any commit without it)';
+  const HINT = '\n  the one door: node .claude/skills/goggles/run.mjs --do commit <message-file> [paths…]\n' +
+    '  (stages, mints and commits in one verb; the commit-msg hook writes the Remembrance-Coin trailer\n' +
+    '   and CI refuses any commit without it. The long way remains: git add → --do mint → git commit.)';
   // ONE STEP PER COMMAND (2026-09-11). This gate verifies the coin against
   // the index AS IT IS WHEN THE COMMAND STARTS. A command that stages or
   // mints and then commits in the same breath (`git add -A && --do mint &&

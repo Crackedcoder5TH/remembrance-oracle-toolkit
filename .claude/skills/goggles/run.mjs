@@ -264,6 +264,62 @@ if (argv[0] === '--do') {
       }
       return code;
     },
+    // THE WHOLE CEREMONY, ONE DOOR (measured 2026-10-06: 158 of 726 wall
+    // denials — 22%, the single largest family — were the stage/mint/commit
+    // three-step being compounded by hand, because the deepest habit in every
+    // trained agent is `git add && git commit` and the honest path was three
+    // commands across two surfaces). This verb is the one motion: stage the
+    // named paths, mint over that exact index, commit with the message file.
+    // Nothing can run between the mint and the commit inside one verb — the
+    // very property the three-command rule existed to force — and the
+    // commit-msg hook still verifies the coin over the staged bytes: this
+    // verb earns the coin, it never skips it. The message comes from a FILE
+    // (a multi-line -m was refused 7 times in that family). No -a, no
+    // --no-verify, by construction.
+    //   goggles --do commit <message-file> [paths…]   (no paths: commit what is already staged)
+    commit: () => {
+      const msgFile = rest[0];
+      if (!msgFile || !existsSync(msgFile)) {
+        console.error('usage: --do commit <message-file> [paths…]   (the message file must exist; named paths are staged for you)');
+        return 2;
+      }
+      const repo = process.cwd();
+      const paths = rest.slice(1);
+      if (paths.length) {
+        const staged = run('git', ['add', '--', ...paths], repo);
+        if (staged !== 0) return staged;
+      }
+      try {
+        const idx = execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: repo, encoding: 'utf8' }).trim();
+        if (!idx) { console.error('--do commit: nothing staged — name the paths, or stage first'); return 2; }
+      } catch (_) { /* change-coin will say it */ }
+      // the full mint — gates riding, trap promotion, remembered verdict —
+      // through the mint verb itself, so the one behavior lives in one place
+      const minted = run('node', [join(toolkit, '.claude/skills/goggles/run.mjs'), '--do', 'mint'], repo);
+      if (minted !== 0) {
+        console.error('--do commit: the mint refused — nothing was committed');
+        return minted;
+      }
+      // THE TRAILER IS THE VERB'S OWN (C-65, measured 2026-10-06: all six
+      // mirror-sync commits rode trailerless — the verb relied on the
+      // commit-msg hook, which only the hub has installed). The mint just
+      // appended this change's coin to the repo's ledger, so the verb names
+      // the last coin itself; where the hook is installed it sees the
+      // trailer already present and verifies the same coin.
+      let msg = readFileSync(resolve(msgFile), 'utf8');
+      if (!/^Remembrance-Coin:/m.test(msg)) {
+        try {
+          const led = JSON.parse(readFileSync(join(repo, 'coins.ledger.json'), 'utf8'));
+          const last = (led.coins || [])[(led.coins || []).length - 1];
+          if (last && last.coin_id) msg = msg.replace(/\s*$/, '\n') + '\nRemembrance-Coin: ' + last.coin_id + '\n';
+        } catch (_) { /* no ledger to name — the hook still writes it where installed */ }
+      }
+      let committed = 0;
+      try { execFileSync('git', ['commit', '-F', '-'], { cwd: repo, input: msg, stdio: ['pipe', 'inherit', 'inherit'] }); }
+      catch (e) { committed = (e && e.status) || 1; }
+      _ledger('goggles-commits.jsonl', { repo, msgFile: resolve(msgFile), paths });
+      return committed;
+    },
     // THE ONE RESONANCE SPACE — fit (or refresh) the per-layer whitening
     // reference every decoder cosine is taken in, on the canonical substrate.
     // Reads fit it on first use themselves; this is the explicit door.
@@ -409,7 +465,7 @@ if (argv[0] === '--do') {
     // THE TRAP LEDGER, driven. `promote` appends traps learned on this host into
     // the tracked seed; `sync` writes the byte-identical mirror into every repo;
     // `floor` raises the count floor; `anchor` witnesses the seed on the chain.
-    //   goggles --do traps [promote | sync | floor | anchor | status]
+    //   goggles --do traps [learn | promote | retract | sync | floor | anchor | status]
     //   goggles --do traps learn <json | json-file>   record a mistake as a candidate
     //          trap (wrong/truth/tell/correct[/match/severity]); an agent's own
     //          account counts in full and is promoted by the next hub mint
@@ -443,7 +499,7 @@ if (argv[0] === '--do') {
         return code;
       }
       const flag = { promote: '--promote', sync: '--sync', floor: '--save-baseline', status: '--json' }[sub];
-      if (!flag) { console.error('goggles --do traps [promote | sync | floor | anchor | status]'); return 1; }
+      if (!flag) { console.error('goggles --do traps [learn | promote | retract | sync | floor | anchor | status]'); return 1; }
       return run('node', [join(toolkit, 'scripts/traps-ledger-ratchet.js'), flag, ...rest.slice(1)], toolkit);
     },
     gate: () => run('node', [join(toolkit, rest[0] === 'gate-lock' ? 'scripts/gate-lock.js' : `scripts/${rest[0] || 'covenant'}-ratchet.js`), ...rest.slice(1)], toolkit),

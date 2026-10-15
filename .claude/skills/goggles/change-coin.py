@@ -258,7 +258,9 @@ def coin_id_of(diff_sha: str, sig: str, bound: str) -> str:
 
 
 def seal_key() -> bytes | None:
-    k = os.environ.get(KEY_ENV)
+    # strip() mirrors the key-file path: a hex key never carries whitespace,
+    # and a secret pasted with a trailing newline must read as the same key.
+    k = (os.environ.get(KEY_ENV) or '').strip()
     if k:
         return k.encode()
     void = find_void(required=False)

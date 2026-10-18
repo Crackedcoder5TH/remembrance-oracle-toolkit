@@ -1,7 +1,7 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-10-18T03:02:27.407Z",
- "digest": "ada4b8a63ee8e438714dcb816015fa163781d4ae9535317c805298a0381c531e",
+ "lockedAt": "2026-10-18T21:31:15.607Z",
+ "digest": "3cae2efea9c05878e4ebc9be2ac3e0fec90920292d429411aae5135709cae1a4",
  "gates": {
   "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
@@ -20,7 +20,7 @@
   "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
   "scripts/contracts-ratchet.js": "61ab0c9397bb8878e713d61fb72b82988e0e71c248e010168dbd15be1355c9fd",
   "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
-  "scripts/traps-ledger-ratchet.js": "e7e3218ac838a080a906365df176962421b7846c0d1660c85150027e20ae764d",
+  "scripts/traps-ledger-ratchet.js": "71976e65aad30f5f244b8c60c01fdac63a05f253d21cfbef7cde6f84e03e5cce",
   "scripts/width-ratchet.js": "64d363123fa3c6723ce006527333bc610cba167621232d7b476e65f37645b963",
   "scripts/calibration-ratchet.js": "a989bf845a760661d193c6b42f8bbcb2fcf99cbd6830296bb0bf63ac3ee77250",
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
@@ -28,7 +28,7 @@
   "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
   "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
   ".claude/skills/goggles/run.mjs": "6369ba307d1daf6bb0e34f0460ec8cea73ddf211974e44111184d7f8f210d797",
-  ".claude/skills/goggles/change-coin.py": "491e433aff2399ee943189480ca4002ea6c9ff6734370b677a141be5f6654c8d",
+  ".claude/skills/goggles/change-coin.py": "e2b24044f1a7da5659f205158db583abdcaa2c791ca3ba491b454bd63700da46",
   "src/tools/goggles-bash-hook.js": "80c532ecc7d9635eea83f8bb7a1d07127722d9f92858b4e1f6079247be697828"
  },
  "history": [
@@ -449,6 +449,24 @@
    "from": "c83678adacfcbed2c16db680495ad3d627a77d4e1cd33a60a363a13707978ea7",
    "to": "ada4b8a63ee8e438714dcb816015fa163781d4ae9535317c805298a0381c531e",
    "reason": "the operator-ordered governance wire (PR #411, merged): --promote regrows the trap equation and an out-of-step equation blocks — the gate file's bytes changed by that merged change alone",
+   "changed": [
+    "scripts/traps-ledger-ratchet.js"
+   ]
+  },
+  {
+   "at": "2026-10-18T20:33:55.185Z",
+   "from": "ada4b8a63ee8e438714dcb816015fa163781d4ae9535317c805298a0381c531e",
+   "to": "31910bd5357bbdec49a24a79b2b1bfdda50a0e4b843d6df2eafaf70a159c6f43",
+   "reason": "the folded memory parts join VOID_MEMORY in the canonical change-coin.py (the fold round, 2026-10-18): a mint never re-reads the instrument's own memory",
+   "changed": [
+    ".claude/skills/goggles/change-coin.py"
+   ]
+  },
+  {
+   "at": "2026-10-18T21:31:15.607Z",
+   "from": "31910bd5357bbdec49a24a79b2b1bfdda50a0e4b843d6df2eafaf70a159c6f43",
+   "to": "3cae2efea9c05878e4ebc9be2ac3e0fec90920292d429411aae5135709cae1a4",
+   "reason": "the operator's pattern-first trap promoted into the seed (118 -> 124, floor ratcheted, equation regrown) and the promote log's double-count fixed in the same round (2026-10-18)",
    "changed": [
     "scripts/traps-ledger-ratchet.js"
    ]

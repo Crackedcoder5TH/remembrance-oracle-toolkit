@@ -37,11 +37,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const { createGate, requireGate } = require('../src/core/covenant-fractal');
 
 const ROOT = path.resolve(__dirname, '..');
 const HOME = path.dirname(ROOT);
 const SEED = path.join(ROOT, 'seeds', 'traps.seed.json');
+const EQUATION = path.join(ROOT, 'seeds', 'trap-equation.json');
+const VOID = process.env.VOID_DIR || path.join(HOME, 'Void-Data-Compressor');
+const FITTER = path.join(VOID, 'scripts', 'trap_equation.py');
 const LOCAL = path.join(ROOT, '.remembrance', 'traps.json');
 const BASELINE_PATH = process.env.TRAPS_BASELINE || path.join(ROOT, '.traps-baseline.json');
 const CHAIN_LEDGER = process.env.TRAPS_CHAIN || path.join(HOME, 'REMEMBRANCE-BLOCKCHAIN', 'data', 'ledger.json');
@@ -108,6 +112,42 @@ function mirrors(raw) {
 }
 mirrors.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
+/**
+ * The equation's step against the ledger: the live evaluator
+ * (src/tools/trap-equation.js) goes silent — by design — the moment the
+ * fitted shape count differs from the trap count, so an out-of-step
+ * equation is a disarmed defense and the gate names it. Measured
+ * 2026-10-18: the seed sat at the 92-trap fit while the ledger grew to
+ * 99, and the evaluator fired on 0/99 sins for weeks.
+ * Returns null when in step, else the problem line.
+ */
+function equationStep(trapCount) {
+  let eq;
+  try { eq = JSON.parse(fs.readFileSync(EQUATION, 'utf8')); } catch (_) { eq = null; }
+  const shapes = eq && eq.lexical_model && Array.isArray(eq.lexical_model.shapes) ? eq.lexical_model.shapes.length : null;
+  if (shapes === trapCount) return null;
+  const have = shapes === null ? 'absent' : `${shapes} fitted shape(s)`;
+  return `equation out of step: ${have} vs ${trapCount} traps — the live evaluator is silent; regrow it (goggles --do exec scripts/trap_equation.py --write, from Void)`;
+}
+equationStep.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/** Regrow the equation from the ledger through Void's fitter; the honest no when Void is absent. */
+function regrowEquation() {
+  if (!fs.existsSync(FITTER)) {
+    console.log(`[traps-ledger] equation regrow pending — Void is not on this host (${FITTER}); run the fitter where Void is checked out`);
+    return false;
+  }
+  try {
+    execFileSync('python3', [FITTER, '--write'], { cwd: VOID, stdio: ['ignore', 'pipe', 'pipe'], timeout: 10 * 60 * 1000, maxBuffer: 16 * 1024 * 1024 });
+    console.log('[traps-ledger] equation regrown with the seed — constants refit over the full ledger (seeds/trap-equation.json)');
+    return true;
+  } catch (e) {
+    console.error(`[traps-ledger] equation regrow FAILED: ${(e.stderr || e.message || '').toString().split('\n').slice(-3).join(' ')}`);
+    return false;
+  }
+}
+regrowEquation.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
 function loadBaseline() { try { return JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8')); } catch (_) { return null; } }
 loadBaseline.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 13, period: 1, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
@@ -123,6 +163,10 @@ function main() {
       seed.doc.traps.push(...add);
       _write(_sealedGate(), SEED, JSON.stringify(seed.doc, null, 1) + '\n');
       console.log(`[traps-ledger] promoted ${add.length} local trap(s) into the seed (${seed.traps.length} -> ${seed.traps.length + add.length}) — anchor it: REMEMBRANCE-BLOCKCHAIN/scripts/anchor-traps.js`);
+      // Seed and equation move as one: a promote that leaves the fitted
+      // constants behind silences the live evaluator (measured 2026-10-18,
+      // 0/99 fires at the stale 92-trap fit). Regrow here, in the same act.
+      regrowEquation();
       seed = readSeed();
     }
   }
@@ -157,6 +201,8 @@ function main() {
   }
   const ms = mirrors(seed.raw);
   for (const m of ms) if (m.state !== 'identical') problems.push(`mirror ${m.state}: ${m.repo}/${MIRROR_REL} (goggles --do traps sync)`);
+  const eqProblem = equationStep(seed.traps.length);
+  if (eqProblem) problems.push(eqProblem);
   const pending = unpromoted(seed.traps);
   const ok = problems.length === 0;
   if (json) { console.log(JSON.stringify({ ok, traps: seed.traps.length, digest: seed.digest, floor: baseline ? baseline.count : null, anchor, unwitnessed, mirrors: ms, unpromoted: pending.length, problems }, null, 1)); return ok ? 0 : 1; }

@@ -122,6 +122,7 @@ WITNESS = 'data/ledger.json'
 # instrument itself had just ingested. In the Void repo the memory files
 # ride coinless; the code beside them still coins.
 VOID_MEMORY = ('learned_patterns.jsonl', 'learned_patterns.part*.jsonl',
+               'learned_patterns.part*.jsonl.gz',
                'basis_index.jsonl', 'learned_patterns.json')
 
 

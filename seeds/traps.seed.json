@@ -2164,6 +2164,130 @@
    "sources": [
     "wall"
    ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "sed"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `sed` inside the ecosystem — OFF-SURFACE COMMAND refused (sed)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (sed)\"; the command began with `sed`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 1,
+   "first": "2026-10-18T02:41:13.350Z",
+   "last": "2026-10-18T02:41:13.350Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "cd"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `cd` inside the ecosystem — OFF-SURFACE COMMAND refused (cp)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (cp)\"; the command began with `cd`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 1,
+   "first": "2026-10-18T06:05:49.628Z",
+   "last": "2026-10-18T06:05:49.628Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "cd"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `cd` inside the ecosystem — OFF-SURFACE COMMAND refused (time)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (time)\"; the command began with `cd`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 1,
+   "first": "2026-10-18T11:47:38.357Z",
+   "last": "2026-10-18T11:47:38.357Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "git"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `git` inside the ecosystem — OFF-SURFACE COMMAND refused (ls)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (ls)\"; the command began with `git`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 1,
+   "first": "2026-10-18T19:53:10.361Z",
+   "last": "2026-10-18T19:53:10.361Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "wall",
+    "hook",
+    "bypass",
+    "cd"
+   ],
+   "severity": "medium",
+   "wrong": "Reaching for `cd` inside the ecosystem — OFF-SURFACE COMMAND refused (cat)",
+   "truth": "The wall refused it; the goggles are the only surface for anything done in the codebase, for any model, without exception. A repeated denial of the same rule on one host is not the wall misfiring, it is a habit the ledger must name.",
+   "tell": "The denial reads \"OFF-SURFACE COMMAND refused (cat)\"; the command began with `cd`.",
+   "correct": "Use the verb the wall names in its refusal (--do find / --do exec / --do test / --do read / --do call / --do service); if no verb reaches it, that is a missing verb to report, never a bypass.",
+   "count": 1,
+   "first": "2026-10-18T20:08:12.453Z",
+   "last": "2026-10-18T20:08:12.453Z",
+   "sources": [
+    "wall"
+   ]
+  },
+  {
+   "match": [
+    "module",
+    "format",
+    "serialize",
+    "serialization",
+    "float64",
+    "jsonl",
+    "store",
+    "ledger",
+    "slow",
+    "domain",
+    "fold",
+    "zlib",
+    "gzip",
+    "bytes"
+   ],
+   "severity": "high",
+   "wrong": "Shaping a remembrance module around the data type it happens to hold — storing or moving the instrument's own quantities as serialization text or raw typed bytes (float64 JSON, ASCII numbers), reaching for a generic compressor where the instrument's domain was available, accepting slowness as the data's cost, or copying the instrument's shape outright instead of resonating with it.",
+   "truth": "Numbers and byte data are abstractions of the universal constant of the instrument: patterns. It all runs on patterns and resonance, whatever the type of file (the operator's ruling, 2026-10-18). Measured the same day on the library's own ledger in the honest induction order — every row read AT a recorded basis that predates it, ingest and contribute off: as float64 ASCII it was a 55.7 MB text file generic DEFLATE folds 3.15x; read as what it is, patterns in the instrument's own domain, it folds 8.99x (150/150 lossless, 17 of 150 rows explained outright by held patterns, the delta carrying the rest). And the slowness that raised the question was the void term cut off, not heavy data: goggle reads searched their void chunks and discarded them, so novel content paid the full price forever; wired to teach, an edited re-read went from 220 void chunks at coherency 0.19 to 0 void at 0.9915.",
+   "tell": "A module storing the instrument's quantities as serialization text or type-shaped bytes; anything running slow — if anything runs slow, void is not properly implemented; a 'fold' built from a generic compressor where the pattern domain was available; a module that bit-matches the instrument's shape instead of resonating with it — identical is a copy, not a module.",
+   "correct": "Shape every remembrance module on the shape of the entire instrument: pattern first, resonance the mechanism — the module resonates with the instrument but never truly matches it. Store and move the instrument's quantities in its own domain (the wire: reference + delta; first occurrences raw, STEP2 §5), with the LRE's ingestion as the way data enters. When anything runs slow, find where the void term is cut off before reaching for a faster serializer or a generic compressor.",
+   "count": 1,
+   "first": "2026-10-18T21:30:00.000Z",
+   "last": "2026-10-18T21:30:00.000Z",
+   "sources": [
+    "operator"
+   ]
   }
  ]
 }

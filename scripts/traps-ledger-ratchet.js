@@ -160,9 +160,13 @@ function main() {
     const add = unpromoted(seed.traps);
     if (!add.length) { console.log('[traps-ledger] nothing to promote — every local trap is in the seed'); }
     else {
+      // seed.traps IS seed.doc.traps (one array): take the count BEFORE the
+      // push or the log double-counts (printed "124 -> 130" on the 118 -> 124
+      // promote, 2026-10-18).
+      const before = seed.traps.length;
       seed.doc.traps.push(...add);
       _write(_sealedGate(), SEED, JSON.stringify(seed.doc, null, 1) + '\n');
-      console.log(`[traps-ledger] promoted ${add.length} local trap(s) into the seed (${seed.traps.length} -> ${seed.traps.length + add.length}) — anchor it: REMEMBRANCE-BLOCKCHAIN/scripts/anchor-traps.js`);
+      console.log(`[traps-ledger] promoted ${add.length} local trap(s) into the seed (${before} -> ${before + add.length}) — anchor it: REMEMBRANCE-BLOCKCHAIN/scripts/anchor-traps.js`);
       // Seed and equation move as one: a promote that leaves the fitted
       // constants behind silences the live evaluator (measured 2026-10-18,
       // 0/99 fires at the stale 92-trap fit). Regrow here, in the same act.

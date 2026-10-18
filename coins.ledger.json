@@ -8676,6 +8676,76 @@
      "shape_sha256": "ff1645065710cef9ebf748e9fcdd16c933e44390a7277997c281e6ff101b6af7"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "edc813fb3cd78cc2eedcf9176f68278b39a69aa3d088933041297781d3a98c20",
+   "minted_at": "2026-10-18T03:03:16+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "4b4e164ef34e9c01b8ed793cd505178f38696164",
+    "files": [
+     "seeds/gates.lock.json"
+    ],
+    "diff_bytes": 2520,
+    "diff_sha256": "472a8f2de74994baaf6b440faff097046de62d84d58ff6e1a076194ece7ed060",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.20844320344583567,
+    "ratio": 1.8961625282167043,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "93db39e9682a2b7f",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "4c1e1d134582b8ff4e06fba59eab442dd285047d83aaacf3db502e5e8552552c",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-10-18T03:03:16",
+     "coin": null,
+     "sig": "93db39e9682a2b7fb30e42c3c6934bdc3fb41ef22305724c708b6c50f080159b"
+    },
+    "library_size": 63056,
+    "memory": {
+     "fits": 63,
+     "served": 20,
+     "computed": 43,
+     "served_ancestor": 0,
+     "chunkings": 7,
+     "chunkings_served": 4,
+     "entries": 297773,
+     "void_chunks": 6,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 6,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 0.219,
+    "basis_id": "946f986225f0f422",
+    "learned_n": 62984,
+    "learned_this_reading": 0,
+    "basis_after": "946f986225f0f422",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "946f986225f0f422",
+     "method": "v4_chunked",
+     "original_size": 2520,
+     "compressed_size": 1329,
+     "coherency": 0.20844320344583567,
+     "data_sha256": "81bcbddc3161df12dbefa5a6fbc294cb87e326d3458dd5ea2ff4b544d9c7d4ac",
+     "compressed_sha256": "bde8c6f0262fcef7d3507798d1847ea376d9e2edba8e3753e2385dc56a9a262d",
+     "shape_sha256": "6098f1a068371ab9824caf01123a062f8b9c5082d171d97b34fa6fb787efcb90"
+    }
+   }
   }
  ]
 }

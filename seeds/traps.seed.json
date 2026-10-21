@@ -2288,6 +2288,41 @@
    "sources": [
     "operator"
    ]
+  },
+  {
+   "match": [
+    "measure",
+    "measurement",
+    "beside",
+    "instrument",
+    "declare",
+    "declaration",
+    "256",
+    "232",
+    "retired",
+    "decoder",
+    "fractal",
+    "resonance",
+    "pearson",
+    "corrcoef",
+    "compress",
+    "zlib",
+    "gzip",
+    "fallback",
+    "docstring",
+    "read"
+   ],
+   "severity": "high",
+   "wrong": "Measuring beside the instrument and making declarations about it before reading how it runs end to end: hand-rolling a similarity (|Pearson r| over the 256-sample rows) and calling it 'the compressor's resonance', comparing the 232-D fractal decoder against that, reading a design-by-fallback (gzip/zlib on input the compressor cannot read natively) as a finding, and handing the operator a 'decision' the constitution had already made.",
+   "truth": "The 256-sample byte waveform is retired; the 232-D fractal decoder is the one representation and runs pattern first (canonical_vector.py, ECOSYSTEM section 7). Input the void compressor cannot read natively goes to gzip/zlib by design. Text the instrument did not produce (a docstring, a hand-written script) carries no authority and is already rejected by design. Measured 2026-10-20 (Void 4cbd6c3): a self-built script over 1,065 voids declared 'the compressor and the decoder disagree' (Spearman 0.32/0.39) and put the resonance space to the operator as an open choice; both were measurements of the script's own retired-width arithmetic, not of the instrument (the operator's ruling, 2026-10-21).",
+   "tell": "A measurement script that computes its own similarity or resonance instead of calling the instrument's; committing a hand-written measurement so that --do exec will run it (tracked is not the instrument); a finding that names the 256-D rows as anything current; a fallback tier reported as a discovery; a closing question asking the operator to choose something the constitution or the instrument already decides.",
+   "correct": "Read the instrument end to end first (ECOSYSTEM section 7, STEP2_DESIGN, COMPRESSION-EQUATION, canonical_vector, the decoder stack, compress/compress_signal) and only then measure, through the instrument's own verbs: goggles --do resonance / read / void / call, the decoder for every vector, the compressor for every fold. Never declare anything about the instrument from a measurement taken beside it; a declaration is the instrument's reading, quoted.",
+   "count": 3,
+   "first": "2026-10-21T17:48:06.633Z",
+   "last": "2026-10-21T17:48:06.634Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

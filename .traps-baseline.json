@@ -1,6 +1,6 @@
 {
  "note": "traps-ledger floor — the seed never holds fewer traps than this; raise it with --save-baseline after appending.",
- "savedAt": "2026-10-18T21:29:57.010Z",
- "count": 124,
- "digest": "b574106d311926ac89a5ccc638afebd7f1e80fd1e465b6f2e1b5b48c94801a24"
+ "savedAt": "2026-10-21T17:48:56.852Z",
+ "count": 125,
+ "digest": "2bb18afdfc5f02abce2f22219a1ac702c3ea881e65c4db4efceb70516c119f1b"
 }

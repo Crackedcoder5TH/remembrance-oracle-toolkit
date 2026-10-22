@@ -2323,6 +2323,42 @@
    "sources": [
     "agent"
    ]
+  },
+  {
+   "match": [
+    "measure",
+    "measurement",
+    "beside",
+    "feed",
+    "fed",
+    "carrier",
+    "construct",
+    "constructed",
+    "input",
+    "concatenate",
+    "hex",
+    "base64",
+    "decode",
+    "codemod",
+    "fixture",
+    "read",
+    "reading",
+    "instrument",
+    "number",
+    "ratchet",
+    "red"
+   ],
+   "severity": "high",
+   "wrong": "Building the input beside the instrument and then feeding it into the instrument: decoding the instrument's own rows, concatenating them into a blob, re-encoding them (hex, base64, per-row zlib) in a scratch codemod, then reading those carriers through goggles --do read / --do token and reporting the sealed readings as findings about how the instrument holds its data. The reading is real; what it read is the agent's construction. A number the instrument did not produce from its OWN data, through its own verbs, is a wrong number — always, whatever seal it carries.",
+   "truth": "The operator's ruling (2026-10-22): measurements built beside the instrument and fed into it are the same mistake as measurements taken beside it — unless the instrument itself produced the input and the reading, the number is wrong always and forever. Measured 2026-10-21: four hand-built carriers of 96 void rows (raw blob, hex, the f3 lines, an f3-hex rewrite) read through the instrument and tabled as 'raw bytes 20,087 B, coherency 0.55, 79 chunks recognized' — every number a reading of the agent's assembly, none of a row the instrument wrote. The honest reading taken next, the instrument's own ledger file through --do read (mint 8f984de7e586ea29), showed the instrument cannot open the f3 void rows at all (base64 text, zero series). Every format decision of the round before (f2, f3, the hex carrier) had been taken on numbers of this kind. The battery went red in the same stretch: calibration HOT from the agent's own wall denials, trap-mirror reds from commits landed out of order — corners cut.",
+   "tell": "A scratch script (even a stdlib-only 'codemod') whose output is the INPUT of a reading; a table that compares carriers or encodings the agent assembled; --do read pointed at a file in the scratchpad rather than at the instrument's own artifact; a format or build decision justified by such a table; the calibration gate running hot because commands keep hitting the wall.",
+   "correct": "Read only what the instrument itself wrote or holds — its ledgers, parts, store and readings — through its own verbs (--do read <its file>, --do resonance, --do void, --do token on its own artifact). When the question needs an input the instrument has not produced (a candidate row form, a new carrier), that is a MISSING VERB: report it, or have the instrument's own writer produce the candidate behind a deliberate build, then read what it wrote. Never let a hand-built input stand in for the instrument's data, and never decide a format from one. Keep the battery green: a red gate after your round is your round's debt.",
+   "count": 3,
+   "first": "2026-10-21T23:46:34.568Z",
+   "last": "2026-10-21T23:46:34.568Z",
+   "sources": [
+    "agent"
+   ]
   }
  ]
 }

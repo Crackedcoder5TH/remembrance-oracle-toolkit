@@ -9104,6 +9104,79 @@
      "shape_sha256": "57ac8bd06b87e980c0f70410dbb1844b8b1e4fb560efcd2cc04ff591c9373347"
     }
    }
+  },
+  {
+   "v": "change-coin/v1",
+   "coin_id": "1205614ab61c7f915d9fcdd1ac6348767a10fc7cc1b610a37d1357b58893af77",
+   "minted_at": "2026-10-26T13:09:55+00:00",
+   "minted_by": "goggles --do mint",
+   "change": {
+    "repo": "remembrance-oracle-toolkit",
+    "base_tree": "c00a21984938263f1d0fed819c29bea84d6af60a",
+    "files": [
+     ".claude/skills/goggles/run.mjs",
+     "seeds/gates.lock.json",
+     "src/tools/goggles-pre-hook.js",
+     "tests/goggles-wall.test.js"
+    ],
+    "diff_bytes": 15678,
+    "diff_sha256": "bd1081e826e2b0ae1fb174fda42917d6a278c71a84bd570d65c5f2c43e79dadc",
+    "excludes": [
+     "coins.ledger.json"
+    ]
+   },
+   "reading": {
+    "coherency": 0.1557136549546071,
+    "ratio": 2.5129027087674305,
+    "method": "void_v4_chunked",
+    "strategy": "v4_chunked",
+    "lossless": true,
+    "via": "void:compress_signal",
+    "mint": "ae7c393bea720e12",
+    "void_seal": {
+     "substrate": "void",
+     "state_id": null,
+     "data_sha256": "dd755328aa9e0291dab9869c808cec4be4a6983eac844cc7db80505efb981d35",
+     "via": "void_compressor_v5.compress",
+     "at": "2026-10-26T13:09:55",
+     "coin": null,
+     "sig": "ae7c393bea720e1215b8c676dc3e1cecfb88e6820e738d11901cf76c663b9b6e"
+    },
+    "library_size": 63747,
+    "memory": {
+     "fits": 362,
+     "served": 94,
+     "computed": 268,
+     "served_ancestor": 0,
+     "chunkings": 7,
+     "chunkings_served": 4,
+     "entries": 834238,
+     "void_chunks": 32,
+     "ingested": 0,
+     "served_single": 0,
+     "searched": 32,
+     "void_threshold": 0.5
+    },
+    "elapsed_s": 1.447,
+    "basis_id": "c80fe97a2a9f6e56",
+    "learned_n": 63675,
+    "learned_this_reading": 0,
+    "basis_after": "c80fe97a2a9f6e56",
+    "read_as": "bytes",
+    "ingest": false,
+    "data": null,
+    "commitment": {
+     "canon": "void-seal/v3",
+     "basis_id": "c80fe97a2a9f6e56",
+     "method": "v4_chunked",
+     "original_size": 15678,
+     "compressed_size": 6239,
+     "coherency": 0.1557136549546071,
+     "data_sha256": "a07a4aebdb6c74548fbb67d42d7c0416b112adc5caf943c0e91e0e014467097d",
+     "compressed_sha256": "48fd3fcf6bbe7676bd01fe221e2e5c7e63f491905cf0632add7f98cae11ac3c1",
+     "shape_sha256": "c99009c5d1ca9633091729a606fb57a6c5fdea0bb8cc103349296a53ef939b39"
+    }
+   }
   }
  ]
 }

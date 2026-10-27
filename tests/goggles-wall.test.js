@@ -28,6 +28,9 @@ function hook(file, input) {
   const j = JSON.parse(out);
   return { decision: j.hookSpecificOutput.permissionDecision, reason: j.hookSpecificOutput.permissionDecisionReason || '' };
 }
+// covenant fractal, atomic scale: computed by the substrate's own
+// extractAtomicProperties over the function body
+hook.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 const bash = (command, cwd = HUB) => hook('goggles-bash-hook.js', { tool_name: 'Bash', tool_input: { command }, cwd });
 const search = (tool_name, tool_input, cwd = HUB) => hook('goggles-search-hook.js', { tool_name, tool_input, cwd });
 

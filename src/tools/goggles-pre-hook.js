@@ -112,10 +112,27 @@ const content = ti.content || ti.new_string || '';
     '  META-DEBUG findings before the change; an edit without it is a change made blind.');
 })();
 
+// ── NO DENY-ONCE ON A WRITE (the operator's ruling, 2026-10-22: "stop that
+// double write bypass at the root"). The brief and calibration gates below
+// used to deny the first touch and pass the identical retry unconditionally —
+// a gate whose instruction was "send it again", matched on the PATH (every
+// scratchpad file tripped the scratch-measurement trap; measured: even
+// /tmp/msg/x.txt carries a HIGH trap by path alone). The traps now ride the
+// write as CONTEXT, and the STOP lives where the equation can judge what is
+// actually being changed: the commit door (goggles --do commit evaluates
+// THE TRAP EQUATION on the message and the staged patch and stops every
+// time until --do brief has put the fired trap in front of the reader).
+const _context = [];
+function finish() {
+  if (_context.length) outContext(_context.join('\n\n'));
+  process.exit(0);
+}
+finish.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "odd", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 1, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+
 // ── CALIBRATION BRIEF ── when the wall's rolling denial rate is at/over the
-// governed line, the contraction announces itself ONCE per session before
-// the next edit, with the number that caused it. Deny-once, then pass — the
-// enforcement itself is the shortened window above, which needs no consent.
+// governed line, the contraction announces itself ONCE per session, as
+// context on the next edit, with the number that caused it. The enforcement
+// itself is the shortened window above, which needs no consent.
 try {
   if (fp) {
     const cal = require('./calibration').reading();
@@ -130,12 +147,12 @@ try {
           fs.mkdirSync(path.dirname(seenPath), { recursive: true });
           fs.writeFileSync(seenPath, JSON.stringify(seen, null, 1));
         } catch (e) { quiet('tools:goggles-pre-hook:cal-brief-write', e); }
-        out('deny',
+        _context.push(
           'CALIBRATION HOT — ' + cal.ratePer100.toFixed(2) + ' denials/100 over ' + cal.attempts
           + ' commands is at/over the line ' + cal.linePer100 + '/100. The goggled-first reading '
           + 'window has contracted (reading: goggles --do gate calibration). Measure before acting: '
-          + 'goggle the file, then retry the identical edit — it will go through. Clean commands '
-          + 'relax the window on their own; there is no other way out.');
+          + 'goggle every file before you change it. Clean commands relax the window on their own; '
+          + 'there is no other way out.');
       }
     }
   }
@@ -146,12 +163,10 @@ try {
 // Every large mistake made against this codebase came from editing or calling
 // something whose contract was inferred from its name. A brief that is merely
 // AVAILABLE is a second command, and the second command is the one skipped.
-// So the first touch of a trapped file in a session is denied once, with the
-// trap as the reason. The retry succeeds immediately — the cost is one
-// round-trip, paid once per file per session, and what it buys is that the
-// correction cannot arrive after a plausible wrong number has been produced.
-//
-// Deny-once, not deny-always: a gate that keeps firing gets routed around.
+// So the first touch of a trapped file in a session carries the traps as
+// context on the write itself. It no longer denies: a deny-once whose retry
+// passed unconditionally trained the identical resend (2026-10-22). The stop
+// is at the commit, where THE TRAP EQUATION judges the change itself.
 try {
   if (fp) {
     const brief = require('./brief');
@@ -168,20 +183,19 @@ try {
           fs.mkdirSync(path.dirname(seenPath), { recursive: true });
           fs.writeFileSync(seenPath, JSON.stringify(seen, null, 1));
         } catch (_) { quiet('tools:goggles-pre-hook:require', _); /* if we cannot record it, deny once and move on */ }
-        out('deny',
-          'BRIEF REQUIRED — this file carries recorded traps. Read them, then retry '
-          + 'the identical edit; it will go through. This is the one-time cost of not '
-          + 'inferring a contract from a name.\n\n'
-          + brief.renderTraps(high)
-          + '\n\nFull debrief: remembrance brief ' + path.basename(fp));
+        _context.push(
+          'TRAPS ON THIS FILE — mistakes already made here; read them before this change lands. '
+          + 'The stop is at the commit: THE TRAP EQUATION reads the message and the staged patch, '
+          + 'and a match stops the commit until `--do brief <message-file>` has been read.\n\n'
+          + brief.renderTraps(high));
       }
     }
   }
 } catch (_) { quiet('tools:goggles-pre-hook:require', _); /* the gate must never break a write on its own account */ }
 
-if (!fp || !/\.(js|mjs|cjs|ts|tsx|py)$/.test(fp)) process.exit(0);
-if (!content || content.length < 80) process.exit(0);
-if (CANONICAL.has(path.basename(fp))) process.exit(0); // the canon may edit itself
+if (!fp || !/\.(js|mjs|cjs|ts|tsx|py)$/.test(fp)) finish();
+if (!content || content.length < 80) finish();
+if (CANONICAL.has(path.basename(fp))) finish(); // the canon may edit itself
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -242,5 +256,5 @@ try {
     }
   }
 } catch (_) { quiet('tools:goggles-pre-hook:require', _); /* overlay is best-effort */ }
-if (overlay) outContext(overlay);
-process.exit(0);
+if (overlay) _context.push(overlay);
+finish();

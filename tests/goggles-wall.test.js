@@ -132,3 +132,16 @@ test('an edit to an existing ecosystem file without a goggle reading is refused;
     if (saved === null) fs.rmSync(ledger, { force: true }); else fs.writeFileSync(ledger, saved);
   }
 });
+
+test('a trapped path is never denied once and passed on the identical retry (2026-10-22: the double write, at the root)', () => {
+  // a scratch path carries a HIGH trap by its path alone; the write hook used
+  // to deny the first touch and pass the identical resend. Now the traps ride
+  // the write as context, the same on every touch, and nothing is denied.
+  const write = () => hook('goggles-pre-hook.js', { tool_name: 'Write', session_id: 'wall-test-' + process.pid,
+    tool_input: { file_path: path.join(OUTSIDE, 'scratch', 'msg.txt'), content: 'a commit message' }, cwd: OUTSIDE });
+  const first = write();
+  const second = write();
+  assert.notEqual(first.decision, 'deny', first.reason);
+  assert.notEqual(second.decision, 'deny', second.reason);
+  assert.doesNotMatch(first.reason + second.reason, /retry the identical edit/);
+});

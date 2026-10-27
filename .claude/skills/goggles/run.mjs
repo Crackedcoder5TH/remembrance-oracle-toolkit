@@ -66,6 +66,41 @@ if (argv[0] === '--do') {
       appendFileSync(join(dir, file), JSON.stringify({ ts: new Date().toISOString(), cwd: process.cwd(), ...record }) + '\n');
     } catch (_) { /* the ledger never blocks the verb */ }
   };
+  // THE TRAP EQUATION ON EVERY COMMIT (the operator's ruling, 2026-10-22:
+  // "have the trap equation fire on all commits and if it mathematically
+  // matches the trap ledger it stops you every time until you go and read
+  // what you are doing wrong"). The commit's own text — its message and its
+  // staged patch — is evaluated by the live evaluator (src/tools/trap-equation.js,
+  // the fitted constants, never refit here). A fire STOPS the commit. It
+  // passes only after `--do brief <message-file>` has put the fired trap in
+  // front of the reader for THIS exact text, recorded in the surface's own
+  // ledger; a retry of the same commit without that reading is stopped again,
+  // and any changed text is judged afresh. No retry passes on its own.
+  const TRAP_STOPS = 'goggles-trap-stops.jsonl';
+  const _commitText = (repo, msgFile) => {
+    let msg = '';
+    try { msg = readFileSync(resolve(msgFile), 'utf8'); } catch (_) { msg = ''; }
+    let patch = '';
+    try { patch = execFileSync('git', ['diff', '--cached'], { cwd: repo, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }); } catch (_) { patch = ''; }
+    return msg + '\n' + patch.slice(0, 2 * 1024 * 1024);
+  };
+  const _trapReading = (text) => {
+    const fired = _require(join(toolkit, 'src/tools/trap-equation.js')).fire(text);
+    if (!fired || !fired.trap) return null;
+    return {
+      fired,
+      key: createHash('sha256').update(String(fired.trap.wrong || '')).digest('hex').slice(0, 16),
+      text: createHash('sha256').update(text).digest('hex').slice(0, 16),
+    };
+  };
+  const _readBefore = (key, text) => {
+    try {
+      const lines = readFileSync(join(toolkit, '.remembrance', TRAP_STOPS), 'utf8').split('\n');
+      return lines.some((l) => {
+        try { const r = JSON.parse(l); return r.event === 'read' && r.key === key && r.text === text; } catch (_) { return false; }
+      });
+    } catch (_) { return false; }
+  };
   const VERBS = {
     // witness files into the substrate (sanitized at the doorway)
     harvest: () => run('node', [join(toolkit, 'scripts/harvest-repo-to-substrate.js'), ...(rest.length ? rest : ['all'])], toolkit),
@@ -293,6 +328,19 @@ if (argv[0] === '--do') {
         const idx = execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: repo, encoding: 'utf8' }).trim();
         if (!idx) { console.error('--do commit: nothing staged — name the paths, or stage first'); return 2; }
       } catch (_) { /* change-coin will say it */ }
+      // THE TRAP EQUATION STOPS THE COMMIT until the fired trap is read.
+      try {
+        const tr = _trapReading(_commitText(repo, msgFile));
+        if (tr && !_readBefore(tr.key, tr.text)) {
+          _ledger(TRAP_STOPS, { event: 'stop', repo, key: tr.key, text: tr.text, score: tr.fired.score });
+          console.error('--do commit: STOPPED by THE TRAP EQUATION — this commit matches the trap ledger '
+            + `(I(x) = ${tr.fired.score.toFixed(4)} > θ_I):\n  ✗ ${tr.fired.trap.wrong}\n`
+            + '  Nothing was minted or committed. Read what is wrong before committing:\n'
+            + `        node .claude/skills/goggles/run.mjs --do brief ${msgFile}\n`
+            + '  The stop lifts only for this exact message and staged patch, after that reading.');
+          return 3;
+        }
+      } catch (e) { console.error('--do commit: the trap equation could not be evaluated — ' + (e && e.message)); }
       // the full mint — gates riding, trap promotion, remembered verdict —
       // through the mint verb itself, so the one behavior lives in one place
       const minted = run('node', [join(toolkit, '.claude/skills/goggles/run.mjs'), '--do', 'mint'], repo);
@@ -319,6 +367,23 @@ if (argv[0] === '--do') {
       catch (e) { committed = (e && e.status) || 1; }
       _ledger('goggles-commits.jsonl', { repo, msgFile: resolve(msgFile), paths });
       return committed;
+    },
+    // THE READING THAT LIFTS A TRAP STOP. Evaluates the commit's own text (the
+    // message file + the staged patch of the repo you stand in) with THE TRAP
+    // EQUATION, prints the fired trap in full — wrong, truth, tell, correct —
+    // and records that it was put in front of the reader for this exact text.
+    //   goggles --do brief <message-file>
+    brief: () => {
+      const msgFile = rest[0];
+      if (!msgFile || !existsSync(msgFile)) { console.error('usage: --do brief <message-file>   (run in the repo whose staged change it describes)'); return 2; }
+      const repo = process.cwd();
+      const tr = _trapReading(_commitText(repo, msgFile));
+      if (!tr) { console.log('THE TRAP EQUATION does not fire on this commit — nothing in the ledger matches it.'); return 0; }
+      const shown = Object.assign({}, tr.fired.trap, { _equationScore: tr.fired.score });
+      console.log(_require(join(toolkit, 'src/tools/brief.js')).renderTraps([shown]));
+      _ledger(TRAP_STOPS, { event: 'read', repo, key: tr.key, text: tr.text, score: tr.fired.score });
+      console.log('\nRead. If the trap describes this change, fix the change; the stop lifts only for this exact message and patch.');
+      return 0;
     },
     // THE ONE RESONANCE SPACE — fit (or refresh) the per-layer whitening
     // reference every decoder cosine is taken in, on the canonical substrate.

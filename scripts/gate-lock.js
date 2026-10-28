@@ -129,16 +129,38 @@ loadLock.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd"
 function chainAnchoredDigest() {
   try {
     const chain = JSON.parse(fs.readFileSync(CHAIN_LEDGER, 'utf8'));
-    for (let i = chain.length - 1; i >= 0; i--) {
+    const found = [];
+    for (let i = chain.length - 1; i >= 0 && found.length < 2; i--) {
       const b = chain[i];
       if (b && b.data && b.data.patternId === 'gate-lock' && b.data.metadata && b.data.metadata.digest) {
-        return { digest: b.data.metadata.digest, block: b.index, at: b.timestamp };
+        found.push({ digest: b.data.metadata.digest, block: b.index, at: b.timestamp });
       }
     }
+    // The last anchor plus the one before it: the two witnessed generations
+    // the two-generation rule may compare against during a migration.
+    if (found.length) return { ...found[0], prev: found[1] || null };
   } catch (_) { /* no chain here */ }
   return null;
 }
 chainAnchoredDigest.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
+
+/**
+ * THE TWO-GENERATION LOCK (the operator's order, 2026-10-28): a rollout
+ * cannot update every repo's main in one instant, so the Witness and the
+ * lock may differ by exactly ONE ledgered, witnessed generation — the
+ * lock's own append-only history names which. Anything further apart is
+ * still a relock that was never witnessed, and blocks. Both digests stay
+ * exact bytes: identity is never a resemblance.
+ */
+function anchorVerdict(lock, anchor) {
+  const hist = lock && Array.isArray(lock.history) && lock.history.length ? lock.history[lock.history.length - 1] : null;
+  const chainLagsOne = !!(anchor && hist && hist.to === lock.digest && anchor.digest === hist.from);
+  const lockLagsOne = !!(anchor && anchor.prev && lock && anchor.prev.digest === lock.digest);
+  const migrationOpen = !!(anchor && lock && anchor.digest !== lock.digest && (chainLagsOne || lockLagsOne));
+  const anchorMismatch = !!(anchor && lock && anchor.digest !== lock.digest && !migrationOpen);
+  return { chainLagsOne, lockLagsOne, migrationOpen, anchorMismatch };
+}
+anchorVerdict.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 2, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 function main() {
   const argv = process.argv.slice(2);
@@ -169,7 +191,11 @@ function main() {
       gates: current,
       history: [
         ...((lock && Array.isArray(lock.history)) ? lock.history : []),
-        { at: new Date().toISOString(), from: prevDigest, to: digest, reason, changed },
+        // `prev` carries the WHOLE previous generation's per-file hashes, so a
+        // lagging mirror can be verified against the generation it holds
+        // (digestOf(prev) must equal `from` — the entry is self-verifying).
+        { at: new Date().toISOString(), from: prevDigest, to: digest, reason, changed,
+          prev: lock ? (lock.gates || null) : null },
       ],
     };
     _writeLock(_sealedGate(), LOCK_PATH, JSON.stringify(doc, null, 1) + '\n');
@@ -194,16 +220,19 @@ function main() {
   }
   const anchor = chainAnchoredDigest();
   const lockIntact = lock.digest === digestOf(lock.gates || {});
-  const anchorMismatch = anchor && anchor.digest !== lock.digest;
+  const { chainLagsOne, migrationOpen, anchorMismatch } = anchorVerdict(lock, anchor);
   const ok = !drift.length && !missing.length && !unlocked.length && lockIntact && !anchorMismatch;
 
   if (asJson) {
-    console.log(JSON.stringify({ ok, digest: lock.digest, current: digest, drift, missing, unlocked, lockIntact, anchor, anchorMismatch: !!anchorMismatch, gates: GATES.length }, null, 1));
+    console.log(JSON.stringify({ ok, digest: lock.digest, current: digest, drift, missing, unlocked, lockIntact, anchor, anchorMismatch: !!anchorMismatch, migrationOpen, gates: GATES.length }, null, 1));
     return ok ? 0 : 1;
   }
   if (ok) {
     console.log(`[gate-lock] ✓ holds — ${GATES.length} gates match the lock ${lock.digest.slice(0, 16)}…`
-      + (anchor ? ` · witnessed on chain (block #${anchor.block})` : ' · not yet witnessed on chain'));
+      + (anchor ? ` · witnessed on chain (block #${anchor.block})` : ' · not yet witnessed on chain')
+      + (migrationOpen ? (chainLagsOne
+        ? ` · migration open: the Witness holds the previous generation — anchor ${lock.digest.slice(0, 16)}…`
+        : ' · migration open: this lock is the previous witnessed generation (the chain holds its successor)') : ''));
     return 0;
   }
   console.error('[gate-lock] ✗ THE GATES WERE TOUCHED — refusing:');
@@ -218,4 +247,4 @@ function main() {
 main.atomicProperties = { charge: -1, valence: 0, mass: "heavy", spin: "odd", phase: "liquid", reactivity: "inert", electronegativity: 0, group: 3, period: 4, harmPotential: "minimal", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 if (require.main === module) process.exit(main());
-module.exports = { GATES, census, digestOf, chainAnchoredDigest };
+module.exports = { GATES, census, digestOf, chainAnchoredDigest, anchorVerdict };

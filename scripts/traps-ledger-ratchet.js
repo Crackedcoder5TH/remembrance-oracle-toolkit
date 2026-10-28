@@ -77,12 +77,16 @@ function chainAnchor() {
   try {
     const chain = JSON.parse(fs.readFileSync(CHAIN_LEDGER, 'utf8'));
     const blocks = Array.isArray(chain) ? chain : (chain.chain || []);
-    for (let i = blocks.length - 1; i >= 0; i--) {
+    const found = [];
+    for (let i = blocks.length - 1; i >= 0 && found.length < 2; i--) {
       const b = blocks[i];
       if (b && b.data && b.data.patternId === 'traps-ledger' && b.data.metadata && b.data.metadata.digest) {
-        return { digest: b.data.metadata.digest, count: b.data.metadata.count, entryDigests: b.data.metadata.entryDigests || [], block: b.index };
+        found.push({ digest: b.data.metadata.digest, count: b.data.metadata.count, entryDigests: b.data.metadata.entryDigests || [], block: b.index });
       }
     }
+    // The last anchor plus the one before it: the two witnessed generations
+    // a lagging mirror may legitimately hold during a migration.
+    if (found.length) return { ...found[0], prev: found[1] || null };
   } catch (_) { /* no chain on this host */ }
   return null;
 }
@@ -97,15 +101,28 @@ function unpromoted(seedTraps) {
 }
 unpromoted.atomicProperties = { charge: 0, valence: 0, mass: "light", spin: "even", phase: "gas", reactivity: "inert", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 
-/** Mirror state per repo present on this host: identical | drift | absent. */
-function mirrors(raw) {
+/**
+ * Mirror state per repo present on this host: identical | lagging | drift |
+ * absent. THE TWO-GENERATION LOCK (the operator's order, 2026-10-28): a
+ * mirror whose bytes hash to a WITNESSED previous generation (one of the
+ * last two chain anchors) is `lagging` — a rollout in flight, named and
+ * tolerated, because no cross-repo update lands in one instant. Any other
+ * difference stays `drift` and blocks: identity is exact bytes, and the
+ * only tolerated past is one the Witness already holds.
+ */
+function mirrors(raw, laggingDigests) {
+  const lag = laggingDigests || new Set();
   const out = [];
   for (const r of REPOS) {
     const dir = path.join(HOME, r);
     if (!fs.existsSync(dir)) continue;                         // not on this host — not judged here
     const p = path.join(dir, MIRROR_REL);
     let state = 'absent';
-    try { state = fs.readFileSync(p).equals(raw) ? 'identical' : 'drift'; } catch (_) { /* absent */ }
+    try {
+      const bytes = fs.readFileSync(p);
+      if (bytes.equals(raw)) state = 'identical';
+      else state = lag.has(crypto.createHash('sha256').update(bytes).digest('hex')) ? 'lagging' : 'drift';
+    } catch (_) { /* absent */ }
     out.push({ repo: r, path: p, state });
   }
   return out;
@@ -203,15 +220,21 @@ function main() {
     if (!kept) problems.push(`an anchored trap was rewritten or reordered (anchor block #${anchor.block}) — the ledger is append-only`);
     unwitnessed = Math.max(0, seed.traps.length - anchor.count);
   }
-  const ms = mirrors(seed.raw);
-  for (const m of ms) if (m.state !== 'identical') problems.push(`mirror ${m.state}: ${m.repo}/${MIRROR_REL} (goggles --do traps sync)`);
+  // The witnessed previous generations a lagging mirror may hold: the last
+  // two anchors, minus whatever matches the current seed itself.
+  const lagSet = new Set();
+  if (anchor && anchor.digest !== seed.digest) lagSet.add(anchor.digest);
+  if (anchor && anchor.prev && anchor.prev.digest !== seed.digest) lagSet.add(anchor.prev.digest);
+  const ms = mirrors(seed.raw, lagSet);
+  for (const m of ms) if (m.state !== 'identical' && m.state !== 'lagging') problems.push(`mirror ${m.state}: ${m.repo}/${MIRROR_REL} (goggles --do traps sync)`);
+  const lagging = ms.filter((m) => m.state === 'lagging').length;
   const eqProblem = equationStep(seed.traps.length);
   if (eqProblem) problems.push(eqProblem);
   const pending = unpromoted(seed.traps);
   const ok = problems.length === 0;
-  if (json) { console.log(JSON.stringify({ ok, traps: seed.traps.length, digest: seed.digest, floor: baseline ? baseline.count : null, anchor, unwitnessed, mirrors: ms, unpromoted: pending.length, problems }, null, 1)); return ok ? 0 : 1; }
+  if (json) { console.log(JSON.stringify({ ok, traps: seed.traps.length, digest: seed.digest, floor: baseline ? baseline.count : null, anchor, unwitnessed, mirrors: ms, lagging, unpromoted: pending.length, problems }, null, 1)); return ok ? 0 : 1; }
   if (ok) {
-    console.log(`[traps-ledger] ✓ holds — ${seed.traps.length} traps, floor ${baseline ? baseline.count : 'none'}, ${anchor ? `anchored at block #${anchor.block}${unwitnessed ? ` (+${unwitnessed} unwitnessed — anchor them)` : ''}` : 'no chain anchor on this host'}, ${ms.length} mirror(s) identical${pending.length ? `, ${pending.length} local trap(s) unpromoted (--promote)` : ''}`);
+    console.log(`[traps-ledger] ✓ holds — ${seed.traps.length} traps, floor ${baseline ? baseline.count : 'none'}, ${anchor ? `anchored at block #${anchor.block}${unwitnessed ? ` (+${unwitnessed} unwitnessed — anchor them)` : ''}` : 'no chain anchor on this host'}, ${ms.length - lagging} mirror(s) identical${lagging ? `, ${lagging} lagging (a witnessed previous generation — migration open, goggles --do traps sync)` : ''}${pending.length ? `, ${pending.length} local trap(s) unpromoted (--promote)` : ''}`);
     return 0;
   }
   console.error('[traps-ledger] ✗ BLOCKED — the memory of mistakes is not intact:');

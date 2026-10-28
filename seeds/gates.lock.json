@@ -1,9 +1,9 @@
 {
  "_README": "THE GATE LOCK. sha256 of every gate script; scripts/gate-lock.js refuses any drift (gate zero of ratchet-battery, pre-commit, CI). Relock only through `node scripts/gate-lock.js --relock --reason \"<why>\"` — the act is appended to `history` below, which ledger-append-ratchet keeps append-only. Anchor `digest` on the Witness with REMEMBRANCE-BLOCKCHAIN/scripts/anchor-gate-lock.js.",
- "lockedAt": "2026-10-22T00:15:49.616Z",
- "digest": "bb41cc1e562829fb703fa43fccda6774f420e0aacd122fcee2c349574c5b3866",
+ "lockedAt": "2026-10-28T21:17:40.121Z",
+ "digest": "92190b96d1fc26f0917d5e8a83b62263d4360ca34512d58289da23c3c38dded9",
  "gates": {
-  "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
+  "scripts/gate-lock.js": "836ef76efa04616e386c69c17580f6b4615d2d55d37db32f8b96d8520b39f099",
   "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
   "scripts/ratchet-battery.js": "691e933d406161b7e3e4b7ad511ea492ed2de29addd3742c08888b800b38f859",
   "scripts/covenant-ratchet.js": "bc92e5647202fd996c1a444e4489d9a10fdb8cd1081f5fb8587a22da412beada",
@@ -20,7 +20,7 @@
   "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
   "scripts/contracts-ratchet.js": "61ab0c9397bb8878e713d61fb72b82988e0e71c248e010168dbd15be1355c9fd",
   "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
-  "scripts/traps-ledger-ratchet.js": "71976e65aad30f5f244b8c60c01fdac63a05f253d21cfbef7cde6f84e03e5cce",
+  "scripts/traps-ledger-ratchet.js": "413fbcf4286aeb7c12b111f74659b9b594d31076c7d5d1749eb71f004cf94db2",
   "scripts/width-ratchet.js": "64d363123fa3c6723ce006527333bc610cba167621232d7b476e65f37645b963",
   "scripts/calibration-ratchet.js": "a989bf845a760661d193c6b42f8bbcb2fcf99cbd6830296bb0bf63ac3ee77250",
   "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
@@ -479,6 +479,45 @@
    "changed": [
     ".claude/skills/goggles/run.mjs"
    ]
+  },
+  {
+   "at": "2026-10-28T21:17:40.121Z",
+   "from": "bb41cc1e562829fb703fa43fccda6774f420e0aacd122fcee2c349574c5b3866",
+   "to": "92190b96d1fc26f0917d5e8a83b62263d4360ca34512d58289da23c3c38dded9",
+   "reason": "THE TWO-GENERATION LOCK (the operator's order, 2026-10-28): gate-lock and traps-ledger tolerate exactly one witnessed generation of rollout lag, named from the lock's own history and the chain's last two anchors; relocks now append the previous generation's per-file hashes (prev), self-verified by the entry's from digest. Unknown bytes still block.",
+   "changed": [
+    "scripts/gate-lock.js",
+    "scripts/traps-ledger-ratchet.js"
+   ],
+   "prev": {
+    "scripts/gate-lock.js": "ea82b19b6dd7419c6099c27b7277e9f620b8b35e542cbd3ae430347a8acb51b8",
+    "scripts/lib/ratchet-law.js": "c901c624b36c58399fb68b33ccd29cea70dfec03a6a548994dd5c370054d8171",
+    "scripts/ratchet-battery.js": "691e933d406161b7e3e4b7ad511ea492ed2de29addd3742c08888b800b38f859",
+    "scripts/covenant-ratchet.js": "bc92e5647202fd996c1a444e4489d9a10fdb8cd1081f5fb8587a22da412beada",
+    "scripts/exemption-ratchet.js": "678cb750310e2aa3428e6cd78c56e157b464d82b9ae5de209a65e0000ca4cf91",
+    "scripts/size-ratchet.js": "f9fc77be34d0259f2fe21d34bd8b8494894a4bc698ce4e4a50cc2ec4e0d33f88",
+    "scripts/cycle-ratchet.js": "3421ad1685862dc161b0b40d81500d33972ba08273ee907c8ed70ad6fbacd238",
+    "scripts/suite-reachability-ratchet.js": "35577247f83ee79b759e890569fda5edb800b7392db1d6fd90a8b6d1f2466c8f",
+    "scripts/field-source-ratchet.js": "86e5007fb1496216dd9971fc582757b3efa78e67c3b5400bcd1d74f5604b0784",
+    "scripts/ledger-append-ratchet.js": "f93408da591c2697959133136e7b1bd0288098f2164b75a1be35a5912e15c9de",
+    "scripts/orphan-ratchet.js": "2cc9e9055f1d073fa89e5323a6ba1c09c7b12e09b2ddad58dde44b9426bfeb67",
+    "scripts/silent-catch-ratchet.js": "fbe0191becb8e53ef490c398183ac03af8f97ae6eec34e688d6ff68ee1475ffc",
+    "scripts/console-ratchet.js": "4c4ba3d6742a0910713d413f52e4870b94bba634e0a8ecd594318ccc8f6d13a4",
+    "scripts/atomic-drift-ratchet.js": "2b759df51c995ea8dd39dfba6833c2d9e1024ec15c9cfc0562f028b1409b1092",
+    "scripts/ecosystem-ratchet.js": "f81034858ebe1bafb52e6cc9017528b6bf3b36fc541337d64a8f57eea9212ce3",
+    "scripts/contracts-ratchet.js": "61ab0c9397bb8878e713d61fb72b82988e0e71c248e010168dbd15be1355c9fd",
+    "scripts/engine-entanglement-ratchet.js": "dbc55f52963c73dc99a31a07123b4cfa35d797ca13f926e3e22f16dd1c3f3978",
+    "scripts/traps-ledger-ratchet.js": "71976e65aad30f5f244b8c60c01fdac63a05f253d21cfbef7cde6f84e03e5cce",
+    "scripts/width-ratchet.js": "64d363123fa3c6723ce006527333bc610cba167621232d7b476e65f37645b963",
+    "scripts/calibration-ratchet.js": "a989bf845a760661d193c6b42f8bbcb2fcf99cbd6830296bb0bf63ac3ee77250",
+    "scripts/cathedral-diagnostic.js": "d894e076bc797610dcab659929ad335cf3efbf97f7f661b7aca92eed898dc96b",
+    "scripts/audit-field-contributions.js": "08551aafd1472a96b1ea01f4ec4b8baa5b396f4d1218dd9d242f7586ed7f983f",
+    "src/tools/calibration.js": "8e975d11e0d19d400bdc57978f60f9190485b7c91a682521a0c36bf8e2f2c260",
+    "src/core/covenant-fractal.js": "f349a09ca1eb1ba667a86d75666f61f9ade36fedfb002c9cd5fec099292032c1",
+    ".claude/skills/goggles/run.mjs": "9c641deba81908418b6b783e8cc8fec7c0923c9c8c90f491849835355386d7e9",
+    ".claude/skills/goggles/change-coin.py": "e2b24044f1a7da5659f205158db583abdcaa2c791ca3ba491b454bd63700da46",
+    "src/tools/goggles-bash-hook.js": "80c532ecc7d9635eea83f8bb7a1d07127722d9f92858b4e1f6079247be697828"
+   }
   }
  ]
 }

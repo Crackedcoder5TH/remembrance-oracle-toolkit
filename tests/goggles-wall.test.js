@@ -11,6 +11,8 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
+// fractal covenant, byte scale: every mutation in tests/ rides a sealed gate
+const { writeFixture, rmFixture } = require('./helpers');
 
 const HUB = path.resolve(__dirname, '..');
 const TOOLS = path.join(HUB, 'src', 'tools');
@@ -26,6 +28,9 @@ function hook(file, input) {
   const j = JSON.parse(out);
   return { decision: j.hookSpecificOutput.permissionDecision, reason: j.hookSpecificOutput.permissionDecisionReason || '' };
 }
+// covenant fractal, atomic scale: computed by the substrate's own
+// extractAtomicProperties over the function body
+hook.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 3, period: 2, harmPotential: "none", alignment: "neutral", intention: "neutral", domain: "utility" };
 const bash = (command, cwd = HUB) => hook('goggles-bash-hook.js', { tool_name: 'Bash', tool_input: { command }, cwd });
 const search = (tool_name, tool_input, cwd = HUB) => hook('goggles-search-hook.js', { tool_name, tool_input, cwd });
 
@@ -111,16 +116,16 @@ test('an edit to an existing ecosystem file without a goggle reading is refused;
   try { saved = fs.readFileSync(ledger, 'utf8'); } catch (_) { saved = null; }
   try {
     fs.mkdirSync(path.dirname(ledger), { recursive: true });
-    fs.writeFileSync(ledger, JSON.stringify({}));
+    writeFixture(ledger, JSON.stringify({}));
     const r = pre(target);
     assert.equal(r.decision, 'deny');
     assert.match(r.reason, /EDIT WITHOUT A READING/);
-    fs.writeFileSync(ledger, JSON.stringify({ 'tests/goggles-wall.test.js': { at: Date.now() } }));
+    writeFixture(ledger, JSON.stringify({ 'tests/goggles-wall.test.js': { at: Date.now() } }));
     let a = pre(target);
     // the brief gate may still fire once per session for a trapped file; a
     // reading present means the goggled-first gate itself is satisfied
     assert.doesNotMatch(a.reason, /EDIT WITHOUT A READING/, a.reason);
-    fs.writeFileSync(ledger, JSON.stringify({ 'tests/goggles-wall.test.js': { at: Date.now() - 3 * 60 * 60 * 1000 } }));
+    writeFixture(ledger, JSON.stringify({ 'tests/goggles-wall.test.js': { at: Date.now() - 3 * 60 * 60 * 1000 } }));
     a = pre(target);
     assert.equal(a.decision, 'deny', a.reason);
     assert.match(a.reason, /EDIT WITHOUT A READING/);
@@ -129,7 +134,7 @@ test('an edit to an existing ecosystem file without a goggle reading is refused;
     a = pre(path.join(OUTSIDE, 'scratch.txt'));
     assert.doesNotMatch(a.reason, /EDIT WITHOUT A READING/, a.reason);   // outside: the goggled-first gate does not apply
   } finally {
-    if (saved === null) fs.rmSync(ledger, { force: true }); else fs.writeFileSync(ledger, saved);
+    if (saved === null) rmFixture(ledger, { force: true }); else writeFixture(ledger, saved);
   }
 });
 

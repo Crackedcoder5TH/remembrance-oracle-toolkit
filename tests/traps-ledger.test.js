@@ -67,3 +67,30 @@ test('the mirrors on this host are byte-identical to the seed', () => {
   assert.equal(r.code, 0, JSON.stringify(r.out.problems));
   for (const m of r.out.mirrors) assert.equal(m.state, 'identical', `${m.repo}: ${m.state}`);
 });
+
+test('a mirror at a WITNESSED previous generation is lagging — migration open, never drift (the two-generation lock, 2026-10-28)', () => {
+  // fabricate the previous generation: the seed minus its newest trap,
+  // anchored on a fixture chain as the last witnessed digest
+  const doc = JSON.parse(fs.readFileSync(SEED, 'utf8'));
+  const prevDoc = { ...doc, traps: doc.traps.slice(0, -1) };
+  const prevBytes = Buffer.from(JSON.stringify(prevDoc, null, 1) + '\n');
+  const prevDigest = crypto.createHash('sha256').update(prevBytes).digest('hex');
+  const anchored = prevDoc.traps.map(digestOf);
+  const chainDoc = { chain: [{ index: 7, data: { type: 'REGISTER', patternId: 'traps-ledger', metadata: { digest: prevDigest, count: anchored.length, entryDigests: anchored } } }] };
+  const mirror = path.join(__dirname, '..', '..', 'MOONS-OF-REMEMBRANCE', '.claude', 'skills', 'goggles', 'traps.seed.json');
+  const saved = fs.readFileSync(mirror);
+  try {
+    writeFixture(FIXTURE_GATE, mirror, prevBytes);
+    const r = gate(chainDoc, { count: anchored.length });
+    assert.equal(r.code, 0, JSON.stringify(r.out.problems));
+    const m = r.out.mirrors.find((x) => x.repo === 'MOONS-OF-REMEMBRANCE');
+    assert.equal(m.state, 'lagging');
+    assert.equal(r.out.lagging, 1);
+    // the same bytes with NO witness behind them stay drift, and block
+    const d = gate(anchorBlock(anchored.length, anchored), { count: anchored.length });
+    assert.equal(d.code, 1);
+    assert.ok(d.out.problems.some((p) => /mirror drift: MOONS-OF-REMEMBRANCE/.test(p)), JSON.stringify(d.out.problems));
+  } finally {
+    writeFixture(FIXTURE_GATE, mirror, saved);
+  }
+});

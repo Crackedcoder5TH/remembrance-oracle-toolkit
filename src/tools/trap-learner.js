@@ -82,9 +82,10 @@ function learn(trap, weight = REPEAT_TO_TRAP, source = 'agent') {
     // TEETH (the operator's ruling, 2026-09-20: the trap ledger has the same
     // teeth as the goggles). A trap may carry a `guard`: { tools: <regex over
     // tool names>, input?: <regex over the stringified tool input> }. The
-    // trap-guard hook denies the FIRST matching tool call of a session with
-    // the trap's own text — the brief gate's deny-once shape, applied to any
-    // tool — so the correction arrives before the act, and the retry passes.
+    // trap-guard hook rides every matching tool call as CONTEXT with the
+    // trap's own text — the same on every touch, nothing denied (the
+    // operator's root ruling, 2026-10-22: deny-once trained the identical
+    // resend). The hard stop lives at the commit door (THE TRAP EQUATION).
     if (trap.guard && typeof trap.guard === 'object' && typeof trap.guard.tools === 'string' && trap.guard.tools) {
       entry.guard = { tools: String(trap.guard.tools) };
       if (typeof trap.guard.input === 'string' && trap.guard.input) entry.guard.input = String(trap.guard.input);

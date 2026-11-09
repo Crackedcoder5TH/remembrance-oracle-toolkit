@@ -12,37 +12,40 @@
  * instrument already ran it three layers deep; no hook fired, the ledger
  * had no reach.
  *
- * Now a trap may carry a `guard`: { tools: <regex over tool names>,
+ * A trap may carry a `guard`: { tools: <regex over tool names>,
  * input?: <regex over the stringified tool input> }. This hook runs as
  * PreToolUse on ALL tools ('.*') and, when a guarded trap matches the
- * call, DENIES ONCE per (session, trap) with the trap's own text — the
- * brief gate's exact shape: the correction arrives before the act, and
- * the identical retry passes. Deny-once, never deny-always: a gate that
- * keeps firing gets routed around.
+ * call, RIDES THE CALL AS CONTEXT — the trap's own text, the same on
+ * every matching call, and nothing is denied here.
  *
- * Posture: the deny path is deliberate; an internal error never blocks a
- * call on this hook's own account (the brief gate's recorded stance) —
- * the settings-level `|| deny` still fails CLOSED if this script cannot
- * run at all, per the wall ruling.
+ * NO DENY-ONCE (the operator's root ruling, 2026-10-22: "stop that double
+ * write bypass at the root"). Deny-once trained the identical resend: the
+ * first call was refused, the unchanged retry passed, and the lesson was
+ * scrolled past both times. The correction now arrives WITH the act, every
+ * time, and the one hard stop lives where it is judged — the commit door,
+ * where THE TRAP EQUATION reads the message and the staged patch
+ * (goggles --do commit / --do brief). Same fix shape as goggles-pre-hook.
+ *
+ * Posture: an internal error never blocks a call on this hook's own
+ * account — the settings-level `|| deny` still fails CLOSED if this
+ * script cannot run at all, per the wall ruling.
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { quiet } = require('../core/quiet');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
-function out(decision, reason) {
+function outContext(text) {
   process.stdout.write(JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
-      permissionDecision: decision,
-      permissionDecisionReason: reason,
+      additionalContext: text,
     },
   }));
   process.exit(0);
 }
-out.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
+outContext.atomicProperties = { charge: 0, valence: 0, mass: "medium", spin: "odd", phase: "gas", reactivity: "low", electronegativity: 0, group: 11, period: 2, harmPotential: "dangerous", alignment: "neutral", intention: "neutral", domain: "utility" };
 
 let input = {};
 try { input = JSON.parse(fs.readFileSync(0, 'utf8')); } catch (_) { process.exit(0); }
@@ -70,29 +73,19 @@ for (const trap of traps) {
 }
 if (!hits.length) process.exit(0);
 
-// deny-once per (session, trap) — the retry passes
-const seenPath = path.join(ROOT, '.remembrance', 'trap-guarded.json');
-let seen = {};
-try { seen = JSON.parse(fs.readFileSync(seenPath, 'utf8')); } catch (_) { seen = {}; }
-const session = String(input.session_id || 'nosession');
-const fresh = hits.filter((t) => !seen[session + '::' + String(t.wrong || '').slice(0, 120)]);
-if (!fresh.length) process.exit(0);
-
-for (const t of fresh) seen[session + '::' + String(t.wrong || '').slice(0, 120)] = Date.now();
-try {
-  fs.mkdirSync(path.dirname(seenPath), { recursive: true });
-  fs.writeFileSync(seenPath, JSON.stringify(seen, null, 1));
-} catch (e) { quiet('tools:trap-guard-hook:seen-write', e); /* if the memory cannot be written, deny once and move on */ }
-
+// The traps ride the call as context — the same on every matching call,
+// nothing denied, no per-session memory to train a resend against. The
+// hard stop lives at the commit door (THE TRAP EQUATION).
 let body = '';
 try {
   const brief = require('./brief');
-  body = brief.renderTraps(fresh);
+  body = brief.renderTraps(hits);
 } catch (_) {
-  body = fresh.map((t) => `✗ WRONG: ${t.wrong}\n✓ TRUTH: ${t.truth}\n⚑ TELL: ${t.tell}\n→ DO: ${t.correct}`).join('\n\n');
+  body = hits.map((t) => `✗ WRONG: ${t.wrong}\n✓ TRUTH: ${t.truth}\n⚑ TELL: ${t.tell}\n→ DO: ${t.correct}`).join('\n\n');
 }
 
-out('deny',
-  'TRAP GUARD — the ledger has recorded this exact move (' + toolName + '). Read the trap, '
-  + 'then retry the identical call if it still holds; the retry passes. This is the one-time '
-  + 'cost of a mistake already made once.\n\n' + body);
+outContext(
+  'TRAP GUARD — the ledger has recorded this exact move (' + toolName + '). '
+  + 'Mistakes already made here; read them before this call\'s work lands. '
+  + 'The stop is at the commit: THE TRAP EQUATION reads the message and the '
+  + 'staged patch.\n\n' + body);

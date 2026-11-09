@@ -26,7 +26,8 @@ function hook(file, input) {
   const out = (r.stdout || '').trim();
   if (!out) return { decision: 'allow', reason: '' };
   const j = JSON.parse(out);
-  return { decision: j.hookSpecificOutput.permissionDecision, reason: j.hookSpecificOutput.permissionDecisionReason || '' };
+  return { decision: j.hookSpecificOutput.permissionDecision, reason: j.hookSpecificOutput.permissionDecisionReason || '',
+    context: j.hookSpecificOutput.additionalContext || '' };
 }
 // covenant fractal, atomic scale: computed by the substrate's own
 // extractAtomicProperties over the function body
@@ -136,6 +137,21 @@ test('an edit to an existing ecosystem file without a goggle reading is refused;
   } finally {
     if (saved === null) rmFixture(ledger, { force: true }); else writeFixture(ledger, saved);
   }
+});
+
+test('a guarded trap rides every matching call as context and never denies (2026-11-09: the last deny-once, at the root)', () => {
+  // the trap-guard hook used to deny the FIRST matching tool call per
+  // (session, trap) and pass the identical resend — the double-write shape
+  // on every tool. Now the trap's text rides the call as context, the same
+  // on every touch; the stop lives at the commit door (THE TRAP EQUATION).
+  const call = () => hook('trap-guard-hook.js', { tool_name: 'CronCreate', session_id: 'wall-test-guard-' + process.pid,
+    tool_input: { prompt: 'keep the battery running hourly' }, cwd: OUTSIDE });
+  const first = call();
+  const second = call();
+  assert.notEqual(first.decision, 'deny', first.reason);
+  assert.notEqual(second.decision, 'deny', second.reason);
+  assert.match(first.context, /TRAP GUARD/, 'the trap rides the first call as context');
+  assert.match(second.context, /TRAP GUARD/, 'and the identical second call carries the SAME context — no deny-once memory');
 });
 
 test('a trapped path is never denied once and passed on the identical retry (2026-10-22: the double write, at the root)', () => {
